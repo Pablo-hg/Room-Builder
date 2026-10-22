@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { FURNITURE_PRESETS, ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from './domain/constants'
-import { wallLength } from './domain/geometry'
-import type { FurnitureKind, ViewMode, WallSide } from './domain/types'
+import { doorWorldPosition, wallLength } from './domain/geometry'
+import type { FurnitureKind, RoomConfig, ViewMode, WallSide } from './domain/types'
 import RoomScene, { FurnitureSwatch } from './components/RoomScene'
 import { useRoomStore } from './state/useRoomStore'
 import './styles.css'
@@ -11,6 +11,22 @@ const VIEW_OPTIONS: { id: ViewMode; label: string; icon: string }[] = [
   { id: 'top', label: 'Plano', icon: '▦' },
   { id: 'pov', label: 'POV', icon: '◉' },
 ]
+
+function cameraCompass(view: ViewMode, orientation: number, room: RoomConfig) {
+  if (view === 'top') return { bearing: null, label: 'Cámara centrada, vista de plano' }
+  if (view === 'isometric') {
+    const bearings = [135, 225, 315, 45]
+    const labels = ['sureste', 'suroeste', 'noroeste', 'noreste']
+    const index = ((orientation % 4) + 4) % 4
+    return { bearing: bearings[index], label: `Cámara al ${labels[index]}` }
+  }
+
+  const [x, , z] = doorWorldPosition(room, room.door)
+  const bearing = Math.atan2(x, -z) * 180 / Math.PI
+  const directions = ['norte', 'noreste', 'este', 'sureste', 'sur', 'suroeste', 'oeste', 'noroeste']
+  const directionIndex = Math.round((((bearing % 360) + 360) % 360) / 45) % 8
+  return { bearing, label: `Cámara al ${directions[directionIndex]}, junto a la puerta` }
+}
 
 function DimensionControl({ field, label }: { field: 'width' | 'depth'; label: string }) {
   const room = useRoomStore((state) => state.room)
@@ -110,6 +126,7 @@ function SettingsPanel() {
 }
 
 function ObjectsPanel() {
+  const room = useRoomStore((state) => state.room)
   const furniture = useRoomStore((state) => state.furniture)
   const selectedId = useRoomStore((state) => state.selectedId)
   const gridSnap = useRoomStore((state) => state.gridSnap)
@@ -117,7 +134,14 @@ function ObjectsPanel() {
   const rotateFurniture = useRoomStore((state) => state.rotateFurniture)
   const removeFurniture = useRoomStore((state) => state.removeFurniture)
   const toggleGrid = useRoomStore((state) => state.toggleGrid)
+  const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
+  const toggleElementVisibility = useRoomStore((state) => state.toggleElementVisibility)
   const selected = furniture.find((item) => item.id === selectedId)
+  const sceneElements = [
+    { id: 'door', name: 'Puerta', kind: 'Apertura' },
+    ...room.windows.map((window, index) => ({ id: window.id, name: `Ventana ${index + 1}`, kind: WALL_LABELS[window.wall] })),
+    ...furniture.map((item) => ({ id: item.id, name: item.name, kind: 'Mueble' })),
+  ]
 
   return (
     <aside className="side-panel objects-panel" aria-label="Catálogo de objetos">
@@ -146,6 +170,25 @@ function ObjectsPanel() {
           </>
         ) : <p className="empty-selection">Selecciona una pieza para girarla o eliminarla.</p>}
       </section>
+      <section className="panel-section elements-section" aria-labelledby="elements-heading">
+        <span className="eyebrow">Escena</span>
+        <h2 id="elements-heading">Elementos en la habitación</h2>
+        <p className="section-copy">Activa o desactiva cada elemento sin eliminarlo.</p>
+        <div className="element-list">
+          {sceneElements.map((element) => (
+            <label className="element-row" key={element.id}>
+              <input
+                type="checkbox"
+                checked={!hiddenElementIds.includes(element.id)}
+                onChange={() => toggleElementVisibility(element.id)}
+                aria-label={`Mostrar ${element.name}`}
+              />
+              <span className="element-check" aria-hidden="true">✓</span>
+              <span><strong>{element.name}</strong><small>{element.kind}</small></span>
+            </label>
+          ))}
+        </div>
+      </section>
       <section className="panel-section grid-section">
         <div><span className="grid-icon" aria-hidden="true">▦</span><span><strong>Ajuste a cuadrícula</strong><small>Saltos de 25 cm</small></span></div>
         <button type="button" className={`switch ${gridSnap ? 'on' : ''}`} role="switch" aria-checked={gridSnap} onClick={toggleGrid}><span /></button>
@@ -173,6 +216,7 @@ function ViewControls() {
 function App() {
   const state = useRoomStore()
   const currentView = VIEW_OPTIONS.find((option) => option.id === state.view)!
+  const compass = cameraCompass(state.view, state.isoOrientation, state.room)
   useEffect(() => {
     if (!state.notice) return
     const timer = window.setTimeout(state.clearNotice, 3200)
@@ -217,12 +261,26 @@ function App() {
             <span className="view-badge"><i /> Vista {currentView.label}</span>
             <span className="room-size">{state.room.width.toFixed(1)} × {state.room.depth.toFixed(1)} m</span>
           </div>
-          <RoomScene room={state.room} view={state.view} orientation={state.isoOrientation} povYaw={state.povYaw} gridSnap={state.gridSnap} furniture={state.furniture} />
+          <RoomScene
+            room={state.room}
+            view={state.view}
+            orientation={state.isoOrientation}
+            povYaw={state.povYaw}
+            gridSnap={state.gridSnap}
+            furniture={state.furniture}
+          />
           {state.furniture.length === 0 && state.view !== 'pov' && (
             <div className="empty-scene"><span>✦</span><strong>La habitación está lista</strong><small>Añade tu primera pieza desde el catálogo</small></div>
           )}
           <ViewControls />
-          <div className="compass" aria-label="Orientación"><span>N</span><i /></div>
+          <div className={`compass ${compass.bearing === null ? 'compass--centered' : ''}`} aria-label={compass.label}>
+            <span className="compass-cardinal compass-north">N</span>
+            <span className="compass-cardinal compass-east">E</span>
+            <span className="compass-cardinal compass-south">S</span>
+            <span className="compass-cardinal compass-west">O</span>
+            <span className="compass-center" />
+            {compass.bearing !== null && <i className="compass-needle" style={{ transform: `translateX(-50%) rotate(${compass.bearing}deg)` }} />}
+          </div>
         </section>
         <ObjectsPanel />
       </main>

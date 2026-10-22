@@ -44,6 +44,7 @@ export interface PersistedDesign {
   room: RoomConfig
   furniture: FurnitureItem[]
   gridSnap: boolean
+  hiddenElementIds?: string[]
 }
 
 export interface WallOpening {

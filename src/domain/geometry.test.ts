@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { DEFAULT_ROOM } from './constants'
-import { buildWallSegments, clampFurniture, hiddenWallsForOrientation, validateOpenings } from './geometry'
+import {
+  buildWallSegments,
+  canPlaceFurniture,
+  clampFurniture,
+  findFreeFurniturePosition,
+  furnitureItemsOverlap,
+  hiddenWallsForOrientation,
+  validateOpenings,
+} from './geometry'
 import type { FurnitureItem, RoomConfig } from './types'
 
 describe('hiddenWallsForOrientation', () => {
@@ -70,5 +78,33 @@ describe('clampFurniture', () => {
     const normal = clampFurniture({ ...item, x: 20, z: 0 }, DEFAULT_ROOM, false)
     const rotated = clampFurniture({ ...item, x: 20, z: 0, rotation: Math.PI / 2 }, DEFAULT_ROOM, false)
     assert.ok(rotated.x > normal.x)
+  })
+})
+
+describe('furniture collisions', () => {
+  const table: FurnitureItem = { id: 'table', kind: 'table', name: 'Mesa', x: 0, z: 0, rotation: 0, width: 1.2, depth: 0.8, height: 0.7, color: '#fff' }
+
+  it('detecta dos huellas que se solapan', () => {
+    const chair: FurnitureItem = { ...table, id: 'chair', kind: 'armchair', x: 0.5 }
+    assert.equal(furnitureItemsOverlap(table, chair), true)
+    assert.equal(canPlaceFurniture(chair, [table]), false)
+  })
+
+  it('permite colocar objetos separados', () => {
+    const chair: FurnitureItem = { ...table, id: 'chair', kind: 'armchair', x: 1.5 }
+    assert.equal(furnitureItemsOverlap(table, chair), false)
+    assert.equal(canPlaceFurniture(chair, [table]), true)
+  })
+
+  it('tiene en cuenta el giro al calcular la huella', () => {
+    const cabinet: FurnitureItem = { ...table, id: 'cabinet', kind: 'cabinet', x: 1.25, width: 0.8, depth: 1.8 }
+    assert.equal(furnitureItemsOverlap(table, cabinet), false)
+    assert.equal(furnitureItemsOverlap(table, { ...cabinet, rotation: Math.PI / 2 }), true)
+  })
+
+  it('encuentra el hueco libre más próximo al añadir', () => {
+    const position = findFreeFurniturePosition({ ...table, id: 'next' }, DEFAULT_ROOM, [table])
+    assert.ok(position)
+    assert.equal(canPlaceFurniture({ ...table, id: 'next', ...position }, [table]), true)
   })
 })
