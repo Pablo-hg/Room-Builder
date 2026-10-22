@@ -52,3 +52,21 @@ test('coloca los muebles nuevos en sectores libres', async ({ page }) => {
   await expect(page.getByText('0.00, 0.00 m', { exact: true })).not.toBeVisible()
   await expect(page.getByRole('status')).toContainText('Sillón añadido')
 })
+
+test('incluye puerta y ventana en el catálogo y abre sus propiedades a la izquierda', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('.catalog-card')).toHaveCount(10)
+  for (const name of ['Sofá', 'Silla', 'Cama', 'Estantería', 'Lámpara']) {
+    await expect(page.getByRole('button', { name: new RegExp(name) })).toBeVisible()
+  }
+  await page.getByRole('button', { name: /Puerta Seleccionar/ }).click()
+  const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
+  await expect(inspector.getByRole('heading', { name: 'Puerta' })).toBeVisible()
+  await expect(inspector.getByText('Posición lateral')).toBeVisible()
+  await expect(inspector.getByText('1.00 m', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: /Ventana.*Añadir/ }).click()
+  await expect(inspector.getByRole('heading', { name: 'Ventana' })).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: 'Mostrar Ventana 2' })).toBeChecked()
+  await expect(page.getByRole('status')).toContainText('Ventana añadida')
+})

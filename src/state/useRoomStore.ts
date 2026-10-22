@@ -1,10 +1,11 @@
 import { create } from 'zustand'
-import { DEFAULT_ROOM, FURNITURE_PRESETS, ROOM_LIMITS } from '../domain/constants'
+import { DEFAULT_ROOM, FRONT_CAMERA_MAX_HEIGHT, FRONT_CAMERA_MIN_HEIGHT, FURNITURE_PRESETS, ROOM_LIMITS } from '../domain/constants'
 import {
   canPlaceFurniture,
   clampFurniture,
   findFreeFurniturePosition,
   hasFurnitureCollisions,
+  snapToPlacementGrid,
   validateOpenings,
   withDoor,
   withWindow,
@@ -22,11 +23,17 @@ interface RoomState {
   selectedId: string | null
   view: ViewMode
   isoOrientation: number
+  wallView: WallSide | null
+  frontCameraHeight: number
   povYaw: number
   gridSnap: boolean
   hiddenElementIds: string[]
   notice: string
   setView: (view: ViewMode) => void
+  lookAtWall: (wall: WallSide) => void
+  setFrontCameraHeight: (height: number) => void
+  lookFromIsoOrientation: (orientation: number) => void
+  rotateFront: (direction: -1 | 1) => void
   rotateIso: (direction: -1 | 1) => void
   rotatePov: (direction: -1 | 1) => void
   setDimension: (key: 'width' | 'depth', value: number) => void
@@ -35,10 +42,12 @@ interface RoomState {
   updateWindow: (id: string, partial: Partial<Pick<WindowConfig, 'wall' | 'offset' | 'width' | 'sill'>>) => void
   removeWindow: (id: string) => void
   addFurniture: (kind: FurnitureKind) => void
-  selectFurniture: (id: string | null) => void
+  selectElement: (id: string | null) => void
   moveFurniture: (id: string, x: number, z: number) => void
+  setFurnitureRotation: (id: string, rotation: number) => void
   rotateFurniture: () => void
   removeFurniture: () => void
+  removeSelected: () => void
   toggleGrid: () => void
   toggleElementVisibility: (id: string) => void
   saveDesign: () => void
@@ -63,7 +72,15 @@ function safeRoomUpdate(current: RoomState, candidate: RoomConfig): Partial<Room
 function arrangeFurniture(items: FurnitureItem[], room: RoomConfig, snap: boolean) {
   const arranged: FurnitureItem[] = []
   for (const item of items) {
-    const clamped = { ...item, ...clampFurniture(item, room, snap) }
+    const preset = FURNITURE_PRESETS[item.kind]
+    if (!preset) return null
+    const normalized = {
+      ...item,
+      width: preset.width,
+      depth: preset.depth,
+      height: preset.height,
+    }
+    const clamped = { ...normalized, ...clampFurniture(normalized, room, snap) }
     if (canPlaceFurniture(clamped, arranged)) {
       arranged.push(clamped)
       continue
@@ -75,18 +92,57 @@ function arrangeFurniture(items: FurnitureItem[], room: RoomConfig, snap: boolea
   return arranged
 }
 
+function applyFurnitureRotation(state: RoomState, item: FurnitureItem, rotation: number, showNotice: boolean): Partial<RoomState> {
+  const fullTurn = Math.PI * 2
+  const normalizedRotation = ((rotation % fullTurn) + fullTurn) % fullTurn
+  const rotated = { ...item, rotation: normalizedRotation }
+  const positioned = { ...rotated, ...clampFurniture(rotated, state.room, state.gridSnap) }
+  if (!canPlaceFurniture(positioned, state.furniture)) {
+    return showNotice ? { notice: 'No hay espacio suficiente para girar el objeto.' } : {}
+  }
+  return {
+    furniture: state.furniture.map((candidate) => candidate.id === item.id ? positioned : candidate),
+    notice: '',
+  }
+}
+
 export const useRoomStore = create<RoomState>((set, get) => ({
   room: cloneRoom(),
   furniture: [],
   selectedId: null,
   view: 'isometric',
   isoOrientation: 0,
+  wallView: null,
+  frontCameraHeight: DEFAULT_ROOM.height / 2,
   povYaw: 0,
   gridSnap: true,
   hiddenElementIds: [],
   notice: '',
-  setView: (view) => set({ view, selectedId: null, notice: '' }),
-  rotateIso: (direction) => set((state) => ({ isoOrientation: (state.isoOrientation + direction + 4) % 4 })),
+  setView: (view) => set((state) => ({
+    view,
+    wallView: view === 'front' ? state.wallView ?? 'north' : null,
+    notice: '',
+  })),
+  lookAtWall: (wallView) => set({ view: 'front', wallView, notice: '' }),
+  setFrontCameraHeight: (frontCameraHeight) => set({
+    frontCameraHeight: Math.max(FRONT_CAMERA_MIN_HEIGHT, Math.min(FRONT_CAMERA_MAX_HEIGHT, frontCameraHeight)),
+  }),
+  lookFromIsoOrientation: (orientation) => set({
+    view: 'isometric',
+    isoOrientation: ((orientation % 4) + 4) % 4,
+    wallView: null,
+    notice: '',
+  }),
+  rotateFront: (direction) => set((state) => {
+    const walls: WallSide[] = ['north', 'east', 'south', 'west']
+    const currentIndex = walls.indexOf(state.wallView ?? 'north')
+    return {
+      view: 'front',
+      wallView: walls[(currentIndex + direction + walls.length) % walls.length],
+      notice: '',
+    }
+  }),
+  rotateIso: (direction) => set((state) => ({ isoOrientation: (state.isoOrientation + direction + 4) % 4, wallView: null })),
   rotatePov: (direction) => set((state) => ({ povYaw: Math.max(-55, Math.min(55, state.povYaw + direction * 15)) })),
   setDimension: (key, value) => set((state) => {
     const min = key === 'width' ? ROOM_LIMITS.minWidth : ROOM_LIMITS.minDepth
@@ -94,23 +150,34 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     const next = Math.max(min, Math.min(max, value))
     return safeRoomUpdate(state, { ...state.room, [key]: next })
   }),
-  setDoor: (partial) => set((state) => safeRoomUpdate(state, withDoor(state.room, partial))),
+  setDoor: (partial) => set((state) => {
+    const adjusted = partial.offset === undefined
+      ? partial
+      : { ...partial, offset: snapToPlacementGrid(partial.offset) }
+    return safeRoomUpdate(state, withDoor(state.room, adjusted))
+  }),
   addWindow: () => set((state) => {
     const walls: WallSide[] = ['north', 'east', 'south', 'west']
     const offsets = [0, -1.25, 1.25, -2, 2]
     for (const wall of walls) {
       for (const offset of offsets) {
-        const window: WindowConfig = { id: makeId('window'), wall, offset, width: 1.2, height: 1.1, sill: 0.9 }
+        const window: WindowConfig = { id: makeId('window'), wall, offset, width: 1.5, height: 1.1, sill: 0.9 }
         const candidate = { ...state.room, windows: [...state.room.windows, window] }
-        if (!validateOpenings(candidate)) return { room: candidate, notice: '' }
+        if (!validateOpenings(candidate)) return { room: candidate, selectedId: window.id, notice: 'Ventana añadida.' }
       }
     }
     return { notice: 'No queda espacio válido para otra ventana.' }
   }),
-  updateWindow: (id, partial) => set((state) => safeRoomUpdate(state, withWindow(state.room, id, partial))),
+  updateWindow: (id, partial) => set((state) => {
+    const adjusted = partial.offset === undefined
+      ? partial
+      : { ...partial, offset: snapToPlacementGrid(partial.offset) }
+    return safeRoomUpdate(state, withWindow(state.room, id, adjusted))
+  }),
   removeWindow: (id) => set((state) => ({
     room: { ...state.room, windows: state.room.windows.filter((window) => window.id !== id) },
     hiddenElementIds: state.hiddenElementIds.filter((elementId) => elementId !== id),
+    selectedId: state.selectedId === id ? null : state.selectedId,
     notice: '',
   })),
   addFurniture: (kind) => set((state) => {
@@ -121,7 +188,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     if (!position) return { notice: `No queda espacio libre para añadir ${preset.name.toLowerCase()}.` }
     return { furniture: [...state.furniture, { ...item, ...position }], selectedId: id, notice: `${preset.name} añadido.` }
   }),
-  selectFurniture: (selectedId) => set({ selectedId }),
+  selectElement: (selectedId) => set({ selectedId, notice: '' }),
   moveFurniture: (id, x, z) => set((state) => {
     const item = state.furniture.find((candidate) => candidate.id === id)
     if (!item) return {}
@@ -129,18 +196,15 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     if (!canPlaceFurniture(moved, state.furniture)) return {}
     return { furniture: state.furniture.map((candidate) => candidate.id === id ? moved : candidate) }
   }),
+  setFurnitureRotation: (id, rotation) => set((state) => {
+    const item = state.furniture.find((candidate) => candidate.id === id)
+    if (!item) return {}
+    return applyFurnitureRotation(state, item, rotation, false)
+  }),
   rotateFurniture: () => set((state) => {
     const item = state.furniture.find((candidate) => candidate.id === state.selectedId)
     if (!item) return {}
-    const rotated = { ...item, rotation: (item.rotation + Math.PI / 2) % (Math.PI * 2) }
-    const positioned = { ...rotated, ...clampFurniture(rotated, state.room, state.gridSnap) }
-    if (!canPlaceFurniture(positioned, state.furniture)) {
-      return { notice: 'No hay espacio suficiente para girar el objeto.' }
-    }
-    return {
-      furniture: state.furniture.map((candidate) => candidate.id === item.id ? positioned : candidate),
-      notice: '',
-    }
+    return applyFurnitureRotation(state, item, item.rotation + Math.PI / 2, true)
   }),
   removeFurniture: () => set((state) => ({
     furniture: state.furniture.filter((item) => item.id !== state.selectedId),
@@ -148,6 +212,24 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     selectedId: null,
     notice: state.selectedId ? 'Objeto eliminado.' : state.notice,
   })),
+  removeSelected: () => set((state) => {
+    if (!state.selectedId || state.selectedId === 'door') return {}
+    if (state.room.windows.some((window) => window.id === state.selectedId)) {
+      return {
+        room: { ...state.room, windows: state.room.windows.filter((window) => window.id !== state.selectedId) },
+        hiddenElementIds: state.hiddenElementIds.filter((id) => id !== state.selectedId),
+        selectedId: null,
+        notice: 'Ventana eliminada.',
+      }
+    }
+    if (!state.furniture.some((item) => item.id === state.selectedId)) return {}
+    return {
+      furniture: state.furniture.filter((item) => item.id !== state.selectedId),
+      hiddenElementIds: state.hiddenElementIds.filter((id) => id !== state.selectedId),
+      selectedId: null,
+      notice: 'Objeto eliminado.',
+    }
+  }),
   toggleGrid: () => set((state) => {
     const gridSnap = !state.gridSnap
     const furniture = state.furniture.map((item) => ({ ...item, ...clampFurniture(item, state.room, gridSnap) }))
@@ -190,11 +272,17 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       const raw = localStorage.getItem(STORAGE_KEY)
       if (!raw) return set({ notice: 'Aún no hay un diseño guardado.' })
       const data = JSON.parse(raw) as PersistedDesign
-      if (data.version !== 1 || validateOpenings(data.room) || !Array.isArray(data.furniture)) throw new Error('invalid')
-      const furniture = arrangeFurniture(data.furniture, data.room, Boolean(data.gridSnap))
+      if (data.version !== 1 || !Array.isArray(data.furniture)) throw new Error('invalid')
+      const room: RoomConfig = {
+        ...data.room,
+        door: { ...data.room.door, width: DEFAULT_ROOM.door.width },
+        windows: data.room.windows.map((window) => ({ ...window, width: DEFAULT_ROOM.windows[0].width })),
+      }
+      if (validateOpenings(room)) throw new Error('invalid')
+      const furniture = arrangeFurniture(data.furniture, room, Boolean(data.gridSnap))
       if (!furniture) throw new Error('invalid')
       set({
-        room: data.room,
+        room,
         furniture,
         gridSnap: Boolean(data.gridSnap),
         hiddenElementIds: Array.isArray(data.hiddenElementIds)

@@ -1,14 +1,20 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { DEFAULT_ROOM } from './constants'
+import { DEFAULT_ROOM, FURNITURE_PRESETS, ROOM_LIMITS } from './constants'
 import {
   buildWallSegments,
   canPlaceFurniture,
   clampFurniture,
   findFreeFurniturePosition,
+  furnitureHalfExtents,
   furnitureItemsOverlap,
+  hiddenWallForCardinalTarget,
   hiddenWallsForOrientation,
+  shortestAngleDelta,
+  snapFurnitureRotation,
+  snapToPlacementGrid,
   validateOpenings,
+  visibleWallsForOrientation,
 } from './geometry'
 import type { FurnitureItem, RoomConfig } from './types'
 
@@ -26,6 +32,28 @@ describe('hiddenWallsForOrientation', () => {
   it('normaliza rotaciones en ambos sentidos', () => {
     assert.deepEqual(hiddenWallsForOrientation(4), hiddenWallsForOrientation(0))
     assert.deepEqual(hiddenWallsForOrientation(-1), hiddenWallsForOrientation(3))
+  })
+})
+
+describe('visibleWallsForOrientation', () => {
+  it('devuelve las dos paredes que permanecen visibles', () => {
+    assert.deepEqual(visibleWallsForOrientation(1), ['north', 'east'])
+  })
+})
+
+describe('hiddenWallForCardinalTarget', () => {
+  it('oculta únicamente la pared situada entre la cámara y la habitación', () => {
+    assert.equal(hiddenWallForCardinalTarget('north'), 'south')
+    assert.equal(hiddenWallForCardinalTarget('east'), 'west')
+    assert.equal(hiddenWallForCardinalTarget('south'), 'north')
+    assert.equal(hiddenWallForCardinalTarget('west'), 'east')
+  })
+})
+
+describe('shortestAngleDelta', () => {
+  it('mantiene el giro en el arco corto alrededor del centro', () => {
+    assert.ok(Math.abs(shortestAngleDelta(3 * Math.PI / 4, -3 * Math.PI / 4) - Math.PI / 2) < 1e-8)
+    assert.ok(Math.abs(shortestAngleDelta(-3 * Math.PI / 4, 3 * Math.PI / 4) + Math.PI / 2) < 1e-8)
   })
 })
 
@@ -64,20 +92,55 @@ describe('validateOpenings', () => {
 })
 
 describe('clampFurniture', () => {
-  const item: FurnitureItem = { id: 'x', kind: 'table', name: 'Mesa', x: 20, z: -20, rotation: 0, width: 1.2, depth: 0.8, height: 0.7, color: '#fff' }
+  const item: FurnitureItem = { id: 'x', kind: 'table', name: 'Mesa', x: 20, z: -20, rotation: 0, width: 1.25, depth: 0.75, height: 0.7, color: '#fff' }
 
-  it('mantiene el objeto dentro del suelo y lo ajusta a 25 cm', () => {
+  it('permite llegar exactamente al borde sin salir del suelo', () => {
     const result = clampFurniture(item, DEFAULT_ROOM, true)
-    assert.ok(result.x < DEFAULT_ROOM.width / 2)
-    assert.ok(result.z > -DEFAULT_ROOM.depth / 2)
-    assert.equal(Math.abs(result.x % 0.25), 0)
-    assert.equal(Math.abs(result.z % 0.25), 0)
+    assert.ok(Math.abs(result.x + item.width / 2 - DEFAULT_ROOM.width / 2) < 1e-8)
+    assert.ok(Math.abs(result.z - item.depth / 2 + DEFAULT_ROOM.depth / 2) < 1e-8)
+  })
+
+  it('divide cada cuadrado visible en cuatro secciones de 12,5 cm', () => {
+    const result = clampFurniture({ ...item, x: 0.63, z: -0.62 }, DEFAULT_ROOM, true)
+    assert.equal(result.x, 0.625)
+    assert.equal(result.z, -0.625)
+    assert.equal(snapToPlacementGrid(0.19), 0.25)
+    assert.ok(Math.abs((result.x - item.width / 2) / ROOM_LIMITS.placementStep % 1) < 1e-8)
+    assert.ok(Math.abs((result.z - item.depth / 2) / ROOM_LIMITS.placementStep % 1) < 1e-8)
   })
 
   it('intercambia la huella al girar un cuarto de vuelta', () => {
     const normal = clampFurniture({ ...item, x: 20, z: 0 }, DEFAULT_ROOM, false)
     const rotated = clampFurniture({ ...item, x: 20, z: 0, rotation: Math.PI / 2 }, DEFAULT_ROOM, false)
     assert.ok(rotated.x > normal.x)
+  })
+
+  it('calcula la huella exterior durante una rotación libre', () => {
+    const extents = furnitureHalfExtents({ ...item, rotation: Math.PI / 4 })
+    const expected = (item.width + item.depth) / (2 * Math.sqrt(2))
+    assert.ok(Math.abs(extents.halfWidth - expected) < 1e-8)
+    assert.ok(Math.abs(extents.halfDepth - expected) < 1e-8)
+  })
+})
+
+describe('dimensiones del catálogo', () => {
+  it('ofrece diez tipos de elemento y alinea sus huellas con los cuadrados de 25 cm', () => {
+    assert.equal(Object.keys(FURNITURE_PRESETS).length + 2, 10)
+    const dimensions = [
+      DEFAULT_ROOM.door.width,
+      DEFAULT_ROOM.windows[0].width,
+      ...Object.values(FURNITURE_PRESETS).flatMap((item) => [item.width, item.depth]),
+    ]
+    dimensions.forEach((dimension) => {
+      assert.equal(dimension / ROOM_LIMITS.gridSize % 1, 0)
+    })
+  })
+})
+
+describe('snapFurnitureRotation', () => {
+  it('ajusta el giro a pasos exactos de 15 grados', () => {
+    assert.ok(Math.abs(snapFurnitureRotation(22 * Math.PI / 180) - Math.PI / 12) < 1e-8)
+    assert.ok(Math.abs(snapFurnitureRotation(38 * Math.PI / 180) - Math.PI / 4) < 1e-8)
   })
 })
 
@@ -94,6 +157,13 @@ describe('furniture collisions', () => {
     const chair: FurnitureItem = { ...table, id: 'chair', kind: 'armchair', x: 1.5 }
     assert.equal(furnitureItemsOverlap(table, chair), false)
     assert.equal(canPlaceFurniture(chair, [table]), true)
+  })
+
+  it('permite colocar dos objetos exactamente juntos', () => {
+    const adjacent: FurnitureItem = { ...table, id: 'adjacent', x: table.width }
+    assert.equal(furnitureItemsOverlap(table, adjacent), false)
+    assert.equal(canPlaceFurniture(adjacent, [table]), true)
+    assert.equal(furnitureItemsOverlap(table, { ...adjacent, x: table.width - 0.001 }), true)
   })
 
   it('tiene en cuenta el giro al calcular la huella', () => {

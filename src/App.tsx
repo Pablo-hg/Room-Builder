@@ -1,31 +1,37 @@
 import { useEffect } from 'react'
-import { FURNITURE_PRESETS, ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from './domain/constants'
-import { doorWorldPosition, wallLength } from './domain/geometry'
-import type { FurnitureKind, RoomConfig, ViewMode, WallSide } from './domain/types'
-import RoomScene, { FurnitureSwatch } from './components/RoomScene'
+import { FRONT_CAMERA_MAX_HEIGHT, FRONT_CAMERA_MIN_HEIGHT, FURNITURE_PRESETS, ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from './domain/constants'
+import { furnitureHalfExtents, visibleWallsForOrientation, wallLength } from './domain/geometry'
+import type { FurnitureKind, ViewMode, WallSide } from './domain/types'
+import RoomScene, { FurnitureSwatch, RoomCompass3D } from './components/RoomScene'
 import { useRoomStore } from './state/useRoomStore'
 import './styles.css'
 
 const VIEW_OPTIONS: { id: ViewMode; label: string; icon: string }[] = [
   { id: 'isometric', label: 'Isométrica', icon: '◇' },
   { id: 'top', label: 'Plano', icon: '▦' },
+  { id: 'front', label: 'Frontal', icon: '▣' },
   { id: 'pov', label: 'POV', icon: '◉' },
 ]
 
-function cameraCompass(view: ViewMode, orientation: number, room: RoomConfig) {
-  if (view === 'top') return { bearing: null, label: 'Cámara centrada, vista de plano' }
-  if (view === 'isometric') {
-    const bearings = [135, 225, 315, 45]
-    const labels = ['sureste', 'suroeste', 'noroeste', 'noreste']
-    const index = ((orientation % 4) + 4) % 4
-    return { bearing: bearings[index], label: `Cámara al ${labels[index]}` }
-  }
+function visibleWallsForView(view: ViewMode, orientation: number, wallView: WallSide | null): WallSide[] {
+  if (view === 'isometric') return visibleWallsForOrientation(orientation)
+  if (view === 'front') return [wallView ?? 'north']
+  if (view === 'top') return []
+  return []
+}
 
-  const [x, , z] = doorWorldPosition(room, room.door)
-  const bearing = Math.atan2(x, -z) * 180 / Math.PI
-  const directions = ['norte', 'noreste', 'este', 'sureste', 'sur', 'suroeste', 'oeste', 'noroeste']
-  const directionIndex = Math.round((((bearing % 360) + 360) % 360) / 45) % 8
-  return { bearing, label: `Cámara al ${directions[directionIndex]}, junto a la puerta` }
+function wallsDescription(view: ViewMode, walls: WallSide[]) {
+  if (view === 'pov') return 'Cámara interior'
+  if (view === 'top') return 'Vista superior de la habitación'
+  const names = walls.map((wall) => WALL_LABELS[wall])
+  if (view === 'front') return `Pared frontal: ${names[0]}`
+  return `Paredes visibles: ${names.join(' y ')}`
+}
+
+function compassLabel(view: ViewMode, orientation: number) {
+  if (view !== 'isometric') return 'Gizmo 3D para cambiar la orientación de la habitación'
+  const directions = ['sureste', 'suroeste', 'noroeste', 'noreste']
+  return `Cámara al ${directions[((orientation % 4) + 4) % 4]}`
 }
 
 function DimensionControl({ field, label }: { field: 'width' | 'depth'; label: string }) {
@@ -61,46 +67,96 @@ function WallPicker({ value, onChange, label }: { value: WallSide; onChange: (wa
   )
 }
 
-function WindowEditor() {
+function OpeningSwatch({ kind }: { kind: 'door' | 'window' }) {
+  return <span className={`opening-swatch opening-swatch--${kind}`} aria-hidden="true"><i /></span>
+}
+
+function SelectionInspector() {
   const room = useRoomStore((state) => state.room)
-  const addWindow = useRoomStore((state) => state.addWindow)
+  const furniture = useRoomStore((state) => state.furniture)
+  const selectedId = useRoomStore((state) => state.selectedId)
+  const moveFurniture = useRoomStore((state) => state.moveFurniture)
+  const rotateFurniture = useRoomStore((state) => state.rotateFurniture)
+  const removeFurniture = useRoomStore((state) => state.removeFurniture)
+  const setDoor = useRoomStore((state) => state.setDoor)
   const updateWindow = useRoomStore((state) => state.updateWindow)
   const removeWindow = useRoomStore((state) => state.removeWindow)
+  const selectedFurniture = furniture.find((item) => item.id === selectedId)
+  const selectedWindow = room.windows.find((window) => window.id === selectedId)
+  const selectedOpening = selectedId === 'door' ? { ...room.door, id: 'door' as const, kind: 'door' as const, sill: 0 } : selectedWindow ? { ...selectedWindow, kind: 'window' as const } : null
+
+  if (selectedFurniture) {
+    const extents = furnitureHalfExtents(selectedFurniture)
+    const xLimit = Math.max(0, room.width / 2 - extents.halfWidth)
+    const zLimit = Math.max(0, room.depth / 2 - extents.halfDepth)
+    return (
+      <section className="panel-section selection-section selection-section--inspector">
+        <span className="eyebrow">Inspector del elemento</span>
+        <div className="selected-heading"><FurnitureSwatch kind={selectedFurniture.kind} /><div><h2>{selectedFurniture.name}</h2><p>{selectedFurniture.x.toFixed(2)}, {selectedFurniture.z.toFixed(2)} m</p></div></div>
+        <div className="property-grid" aria-label="Características del mueble">
+          <span><small>Anchura</small><strong>{selectedFurniture.width.toFixed(2)} m</strong></span>
+          <span><small>Fondo</small><strong>{selectedFurniture.depth.toFixed(2)} m</strong></span>
+          <span><small>Altura</small><strong>{selectedFurniture.height.toFixed(2)} m</strong></span>
+          <span><small>Giro</small><strong>{Math.round(selectedFurniture.rotation * 180 / Math.PI)}°</strong></span>
+        </div>
+        <label className="range-control compact">
+          <span><span>Posición X</span><strong>{selectedFurniture.x.toFixed(2)} m</strong></span>
+          <input type="range" min={-xLimit} max={xLimit} step={ROOM_LIMITS.placementStep} value={selectedFurniture.x} onChange={(event) => moveFurniture(selectedFurniture.id, Number(event.target.value), selectedFurniture.z)} />
+        </label>
+        <label className="range-control compact">
+          <span><span>Posición Z</span><strong>{selectedFurniture.z.toFixed(2)} m</strong></span>
+          <input type="range" min={-zLimit} max={zLimit} step={ROOM_LIMITS.placementStep} value={selectedFurniture.z} onChange={(event) => moveFurniture(selectedFurniture.id, selectedFurniture.x, Number(event.target.value))} />
+        </label>
+        <div className="object-actions">
+          <button type="button" onClick={rotateFurniture}><span>↻</span> Girar 90°</button>
+          <button type="button" className="danger" onClick={removeFurniture}><span>×</span> Eliminar</button>
+        </div>
+        <p className="rotation-hint">En la vista también puedes arrastrar los ejes y el aro de giro.</p>
+      </section>
+    )
+  }
+
+  if (selectedOpening) {
+    const rawMaxOffset = Math.max(0, wallLength(room, selectedOpening.wall) / 2 - selectedOpening.width / 2 - ROOM_LIMITS.edgeMargin)
+    const maxOffset = Math.floor(rawMaxOffset / ROOM_LIMITS.placementStep) * ROOM_LIMITS.placementStep
+    const update = selectedOpening.kind === 'door'
+      ? (partial: { wall?: WallSide; offset?: number }) => setDoor(partial)
+      : (partial: { wall?: WallSide; offset?: number }) => updateWindow(selectedOpening.id, partial)
+    return (
+      <section className="panel-section selection-section selection-section--inspector">
+        <span className="eyebrow">Inspector del elemento</span>
+        <div className="selected-heading"><OpeningSwatch kind={selectedOpening.kind} /><div><h2>{selectedOpening.kind === 'door' ? 'Puerta' : 'Ventana'}</h2><p>Apertura seleccionada</p></div></div>
+        <div className="property-grid" aria-label="Características de la apertura">
+          <span><small>Anchura</small><strong>{selectedOpening.width.toFixed(2)} m</strong></span>
+          <span><small>Altura</small><strong>{selectedOpening.height.toFixed(2)} m</strong></span>
+          <span><small>Pared</small><strong>{WALL_LABELS[selectedOpening.wall]}</strong></span>
+          <span><small>{selectedOpening.kind === 'window' ? 'Antepecho' : 'Desde suelo'}</small><strong>{selectedOpening.sill.toFixed(2)} m</strong></span>
+        </div>
+        <WallPicker label="Pared" value={selectedOpening.wall} onChange={(wall) => update({ wall })} />
+        <label className="range-control compact">
+          <span><span>Posición lateral</span><strong>{selectedOpening.offset.toFixed(2)} m</strong></span>
+          <input type="range" min={-maxOffset} max={maxOffset} step={ROOM_LIMITS.placementStep} value={selectedOpening.offset} onChange={(event) => update({ offset: Number(event.target.value) })} />
+        </label>
+        <p className="rotation-hint">También puedes arrastrarla directamente hacia los lados en la vista.</p>
+        {selectedOpening.kind === 'window' && <button type="button" className="text-button danger" onClick={() => removeWindow(selectedOpening.id)}>Eliminar ventana</button>}
+      </section>
+    )
+  }
+
   return (
-    <section className="panel-section">
-      <div className="section-title-row">
-        <div><span className="eyebrow">Aperturas</span><h2>Ventanas</h2></div>
-        <button type="button" className="icon-button" onClick={addWindow} aria-label="Añadir ventana">＋</button>
-      </div>
-      <div className="window-list">
-        {room.windows.length === 0 && <p className="muted-copy">Todavía no hay ventanas.</p>}
-        {room.windows.map((window, index) => {
-          const maxOffset = Math.max(0, wallLength(room, window.wall) / 2 - window.width / 2 - ROOM_LIMITS.edgeMargin)
-          return (
-            <details className="window-card" key={window.id} open={index === room.windows.length - 1}>
-              <summary><span><i aria-hidden="true" />Ventana {index + 1}</span><span>{WALL_LABELS[window.wall]}</span></summary>
-              <div className="window-card__body">
-                <WallPicker label="Pared" value={window.wall} onChange={(wall) => updateWindow(window.id, { wall })} />
-                <label className="range-control compact">
-                  <span><span>Posición</span><strong>{window.offset.toFixed(2)} m</strong></span>
-                  <input type="range" min={-maxOffset} max={maxOffset} step="0.05" value={window.offset} onChange={(e) => updateWindow(window.id, { offset: Number(e.target.value) })} />
-                </label>
-                <button type="button" className="text-button danger" onClick={() => removeWindow(window.id)}>Eliminar ventana</button>
-              </div>
-            </details>
-          )
-        })}
-      </div>
+    <section className="panel-section selection-section selection-section--inspector">
+      <span className="eyebrow">Inspector del elemento</span>
+      <h2>Nada seleccionado</h2>
+      <p className="empty-selection">Selecciona un mueble, la puerta o una ventana en la vista para consultar y editar sus propiedades.</p>
     </section>
   )
 }
 
 function SettingsPanel() {
   const room = useRoomStore((state) => state.room)
-  const setDoor = useRoomStore((state) => state.setDoor)
-  const maxDoorOffset = Math.max(0, wallLength(room, room.door.wall) / 2 - room.door.width / 2 - ROOM_LIMITS.edgeMargin)
   return (
-    <aside className="side-panel settings-panel" aria-label="Configurar habitación">
+    <aside className="side-panel settings-panel" aria-label="Inspector y configuración detallada">
+      <SelectionInspector />
       <section className="panel-section room-section">
         <span className="eyebrow">Espacio</span>
         <h2>Tu habitación</h2>
@@ -111,16 +167,6 @@ function SettingsPanel() {
         <DimensionControl field="width" label="Anchura" />
         <DimensionControl field="depth" label="Profundidad" />
       </section>
-      <section className="panel-section">
-        <span className="eyebrow">Acceso</span>
-        <h2>Puerta</h2>
-        <WallPicker label="Pared de la puerta" value={room.door.wall} onChange={(wall) => setDoor({ wall })} />
-        <label className="range-control compact">
-          <span><span>Posición</span><strong>{room.door.offset.toFixed(2)} m</strong></span>
-          <input type="range" min={-maxDoorOffset} max={maxDoorOffset} step="0.05" value={room.door.offset} onChange={(event) => setDoor({ offset: Number(event.target.value) })} />
-        </label>
-      </section>
-      <WindowEditor />
     </aside>
   )
 }
@@ -131,12 +177,11 @@ function ObjectsPanel() {
   const selectedId = useRoomStore((state) => state.selectedId)
   const gridSnap = useRoomStore((state) => state.gridSnap)
   const addFurniture = useRoomStore((state) => state.addFurniture)
-  const rotateFurniture = useRoomStore((state) => state.rotateFurniture)
-  const removeFurniture = useRoomStore((state) => state.removeFurniture)
+  const addWindow = useRoomStore((state) => state.addWindow)
+  const selectElement = useRoomStore((state) => state.selectElement)
   const toggleGrid = useRoomStore((state) => state.toggleGrid)
   const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
   const toggleElementVisibility = useRoomStore((state) => state.toggleElementVisibility)
-  const selected = furniture.find((item) => item.id === selectedId)
   const sceneElements = [
     { id: 'door', name: 'Puerta', kind: 'Apertura' },
     ...room.windows.map((window, index) => ({ id: window.id, name: `Ventana ${index + 1}`, kind: WALL_LABELS[window.wall] })),
@@ -148,8 +193,16 @@ function ObjectsPanel() {
       <section className="panel-section">
         <span className="eyebrow">Objetos</span>
         <h2>Pequeño catálogo</h2>
-        <p className="section-copy">Añade una pieza y arrástrala por la habitación.</p>
+        <p className="section-copy">Añade muebles y aperturas, o selecciona la puerta existente.</p>
         <div className="catalog-grid">
+          <button type="button" className={`catalog-card ${selectedId === 'door' ? 'active' : ''}`} onClick={() => selectElement('door')} aria-pressed={selectedId === 'door'}>
+            <OpeningSwatch kind="door" />
+            <span>Puerta</span><small>Seleccionar</small>
+          </button>
+          <button type="button" className="catalog-card" onClick={addWindow}>
+            <OpeningSwatch kind="window" />
+            <span>Ventana</span><small>＋ Añadir</small>
+          </button>
           {(Object.keys(FURNITURE_PRESETS) as FurnitureKind[]).map((kind) => (
             <button key={kind} type="button" className="catalog-card" onClick={() => addFurniture(kind)}>
               <FurnitureSwatch kind={kind} />
@@ -158,39 +211,31 @@ function ObjectsPanel() {
           ))}
         </div>
       </section>
-      <section className="panel-section selection-section">
-        <span className="eyebrow">Selección</span>
-        {selected ? (
-          <>
-            <div className="selected-heading"><FurnitureSwatch kind={selected.kind} /><div><h2>{selected.name}</h2><p>{selected.x.toFixed(2)}, {selected.z.toFixed(2)} m</p></div></div>
-            <div className="object-actions">
-              <button type="button" onClick={rotateFurniture}><span>↻</span> Girar 90°</button>
-              <button type="button" className="danger" onClick={removeFurniture}><span>×</span> Eliminar</button>
-            </div>
-          </>
-        ) : <p className="empty-selection">Selecciona una pieza para girarla o eliminarla.</p>}
-      </section>
       <section className="panel-section elements-section" aria-labelledby="elements-heading">
         <span className="eyebrow">Escena</span>
         <h2 id="elements-heading">Elementos en la habitación</h2>
         <p className="section-copy">Activa o desactiva cada elemento sin eliminarlo.</p>
         <div className="element-list">
           {sceneElements.map((element) => (
-            <label className="element-row" key={element.id}>
-              <input
-                type="checkbox"
-                checked={!hiddenElementIds.includes(element.id)}
-                onChange={() => toggleElementVisibility(element.id)}
-                aria-label={`Mostrar ${element.name}`}
-              />
-              <span className="element-check" aria-hidden="true">✓</span>
-              <span><strong>{element.name}</strong><small>{element.kind}</small></span>
-            </label>
+            <div className={`element-row ${selectedId === element.id ? 'selected' : ''}`} key={element.id}>
+              <label className="element-visibility" title={`Mostrar u ocultar ${element.name}`}>
+                <input
+                  type="checkbox"
+                  checked={!hiddenElementIds.includes(element.id)}
+                  onChange={() => toggleElementVisibility(element.id)}
+                  aria-label={`Mostrar ${element.name}`}
+                />
+                <span className="element-check" aria-hidden="true">✓</span>
+              </label>
+              <button type="button" className="element-select" onClick={() => selectElement(element.id)} aria-pressed={selectedId === element.id}>
+                <strong>{element.name}</strong><small>{element.kind}</small>
+              </button>
+            </div>
           ))}
         </div>
       </section>
       <section className="panel-section grid-section">
-        <div><span className="grid-icon" aria-hidden="true">▦</span><span><strong>Ajuste a cuadrícula</strong><small>Saltos de 25 cm</small></span></div>
+        <div><span className="grid-icon" aria-hidden="true">▦</span><span><strong>Ajuste a subcuadrícula</strong><small>4 secciones invisibles de 12,5 cm</small></span></div>
         <button type="button" className={`switch ${gridSnap ? 'on' : ''}`} role="switch" aria-checked={gridSnap} onClick={toggleGrid}><span /></button>
       </section>
     </aside>
@@ -200,9 +245,38 @@ function ObjectsPanel() {
 function ViewControls() {
   const view = useRoomStore((state) => state.view)
   const rotateIso = useRoomStore((state) => state.rotateIso)
+  const rotateFront = useRoomStore((state) => state.rotateFront)
   const rotatePov = useRoomStore((state) => state.rotatePov)
+  const roomHeight = useRoomStore((state) => state.room.height)
+  const frontCameraHeight = useRoomStore((state) => state.frontCameraHeight)
+  const setFrontCameraHeight = useRoomStore((state) => state.setFrontCameraHeight)
   const povYaw = useRoomStore((state) => state.povYaw)
   if (view === 'top') return <div className="scene-hint"><span>↕</span> Arrastra para organizar</div>
+  if (view === 'front') return (
+    <div className="front-camera-control">
+      <div className="front-camera-control__header">
+        <button type="button" onClick={() => rotateFront(-1)} aria-label="Ver la pared anterior" title="Pared anterior">↶</button>
+        <span>
+          <b>Altura de cámara</b>
+          <output>{frontCameraHeight.toFixed(2)} m{Math.abs(frontCameraHeight - roomHeight / 2) < 0.001 ? ' · De frente' : ''}</output>
+        </span>
+        <button type="button" onClick={() => rotateFront(1)} aria-label="Ver la pared siguiente" title="Pared siguiente">↷</button>
+      </div>
+      <label className="front-camera-control__range">
+        <i aria-hidden="true">−</i>
+        <input
+          type="range"
+          min={FRONT_CAMERA_MIN_HEIGHT}
+          max={FRONT_CAMERA_MAX_HEIGHT}
+          step="0.05"
+          value={frontCameraHeight}
+          onChange={(event) => setFrontCameraHeight(Number(event.target.value))}
+          aria-label="Subir o bajar la cámara frontal"
+        />
+        <i aria-hidden="true">＋</i>
+      </label>
+    </div>
+  )
   const rotate = view === 'isometric' ? rotateIso : rotatePov
   return (
     <div className="camera-controls" aria-label={view === 'isometric' ? 'Girar habitación' : 'Mirar alrededor'}>
@@ -216,7 +290,11 @@ function ViewControls() {
 function App() {
   const state = useRoomStore()
   const currentView = VIEW_OPTIONS.find((option) => option.id === state.view)!
-  const compass = cameraCompass(state.view, state.isoOrientation, state.room)
+  const visibleWalls = visibleWallsForView(state.view, state.isoOrientation, state.wallView)
+  const visibleWallsText = wallsDescription(state.view, visibleWalls)
+  const viewLabel = state.view === 'front' && state.wallView
+    ? `Frontal · ${WALL_LABELS[state.wallView]}`
+    : currentView.label
   useEffect(() => {
     if (!state.notice) return
     const timer = window.setTimeout(state.clearNotice, 3200)
@@ -227,11 +305,11 @@ function App() {
     const handleShortcut = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) return
       if (event.key.toLowerCase() === 'r') state.rotateFurniture()
-      if (event.key === 'Delete' || event.key === 'Backspace') state.removeFurniture()
+      if (event.key === 'Delete' || event.key === 'Backspace') state.removeSelected()
     }
     window.addEventListener('keydown', handleShortcut)
     return () => window.removeEventListener('keydown', handleShortcut)
-  }, [state.rotateFurniture, state.removeFurniture])
+  }, [state.rotateFurniture, state.removeSelected])
 
   return (
     <div className="app">
@@ -256,15 +334,21 @@ function App() {
 
       <main id="main" className="workspace">
         <SettingsPanel />
-        <section className="scene-panel" aria-label={`Vista ${currentView.label}`}>
+        <section className="scene-panel" aria-label={`Vista ${viewLabel}`}>
           <div className="scene-topline">
-            <span className="view-badge"><i /> Vista {currentView.label}</span>
+            <div className="scene-topline__labels">
+              <span className="view-badge"><i /> Vista {viewLabel}</span>
+              <span className="visible-walls-badge"><b aria-hidden="true">◫</b> {visibleWallsText}</span>
+              <span className="grid-scale"><b aria-hidden="true">▦</b> Cuadrado: 25 cm · movimiento: 12,5 cm</span>
+            </div>
             <span className="room-size">{state.room.width.toFixed(1)} × {state.room.depth.toFixed(1)} m</span>
           </div>
           <RoomScene
             room={state.room}
             view={state.view}
             orientation={state.isoOrientation}
+            wallView={state.wallView}
+            frontCameraHeight={state.frontCameraHeight}
             povYaw={state.povYaw}
             gridSnap={state.gridSnap}
             furniture={state.furniture}
@@ -273,20 +357,27 @@ function App() {
             <div className="empty-scene"><span>✦</span><strong>La habitación está lista</strong><small>Añade tu primera pieza desde el catálogo</small></div>
           )}
           <ViewControls />
-          <div className={`compass ${compass.bearing === null ? 'compass--centered' : ''}`} aria-label={compass.label}>
-            <span className="compass-cardinal compass-north">N</span>
-            <span className="compass-cardinal compass-east">E</span>
-            <span className="compass-cardinal compass-south">S</span>
-            <span className="compass-cardinal compass-west">O</span>
-            <span className="compass-center" />
-            {compass.bearing !== null && <i className="compass-needle" style={{ transform: `translateX(-50%) rotate(${compass.bearing}deg)` }} />}
+          <div className="compass" role="group" aria-label={compassLabel(state.view, state.isoOrientation)}>
+            <RoomCompass3D
+              visibleWalls={visibleWalls}
+              highlightTop={state.view === 'top'}
+              activeOrientation={state.view === 'isometric' ? state.isoOrientation : null}
+              onOrientationSelect={state.lookFromIsoOrientation}
+              onTopView={() => state.setView('top')}
+              onWallView={state.lookAtWall}
+            />
+            {[0, 1, 2, 3].map((orientation) => (
+              <button key={orientation} type="button" className="visually-hidden" onClick={() => state.lookFromIsoOrientation(orientation)}>
+                Ir directamente a la vista diagonal {orientation + 1}
+              </button>
+            ))}
           </div>
         </section>
         <ObjectsPanel />
       </main>
       <footer className="statusbar">
         <span><i className="status-dot" /> Guardado local en tu navegador</span>
-        <span>1 cuadrícula = 25 cm</span>
+        <span>Cuadrado visible: 25 cm · ajuste: 12,5 cm</span>
       </footer>
       {state.notice && <div className="toast" role="status" aria-live="polite">{state.notice}</div>}
     </div>

@@ -1,6 +1,6 @@
-export type ViewMode = 'isometric' | 'top' | 'pov'
+export type ViewMode = 'isometric' | 'top' | 'front' | 'pov'
 export type WallSide = 'north' | 'east' | 'south' | 'west'
-export type FurnitureKind = 'armchair' | 'table' | 'cabinet'
+export type FurnitureKind = 'armchair' | 'sofa' | 'table' | 'chair' | 'bed' | 'cabinet' | 'bookshelf' | 'lamp'
 
 export interface DoorConfig {
   wall: WallSide

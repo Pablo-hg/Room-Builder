@@ -1,4 +1,4 @@
-import { ROOM_LIMITS } from './constants'
+import { FURNITURE_ROTATION_STEP, ROOM_LIMITS, WALL_SIDES } from './constants'
 import type { DoorConfig, FurnitureItem, RoomConfig, WallOpening, WallSegment, WallSide, WindowConfig } from './types'
 
 export const wallLength = (room: RoomConfig, wall: WallSide) =>
@@ -88,22 +88,66 @@ export const hiddenWallsForOrientation = (orientation: number): WallSide[] => {
   return pairs[((orientation % 4) + 4) % 4]
 }
 
-const FURNITURE_EDGE_MARGIN = 0.08
-export const FURNITURE_CLEARANCE = 0.04
+export const visibleWallsForOrientation = (orientation: number): WallSide[] => {
+  const hidden = hiddenWallsForOrientation(orientation)
+  return WALL_SIDES.filter((wall) => !hidden.includes(wall))
+}
+
+export const hiddenWallForCardinalTarget = (targetWall: WallSide): WallSide => {
+  const opposite: Record<WallSide, WallSide> = {
+    north: 'south',
+    east: 'west',
+    south: 'north',
+    west: 'east',
+  }
+  return opposite[targetWall]
+}
+
+export function shortestAngleDelta(from: number, to: number) {
+  return Math.atan2(Math.sin(to - from), Math.cos(to - from))
+}
+
+export const FURNITURE_CLEARANCE = 0
+
+export function snapToPlacementGrid(value: number) {
+  return Math.round(value / ROOM_LIMITS.placementStep) * ROOM_LIMITS.placementStep
+}
+
+export function snapFurnitureRotation(rotation: number) {
+  return Math.round(rotation / FURNITURE_ROTATION_STEP) * FURNITURE_ROTATION_STEP
+}
 
 export function furnitureHalfExtents(item: FurnitureItem) {
-  const quarterTurn = Math.abs(Math.round(item.rotation / (Math.PI / 2))) % 2 === 1
+  const cosine = Math.abs(Math.cos(item.rotation))
+  const sine = Math.abs(Math.sin(item.rotation))
   return {
-    halfWidth: (quarterTurn ? item.depth : item.width) / 2,
-    halfDepth: (quarterTurn ? item.width : item.depth) / 2,
+    halfWidth: (item.width * cosine + item.depth * sine) / 2,
+    halfDepth: (item.width * sine + item.depth * cosine) / 2,
   }
 }
 
 export function furnitureItemsOverlap(a: FurnitureItem, b: FurnitureItem, clearance = FURNITURE_CLEARANCE) {
-  const aSize = furnitureHalfExtents(a)
-  const bSize = furnitureHalfExtents(b)
-  return Math.abs(a.x - b.x) < aSize.halfWidth + bSize.halfWidth + clearance
-    && Math.abs(a.z - b.z) < aSize.halfDepth + bSize.halfDepth + clearance
+  const axes = (item: FurnitureItem) => {
+    const cosine = Math.cos(item.rotation)
+    const sine = Math.sin(item.rotation)
+    return [
+      { x: cosine, z: -sine },
+      { x: sine, z: cosine },
+    ]
+  }
+  const aAxes = axes(a)
+  const bAxes = axes(b)
+  const centerDelta = { x: b.x - a.x, z: b.z - a.z }
+  const epsilon = 1e-9
+
+  return [...aAxes, ...bAxes].every((axis) => {
+    const distance = Math.abs(centerDelta.x * axis.x + centerDelta.z * axis.z)
+    const aRadius = a.width / 2 * Math.abs(aAxes[0].x * axis.x + aAxes[0].z * axis.z)
+      + a.depth / 2 * Math.abs(aAxes[1].x * axis.x + aAxes[1].z * axis.z)
+    const bRadius = b.width / 2 * Math.abs(bAxes[0].x * axis.x + bAxes[0].z * axis.z)
+      + b.depth / 2 * Math.abs(bAxes[1].x * axis.x + bAxes[1].z * axis.z)
+    return distance < aRadius + bRadius + clearance - epsilon
+  })
 }
 
 export function canPlaceFurniture(candidate: FurnitureItem, furniture: FurnitureItem[], ignoreId = candidate.id) {
@@ -121,13 +165,12 @@ export function hasFurnitureCollisions(furniture: FurnitureItem[]) {
 
 export function clampFurniture(item: FurnitureItem, room: RoomConfig, snap: boolean): Pick<FurnitureItem, 'x' | 'z'> {
   const { halfWidth, halfDepth } = furnitureHalfExtents(item)
-  const limitX = Math.max(0, room.width / 2 - halfWidth - FURNITURE_EDGE_MARGIN)
-  const limitZ = Math.max(0, room.depth / 2 - halfDepth - FURNITURE_EDGE_MARGIN)
+  const limitX = Math.max(0, room.width / 2 - halfWidth)
+  const limitZ = Math.max(0, room.depth / 2 - halfDepth)
   const constrain = (value: number, limit: number) => {
     if (!snap) return Math.max(-limit, Math.min(limit, value))
-    const snappedLimit = Math.floor(limit / ROOM_LIMITS.gridSize) * ROOM_LIMITS.gridSize
-    const quantized = Math.round(value / ROOM_LIMITS.gridSize) * ROOM_LIMITS.gridSize
-    return Math.max(-snappedLimit, Math.min(snappedLimit, quantized))
+    const quantized = snapToPlacementGrid(value)
+    return Math.max(-limit, Math.min(limit, quantized))
   }
   return {
     x: constrain(item.x, limitX),
@@ -141,11 +184,11 @@ export function findFreeFurniturePosition(
   furniture: FurnitureItem[],
 ): Pick<FurnitureItem, 'x' | 'z'> | null {
   const { halfWidth, halfDepth } = furnitureHalfExtents(item)
-  const limitX = room.width / 2 - halfWidth - FURNITURE_EDGE_MARGIN
-  const limitZ = room.depth / 2 - halfDepth - FURNITURE_EDGE_MARGIN
+  const limitX = room.width / 2 - halfWidth
+  const limitZ = room.depth / 2 - halfDepth
   if (limitX < 0 || limitZ < 0) return null
 
-  const step = ROOM_LIMITS.gridSize
+  const step = ROOM_LIMITS.placementStep
   const candidates: Array<Pick<FurnitureItem, 'x' | 'z'>> = []
   for (let xIndex = Math.ceil(-limitX / step); xIndex <= Math.floor(limitX / step); xIndex += 1) {
     for (let zIndex = Math.ceil(-limitZ / step); zIndex <= Math.floor(limitZ / step); zIndex += 1) {
