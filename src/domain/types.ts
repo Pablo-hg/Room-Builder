@@ -44,6 +44,13 @@ export interface PersistedDesign {
   room: RoomConfig
   furniture: FurnitureItem[]
   gridSnap: boolean
+  hiddenElementIds?: string[]
+  lighting?: {
+    sunAzimuth: number
+    sunElevation: number
+    shadowsEnabled: boolean
+    realisticLighting?: boolean
+  }
 }
 
 export interface WallOpening {

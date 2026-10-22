@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { FURNITURE_PRESETS, ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from './domain/constants'
-import { wallLength } from './domain/geometry'
-import type { FurnitureKind, ViewMode, WallSide } from './domain/types'
+import { doorWorldPosition, wallLength } from './domain/geometry'
+import type { FurnitureKind, RoomConfig, ViewMode, WallSide } from './domain/types'
 import RoomScene, { FurnitureSwatch } from './components/RoomScene'
 import { useRoomStore } from './state/useRoomStore'
 import './styles.css'
@@ -11,6 +11,22 @@ const VIEW_OPTIONS: { id: ViewMode; label: string; icon: string }[] = [
   { id: 'top', label: 'Plano', icon: '▦' },
   { id: 'pov', label: 'POV', icon: '◉' },
 ]
+
+function cameraCompass(view: ViewMode, orientation: number, room: RoomConfig) {
+  if (view === 'top') return { bearing: null, label: 'Cámara centrada, vista de plano' }
+  if (view === 'isometric') {
+    const bearings = [135, 225, 315, 45]
+    const labels = ['sureste', 'suroeste', 'noroeste', 'noreste']
+    const index = ((orientation % 4) + 4) % 4
+    return { bearing: bearings[index], label: `Cámara al ${labels[index]}` }
+  }
+
+  const [x, , z] = doorWorldPosition(room, room.door)
+  const bearing = Math.atan2(x, -z) * 180 / Math.PI
+  const directions = ['norte', 'noreste', 'este', 'sureste', 'sur', 'suroeste', 'oeste', 'noroeste']
+  const directionIndex = Math.round((((bearing % 360) + 360) % 360) / 45) % 8
+  return { bearing, label: `Cámara al ${directions[directionIndex]}, junto a la puerta` }
+}
 
 function DimensionControl({ field, label }: { field: 'width' | 'depth'; label: string }) {
   const room = useRoomStore((state) => state.room)
@@ -79,6 +95,109 @@ function WindowEditor() {
   )
 }
 
+function sunDirectionLabel(azimuth: number) {
+  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO']
+  return directions[Math.round(azimuth / 45) % directions.length]
+}
+
+function SunPositionMap({ azimuth, elevation, disabled }: { azimuth: number; elevation: number; disabled: boolean }) {
+  const center = 70
+  const horizonRadius = 48
+  const distanceFromZenith = horizonRadius * (1 - elevation / 90)
+  const angle = azimuth * Math.PI / 180
+  const sunX = center + Math.sin(angle) * distanceFromZenith
+  const sunY = center - Math.cos(angle) * distanceFromZenith
+
+  return (
+    <div className={`sun-position-map ${disabled ? 'disabled' : ''}`} role="img" aria-label={`Sol hacia ${sunDirectionLabel(azimuth)}, a ${elevation} grados de altura`}>
+      <svg viewBox="0 0 140 140" aria-hidden="true">
+        <circle className="sun-sky" cx="70" cy="70" r="49" />
+        <circle className="sun-altitude" cx="70" cy="70" r="32" />
+        <circle className="sun-altitude" cx="70" cy="70" r="16" />
+        <path className="sun-axis" d="M70 17V123M17 70H123" />
+        <path className="sun-bearing" d={`M70 70L${sunX} ${sunY}`} />
+        <rect className="sun-room" x="64" y="64" width="12" height="12" rx="2" />
+        <circle className="sun-halo" cx={sunX} cy={sunY} r="8" />
+        <circle className="sun-marker" cx={sunX} cy={sunY} r="4.5" />
+        <text x="70" y="13">N</text>
+        <text x="129" y="73">E</text>
+        <text x="70" y="135">S</text>
+        <text x="10" y="73">O</text>
+      </svg>
+      <div><span>Posición solar</span><strong>{sunDirectionLabel(azimuth)} · {azimuth}° / {elevation}°</strong></div>
+    </div>
+  )
+}
+
+function LightingEditor() {
+  const sunAzimuth = useRoomStore((state) => state.sunAzimuth)
+  const sunElevation = useRoomStore((state) => state.sunElevation)
+  const realisticLighting = useRoomStore((state) => state.realisticLighting)
+  const shadowsEnabled = useRoomStore((state) => state.shadowsEnabled)
+  const setSunPosition = useRoomStore((state) => state.setSunPosition)
+  const toggleRealisticLighting = useRoomStore((state) => state.toggleRealisticLighting)
+  const toggleShadows = useRoomStore((state) => state.toggleShadows)
+
+  return (
+    <section className="panel-section lighting-section">
+      <span className="eyebrow">Ambiente</span>
+      <h2>Iluminación solar</h2>
+      <p className="section-copy">Elige entre luz natural por las ventanas o iluminación uniforme de estudio.</p>
+      <div className="lighting-switch-row lighting-mode-row">
+        <span className="sun-icon" aria-hidden="true">☀</span>
+        <span><strong>Sol realista</strong><small>Luz distante por las ventanas</small></span>
+        <button
+          type="button"
+          className={`switch ${realisticLighting ? 'on' : ''}`}
+          role="switch"
+          aria-label="Activar iluminación realista"
+          aria-checked={realisticLighting}
+          onClick={toggleRealisticLighting}
+        ><span /></button>
+      </div>
+      <SunPositionMap azimuth={sunAzimuth} elevation={sunElevation} disabled={!realisticLighting} />
+      <label className={`range-control ${!realisticLighting ? 'control-disabled' : ''}`}>
+        <span><span>Dirección</span><strong>{sunDirectionLabel(sunAzimuth)} · {sunAzimuth}°</strong></span>
+        <input
+          type="range"
+          min="0"
+          max="355"
+          step="5"
+          value={sunAzimuth}
+          disabled={!realisticLighting}
+          aria-label="Dirección del sol"
+          onChange={(event) => setSunPosition({ azimuth: Number(event.target.value) })}
+        />
+      </label>
+      <label className={`range-control compact ${!realisticLighting ? 'control-disabled' : ''}`}>
+        <span><span>Altura</span><strong>{sunElevation}°</strong></span>
+        <input
+          type="range"
+          min="10"
+          max="80"
+          step="5"
+          value={sunElevation}
+          disabled={!realisticLighting}
+          aria-label="Altura del sol"
+          onChange={(event) => setSunPosition({ elevation: Number(event.target.value) })}
+        />
+      </label>
+      <div className="lighting-switch-row">
+        <span className="shadow-icon" aria-hidden="true">◐</span>
+        <span><strong>Sombras</strong><small>{realisticLighting ? 'Según la posición solar' : 'Cortas, bajo cada objeto'}</small></span>
+        <button
+          type="button"
+          className={`switch ${shadowsEnabled ? 'on' : ''}`}
+          role="switch"
+          aria-label="Mostrar sombras"
+          aria-checked={shadowsEnabled}
+          onClick={toggleShadows}
+        ><span /></button>
+      </div>
+    </section>
+  )
+}
+
 function SettingsPanel() {
   const room = useRoomStore((state) => state.room)
   const setDoor = useRoomStore((state) => state.setDoor)
@@ -105,11 +224,13 @@ function SettingsPanel() {
         </label>
       </section>
       <WindowEditor />
+      <LightingEditor />
     </aside>
   )
 }
 
 function ObjectsPanel() {
+  const room = useRoomStore((state) => state.room)
   const furniture = useRoomStore((state) => state.furniture)
   const selectedId = useRoomStore((state) => state.selectedId)
   const gridSnap = useRoomStore((state) => state.gridSnap)
@@ -117,7 +238,14 @@ function ObjectsPanel() {
   const rotateFurniture = useRoomStore((state) => state.rotateFurniture)
   const removeFurniture = useRoomStore((state) => state.removeFurniture)
   const toggleGrid = useRoomStore((state) => state.toggleGrid)
+  const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
+  const toggleElementVisibility = useRoomStore((state) => state.toggleElementVisibility)
   const selected = furniture.find((item) => item.id === selectedId)
+  const sceneElements = [
+    { id: 'door', name: 'Puerta', kind: 'Apertura' },
+    ...room.windows.map((window, index) => ({ id: window.id, name: `Ventana ${index + 1}`, kind: WALL_LABELS[window.wall] })),
+    ...furniture.map((item) => ({ id: item.id, name: item.name, kind: 'Mueble' })),
+  ]
 
   return (
     <aside className="side-panel objects-panel" aria-label="Catálogo de objetos">
@@ -146,6 +274,25 @@ function ObjectsPanel() {
           </>
         ) : <p className="empty-selection">Selecciona una pieza para girarla o eliminarla.</p>}
       </section>
+      <section className="panel-section elements-section" aria-labelledby="elements-heading">
+        <span className="eyebrow">Escena</span>
+        <h2 id="elements-heading">Elementos en la habitación</h2>
+        <p className="section-copy">Activa o desactiva cada elemento sin eliminarlo.</p>
+        <div className="element-list">
+          {sceneElements.map((element) => (
+            <label className="element-row" key={element.id}>
+              <input
+                type="checkbox"
+                checked={!hiddenElementIds.includes(element.id)}
+                onChange={() => toggleElementVisibility(element.id)}
+                aria-label={`Mostrar ${element.name}`}
+              />
+              <span className="element-check" aria-hidden="true">✓</span>
+              <span><strong>{element.name}</strong><small>{element.kind}</small></span>
+            </label>
+          ))}
+        </div>
+      </section>
       <section className="panel-section grid-section">
         <div><span className="grid-icon" aria-hidden="true">▦</span><span><strong>Ajuste a cuadrícula</strong><small>Saltos de 25 cm</small></span></div>
         <button type="button" className={`switch ${gridSnap ? 'on' : ''}`} role="switch" aria-checked={gridSnap} onClick={toggleGrid}><span /></button>
@@ -173,6 +320,7 @@ function ViewControls() {
 function App() {
   const state = useRoomStore()
   const currentView = VIEW_OPTIONS.find((option) => option.id === state.view)!
+  const compass = cameraCompass(state.view, state.isoOrientation, state.room)
   useEffect(() => {
     if (!state.notice) return
     const timer = window.setTimeout(state.clearNotice, 3200)
@@ -217,12 +365,30 @@ function App() {
             <span className="view-badge"><i /> Vista {currentView.label}</span>
             <span className="room-size">{state.room.width.toFixed(1)} × {state.room.depth.toFixed(1)} m</span>
           </div>
-          <RoomScene room={state.room} view={state.view} orientation={state.isoOrientation} povYaw={state.povYaw} gridSnap={state.gridSnap} furniture={state.furniture} />
+          <RoomScene
+            room={state.room}
+            view={state.view}
+            orientation={state.isoOrientation}
+            povYaw={state.povYaw}
+            gridSnap={state.gridSnap}
+            furniture={state.furniture}
+            sunAzimuth={state.sunAzimuth}
+            sunElevation={state.sunElevation}
+            realisticLighting={state.realisticLighting}
+            shadowsEnabled={state.shadowsEnabled}
+          />
           {state.furniture.length === 0 && state.view !== 'pov' && (
             <div className="empty-scene"><span>✦</span><strong>La habitación está lista</strong><small>Añade tu primera pieza desde el catálogo</small></div>
           )}
           <ViewControls />
-          <div className="compass" aria-label="Orientación"><span>N</span><i /></div>
+          <div className={`compass ${compass.bearing === null ? 'compass--centered' : ''}`} aria-label={compass.label}>
+            <span className="compass-cardinal compass-north">N</span>
+            <span className="compass-cardinal compass-east">E</span>
+            <span className="compass-cardinal compass-south">S</span>
+            <span className="compass-cardinal compass-west">O</span>
+            <span className="compass-center" />
+            {compass.bearing !== null && <i className="compass-needle" style={{ transform: `translateX(-50%) rotate(${compass.bearing}deg)` }} />}
+          </div>
         </section>
         <ObjectsPanel />
       </main>

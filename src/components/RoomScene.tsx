@@ -1,8 +1,9 @@
-import { Canvas, type ThreeEvent, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useState } from 'react'
+import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { FURNITURE_PRESETS } from '../domain/constants'
 import { buildWallSegments, doorWorldPosition, hiddenWallsForOrientation, inwardDirection, openingsForWall, wallLength } from '../domain/geometry'
+import { sunPosition } from '../domain/lighting'
 import type { FurnitureItem, RoomConfig, ViewMode, WallOpening, WallSide } from '../domain/types'
 import { useRoomStore } from '../state/useRoomStore'
 
@@ -13,6 +14,10 @@ interface SceneProps {
   povYaw: number
   gridSnap: boolean
   furniture: FurnitureItem[]
+  sunAzimuth: number
+  sunElevation: number
+  realisticLighting: boolean
+  shadowsEnabled: boolean
 }
 
 const wallPlacement: Record<WallSide, (room: RoomConfig) => { position: [number, number, number]; rotation: [number, number, number] }> = {
@@ -24,22 +29,55 @@ const wallPlacement: Record<WallSide, (room: RoomConfig) => { position: [number,
 
 function CameraRig({ room, view, orientation, povYaw }: Pick<SceneProps, 'room' | 'view' | 'orientation' | 'povYaw'>) {
   const { camera, size } = useThree()
+  const initialized = useRef(false)
+  const [reduceMotion, setReduceMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const animation = useRef<{
+    active: boolean
+    elapsed: number
+    duration: number
+    fromPosition: THREE.Vector3
+    toPosition: THREE.Vector3
+    fromQuaternion: THREE.Quaternion
+    toQuaternion: THREE.Quaternion
+    fromZoom: number
+    toZoom: number
+  }>({
+    active: false,
+    elapsed: 0,
+    duration: 0.55,
+    fromPosition: new THREE.Vector3(),
+    toPosition: new THREE.Vector3(),
+    fromQuaternion: new THREE.Quaternion(),
+    toQuaternion: new THREE.Quaternion(),
+    fromZoom: 1,
+    toZoom: 1,
+  })
 
   useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const updatePreference = () => setReduceMotion(media.matches)
+    media.addEventListener('change', updatePreference)
+    return () => media.removeEventListener('change', updatePreference)
+  }, [])
+
+  useEffect(() => {
+    const targetCamera = camera.clone()
+    let targetZoom = 'zoom' in camera ? camera.zoom : 1
+
     if (view === 'pov') {
       const position = doorWorldPosition(room, room.door)
       const direction = new THREE.Vector3(...inwardDirection(room.door.wall))
       direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(povYaw))
-      camera.position.set(...position)
-      camera.up.set(0, 1, 0)
-      camera.lookAt(position[0] + direction.x, position[1] - 0.04, position[2] + direction.z)
+      targetCamera.position.set(...position)
+      targetCamera.up.set(0, 1, 0)
+      targetCamera.lookAt(position[0] + direction.x, position[1] - 0.04, position[2] + direction.z)
+      if (targetCamera instanceof THREE.PerspectiveCamera) targetCamera.aspect = size.width / Math.max(size.height, 1)
     } else if (view === 'top') {
-      const ortho = camera as THREE.OrthographicCamera
       const zoom = Math.min(size.width / (room.width + 1.1), size.height / (room.depth + 1.1))
-      camera.position.set(0, 12, 0.001)
-      camera.up.set(0, 0, -1)
-      camera.lookAt(0, 0, 0)
-      ortho.zoom = Math.max(36, zoom)
+      targetCamera.position.set(0, 12, 0.001)
+      targetCamera.up.set(0, 0, -1)
+      targetCamera.lookAt(0, 0, 0)
+      targetZoom = Math.max(36, zoom)
     } else {
       const positions = [
         [8, 7, 8],
@@ -48,37 +86,94 @@ function CameraRig({ room, view, orientation, povYaw }: Pick<SceneProps, 'room' 
         [8, 7, -8],
       ] as const
       const [x, y, z] = positions[((orientation % 4) + 4) % 4]
-      camera.position.set(x, y, z)
-      camera.up.set(0, 1, 0)
-      camera.lookAt(0, 0.45, 0)
-      const ortho = camera as THREE.OrthographicCamera
-      ortho.zoom = Math.max(38, Math.min(size.width / (room.width + room.depth + 1) * 1.15, size.height / (room.height + room.depth + 1) * 1.25))
+      targetCamera.position.set(x, y, z)
+      targetCamera.up.set(0, 1, 0)
+      targetCamera.lookAt(0, 0.45, 0)
+      targetZoom = Math.max(38, Math.min(size.width / (room.width + room.depth + 1) * 1.15, size.height / (room.height + room.depth + 1) * 1.25))
     }
-    camera.updateProjectionMatrix()
-  }, [camera, orientation, povYaw, room, size, view])
+
+    targetCamera.updateProjectionMatrix()
+    const currentZoom = 'zoom' in camera ? camera.zoom : 1
+
+    if (!initialized.current || reduceMotion) {
+      camera.position.copy(targetCamera.position)
+      camera.quaternion.copy(targetCamera.quaternion)
+      if (camera instanceof THREE.OrthographicCamera) camera.zoom = targetZoom
+      if (camera instanceof THREE.PerspectiveCamera && targetCamera instanceof THREE.PerspectiveCamera) camera.aspect = targetCamera.aspect
+      camera.updateProjectionMatrix()
+      animation.current.active = false
+      initialized.current = true
+      return
+    }
+
+    animation.current = {
+      active: true,
+      elapsed: 0,
+      duration: 0.55,
+      fromPosition: camera.position.clone(),
+      toPosition: targetCamera.position.clone(),
+      fromQuaternion: camera.quaternion.clone(),
+      toQuaternion: targetCamera.quaternion.clone(),
+      fromZoom: currentZoom,
+      toZoom: targetZoom,
+    }
+    if (camera instanceof THREE.PerspectiveCamera && targetCamera instanceof THREE.PerspectiveCamera) {
+      camera.aspect = targetCamera.aspect
+      camera.updateProjectionMatrix()
+    }
+  }, [camera, orientation, povYaw, reduceMotion, room, size, view])
+
+  useFrame((_, delta) => {
+    const transition = animation.current
+    if (!transition.active) return
+
+    transition.elapsed = Math.min(transition.elapsed + delta, transition.duration)
+    const progress = transition.elapsed / transition.duration
+    const eased = 1 - Math.pow(1 - progress, 3)
+    camera.position.lerpVectors(transition.fromPosition, transition.toPosition, eased)
+    camera.quaternion.slerpQuaternions(transition.fromQuaternion, transition.toQuaternion, eased)
+    if (camera instanceof THREE.OrthographicCamera) {
+      camera.zoom = THREE.MathUtils.lerp(transition.fromZoom, transition.toZoom, eased)
+      camera.updateProjectionMatrix()
+    }
+    if (progress >= 1) transition.active = false
+  })
 
   return null
 }
 
-function SoftWall({ room, wall, hidden }: { room: RoomConfig; wall: WallSide; hidden: boolean }) {
+function SoftWall({ room, wall, hidden, occludeSun }: { room: RoomConfig; wall: WallSide; hidden: boolean; occludeSun: boolean }) {
+  const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
   const length = wallLength(room, wall)
   const openings = openingsForWall(room, wall)
   const segments = buildWallSegments(length, room.height, openings)
   const placement = wallPlacement[wall](room)
 
   return (
-    <group position={placement.position} rotation={placement.rotation} visible={!hidden}>
+    <group position={placement.position} rotation={placement.rotation}>
       {segments.map((segment, index) => (
-        <mesh key={`${wall}-${index}`} position={[segment.center[0], segment.center[1], 0]} castShadow receiveShadow>
+        <mesh key={`${wall}-${index}`} position={[segment.center[0], segment.center[1], 0]} castShadow={!hidden || occludeSun} receiveShadow>
           <boxGeometry args={[segment.size[0], segment.size[1], 0.12]} />
-          <meshStandardMaterial color="#f5eadb" roughness={0.92} />
+          <meshStandardMaterial color="#f5eadb" roughness={0.92} colorWrite={!hidden} depthWrite={!hidden} />
         </mesh>
       ))}
-      <mesh position={[0, 0.055, 0.075]}>
-        <boxGeometry args={[length, 0.11, 0.07]} />
-        <meshStandardMaterial color="#d5a86e" />
-      </mesh>
-      {openings.map((opening) => <OpeningDetail key={opening.id} opening={opening} />)}
+      {!hidden && (
+        <mesh position={[0, 0.055, 0.075]}>
+          <boxGeometry args={[length, 0.11, 0.07]} />
+          <meshStandardMaterial color="#d5a86e" />
+        </mesh>
+      )}
+      {occludeSun && openings.filter((opening) => opening.kind === 'door').map((opening) => (
+        <mesh key={`sun-blocker-${opening.id}`} position={[opening.offset, opening.height / 2, 0]} castShadow>
+          <boxGeometry args={[opening.width, opening.height, 0.1]} />
+          <meshBasicMaterial colorWrite={false} depthWrite={false} />
+        </mesh>
+      ))}
+      {openings.map((opening) => (
+        <group key={opening.id} visible={!hiddenElementIds.includes(opening.id)}>
+          <OpeningDetail opening={opening} />
+        </group>
+      ))}
     </group>
   )
 }
@@ -150,10 +245,10 @@ function FloorGrid({ room, visible }: { room: RoomConfig; visible: boolean }) {
     const lines: number[] = []
     const step = 0.25
     for (let x = -room.width / 2; x <= room.width / 2 + 0.001; x += step) {
-      lines.push(x, 0.013, -room.depth / 2, x, 0.013, room.depth / 2)
+      lines.push(x, 0.046, -room.depth / 2, x, 0.046, room.depth / 2)
     }
     for (let z = -room.depth / 2; z <= room.depth / 2 + 0.001; z += step) {
-      lines.push(-room.width / 2, 0.013, z, room.width / 2, 0.013, z)
+      lines.push(-room.width / 2, 0.046, z, room.width / 2, 0.046, z)
     }
     return new Float32Array(lines)
   }, [room.depth, room.width])
@@ -164,7 +259,7 @@ function FloorGrid({ room, visible }: { room: RoomConfig; visible: boolean }) {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <lineBasicMaterial color="#cdbfae" transparent opacity={0.34} />
+      <lineBasicMaterial color="#aa9a87" transparent opacity={0.48} depthWrite={false} />
     </lineSegments>
   )
 }
@@ -251,31 +346,102 @@ function FurnitureObject({ item, selected, canDrag }: { item: FurnitureItem; sel
   )
 }
 
+function DistantSunlight({ room, azimuth, elevation }: { room: RoomConfig; azimuth: number; elevation: number }) {
+  const position = sunPosition(azimuth, elevation, 45)
+  const shadowExtent = Math.max(room.width, room.depth) + room.height
+  return (
+    <directionalLight
+      position={position}
+      intensity={2.15}
+      color="#fff1d8"
+      castShadow
+      shadow-mapSize={[2048, 2048]}
+      shadow-camera-near={1}
+      shadow-camera-far={100}
+      shadow-camera-left={-shadowExtent}
+      shadow-camera-right={shadowExtent}
+      shadow-camera-top={shadowExtent}
+      shadow-camera-bottom={-shadowExtent}
+      shadow-bias={-0.0004}
+      shadow-normalBias={0.025}
+      shadow-radius={3}
+    />
+  )
+}
+
+function StudioLight({ room }: { room: RoomConfig }) {
+  const shadowExtent = Math.max(room.width, room.depth) / 2 + 1
+  return (
+    <directionalLight
+      position={[0.01, 14, 0.01]}
+      intensity={2.1}
+      color="#fff2dc"
+      castShadow
+      shadow-mapSize={[1536, 1536]}
+      shadow-camera-near={1}
+      shadow-camera-far={30}
+      shadow-camera-left={-shadowExtent}
+      shadow-camera-right={shadowExtent}
+      shadow-camera-top={shadowExtent}
+      shadow-camera-bottom={-shadowExtent}
+      shadow-bias={-0.00035}
+      shadow-normalBias={0.02}
+      shadow-radius={4}
+    />
+  )
+}
+
+function ShadowCeiling({ room }: { room: RoomConfig }) {
+  return (
+    <mesh position={[0, room.height + 0.06, 0]} castShadow>
+      <boxGeometry args={[room.width + 0.16, 0.1, room.depth + 0.16]} />
+      <meshBasicMaterial colorWrite={false} depthWrite={false} />
+    </mesh>
+  )
+}
+
+function ShadowMode({ enabled }: { enabled: boolean }) {
+  const { gl } = useThree()
+  useEffect(() => {
+    gl.shadowMap.enabled = enabled
+    gl.shadowMap.needsUpdate = true
+  }, [enabled, gl])
+  return null
+}
+
 function RoomWorld(props: SceneProps) {
   const selectedId = useRoomStore((state) => state.selectedId)
+  const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
   const selectFurniture = useRoomStore((state) => state.selectFurniture)
   const hidden = props.view === 'top' ? ['north', 'east', 'south', 'west'] : props.view === 'isometric' ? hiddenWallsForOrientation(props.orientation) : []
 
   return (
     <>
       <CameraRig room={props.room} view={props.view} orientation={props.orientation} povYaw={props.povYaw} />
+      <ShadowMode enabled={props.shadowsEnabled} />
       <color attach="background" args={['#e8dfd3']} />
-      <ambientLight intensity={1.35} />
-      <directionalLight position={[5, 8, 4]} intensity={2.1} color="#fff2dc" castShadow shadow-mapSize={[1024, 1024]} />
-      <hemisphereLight args={['#ddecf0', '#bd9170', 0.75]} />
+      <ambientLight intensity={props.shadowsEnabled ? (props.realisticLighting ? 0.78 : 1.35) : 1.3} />
+      <hemisphereLight args={['#ddecf0', '#bd9170', props.shadowsEnabled ? (props.realisticLighting ? 0.42 : 0.75) : 0.68]} />
+      {props.shadowsEnabled && props.realisticLighting && (
+        <DistantSunlight room={props.room} azimuth={props.sunAzimuth} elevation={props.sunElevation} />
+      )}
+      {props.shadowsEnabled && !props.realisticLighting && <StudioLight room={props.room} />}
+      {props.shadowsEnabled && props.realisticLighting && <ShadowCeiling room={props.room} />}
 
       <mesh receiveShadow onPointerDown={() => selectFurniture(null)}>
         <boxGeometry args={[props.room.width, 0.08, props.room.depth]} />
         <meshStandardMaterial color="#dcc3a3" roughness={0.94} />
       </mesh>
-      <FloorGrid room={props.room} visible={props.gridSnap && props.view !== 'pov'} />
+      <FloorGrid room={props.room} visible={props.gridSnap} />
       {(['north', 'east', 'south', 'west'] as WallSide[]).map((wall) => (
-        <SoftWall key={wall} room={props.room} wall={wall} hidden={hidden.includes(wall)} />
+        <SoftWall key={wall} room={props.room} wall={wall} hidden={hidden.includes(wall)} occludeSun={props.realisticLighting && props.shadowsEnabled} />
       ))}
       {props.view === 'top' && (['north', 'east', 'south', 'west'] as WallSide[]).flatMap((wall) =>
-        openingsForWall(props.room, wall).map((opening) => <PlanOpening key={`${wall}-${opening.id}`} room={props.room} opening={opening} wall={wall} />),
+        openingsForWall(props.room, wall)
+          .filter((opening) => !hiddenElementIds.includes(opening.id))
+          .map((opening) => <PlanOpening key={`${wall}-${opening.id}`} room={props.room} opening={opening} wall={wall} />),
       )}
-      {props.furniture.map((item) => (
+      {props.furniture.filter((item) => !hiddenElementIds.includes(item.id)).map((item) => (
         <FurnitureObject key={item.id} item={item} selected={item.id === selectedId} canDrag={props.view !== 'pov'} />
       ))}
       <mesh position={[0, -0.11, 0]} receiveShadow>
@@ -293,7 +459,7 @@ export default function RoomScene(props: SceneProps) {
       key={perspective ? 'perspective' : 'orthographic'}
       orthographic={!perspective}
       camera={perspective ? { fov: 62, near: 0.05, far: 80 } : { near: 0.1, far: 80, zoom: 55 }}
-      shadows
+      shadows={props.shadowsEnabled}
       dpr={[1, 1.7]}
       gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
     >
