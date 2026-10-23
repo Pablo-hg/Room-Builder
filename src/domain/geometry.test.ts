@@ -13,6 +13,7 @@ import {
   shortestAngleDelta,
   snapFurnitureRotation,
   snapToPlacementGrid,
+  snapToVisibleGrid,
   validateOpenings,
   visibleWallsForOrientation,
 } from './geometry'
@@ -89,6 +90,20 @@ describe('validateOpenings', () => {
     }
     assert.match(validateOpenings(room) ?? '', /solapan/)
   })
+
+  it('permite desplazar una ventana en vertical sin salir de la pared', () => {
+    const validRoom: RoomConfig = {
+      ...DEFAULT_ROOM,
+      windows: [{ ...DEFAULT_ROOM.windows[0], sill: 1.5 }],
+    }
+    assert.equal(validateOpenings(validRoom), null)
+
+    const invalidRoom: RoomConfig = {
+      ...DEFAULT_ROOM,
+      windows: [{ ...DEFAULT_ROOM.windows[0], sill: 1.75 }],
+    }
+    assert.match(validateOpenings(invalidRoom) ?? '', /altura/)
+  })
 })
 
 describe('clampFurniture', () => {
@@ -105,6 +120,8 @@ describe('clampFurniture', () => {
     assert.equal(result.x, 0.625)
     assert.equal(result.z, -0.625)
     assert.equal(snapToPlacementGrid(0.19), 0.25)
+    assert.equal(snapToPlacementGrid(0.91), 0.875)
+    assert.equal(snapToVisibleGrid(0.91), 1)
     assert.ok(Math.abs((result.x - item.width / 2) / ROOM_LIMITS.placementStep % 1) < 1e-8)
     assert.ok(Math.abs((result.z - item.depth / 2) / ROOM_LIMITS.placementStep % 1) < 1e-8)
   })
@@ -129,6 +146,8 @@ describe('dimensiones del catálogo', () => {
     const dimensions = [
       DEFAULT_ROOM.door.width,
       DEFAULT_ROOM.windows[0].width,
+      DEFAULT_ROOM.windows[0].height,
+      DEFAULT_ROOM.windows[0].sill,
       ...Object.values(FURNITURE_PRESETS).flatMap((item) => [item.width, item.depth]),
     ]
     dimensions.forEach((dimension) => {

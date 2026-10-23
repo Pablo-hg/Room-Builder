@@ -5,10 +5,10 @@ export const FURNITURE_ROTATION_STEP = Math.PI / 12
 export const FRONT_CAMERA_MIN_HEIGHT = 1.35
 export const FRONT_CAMERA_MAX_HEIGHT = 7.5
 export const WALL_LABELS: Record<WallSide, string> = {
-  north: 'Norte',
-  east: 'Este',
-  south: 'Sur',
-  west: 'Oeste',
+  north: 'A',
+  east: 'B',
+  south: 'C',
+  west: 'D',
 }
 
 export const ROOM_LIMITS = {
@@ -27,9 +27,9 @@ export const DEFAULT_ROOM: RoomConfig = {
   width: 5.5,
   depth: 4.5,
   height: ROOM_LIMITS.wallHeight,
-  door: { wall: 'south', offset: 0, width: 1, height: 2.1 },
+  door: { wall: 'south', offset: 0, width: 1, height: 2.1, rotation: 0 },
   windows: [
-    { id: 'window-1', wall: 'north', offset: 0, width: 1.5, height: 1.1, sill: 0.9 },
+    { id: 'window-1', wall: 'north', offset: 0, width: 1.5, height: 1, sill: 1, rotation: 0 },
   ],
 }
 

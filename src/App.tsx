@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { FRONT_CAMERA_MAX_HEIGHT, FRONT_CAMERA_MIN_HEIGHT, FURNITURE_PRESETS, ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from './domain/constants'
 import { furnitureHalfExtents, visibleWallsForOrientation, wallLength } from './domain/geometry'
 import type { FurnitureKind, ViewMode, WallSide } from './domain/types'
 import RoomScene, { FurnitureSwatch, RoomCompass3D } from './components/RoomScene'
+import InteractionLogger from './components/InteractionLogger'
 import { useRoomStore } from './state/useRoomStore'
 import './styles.css'
 
@@ -30,8 +31,8 @@ function wallsDescription(view: ViewMode, walls: WallSide[]) {
 
 function compassLabel(view: ViewMode, orientation: number) {
   if (view !== 'isometric') return 'Gizmo 3D para cambiar la orientación de la habitación'
-  const directions = ['sureste', 'suroeste', 'noroeste', 'noreste']
-  return `Cámara al ${directions[((orientation % 4) + 4) % 4]}`
+  const walls = visibleWallsForOrientation(orientation).map((wall) => WALL_LABELS[wall])
+  return `Vista diagonal · paredes visibles ${walls.join(' y ')}`
 }
 
 function DimensionControl({ field, label }: { field: 'width' | 'depth'; label: string }) {
@@ -118,7 +119,9 @@ function SelectionInspector() {
 
   if (selectedOpening) {
     const rawMaxOffset = Math.max(0, wallLength(room, selectedOpening.wall) / 2 - selectedOpening.width / 2 - ROOM_LIMITS.edgeMargin)
-    const maxOffset = Math.floor(rawMaxOffset / ROOM_LIMITS.placementStep) * ROOM_LIMITS.placementStep
+    const openingStep = selectedOpening.kind === 'window' ? ROOM_LIMITS.gridSize : ROOM_LIMITS.placementStep
+    const maxOffset = Math.floor(rawMaxOffset / openingStep) * openingStep
+    const maxSill = Math.max(0, Math.floor((room.height - selectedOpening.height - 0.08) / ROOM_LIMITS.gridSize) * ROOM_LIMITS.gridSize)
     const update = selectedOpening.kind === 'door'
       ? (partial: { wall?: WallSide; offset?: number }) => setDoor(partial)
       : (partial: { wall?: WallSide; offset?: number }) => updateWindow(selectedOpening.id, partial)
@@ -135,9 +138,22 @@ function SelectionInspector() {
         <WallPicker label="Pared" value={selectedOpening.wall} onChange={(wall) => update({ wall })} />
         <label className="range-control compact">
           <span><span>Posición lateral</span><strong>{selectedOpening.offset.toFixed(2)} m</strong></span>
-          <input type="range" min={-maxOffset} max={maxOffset} step={ROOM_LIMITS.placementStep} value={selectedOpening.offset} onChange={(event) => update({ offset: Number(event.target.value) })} />
+          <input type="range" min={-maxOffset} max={maxOffset} step={openingStep} value={selectedOpening.offset} onChange={(event) => update({ offset: Number(event.target.value) })} />
         </label>
-        <p className="rotation-hint">También puedes arrastrarla directamente hacia los lados en la vista.</p>
+        {selectedOpening.kind === 'window' && (
+          <label className="range-control compact">
+            <span><span>Altura desde el suelo</span><strong>{selectedOpening.sill.toFixed(2)} m</strong></span>
+            <input
+              type="range"
+              min={0}
+              max={maxSill}
+              step={ROOM_LIMITS.gridSize}
+              value={selectedOpening.sill}
+              onChange={(event) => updateWindow(selectedOpening.id, { sill: Number(event.target.value) })}
+            />
+          </label>
+        )}
+        <p className="rotation-hint">También puedes arrastrarla directamente {selectedOpening.kind === 'window' ? 'hacia los lados o en vertical' : 'hacia los lados'} en la vista.</p>
         {selectedOpening.kind === 'window' && <button type="button" className="text-button danger" onClick={() => removeWindow(selectedOpening.id)}>Eliminar ventana</button>}
       </section>
     )
@@ -155,18 +171,20 @@ function SelectionInspector() {
 function SettingsPanel() {
   const room = useRoomStore((state) => state.room)
   return (
-    <aside className="side-panel settings-panel" aria-label="Inspector y configuración detallada">
-      <SelectionInspector />
-      <section className="panel-section room-section">
-        <span className="eyebrow">Espacio</span>
-        <h2>Tu habitación</h2>
-        <p className="section-copy">Ajusta el tamaño y coloca sus aperturas.</p>
-        <div className="dimension-visual" aria-hidden="true">
-          <span>{room.depth.toFixed(1)} m</span><div><b>{room.width.toFixed(1)} m</b><i>⌂</i></div>
-        </div>
-        <DimensionControl field="width" label="Anchura" />
-        <DimensionControl field="depth" label="Profundidad" />
-      </section>
+    <aside id="settings-panel" className="side-panel settings-panel" aria-label="Inspector y configuración detallada">
+      <div className="side-panel__content settings-panel__content">
+        <SelectionInspector />
+        <section className="panel-section room-section">
+          <span className="eyebrow">Espacio</span>
+          <h2>Tu habitación</h2>
+          <p className="section-copy">Ajusta el tamaño y coloca sus aperturas.</p>
+          <div className="dimension-visual" aria-hidden="true">
+            <span>{room.depth.toFixed(1)} m</span><div><b>{room.width.toFixed(1)} m</b><i>⌂</i></div>
+          </div>
+          <DimensionControl field="width" label="Anchura" />
+          <DimensionControl field="depth" label="Profundidad" />
+        </section>
+      </div>
     </aside>
   )
 }
@@ -175,22 +193,31 @@ function ObjectsPanel() {
   const room = useRoomStore((state) => state.room)
   const furniture = useRoomStore((state) => state.furniture)
   const selectedId = useRoomStore((state) => state.selectedId)
-  const gridSnap = useRoomStore((state) => state.gridSnap)
+  const view = useRoomStore((state) => state.view)
+  const isoOrientation = useRoomStore((state) => state.isoOrientation)
+  const wallView = useRoomStore((state) => state.wallView)
+  const gridVisibility = useRoomStore((state) => state.gridVisibility)
   const addFurniture = useRoomStore((state) => state.addFurniture)
   const addWindow = useRoomStore((state) => state.addWindow)
   const selectElement = useRoomStore((state) => state.selectElement)
-  const toggleGrid = useRoomStore((state) => state.toggleGrid)
+  const toggleGridVisibility = useRoomStore((state) => state.toggleGridVisibility)
   const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
   const toggleElementVisibility = useRoomStore((state) => state.toggleElementVisibility)
   const sceneElements = [
     { id: 'door', name: 'Puerta', kind: 'Apertura' },
-    ...room.windows.map((window, index) => ({ id: window.id, name: `Ventana ${index + 1}`, kind: WALL_LABELS[window.wall] })),
+    ...room.windows.map((window, index) => ({ id: window.id, name: `Ventana ${index + 1}`, kind: `Pared ${WALL_LABELS[window.wall]}` })),
     ...furniture.map((item) => ({ id: item.id, name: item.name, kind: 'Mueble' })),
+  ]
+  const visibleGridWalls = visibleWallsForView(view, isoOrientation, wallView)
+  const gridControls = [
+    { id: 'floor' as const, label: 'Suelo' },
+    ...visibleGridWalls.map((wall) => ({ id: wall, label: `Pared ${WALL_LABELS[wall]}` })),
   ]
 
   return (
-    <aside className="side-panel objects-panel" aria-label="Catálogo de objetos">
-      <section className="panel-section">
+    <aside id="objects-panel" className="side-panel objects-panel" aria-label="Catálogo de objetos">
+      <div className="side-panel__content objects-panel__content">
+        <section className="panel-section">
         <span className="eyebrow">Objetos</span>
         <h2>Pequeño catálogo</h2>
         <p className="section-copy">Añade muebles y aperturas, o selecciona la puerta existente.</p>
@@ -210,8 +237,8 @@ function ObjectsPanel() {
             </button>
           ))}
         </div>
-      </section>
-      <section className="panel-section elements-section" aria-labelledby="elements-heading">
+        </section>
+        <section className="panel-section elements-section" aria-labelledby="elements-heading">
         <span className="eyebrow">Escena</span>
         <h2 id="elements-heading">Elementos en la habitación</h2>
         <p className="section-copy">Activa o desactiva cada elemento sin eliminarlo.</p>
@@ -233,11 +260,30 @@ function ObjectsPanel() {
             </div>
           ))}
         </div>
-      </section>
-      <section className="panel-section grid-section">
-        <div><span className="grid-icon" aria-hidden="true">▦</span><span><strong>Ajuste a subcuadrícula</strong><small>4 secciones invisibles de 12,5 cm</small></span></div>
-        <button type="button" className={`switch ${gridSnap ? 'on' : ''}`} role="switch" aria-checked={gridSnap} onClick={toggleGrid}><span /></button>
-      </section>
+        </section>
+        <section className="panel-section grid-section" aria-labelledby="grid-heading">
+        <div className="grid-section__heading">
+          <span className="grid-icon" aria-hidden="true">▦</span>
+          <span><strong id="grid-heading">Cuadrículas visibles</strong><small>Cuadrados de 25 cm</small></span>
+        </div>
+        <div className="grid-visibility-list">
+          {gridControls.map((surface) => (
+            <div className="grid-visibility-row" key={surface.id}>
+              <span>{surface.label}</span>
+              <button
+                type="button"
+                className={`switch ${gridVisibility[surface.id] ? 'on' : ''}`}
+                role="switch"
+                aria-checked={gridVisibility[surface.id]}
+                aria-label={`Mostrar cuadrícula de ${surface.label.toLowerCase()}`}
+                onClick={() => toggleGridVisibility(surface.id)}
+              ><span /></button>
+            </div>
+          ))}
+        </div>
+        <small className="grid-snap-note">El ajuste de movimiento a 12,5 cm se mantiene activo.</small>
+        </section>
+      </div>
     </aside>
   )
 }
@@ -245,12 +291,36 @@ function ObjectsPanel() {
 function ViewControls() {
   const view = useRoomStore((state) => state.view)
   const rotateIso = useRoomStore((state) => state.rotateIso)
+  const isoAngle = useRoomStore((state) => state.isoAngle)
+  const isIsoOrbitDragging = useRoomStore((state) => state.isIsoOrbitDragging)
+  const setIsoAngle = useRoomStore((state) => state.setIsoAngle)
+  const setIsoOrbitDragging = useRoomStore((state) => state.setIsoOrbitDragging)
   const rotateFront = useRoomStore((state) => state.rotateFront)
   const rotatePov = useRoomStore((state) => state.rotatePov)
   const roomHeight = useRoomStore((state) => state.room.height)
   const frontCameraHeight = useRoomStore((state) => state.frontCameraHeight)
   const setFrontCameraHeight = useRoomStore((state) => state.setFrontCameraHeight)
   const povYaw = useRoomStore((state) => state.povYaw)
+  const orbitDrag = useRef<{ pointerId: number; startX: number; startAngle: number } | null>(null)
+
+  useEffect(() => () => setIsoOrbitDragging(false), [setIsoOrbitDragging])
+
+  const startOrbitDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    orbitDrag.current = { pointerId: event.pointerId, startX: event.clientX, startAngle: isoAngle }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setIsoOrbitDragging(true)
+  }
+  const moveOrbitDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const drag = orbitDrag.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    setIsoAngle(drag.startAngle - (event.clientX - drag.startX) * 0.009)
+  }
+  const stopOrbitDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (orbitDrag.current?.pointerId !== event.pointerId) return
+    orbitDrag.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    setIsoOrbitDragging(false)
+  }
   if (view === 'top') return <div className="scene-hint"><span>↕</span> Arrastra para organizar</div>
   if (view === 'front') return (
     <div className="front-camera-control">
@@ -279,9 +349,32 @@ function ViewControls() {
   )
   const rotate = view === 'isometric' ? rotateIso : rotatePov
   return (
-    <div className="camera-controls" aria-label={view === 'isometric' ? 'Girar habitación' : 'Mirar alrededor'}>
+    <div className={`camera-controls ${view === 'isometric' ? 'camera-controls--orbit' : ''}`} aria-label={view === 'isometric' ? 'Girar habitación' : 'Mirar alrededor'}>
       <button type="button" onClick={() => rotate(-1)} aria-label="Girar a la izquierda">↶</button>
-      <span>{view === 'isometric' ? 'Girar vista' : `${povYaw > 0 ? '+' : ''}${povYaw}°`}</span>
+      {view === 'isometric' ? (
+        <button
+          type="button"
+          className={`camera-orbit-drag ${isIsoOrbitDragging ? 'dragging' : ''}`}
+          aria-label="Mantener pulsado y arrastrar horizontalmente para girar la habitación"
+          onPointerDown={startOrbitDrag}
+          onPointerMove={moveOrbitDrag}
+          onPointerUp={stopOrbitDrag}
+          onPointerCancel={stopOrbitDrag}
+          onLostPointerCapture={() => {
+            orbitDrag.current = null
+            setIsoOrbitDragging(false)
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+            event.preventDefault()
+            rotateIso(event.key === 'ArrowLeft' ? -1 : 1)
+          }}
+        >
+          <i aria-hidden="true">←</i>
+          <span>{isIsoOrbitDragging ? 'Girando…' : 'Mantén y arrastra'}</span>
+          <i aria-hidden="true">→</i>
+        </button>
+      ) : <span>{`${povYaw > 0 ? '+' : ''}${povYaw}°`}</span>}
       <button type="button" onClick={() => rotate(1)} aria-label="Girar a la derecha">↷</button>
     </div>
   )
@@ -289,6 +382,8 @@ function ViewControls() {
 
 function App() {
   const state = useRoomStore()
+  const [settingsCollapsed, setSettingsCollapsed] = useState(false)
+  const [objectsCollapsed, setObjectsCollapsed] = useState(false)
   const currentView = VIEW_OPTIONS.find((option) => option.id === state.view)!
   const visibleWalls = visibleWallsForView(state.view, state.isoOrientation, state.wallView)
   const visibleWallsText = wallsDescription(state.view, visibleWalls)
@@ -313,6 +408,7 @@ function App() {
 
   return (
     <div className="app">
+      <InteractionLogger />
       <header className="topbar">
         <a className="brand" href="#main" aria-label="Room Builder, ir al editor">
           <span className="brand-mark"><i /><i /></span>
@@ -332,9 +428,43 @@ function App() {
         </div>
       </header>
 
-      <main id="main" className="workspace">
+      <main
+        id="main"
+        className={`workspace${settingsCollapsed ? ' workspace--settings-collapsed' : ''}${objectsCollapsed ? ' workspace--objects-collapsed' : ''}`}
+      >
         <SettingsPanel />
-        <section className="scene-panel" aria-label={`Vista ${viewLabel}`}>
+        <section
+          className="scene-panel"
+          aria-label={`Vista ${viewLabel}`}
+          onWheel={(event) => {
+            if (event.ctrlKey) return
+            event.preventDefault()
+            const delta = event.deltaY * (event.deltaMode === 1 ? 16 : 1)
+            state.adjustCameraZoom(delta)
+          }}
+        >
+          <button
+            type="button"
+            className="sidebar-toggle sidebar-toggle--settings"
+            aria-controls="settings-panel"
+            aria-expanded={!settingsCollapsed}
+            aria-label={settingsCollapsed ? 'Mostrar panel izquierdo' : 'Minimizar panel izquierdo'}
+            title={settingsCollapsed ? 'Mostrar panel izquierdo' : 'Minimizar panel izquierdo'}
+            onClick={() => setSettingsCollapsed((collapsed) => !collapsed)}
+          >
+            <span aria-hidden="true">{settingsCollapsed ? '›' : '‹'}</span>
+          </button>
+          <button
+            type="button"
+            className="sidebar-toggle sidebar-toggle--objects"
+            aria-controls="objects-panel"
+            aria-expanded={!objectsCollapsed}
+            aria-label={objectsCollapsed ? 'Mostrar panel derecho' : 'Minimizar panel derecho'}
+            title={objectsCollapsed ? 'Mostrar panel derecho' : 'Minimizar panel derecho'}
+            onClick={() => setObjectsCollapsed((collapsed) => !collapsed)}
+          >
+            <span aria-hidden="true">{objectsCollapsed ? '‹' : '›'}</span>
+          </button>
           <div className="scene-topline">
             <div className="scene-topline__labels">
               <span className="view-badge"><i /> Vista {viewLabel}</span>
@@ -347,16 +477,25 @@ function App() {
             room={state.room}
             view={state.view}
             orientation={state.isoOrientation}
+            isoAngle={state.isoAngle}
+            isIsoOrbitDragging={state.isIsoOrbitDragging}
+            cameraZoom={state.cameraZoom}
             wallView={state.wallView}
             frontCameraHeight={state.frontCameraHeight}
             povYaw={state.povYaw}
             gridSnap={state.gridSnap}
+            gridVisibility={state.gridVisibility}
             furniture={state.furniture}
           />
           {state.furniture.length === 0 && state.view !== 'pov' && (
             <div className="empty-scene"><span>✦</span><strong>La habitación está lista</strong><small>Añade tu primera pieza desde el catálogo</small></div>
           )}
           <ViewControls />
+          <div className={`zoom-indicator ${state.view === 'front' ? 'zoom-indicator--front' : ''}`} aria-live="polite">
+            <b aria-hidden="true">↕</b>
+            <span>Rueda · Zoom</span>
+            <output>{Math.round(state.cameraZoom * 100)}%</output>
+          </div>
           <div className="compass" role="group" aria-label={compassLabel(state.view, state.isoOrientation)}>
             <RoomCompass3D
               visibleWalls={visibleWalls}
@@ -366,9 +505,14 @@ function App() {
               onTopView={() => state.setView('top')}
               onWallView={state.lookAtWall}
             />
-            {[0, 1, 2, 3].map((orientation) => (
+            {[
+              { orientation: 0, walls: 'D y A' },
+              { orientation: 1, walls: 'A y B' },
+              { orientation: 2, walls: 'B y C' },
+              { orientation: 3, walls: 'C y D' },
+            ].map(({ orientation, walls }) => (
               <button key={orientation} type="button" className="visually-hidden" onClick={() => state.lookFromIsoOrientation(orientation)}>
-                Ir directamente a la vista diagonal {orientation + 1}
+                Ver en isométrica las paredes {walls}
               </button>
             ))}
           </div>

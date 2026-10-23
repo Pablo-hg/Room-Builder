@@ -1,5 +1,6 @@
 export type ViewMode = 'isometric' | 'top' | 'front' | 'pov'
 export type WallSide = 'north' | 'east' | 'south' | 'west'
+export type GridSurface = 'floor' | WallSide
 export type FurnitureKind = 'armchair' | 'sofa' | 'table' | 'chair' | 'bed' | 'cabinet' | 'bookshelf' | 'lamp'
 
 export interface DoorConfig {
@@ -7,6 +8,7 @@ export interface DoorConfig {
   offset: number
   width: number
   height: number
+  rotation: number
 }
 
 export interface WindowConfig {
@@ -16,6 +18,7 @@ export interface WindowConfig {
   width: number
   height: number
   sill: number
+  rotation: number
 }
 
 export interface RoomConfig {
@@ -44,6 +47,7 @@ export interface PersistedDesign {
   room: RoomConfig
   furniture: FurnitureItem[]
   gridSnap: boolean
+  gridVisibility?: Record<GridSurface, boolean>
   hiddenElementIds?: string[]
 }
 
@@ -54,6 +58,7 @@ export interface WallOpening {
   width: number
   bottom: number
   height: number
+  rotation: number
 }
 
 export interface WallSegment {

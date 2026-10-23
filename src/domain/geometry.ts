@@ -11,10 +11,10 @@ export function openingInterval(offset: number, width: number): [number, number]
 export function openingsForWall(room: RoomConfig, wall: WallSide): WallOpening[] {
   const openings: WallOpening[] = []
   if (room.door.wall === wall) {
-    openings.push({ id: 'door', kind: 'door', offset: room.door.offset, width: room.door.width, bottom: 0, height: room.door.height })
+    openings.push({ id: 'door', kind: 'door', offset: room.door.offset, width: room.door.width, bottom: 0, height: room.door.height, rotation: room.door.rotation })
   }
   room.windows.filter((window) => window.wall === wall).forEach((window) => {
-    openings.push({ id: window.id, kind: 'window', offset: window.offset, width: window.width, bottom: window.sill, height: window.height })
+    openings.push({ id: window.id, kind: 'window', offset: window.offset, width: window.width, bottom: window.sill, height: window.height, rotation: window.rotation })
   })
   return openings
 }
@@ -111,6 +111,10 @@ export const FURNITURE_CLEARANCE = 0
 
 export function snapToPlacementGrid(value: number) {
   return Math.round(value / ROOM_LIMITS.placementStep) * ROOM_LIMITS.placementStep
+}
+
+export function snapToVisibleGrid(value: number) {
+  return Math.round(value / ROOM_LIMITS.gridSize) * ROOM_LIMITS.gridSize
 }
 
 export function snapFurnitureRotation(rotation: number) {
