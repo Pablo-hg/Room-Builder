@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "room": {
+    "width": 5.5,
+    "depth": 4.5,
+    "height": 2.7,
+    "wallColor": "#f5eadb",
+    "wallColors": {
+      "north": "#f5eadb",
+      "east": "#f5eadb",
+      "south": "#f5eadb",
+      "west": "#f5eadb"
+    },
+    "floorColor": "#dcc3a3",
+    "door": {
+      "wall": "south",
+      "offset": 0,
+      "width": 1,
+      "height": 2.1,
+      "rotation": 0,
+      "color": "#ac704b"
+    },
+    "windows": [
+      {
+        "id": "legacy-window",
+        "shape": "rectangular",
+        "wall": "north",
+        "offset": 0,
+        "width": 1.5,
+        "height": 1,
+        "sill": 1,
+        "rotation": 0,
+        "color": "#c88f58"
+      }
+    ]
+  },
+  "furniture": [],
+  "gridSnap": true
+}

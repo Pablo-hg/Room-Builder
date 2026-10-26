@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { DEFAULT_ROOM } from '../domain/constants'
+import type { PersistedDesign } from '../domain/types'
 import { useRoomStore } from './useRoomStore'
 
 class MemoryStorage {
@@ -17,6 +19,21 @@ class MemoryStorage {
   removeItem(key: string) {
     this.values.delete(key)
   }
+}
+
+const SAVED_DESIGNS_KEY = 'room-builder:v0.1:designs'
+
+function readPersistenceFixture(name: string) {
+  return JSON.parse(readFileSync(new URL(`../../tests/fixtures/persistence-v1/${name}`, import.meta.url), 'utf8')) as unknown
+}
+
+function putSavedFixture(storage: MemoryStorage, id: string, data: unknown) {
+  storage.setItem(SAVED_DESIGNS_KEY, JSON.stringify([{
+    id,
+    name: `Fixture ${id}`,
+    savedAt: '2026-10-26T12:00:00.000Z',
+    data,
+  }]))
 }
 
 test('deshace cambios y administra hasta cinco diseños locales', () => {
@@ -243,4 +260,74 @@ test('permite habitaciones de hasta 10 m y limita el zoom entre 25 % y 300 %', (
 
   for (let step = 0; step < 60; step += 1) store.getState().adjustCameraZoom(-120)
   assert.equal(store.getState().cameraZoom, 3)
+})
+
+test('considera equivalentes los opcionales v1 ausentes y sus valores vacios', () => {
+  const previousStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  const storage = new MemoryStorage()
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage })
+
+  try {
+    for (const [fixtureName, id] of [
+      ['valid-complete.json', 'complete'],
+      ['valid-legacy-optional-fields.json', 'legacy'],
+    ] as const) {
+      const data = readPersistenceFixture(fixtureName) as PersistedDesign
+      putSavedFixture(storage, id, data)
+      useRoomStore.setState({ savedDesigns: [], selectedSavedDesignId: '', notice: '' })
+
+      useRoomStore.getState().initializeSavedDesigns()
+      useRoomStore.getState().loadDesign(id)
+
+      assert.equal(useRoomStore.getState().notice, 'Dise\u00f1o recuperado.')
+      assert.equal(useRoomStore.getState().hasUnsavedChanges, false)
+      if (id === 'complete') assert.equal(useRoomStore.getState().furniture.length, 4)
+      if (id === 'legacy') assert.equal(useRoomStore.getState().savedDesigns[0].data.structurePacks, undefined)
+
+      const originalWidth = useRoomStore.getState().room.width
+      useRoomStore.getState().setDimension('width', originalWidth + 0.5)
+      assert.equal(useRoomStore.getState().hasUnsavedChanges, true)
+      useRoomStore.getState().undo()
+      assert.equal(useRoomStore.getState().room.width, originalWidth)
+      assert.equal(useRoomStore.getState().hasUnsavedChanges, false)
+    }
+  } finally {
+    if (previousStorage) {
+      Object.defineProperty(globalThis, 'localStorage', previousStorage)
+    } else {
+      Reflect.deleteProperty(globalThis, 'localStorage')
+    }
+  }
+})
+
+test('usa fixtures v1 para rechazar versiones y contenidos invalidos', () => {
+  const previousStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  const storage = new MemoryStorage()
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage })
+
+  try {
+    putSavedFixture(storage, 'unsupported', readPersistenceFixture('invalid-unsupported-version.json'))
+    useRoomStore.setState({ savedDesigns: [], selectedSavedDesignId: '', notice: '' })
+    useRoomStore.getState().initializeSavedDesigns()
+    assert.equal(useRoomStore.getState().savedDesigns.length, 0)
+    assert.equal(useRoomStore.getState().notice, 'No se pudieron leer los dise\u00f1os guardados.')
+
+    for (const [fixtureName, id] of [
+      ['invalid-malformed-room.json', 'malformed-room'],
+      ['invalid-unknown-furniture.json', 'unknown-furniture'],
+    ] as const) {
+      putSavedFixture(storage, id, readPersistenceFixture(fixtureName))
+      useRoomStore.setState({ savedDesigns: [], selectedSavedDesignId: '', notice: '' })
+      useRoomStore.getState().initializeSavedDesigns()
+      assert.equal(useRoomStore.getState().savedDesigns.length, 1)
+      useRoomStore.getState().loadDesign(id)
+      assert.equal(useRoomStore.getState().notice, 'El dise\u00f1o guardado no es v\u00e1lido.')
+    }
+  } finally {
+    if (previousStorage) {
+      Object.defineProperty(globalThis, 'localStorage', previousStorage)
+    } else {
+      Reflect.deleteProperty(globalThis, 'localStorage')
+    }
+  }
 })

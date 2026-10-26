@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "room": {
+    "width": 5.5,
+    "depth": 4.5,
+    "height": 2.7,
+    "wallColor": "#f5eadb",
+    "wallColors": {
+      "north": "#f5eadb",
+      "east": "#efe1d0",
+      "south": "#f5eadb",
+      "west": "#ead8c4"
+    },
+    "floorColor": "#dcc3a3",
+    "door": {
+      "wall": "south",
+      "offset": -1.5,
+      "width": 1,
+      "height": 2.1,
+      "rotation": 0,
+      "color": "#ac704b"
+    },
+    "windows": [
+      {
+        "id": "fixture-window",
+        "shape": "rectangular",
+        "wall": "north",
+        "offset": 0,
+        "width": 1.5,
+        "height": 1,
+        "sill": 1,
+        "rotation": 0,
+        "color": "#c88f58"
+      },
+      {
+        "id": "fixture-picture",
+        "shape": "pictureMedium",
+        "wall": "west",
+        "offset": 0,
+        "width": 1,
+        "height": 0.75,
+        "sill": 1.25,
+        "rotation": 0,
+        "color": "#7c9d91"
+      }
+    ]
+  },
+  "furniture": [
+    {
+      "id": "fixture-bed",
+      "kind": "bed",
+      "name": "Cama doble",
+      "x": -1.5,
+      "y": 0,
+      "z": 0.75,
+      "rotation": 0,
+      "width": 1.5,
+      "depth": 2,
+      "height": 0.55,
+      "color": "#8ba5a1"
+    },
+    {
+      "id": "fixture-desk",
+      "kind": "desk",
+      "name": "Escritorio",
+      "x": 1.5,
+      "y": 0,
+      "z": -1.5,
+      "rotation": 0,
+      "width": 1.25,
+      "depth": 0.75,
+      "height": 0.75,
+      "color": "#a77b58"
+    },
+    {
+      "id": "fixture-chair",
+      "kind": "deskChair",
+      "name": "Silla de escritorio",
+      "x": 1.5,
+      "y": 0,
+      "z": -0.625,
+      "rotation": 0,
+      "width": 0.5,
+      "depth": 0.5,
+      "height": 0.85,
+      "color": "#758a80"
+    },
+    {
+      "id": "fixture-plant",
+      "kind": "plant",
+      "name": "Planta",
+      "x": 2.25,
+      "y": 0,
+      "z": 1.75,
+      "rotation": 0,
+      "width": 0.5,
+      "depth": 0.5,
+      "height": 1.25,
+      "color": "#71886d"
+    }
+  ],
+  "structurePacks": [],
+  "gridSnap": true,
+  "gridVisibility": {
+    "floor": true,
+    "north": true,
+    "east": true,
+    "south": true,
+    "west": true
+  },
+  "hiddenElementIds": []
+}

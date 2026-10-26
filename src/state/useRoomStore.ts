@@ -226,11 +226,23 @@ function persistedDesign(state: Pick<RoomState, 'room' | 'furniture' | 'structur
     version: 1,
     room: state.room,
     furniture: state.furniture,
-    ...(state.structurePacks.length > 0 ? { structurePacks: state.structurePacks } : {}),
+    structurePacks: state.structurePacks,
     gridSnap: state.gridSnap,
     gridVisibility: state.gridVisibility,
     hiddenElementIds: state.hiddenElementIds,
   }
+}
+
+function persistedDesignSignature(design: PersistedDesign) {
+  return JSON.stringify({
+    version: design.version,
+    room: design.room,
+    furniture: design.furniture,
+    structurePacks: design.structurePacks ?? [],
+    gridSnap: design.gridSnap,
+    gridVisibility: design.gridVisibility ?? DEFAULT_GRID_VISIBILITY,
+    hiddenElementIds: design.hiddenElementIds ?? [],
+  })
 }
 
 function isPersistedDesign(value: unknown): value is PersistedDesign {
@@ -419,7 +431,7 @@ export const useRoomStore = create<RoomState>((storeSet, get) => {
     const current = get()
     const nextUpdate = typeof update === 'function' ? update(current) : update
     const nextState = { ...current, ...nextUpdate }
-    const designChanged = JSON.stringify(persistedDesign(current)) !== JSON.stringify(persistedDesign(nextState))
+    const designChanged = persistedDesignSignature(persistedDesign(current)) !== persistedDesignSignature(persistedDesign(nextState))
     if (designChanged) {
       if (!isUndoing) {
         if (groupedMoveSnapshot) {
@@ -439,7 +451,7 @@ export const useRoomStore = create<RoomState>((storeSet, get) => {
         ...nextUpdate,
         undoCount: undoHistory.length,
         redoCount: redoHistory.length,
-        hasUnsavedChanges: !activeDesign || JSON.stringify(persistedDesign(nextState)) !== JSON.stringify(activeDesign.data),
+        hasUnsavedChanges: !activeDesign || persistedDesignSignature(persistedDesign(nextState)) !== persistedDesignSignature(activeDesign.data),
       })
       return
     }
