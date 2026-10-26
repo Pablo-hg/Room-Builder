@@ -1,5 +1,10 @@
 # Guía de estilo visual
 
+> **Dirección visual actual — 26/10/2026 · CONFIRMADA para Room Builder.** Referencia principal: sencillez juguetona de Rooms.xyz y dioramas de habitaciones/casas conectadas; el aspecto buscado se acerca más a **formas geométricas sencillas** que a una miniatura de interior realista. Se permiten detalles cálidos moderados para que los muebles sean reconocibles. **No** pixel art, hiperrealismo, CAD, vóxel estricto ni texturas muy recargadas. Usar 3D simplificado y coherente entre cámaras, con colores expresivos pero controlados. Esta preferencia prevalece cuando alguna recomendación de saturación baja de esta guía se interprete de forma demasiado restrictiva; evitar neones y ruido visual, pero no convertir todo en tonos apagados.
+
+> **Estado de las reglas:** los tokens cromáticos exactos y la biblioteca definitiva de assets están PENDIENTES. No sustituir automáticamente los estilos ya implementados sin comparación visual y revisión. Véanse [docs/PRODUCT_VISION.md](docs/PRODUCT_VISION.md), [docs/OBJECTS_AND_ASSETS.md](docs/OBJECTS_AND_ASSETS.md) y [docs/DECISION_LOG.md](docs/DECISION_LOG.md).
+
+
 Este documento define el lenguaje visual de los objetos 3D y sus iconos en Room Builder. **Hay que consultarlo antes de crear o modificar muebles, aperturas, decoración, miniaturas o cualquier otro elemento visual de la escena.** Si una propuesta se aparta de estas reglas, se debe justificar y actualizar esta guía en el mismo cambio.
 
 ## Principios

@@ -1,5 +1,8 @@
 # Room Builder v0.1
 
+> **Documentación de producto:** antes de ampliar o reorganizar el editor, consultar [docs/README.md](docs/README.md), [AGENTS.md](AGENTS.md) y [VISUAL_STYLE_GUIDE.md](VISUAL_STYLE_GUIDE.md). La visión es un constructor de habitaciones amigable tipo diorama, útil para recrear espacios reales y comparar distribuciones. La construcción multihabitación es evolución posterior. La documentación distingue decisiones acordadas de propuestas aún no implementadas.
+
+
 Prototipo web para construir una habitación rectangular, configurar sus aperturas y probar distribuciones sencillas de mobiliario en tres vistas coherentes.
 
 ## Requisitos
