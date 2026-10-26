@@ -1,11 +1,15 @@
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import * as THREE from 'three'
-import { FURNITURE_PRESETS, ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from '../domain/constants'
-import { buildWallSegments, doorWorldPosition, hiddenWallForCardinalTarget, hiddenWallsForOrientation, inwardDirection, openingsForWall, shortestAngleDelta, snapFurnitureRotation, wallLength } from '../domain/geometry'
-import type { FurnitureItem, GridSurface, RoomConfig, ViewMode, WallOpening, WallSide } from '../domain/types'
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js'
+import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from '../domain/constants'
+import { doorWorldPosition, hiddenWallForCardinalTarget, hiddenWallsForOrientation, inwardDirection, isWallMountedDecoration, openingsForWall, orientationForAzimuth, shortestAngleDelta, sideWallsForFrontView, snapFurnitureRotation, topViewWallForOrientation, wallLength } from '../domain/geometry'
+import { isCeilingMountedFurniture, isFloorBoundFurniture, isWallMirrorShape, isWallPictureKind, openingCapabilities, OPENING_CATALOG, openingKindForShape } from '../domain/objectCatalog'
+import type { FurnitureItem, GridSurface, RoomConfig, StructurePack, StructureSurface, ViewMode, WallOpening, WallSide } from '../domain/types'
 import { recordInteraction, type InteractionDetails } from '../debug/interactionLog'
-import { useRoomStore } from '../state/useRoomStore'
+import { structureSurfaceElementId, useRoomStore } from '../state/useRoomStore'
+
+const ISOMETRIC_CAMERA_TARGET_HEIGHT = 0.8
 
 function recordSceneInteraction(action: string, details?: InteractionDetails) {
   const state = useRoomStore.getState()
@@ -16,12 +20,29 @@ function recordSceneInteraction(action: string, details?: InteractionDetails) {
   })
 }
 
+function colorTone(color: string, lightnessOffset: number) {
+  const tone = new THREE.Color(color)
+  const hsl = { h: 0, s: 0, l: 0 }
+  tone.getHSL(hsl)
+  tone.setHSL(hsl.h, hsl.s, Math.max(0.08, Math.min(0.94, hsl.l + lightnessOffset)))
+  return `#${tone.getHexString()}`
+}
+
+function openingName(opening: WallOpening) {
+  return opening.kind === 'door'
+    ? 'Puerta'
+    : OPENING_CATALOG[openingKindForShape(opening.shape ?? 'rectangular')].name
+}
+
 interface SceneProps {
   room: RoomConfig
   view: ViewMode
   orientation: number
   isoAngle: number
   isIsoOrbitDragging: boolean
+  freeAzimuth: number
+  freeElevation: number
+  isFreeOrbitDragging: boolean
   cameraZoom: number
   wallView: WallSide | null
   frontCameraHeight: number
@@ -29,6 +50,11 @@ interface SceneProps {
   gridSnap: boolean
   gridVisibility: Record<GridSurface, boolean>
   furniture: FurnitureItem[]
+  structurePacks: StructurePack[]
+  exportMode: boolean
+  exportRequest: number
+  exportDesignName: string
+  onExportComplete: (error?: Error) => void
 }
 
 const wallPlacement: Record<WallSide, (room: RoomConfig) => { position: [number, number, number]; rotation: [number, number, number] }> = {
@@ -38,7 +64,7 @@ const wallPlacement: Record<WallSide, (room: RoomConfig) => { position: [number,
   west: (room) => ({ position: [-room.width / 2, 0, 0], rotation: [0, Math.PI / 2, 0] }),
 }
 
-function CameraRig({ room, view, isoAngle, isIsoOrbitDragging, cameraZoom, wallView, frontCameraHeight, povYaw }: Pick<SceneProps, 'room' | 'view' | 'isoAngle' | 'isIsoOrbitDragging' | 'cameraZoom' | 'wallView' | 'frontCameraHeight' | 'povYaw'>) {
+function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDragging, freeAzimuth, freeElevation, isFreeOrbitDragging, cameraZoom, wallView, frontCameraHeight, povYaw }: Pick<SceneProps, 'room' | 'view' | 'orientation' | 'isoAngle' | 'isIsoOrbitDragging' | 'freeAzimuth' | 'freeElevation' | 'isFreeOrbitDragging' | 'cameraZoom' | 'wallView' | 'frontCameraHeight' | 'povYaw'>) {
   const { camera, size } = useThree()
   const initialized = useRef(false)
   const previousMode = useRef({ view, wallView })
@@ -93,7 +119,7 @@ function CameraRig({ room, view, isoAngle, isIsoOrbitDragging, cameraZoom, wallV
     return () => media.removeEventListener('change', updatePreference)
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const previous = previousMode.current
     previousMode.current = { view, wallView }
     const targetCamera = camera.clone()
@@ -108,10 +134,27 @@ function CameraRig({ room, view, isoAngle, isIsoOrbitDragging, cameraZoom, wallV
       targetCamera.up.set(0, 1, 0)
       targetCamera.lookAt(position[0] + direction.x, position[1] - 0.04, position[2] + direction.z)
       if (targetCamera instanceof THREE.PerspectiveCamera) targetCamera.aspect = size.width / Math.max(size.height, 1)
+    } else if (view === 'free') {
+      const radius = Math.max(room.width, room.depth, room.height) * 2.6
+      const horizontalRadius = Math.cos(freeElevation) * radius
+      targetCamera.position.set(
+        Math.cos(freeAzimuth) * horizontalRadius,
+        0.45 + Math.sin(freeElevation) * radius,
+        Math.sin(freeAzimuth) * horizontalRadius,
+      )
+      targetCamera.up.set(0, 1, 0)
+      targetCamera.lookAt(0, 0.45, 0)
+      if (targetCamera instanceof THREE.PerspectiveCamera) targetCamera.aspect = size.width / Math.max(size.height, 1)
     } else if (view === 'top') {
       const zoom = Math.min(size.width / (room.width + 2.2), size.height / (room.depth + 2.2))
+      const topViewUp: Record<WallSide, [number, number, number]> = {
+        north: [0, 0, -1],
+        east: [1, 0, 0],
+        south: [0, 0, 1],
+        west: [-1, 0, 0],
+      }
       targetCamera.position.set(0, 12, 0.001)
-      targetCamera.up.set(0, 0, -1)
+      targetCamera.up.set(...topViewUp[topViewWallForOrientation(orientation)])
       targetCamera.lookAt(0, 0, 0)
       targetZoom = Math.max(36, zoom)
     } else if (view === 'front') {
@@ -137,7 +180,7 @@ function CameraRig({ room, view, isoAngle, isIsoOrbitDragging, cameraZoom, wallV
       const radius = Math.sqrt(8 ** 2 + 8 ** 2)
       targetCamera.position.set(Math.cos(isoAngle) * radius, 7, Math.sin(isoAngle) * radius)
       targetCamera.up.set(0, 1, 0)
-      targetCamera.lookAt(0, 0.45, 0)
+      targetCamera.lookAt(0, ISOMETRIC_CAMERA_TARGET_HEIGHT, 0)
       targetZoom = Math.max(38, Math.min(size.width / (room.width + room.depth + 1) * 1.15, size.height / (room.height + room.depth + 1.8) * 1.25))
     }
 
@@ -146,7 +189,7 @@ function CameraRig({ room, view, isoAngle, isIsoOrbitDragging, cameraZoom, wallV
     targetCamera.updateProjectionMatrix()
     const currentZoom = 'zoom' in camera ? camera.zoom : 1
 
-    if (!initialized.current || reduceMotion || (view === 'isometric' && isIsoOrbitDragging)) {
+    if (!initialized.current || reduceMotion || (view === 'isometric' && isIsoOrbitDragging) || (view === 'free' && isFreeOrbitDragging)) {
       camera.position.copy(targetCamera.position)
       camera.quaternion.copy(targetCamera.quaternion)
       if (camera instanceof THREE.OrthographicCamera || camera instanceof THREE.PerspectiveCamera) camera.zoom = targetZoom
@@ -163,10 +206,13 @@ function CameraRig({ room, view, isoAngle, isIsoOrbitDragging, cameraZoom, wallV
       && previous.view === 'isometric'
       && previous.wallView === null
     ) || (
+      view === 'free'
+      && previous.view === 'free'
+    ) || (
       view === 'front'
       && previous.view === 'front'
     )
-    const orbitCenter = new THREE.Vector3(0, view === 'front' ? frontLookHeight : 0.45, 0)
+    const orbitCenter = new THREE.Vector3(0, view === 'front' ? frontLookHeight : view === 'isometric' ? ISOMETRIC_CAMERA_TARGET_HEIGHT : 0.45, 0)
     const fromAngle = Math.atan2(camera.position.z, camera.position.x)
     const targetAngle = Math.atan2(targetCamera.position.z, targetCamera.position.x)
     const orbit = shouldOrbitAroundRoom ? {
@@ -178,30 +224,26 @@ function CameraRig({ room, view, isoAngle, isIsoOrbitDragging, cameraZoom, wallV
       fromHeight: camera.position.y,
       toHeight: targetCamera.position.y,
     } : null
-    const elevatedRoomView = (mode: ViewMode) => mode === 'front' || mode === 'isometric'
+    const elevatedRoomView = (mode: ViewMode) => mode === 'front' || mode === 'isometric' || mode === 'free'
     const shouldOrbitBetweenRoomAndTop = (
       view === 'top' && elevatedRoomView(previous.view)
     ) || (
       elevatedRoomView(view) && previous.view === 'top'
     )
-    const orbitHeightForView = (mode: ViewMode) => {
-      if (mode === 'front') return frontLookHeight
-      if (mode === 'isometric') return 0.45
-      return 0
-    }
-    const fromCenter = new THREE.Vector3(0, orbitHeightForView(previous.view), 0)
-    const toCenter = new THREE.Vector3(0, orbitHeightForView(view), 0)
-    const fromSpherical = new THREE.Spherical().setFromVector3(camera.position.clone().sub(fromCenter))
-    const toSpherical = new THREE.Spherical().setFromVector3(targetCamera.position.clone().sub(toCenter))
+    const roomOrbitCenter = new THREE.Vector3(0, room.height / 2, 0)
+    const fromSpherical = new THREE.Spherical().setFromVector3(camera.position.clone().sub(roomOrbitCenter))
+    const toSpherical = new THREE.Spherical().setFromVector3(targetCamera.position.clone().sub(roomOrbitCenter))
+    const fromTheta = previous.view === 'top' ? toSpherical.theta : fromSpherical.theta
+    const toTheta = view === 'top' ? fromTheta : toSpherical.theta
     const spatialOrbit = shouldOrbitBetweenRoomAndTop ? {
-      fromCenter,
-      toCenter,
+      fromCenter: roomOrbitCenter,
+      toCenter: roomOrbitCenter,
       fromRadius: fromSpherical.radius,
       toRadius: toSpherical.radius,
       fromPhi: fromSpherical.phi,
       toPhi: toSpherical.phi,
-      fromTheta: fromSpherical.theta,
-      toTheta: fromSpherical.theta + shortestAngleDelta(fromSpherical.theta, toSpherical.theta),
+      fromTheta,
+      toTheta: fromTheta + shortestAngleDelta(fromTheta, toTheta),
     } : null
 
     animation.current = {
@@ -221,7 +263,7 @@ function CameraRig({ room, view, isoAngle, isIsoOrbitDragging, cameraZoom, wallV
       camera.aspect = targetCamera.aspect
       camera.updateProjectionMatrix()
     }
-  }, [camera, cameraZoom, frontCameraHeight, isoAngle, isIsoOrbitDragging, povYaw, reduceMotion, room, size, view, wallView])
+  }, [camera, cameraZoom, freeAzimuth, freeElevation, frontCameraHeight, isoAngle, isFreeOrbitDragging, isIsoOrbitDragging, orientation, povYaw, reduceMotion, room, size, view, wallView])
 
   useFrame((_, delta) => {
     const transition = animation.current
@@ -268,26 +310,166 @@ function CameraRig({ room, view, isoAngle, isIsoOrbitDragging, cameraZoom, wallV
   return null
 }
 
-function WallGrid({ segments }: { segments: ReturnType<typeof buildWallSegments> }) {
+type WallPoint = [number, number]
+
+function openingPolygon(opening: WallOpening): WallPoint[] {
+  const cosine = Math.cos(opening.rotation)
+  const sine = Math.sin(opening.rotation)
+  const centerY = opening.bottom + opening.height / 2
+  if (opening.shape === 'circular') {
+    return Array.from({ length: 48 }, (_, index): WallPoint => {
+      const angle = -index / 48 * Math.PI * 2
+      const x = Math.cos(angle) * opening.width / 2
+      const y = Math.sin(angle) * opening.height / 2
+      return [
+        opening.offset + x * cosine - y * sine,
+        centerY + x * sine + y * cosine,
+      ]
+    })
+  }
+  const corners: WallPoint[] = [
+    [-opening.width / 2, -opening.height / 2],
+    [-opening.width / 2, opening.height / 2],
+    [opening.width / 2, opening.height / 2],
+    [opening.width / 2, -opening.height / 2],
+  ]
+  return corners.map(([x, y]) => [
+    opening.offset + x * cosine - y * sine,
+    centerY + x * sine + y * cosine,
+  ])
+}
+
+function clipPolygonToWall(polygon: WallPoint[], length: number, height: number) {
+  const inset = 0.0005
+  const left = -length / 2 + inset
+  const right = length / 2 - inset
+  const bottom = inset
+  const top = height - inset
+  const clip = (
+    points: WallPoint[],
+    inside: (point: WallPoint) => boolean,
+    intersection: (from: WallPoint, to: WallPoint) => WallPoint,
+  ) => {
+    const result: WallPoint[] = []
+    points.forEach((point, index) => {
+      const previous = points[(index + points.length - 1) % points.length]
+      const pointInside = inside(point)
+      const previousInside = inside(previous)
+      if (pointInside !== previousInside) result.push(intersection(previous, point))
+      if (pointInside) result.push(point)
+    })
+    return result
+  }
+  const atX = (x: number) => (from: WallPoint, to: WallPoint): WallPoint => {
+    const ratio = (x - from[0]) / (to[0] - from[0])
+    return [x, from[1] + (to[1] - from[1]) * ratio]
+  }
+  const atY = (y: number) => (from: WallPoint, to: WallPoint): WallPoint => {
+    const ratio = (y - from[1]) / (to[1] - from[1])
+    return [from[0] + (to[0] - from[0]) * ratio, y]
+  }
+  let clipped = clip(polygon, ([x]) => x >= left, atX(left))
+  clipped = clip(clipped, ([x]) => x <= right, atX(right))
+  clipped = clip(clipped, ([, y]) => y >= bottom, atY(bottom))
+  return clip(clipped, ([, y]) => y <= top, atY(top))
+}
+
+function WallBody({ length, height, openings, color, onPointerDown }: { length: number; height: number; openings: WallOpening[]; color: string; onPointerDown: (event: ThreeEvent<PointerEvent>) => void }) {
+  const geometry = useMemo(() => {
+    const shape = new THREE.Shape()
+    shape.moveTo(-length / 2, 0)
+    shape.lineTo(length / 2, 0)
+    shape.lineTo(length / 2, height)
+    shape.lineTo(-length / 2, height)
+    shape.closePath()
+    openings.filter((opening) => !isWallMountedDecoration(opening.shape)).forEach((opening) => {
+      const polygon = clipPolygonToWall(openingPolygon(opening), length, height)
+      if (polygon.length < 3) return
+      const hole = new THREE.Path()
+      hole.moveTo(polygon[0][0], polygon[0][1])
+      polygon.slice(1).forEach(([x, y]) => hole.lineTo(x, y))
+      hole.closePath()
+      shape.holes.push(hole)
+    })
+    return new THREE.ExtrudeGeometry(shape, {
+      depth: 0.12,
+      bevelEnabled: false,
+      curveSegments: 1,
+      steps: 1,
+    })
+  }, [height, length, openings])
+  useEffect(() => () => geometry.dispose(), [geometry])
+
+  return (
+    <mesh geometry={geometry} position={[0, 0, -0.06]} castShadow receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={onPointerDown}>
+      <meshStandardMaterial color={color} roughness={0.92} />
+    </mesh>
+  )
+}
+
+function polygonInterval(polygon: WallPoint[], coordinate: number, vertical: boolean): [number, number] | null {
+  const intersections: number[] = []
+  const epsilon = 0.00001
+  polygon.forEach((point, index) => {
+    const next = polygon[(index + 1) % polygon.length]
+    const fixedFrom = vertical ? point[0] : point[1]
+    const fixedTo = vertical ? next[0] : next[1]
+    const variableFrom = vertical ? point[1] : point[0]
+    const variableTo = vertical ? next[1] : next[0]
+    if (Math.abs(fixedTo - fixedFrom) < epsilon) {
+      if (Math.abs(coordinate - fixedFrom) < epsilon) intersections.push(variableFrom, variableTo)
+      return
+    }
+    const ratio = (coordinate - fixedFrom) / (fixedTo - fixedFrom)
+    if (ratio >= -epsilon && ratio <= 1 + epsilon) {
+      intersections.push(variableFrom + (variableTo - variableFrom) * ratio)
+    }
+  })
+  const unique = intersections
+    .sort((a, b) => a - b)
+    .filter((value, index, values) => index === 0 || Math.abs(value - values[index - 1]) > epsilon)
+  return unique.length >= 2 ? [unique[0], unique[unique.length - 1]] : null
+}
+
+function visibleLineIntervals(start: number, end: number, cuts: [number, number][]) {
+  const merged: [number, number][] = []
+  cuts
+    .map(([from, to]) => [Math.max(start, from), Math.min(end, to)] as [number, number])
+    .filter(([from, to]) => to - from > 0.00001)
+    .sort((a, b) => a[0] - b[0])
+    .forEach(([from, to]) => {
+      const previous = merged[merged.length - 1]
+      if (previous && from <= previous[1] + 0.00001) previous[1] = Math.max(previous[1], to)
+      else merged.push([from, to])
+    })
+  const visible: [number, number][] = []
+  let cursor = start
+  merged.forEach(([from, to]) => {
+    if (from > cursor + 0.00001) visible.push([cursor, from])
+    cursor = Math.max(cursor, to)
+  })
+  if (cursor < end - 0.00001) visible.push([cursor, end])
+  return visible
+}
+
+function WallGrid({ length, height, openings }: { length: number; height: number; openings: WallOpening[] }) {
   const positions = useMemo(() => {
     const lines: number[] = []
     const step = ROOM_LIMITS.gridSize
     const epsilon = 0.001
-    segments.forEach((segment) => {
-      const left = segment.center[0] - segment.size[0] / 2
-      const right = segment.center[0] + segment.size[0] / 2
-      const bottom = segment.center[1] - segment.size[1] / 2
-      const top = segment.center[1] + segment.size[1] / 2
-
-      for (let x = Math.ceil((left - epsilon) / step) * step; x <= right + epsilon; x += step) {
-        lines.push(x, bottom, 0.066, x, top, 0.066)
-      }
-      for (let y = Math.ceil((bottom - epsilon) / step) * step; y <= top + epsilon; y += step) {
-        lines.push(left, y, 0.066, right, y, 0.066)
-      }
-    })
+    const polygons = openings
+      .filter((opening) => !isWallMountedDecoration(opening.shape))
+      .map((opening) => clipPolygonToWall(openingPolygon(opening), length, height))
+    for (let x = Math.ceil((-length / 2 - epsilon) / step) * step; x <= length / 2 + epsilon; x += step) {
+      const cuts = polygons.map((polygon) => polygonInterval(polygon, x, true)).filter((interval): interval is [number, number] => interval !== null)
+      visibleLineIntervals(0, height, cuts).forEach(([from, to]) => lines.push(x, from, 0.066, x, to, 0.066))
+    }
+    for (let y = 0; y <= height + epsilon; y += step) {
+      const cuts = polygons.map((polygon) => polygonInterval(polygon, y, false)).filter((interval): interval is [number, number] => interval !== null)
+      visibleLineIntervals(-length / 2, length / 2, cuts).forEach(([from, to]) => lines.push(from, y, 0.066, to, y, 0.066))
+    }
     return new Float32Array(lines)
-  }, [segments])
+  }, [height, length, openings])
 
   return (
     <lineSegments renderOrder={2} raycast={() => undefined}>
@@ -299,35 +481,23 @@ function WallGrid({ segments }: { segments: ReturnType<typeof buildWallSegments>
   )
 }
 
-function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid }: { room: RoomConfig; wall: WallSide; hidden: boolean; showOpeningDetails: boolean; showGrid: boolean }) {
+function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exportMode }: { room: RoomConfig; wall: WallSide; hidden: boolean; showOpeningDetails: boolean; showGrid: boolean; exportMode: boolean }) {
   const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
   const selectedId = useRoomStore((state) => state.selectedId)
   const selectElement = useRoomStore((state) => state.selectElement)
   const length = wallLength(room, wall)
-  const openings = openingsForWall(room, wall)
-  const segments = buildWallSegments(length, room.height, openings)
+  const openings = useMemo(() => openingsForWall(room, wall), [room.door, room.windows, wall])
   const placement = wallPlacement[wall](room)
 
   return (
     <group position={placement.position} rotation={placement.rotation}>
       {!hidden && <group>
-        {segments.map((segment, index) => (
-          <mesh
-            key={`${wall}-${index}`}
-            position={[segment.center[0], segment.center[1], 0]}
-            castShadow
-            receiveShadow
-            onPointerDown={(event) => {
-              event.stopPropagation()
-              recordSceneInteraction('background.pointer-down', { target: 'wall', wall, segment: index })
-              selectElement(null)
-            }}
-          >
-            <boxGeometry args={[segment.size[0], segment.size[1], 0.12]} />
-            <meshStandardMaterial color="#f5eadb" roughness={0.92} />
-          </mesh>
-        ))}
-        <mesh position={[0, 0.055, 0.075]} onPointerDown={(event) => {
+        <WallBody length={length} height={room.height} openings={openings} color={room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR} onPointerDown={(event) => {
+          event.stopPropagation()
+          recordSceneInteraction('background.pointer-down', { target: 'wall', wall })
+          selectElement(null)
+        }} />
+        <mesh position={[0, 0.055, 0.075]} userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
           event.stopPropagation()
           recordSceneInteraction('background.pointer-down', { target: 'baseboard', wall })
           selectElement(null)
@@ -335,13 +505,292 @@ function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid }: { room: 
           <boxGeometry args={[length, 0.11, 0.07]} />
           <meshStandardMaterial color="#d5a86e" />
         </mesh>
-        {showGrid && <WallGrid segments={segments} />}
+        {showGrid && <WallGrid length={length} height={room.height} openings={openings} />}
       </group>}
       {openings.map((opening) => (
         <group key={opening.id} visible={showOpeningDetails && !hiddenElementIds.includes(opening.id)}>
-          <OpeningDetail room={room} wall={wall} opening={opening} selected={selectedId === opening.id} />
+          <OpeningDetail room={room} wall={wall} opening={opening} selected={!exportMode && selectedId === opening.id} />
         </group>
       ))}
+    </group>
+  )
+}
+
+function StructureSurfaceObject({
+  room,
+  packId,
+  packName,
+  surface,
+  hidden,
+  selected,
+  onSelect,
+}: {
+  room: RoomConfig
+  packName: string
+  surface: StructureSurface
+  hidden: boolean
+  selected: boolean
+  onSelect: () => void
+  packId: string
+}) {
+  if (hidden) return null
+  const wall = surface.wall ?? 'north'
+  const position = structureSurfacePosition(room, surface)
+  const baseRotation = wall === 'north' ? 0 : wall === 'east' ? -Math.PI / 2 : wall === 'south' ? Math.PI : Math.PI / 2
+  const beginStructureMove = useRoomStore((state) => state.beginStructureMove)
+  const endStructureMove = useRoomStore((state) => state.endStructureMove)
+  const moveStructureSurface = useRoomStore((state) => state.moveStructureSurface)
+  const setStructureSurfaceRotation = useRoomStore((state) => state.setStructureSurfaceRotation)
+  const surfaceId = structureSurfaceElementId(packId, surface.id)
+  const selectSurface = (event: { stopPropagation: () => void; object: THREE.Object3D }) => {
+    event.stopPropagation()
+    const clickedId = event.object.userData.structureSurfaceId
+    const clickedSurfaceId = typeof clickedId === 'string' ? clickedId : surfaceId
+    const selectedBefore = useRoomStore.getState().selectedId === clickedSurfaceId
+    recordSceneInteraction('structure-surface.pointer-down', {
+      surfaceId: clickedSurfaceId,
+      name: packName,
+      kind: surface.kind,
+      selectedBefore,
+    })
+    if (!selectedBefore) onSelect()
+  }
+  return (
+    <>
+      <mesh
+        position={position}
+        rotation={surface.kind === 'wall' ? [0, baseRotation + surface.rotation, 0] : [0, 0, 0]}
+        userData={{ freeOrbitSurface: true, structureSurfaceId: surfaceId }}
+        onPointerDown={selectSurface}
+        onClick={selectSurface}
+      >
+        <boxGeometry args={[surface.width, surface.height, surface.depth]} />
+        <meshStandardMaterial
+          color={surface.color}
+          emissive={selected ? '#dba771' : '#000000'}
+          emissiveIntensity={selected ? 0.14 : 0}
+          roughness={0.9}
+        />
+      </mesh>
+      {selected && (
+        <StructureSurfaceTransformGizmo
+          packId={packId}
+          name={packName}
+          surface={surface}
+          position={position}
+          beginMove={beginStructureMove}
+          endMove={endStructureMove}
+          move={moveStructureSurface}
+          rotate={setStructureSurfaceRotation}
+        />
+      )}
+    </>
+  )
+}
+
+function structureSurfacePosition(room: RoomConfig, surface: StructureSurface): [number, number, number] {
+  if (surface.kind !== 'wall') {
+    return [surface.x, (surface.kind === 'ceiling' ? room.height : 0) + surface.y, surface.z]
+  }
+  const wall = surface.wall ?? 'north'
+  if (wall === 'north') return [surface.x, room.height / 2 + surface.y, -room.depth / 2 + surface.z]
+  if (wall === 'south') return [surface.x, room.height / 2 + surface.y, room.depth / 2 + surface.z]
+  if (wall === 'east') return [room.width / 2 + surface.x, room.height / 2 + surface.y, surface.z]
+  return [-room.width / 2 + surface.x, room.height / 2 + surface.y, surface.z]
+}
+
+function StructureSurfaceTransformGizmo({
+  packId,
+  name,
+  surface,
+  position,
+  beginMove,
+  endMove,
+  move,
+  rotate,
+}: {
+  packId: string
+  name: string
+  surface: StructureSurface
+  position: [number, number, number]
+  beginMove: () => void
+  endMove: () => void
+  move: (packId: string, surfaceId: StructureSurface['id'], axis: 'x' | 'y' | 'z', value: number) => void
+  rotate: (packId: string, surfaceId: StructureSurface['id'], rotation: number) => void
+}) {
+  const selectElement = useRoomStore((state) => state.selectElement)
+  const [draggingAxis, setDraggingAxis] = useState<'x' | 'y' | 'z' | null>(null)
+  const [hoveredAxis, setHoveredAxis] = useState<'x' | 'y' | 'z' | null>(null)
+  const [rotating, setRotating] = useState(false)
+  const [ringHovered, setRingHovered] = useState(false)
+  const pointerPoint = useMemo(() => new THREE.Vector3(), [])
+  const dragPlane = useMemo(() => new THREE.Plane(), [])
+  const startPoint = useRef(new THREE.Vector3())
+  const startingPosition = useRef({ x: 0, y: 0, z: 0 })
+  const lastRingAngle = useRef(0)
+  const startingRotation = useRef(surface.rotation)
+  const radius = Math.max(0.65, Math.min(1.6, Math.hypot(surface.width, surface.depth) / 2 + 0.28))
+  const coneHeight = 0.22
+  const coneCenter = radius - coneHeight / 2
+  const shaftLength = Math.max(0.1, radius - coneHeight)
+  const gizmoHeight = surface.kind === 'floor' ? 0.18 : 0
+
+  const startDrag = (axis: 'x' | 'y' | 'z', event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation()
+    selectElement(structureSurfaceElementId(packId, surface.id))
+    const axisPlaneNormal = axis === 'y'
+      ? new THREE.Vector3(0, 0, 1)
+      : new THREE.Vector3(0, 1, 0)
+    dragPlane.setFromNormalAndCoplanarPoint(axisPlaneNormal, new THREE.Vector3(...position))
+    if (!event.ray.intersectPlane(dragPlane, pointerPoint)) return
+    startPoint.current.copy(pointerPoint)
+    startingPosition.current = { x: surface.x, y: surface.y, z: surface.z }
+    beginMove()
+    setDraggingAxis(axis)
+    document.body.classList.add('can-grab')
+    ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+    recordSceneInteraction('structure-surface.axis-drag-start', { packId, surfaceId: surface.id, name, axis })
+  }
+
+  const drag = (event: ThreeEvent<PointerEvent>) => {
+    if (!draggingAxis) return
+    event.stopPropagation()
+    if (!event.ray.intersectPlane(dragPlane, pointerPoint)) return
+    const delta = draggingAxis === 'x'
+      ? pointerPoint.x - startPoint.current.x
+      : draggingAxis === 'y'
+        ? pointerPoint.y - startPoint.current.y
+        : pointerPoint.z - startPoint.current.z
+    move(packId, surface.id, draggingAxis, startingPosition.current[draggingAxis] + delta)
+  }
+
+  const stopDrag = (event: ThreeEvent<PointerEvent>) => {
+    if (!draggingAxis) return
+    event.stopPropagation()
+    endMove()
+    setDraggingAxis(null)
+    document.body.classList.remove('can-grab')
+    ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
+    recordSceneInteraction('structure-surface.axis-drag-end', { packId, surfaceId: surface.id, name, axis: draggingAxis })
+  }
+
+  const axisEvents = (axis: 'x' | 'y' | 'z') => ({
+    onPointerDown: (event: ThreeEvent<PointerEvent>) => startDrag(axis, event),
+    onPointerMove: drag,
+    onPointerUp: stopDrag,
+    onPointerCancel: stopDrag,
+    onPointerOver: (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation()
+      setHoveredAxis(axis)
+      document.body.classList.add('can-grab')
+    },
+    onPointerOut: (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation()
+      setHoveredAxis((current) => current === axis ? null : current)
+      if (!draggingAxis) document.body.classList.remove('can-grab')
+    },
+  })
+  const axisMaterial = (axis: 'x' | 'y' | 'z') => {
+    const colors = { x: ['#d85243', '#ff6a54'], y: ['#4d75d8', '#7197ff'], z: ['#34876f', '#46b98f'] }
+    const [normal, active] = colors[axis]
+    return <meshBasicMaterial color={hoveredAxis === axis || draggingAxis === axis ? active : normal} depthTest={false} depthWrite={false} toneMapped={false} />
+  }
+  const rotateFromPointer = (event: ThreeEvent<PointerEvent>) => {
+    if (!event.ray.intersectPlane(dragPlane, pointerPoint)) return
+    const angle = Math.atan2(pointerPoint.z - position[2], pointerPoint.x - position[0])
+    const delta = Math.atan2(Math.sin(angle - lastRingAngle.current), Math.cos(angle - lastRingAngle.current))
+    rotate(packId, surface.id, startingRotation.current + delta)
+    lastRingAngle.current = angle
+    startingRotation.current += delta
+  }
+  const ringEvents = {
+    onPointerDown: (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation()
+      dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(...position))
+      if (!event.ray.intersectPlane(dragPlane, pointerPoint)) return
+      lastRingAngle.current = Math.atan2(pointerPoint.z - position[2], pointerPoint.x - position[0])
+      startingRotation.current = surface.rotation
+      setRotating(true)
+      document.body.classList.add('can-grab')
+      ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+      recordSceneInteraction('structure-surface.rotation-start', { packId, surfaceId: surface.id, name, rotation: surface.rotation })
+    },
+    onPointerMove: (event: ThreeEvent<PointerEvent>) => {
+      if (!rotating) return
+      event.stopPropagation()
+      rotateFromPointer(event)
+    },
+    onPointerUp: (event: ThreeEvent<PointerEvent>) => {
+      if (!rotating) return
+      event.stopPropagation()
+      setRotating(false)
+      document.body.classList.remove('can-grab')
+      ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
+      recordSceneInteraction('structure-surface.rotation-end', { packId, surfaceId: surface.id, name, rotation: useRoomStore.getState().structurePacks.find((pack) => pack.id === packId)?.surfaces.find((candidate) => candidate.id === surface.id)?.rotation })
+    },
+    onPointerCancel: (event: ThreeEvent<PointerEvent>) => {
+      if (!rotating) return
+      event.stopPropagation()
+      setRotating(false)
+      document.body.classList.remove('can-grab')
+    },
+    onPointerOver: (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation()
+      setRingHovered(true)
+      document.body.classList.add('can-grab')
+    },
+    onPointerOut: (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation()
+      setRingHovered(false)
+      if (!rotating) document.body.classList.remove('can-grab')
+    },
+  }
+
+  return (
+    <group position={[position[0], position[1] + gizmoHeight, position[2]]} renderOrder={8}>
+      {(['x', 'y', 'z'] as const).map((axis) => {
+        const direction: [number, number, number] = axis === 'x' ? [1, 0, 0] : axis === 'y' ? [0, 1, 0] : [0, 0, 1]
+        return (
+          <group key={axis} {...axisEvents(axis)}>
+            {([-1, 1] as const).map((side) => (
+              <group key={side}>
+                <mesh position={[direction[0] * side * shaftLength / 2, direction[1] * side * shaftLength / 2, direction[2] * side * shaftLength / 2]} renderOrder={8}>
+                  <boxGeometry args={axis === 'x' ? [shaftLength, 0.045, 0.045] : axis === 'y' ? [0.045, shaftLength, 0.045] : [0.045, 0.045, shaftLength]} />
+                  {axisMaterial(axis)}
+                </mesh>
+                <mesh
+                  position={[direction[0] * side * coneCenter, direction[1] * side * coneCenter, direction[2] * side * coneCenter]}
+                  rotation={axis === 'x'
+                    ? [0, 0, -Math.PI / 2 * side]
+                    : axis === 'y'
+                      ? side === 1 ? [0, 0, 0] : [Math.PI, 0, 0]
+                      : [Math.PI / 2 * side, 0, 0]}
+                  renderOrder={8}
+                >
+                  <coneGeometry args={[0.09, coneHeight, 16]} />
+                  {axisMaterial(axis)}
+                </mesh>
+              </group>
+            ))}
+          </group>
+        )
+      })}
+      {surface.kind === 'wall' && (
+        <group
+          position={[0, 0.035, 0]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          {...ringEvents}
+        >
+          <mesh renderOrder={7}>
+            <ringGeometry args={[radius - 0.035, radius + 0.035, 64]} />
+            <meshBasicMaterial color={rotating ? '#c63d2c' : ringHovered ? '#ff8a63' : '#ea6f4c'} side={THREE.DoubleSide} depthTest={false} depthWrite={false} toneMapped={false} />
+          </mesh>
+          <mesh renderOrder={6}>
+            <ringGeometry args={[radius - 0.11, radius + 0.11, 64]} />
+            <meshBasicMaterial transparent opacity={0} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
+          </mesh>
+        </group>
+      )}
     </group>
   )
 }
@@ -351,6 +800,10 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
   const setDoor = useRoomStore((state) => state.setDoor)
   const updateWindow = useRoomStore((state) => state.updateWindow)
   const [dragging, setDragging] = useState(false)
+  const capabilities = openingCapabilities(opening.kind)
+  const canMoveHorizontal = capabilities.translation.includes('wall-horizontal')
+  const canMoveVertical = capabilities.translation.includes('wall-vertical')
+  const dragAxis = useRef<'free' | 'horizontal' | 'vertical'>('free')
   const dragOffset = useRef(0)
   const dragSill = useRef(0)
   const point = useMemo(() => new THREE.Vector3(), [])
@@ -374,18 +827,21 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
     else updateWindow(opening.id, { offset, ...(sill === undefined ? {} : { sill }) })
   }
 
-  const startDrag = (event: ThreeEvent<PointerEvent>) => {
+  const startDrag = (event: ThreeEvent<PointerEvent>, axis: 'free' | 'horizontal' | 'vertical' = 'free') => {
     event.stopPropagation()
+    if ((axis === 'horizontal' && !canMoveHorizontal) || (axis === 'vertical' && !canMoveVertical)) return
     recordSceneInteraction('opening.pointer-down', {
       id: opening.id,
       kind: opening.kind,
-      name: opening.kind === 'door' ? 'Puerta' : 'Ventana',
+      name: openingName(opening),
       wall,
+      axis,
       pointerId: event.pointerId,
       intersectionCount: event.intersections.length,
     })
     selectElement(opening.id)
     if (!event.ray.intersectPlane(plane, point)) return
+    dragAxis.current = axis
     dragOffset.current = offsetAtPoint(point) - opening.offset
     dragSill.current = point.y - opening.bottom
     setDragging(true)
@@ -396,9 +852,12 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
     if (!dragging) return
     event.stopPropagation()
     if (event.ray.intersectPlane(plane, point)) {
+      const axis = dragAxis.current
       move(
-        offsetAtPoint(point) - dragOffset.current,
-        opening.kind === 'window' && !planView ? point.y - dragSill.current : undefined,
+        axis === 'vertical' || !canMoveHorizontal ? opening.offset : offsetAtPoint(point) - dragOffset.current,
+        opening.kind === 'window' && canMoveVertical && !planView && axis !== 'horizontal'
+          ? point.y - dragSill.current
+          : undefined,
       )
     }
   }
@@ -412,8 +871,9 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
     recordSceneInteraction('opening.drag-end', {
       id: opening.id,
       kind: opening.kind,
-      name: opening.kind === 'door' ? 'Puerta' : 'Ventana',
+      name: openingName(opening),
       wall: finalOpening?.wall,
+      axis: dragAxis.current,
       offset: finalOpening?.offset,
       sill: finalOpening && 'sill' in finalOpening ? finalOpening.sill : undefined,
     })
@@ -422,11 +882,7 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
     ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
   }
 
-  return {
-    onPointerDown: startDrag,
-    onPointerMove: drag,
-    onPointerUp: stopDrag,
-    onPointerCancel: stopDrag,
+  const hoverEvents = {
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
       document.body.classList.add('can-grab')
@@ -436,13 +892,30 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
       if (!dragging) document.body.classList.remove('can-grab')
     },
   }
+
+  return {
+    events: {
+      onPointerDown: (event: ThreeEvent<PointerEvent>) => startDrag(event, 'free'),
+      onPointerMove: drag,
+      onPointerUp: stopDrag,
+      onPointerCancel: stopDrag,
+      ...hoverEvents,
+    },
+    dragEventsForAxis: (axis: 'horizontal' | 'vertical') => ({
+      onPointerDown: (event: ThreeEvent<PointerEvent>) => startDrag(event, axis),
+      onPointerMove: drag,
+      onPointerUp: stopDrag,
+      onPointerCancel: stopDrag,
+      ...hoverEvents,
+    }),
+  }
 }
 
 const openingRingRadius = (opening: WallOpening, planView: boolean) => planView
   ? opening.width / 2 + 0.22
   : Math.hypot(opening.width, opening.height) / 2 + 0.18
 
-function OpeningMoveGizmo({ opening, planView = false, vertical = false }: { opening: WallOpening; planView?: boolean; vertical?: boolean }) {
+function OpeningMoveGizmo({ opening, dragEventsForAxis, horizontal = true, planView = false, vertical = false }: { opening: WallOpening; dragEventsForAxis: ReturnType<typeof useOpeningInteraction>['dragEventsForAxis']; horizontal?: boolean; planView?: boolean; vertical?: boolean }) {
   const [hoveredAxis, setHoveredAxis] = useState<'horizontal' | 'vertical' | null>(null)
   const [activeAxis, setActiveAxis] = useState<'horizontal' | 'vertical' | null>(null)
   const ringRadius = openingRingRadius(opening, planView)
@@ -457,19 +930,36 @@ function OpeningMoveGizmo({ opening, planView = false, vertical = false }: { ope
       : active ? '#46b98f' : '#2d987f'
     return <meshBasicMaterial color={color} depthTest={false} depthWrite={false} toneMapped={false} />
   }
-  const axisEvents = (axis: 'horizontal' | 'vertical') => ({
-    onPointerDown: () => setActiveAxis(axis),
-    onPointerUp: () => setActiveAxis(null),
-    onPointerCancel: () => setActiveAxis(null),
-    onPointerOver: () => setHoveredAxis(axis),
-    onPointerOut: () => {
-      setHoveredAxis((current) => current === axis ? null : current)
-    },
-  })
+  const axisEvents = (axis: 'horizontal' | 'vertical') => {
+    const dragEvents = dragEventsForAxis(axis)
+    return {
+      onPointerDown: (event: ThreeEvent<PointerEvent>) => {
+        setActiveAxis(axis)
+        dragEvents.onPointerDown(event)
+      },
+      onPointerMove: dragEvents.onPointerMove,
+      onPointerUp: (event: ThreeEvent<PointerEvent>) => {
+        setActiveAxis(null)
+        dragEvents.onPointerUp(event)
+      },
+      onPointerCancel: (event: ThreeEvent<PointerEvent>) => {
+        setActiveAxis(null)
+        dragEvents.onPointerCancel(event)
+      },
+      onPointerOver: (event: ThreeEvent<PointerEvent>) => {
+        setHoveredAxis(axis)
+        dragEvents.onPointerOver(event)
+      },
+      onPointerOut: (event: ThreeEvent<PointerEvent>) => {
+        setHoveredAxis((current) => current === axis ? null : current)
+        dragEvents.onPointerOut(event)
+      },
+    }
+  }
 
   return (
     <group position={[0, planView ? 0.13 : 0, planView ? 0 : 0.2]} renderOrder={8}>
-      <group {...axisEvents('horizontal')}>
+      {horizontal && <group {...axisEvents('horizontal')}>
         {([-1, 1] as const).map((direction) => (
           <group key={`horizontal-${direction}`}>
           <mesh position={[direction * shaftLength / 2, 0, 0]} renderOrder={8}>
@@ -482,7 +972,7 @@ function OpeningMoveGizmo({ opening, planView = false, vertical = false }: { ope
           </mesh>
           </group>
         ))}
-      </group>
+      </group>}
       {vertical && (
         <group {...axisEvents('vertical')}>
           {([-1, 1] as const).map((direction) => (
@@ -504,7 +994,6 @@ function OpeningMoveGizmo({ opening, planView = false, vertical = false }: { ope
 }
 
 function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: { opening: WallOpening; wall: WallSide; centerY?: number; planView?: boolean }) {
-  const setDoor = useRoomStore((state) => state.setDoor)
   const updateWindow = useRoomStore((state) => state.updateWindow)
   const [hovered, setHovered] = useState(false)
   const [active, setActive] = useState(false)
@@ -519,6 +1008,9 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
   const radius = openingRingRadius(opening, planView)
   const halfStroke = 0.042
   const color = active ? '#c63d2c' : hovered ? '#ff8a63' : '#ea6f4c'
+  const indicatorX = Math.sin(opening.rotation) * radius
+  const indicatorY = -Math.cos(opening.rotation) * radius
+  const indicatorAngle = Math.atan2(indicatorX, indicatorY)
 
   const angleAtPointer = (event: ThreeEvent<PointerEvent>) => {
     const group = ringRef.current
@@ -544,7 +1036,7 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
     recordSceneInteraction('opening.rotation-start', {
       id: opening.id,
       kind: opening.kind,
-      name: opening.kind === 'door' ? 'Puerta' : 'Ventana',
+      name: openingName(opening),
       wall,
       rotation: opening.rotation,
       shiftKey: event.nativeEvent.shiftKey,
@@ -565,21 +1057,18 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
     const nextRotation = event.nativeEvent.shiftKey
       ? targetRotation.current
       : snapFurnitureRotation(targetRotation.current)
-    if (opening.kind === 'door') setDoor({ rotation: nextRotation })
-    else updateWindow(opening.id, { rotation: nextRotation })
+    if (opening.kind === 'window') updateWindow(opening.id, { rotation: nextRotation })
   }
 
   const stopRotation = (event: ThreeEvent<PointerEvent>) => {
     if (!active) return
     event.stopPropagation()
     const latestRoom = useRoomStore.getState().room
-    const finalRotation = opening.kind === 'door'
-      ? latestRoom.door.rotation
-      : latestRoom.windows.find((candidate) => candidate.id === opening.id)?.rotation
+    const finalRotation = latestRoom.windows.find((candidate) => candidate.id === opening.id)?.rotation
     recordSceneInteraction('opening.rotation-end', {
       id: opening.id,
       kind: opening.kind,
-      name: opening.kind === 'door' ? 'Puerta' : 'Ventana',
+      name: openingName(opening),
       wall,
       rotation: finalRotation,
     })
@@ -628,69 +1117,258 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
         <ringGeometry args={[radius - 0.075, radius + 0.075, 64]} />
         <meshBasicMaterial transparent opacity={0} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
       </mesh>
+      <mesh
+        position={[indicatorX, indicatorY, 0.03]}
+        rotation={[0, 0, -indicatorAngle]}
+        renderOrder={10}
+        raycast={() => undefined}
+      >
+        <boxGeometry args={[0.045, 0.2, 0.04]} />
+        <meshBasicMaterial color="#9f3f31" depthTest={false} depthWrite={false} toneMapped={false} />
+      </mesh>
     </group>
   )
 }
 
 function OpeningDetail({ room, opening, wall, selected }: { room: RoomConfig; opening: WallOpening; wall: WallSide; selected: boolean }) {
   const interaction = useOpeningInteraction(room, opening, wall, false)
+  const capabilities = openingCapabilities(opening.kind)
+  const canMoveHorizontal = capabilities.translation.includes('wall-horizontal')
+  const canMoveVertical = capabilities.translation.includes('wall-vertical')
+  const baseColor = opening.color ?? '#c88f58'
+  const darkColor = colorTone(baseColor, -0.2)
+  const lightColor = colorTone(baseColor, 0.32)
   if (opening.kind === 'door') {
     const frameWidth = 0.07
     return (
-      <group position={[opening.offset, 0, 0.02]} {...interaction}>
+      <group position={[opening.offset, 0, 0.02]} {...interaction.events}>
         {selected && (
-          <>
-            <OpeningSelectionRing opening={opening} wall={wall} centerY={opening.height / 2} />
-            <group position={[0, opening.height / 2, 0]}>
-              <OpeningMoveGizmo opening={opening} />
-            </group>
-          </>
+          <group position={[0, opening.height / 2, 0]}>
+            <OpeningMoveGizmo
+              opening={opening}
+              dragEventsForAxis={interaction.dragEventsForAxis}
+              horizontal={canMoveHorizontal}
+            />
+          </group>
         )}
-        <mesh position={[-opening.width / 2 + frameWidth / 2, opening.height / 2, 0.05]}>
-          <boxGeometry args={[frameWidth, opening.height, 0.16]} />
-          <meshStandardMaterial color="#ac704b" />
-        </mesh>
-        <mesh position={[opening.width / 2 - frameWidth / 2, opening.height / 2, 0.05]}>
-          <boxGeometry args={[frameWidth, opening.height, 0.16]} />
-          <meshStandardMaterial color="#ac704b" />
-        </mesh>
-        <mesh position={[0, opening.height, 0.05]}>
-          <boxGeometry args={[opening.width, 0.08, 0.16]} />
-          <meshStandardMaterial color="#ac704b" />
-        </mesh>
+        <group position={[0, opening.height / 2, 0]} rotation={[0, 0, opening.rotation]}>
+          <mesh position={[-opening.width / 2 + frameWidth / 2, 0, 0.05]}>
+            <boxGeometry args={[frameWidth, opening.height, 0.16]} />
+            <meshStandardMaterial color={darkColor} />
+          </mesh>
+          <mesh position={[opening.width / 2 - frameWidth / 2, 0, 0.05]}>
+            <boxGeometry args={[frameWidth, opening.height, 0.16]} />
+            <meshStandardMaterial color={darkColor} />
+          </mesh>
+          <mesh position={[0, opening.height / 2, 0.05]}>
+            <boxGeometry args={[opening.width, 0.08, 0.16]} />
+            <meshStandardMaterial color={darkColor} />
+          </mesh>
+        </group>
       </group>
     )
   }
 
   const frameWidth = 0.07
+  if (opening.shape === 'wallShelf') {
+    const shelfDepth = 0.25
+    const shelfColor = baseColor
+    return (
+      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.08]} {...interaction.events}>
+        {selected && (
+          <>
+            {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
+            <OpeningMoveGizmo
+              opening={opening}
+              dragEventsForAxis={interaction.dragEventsForAxis}
+              horizontal={canMoveHorizontal}
+              vertical={canMoveVertical}
+            />
+          </>
+        )}
+        <group rotation={[0, 0, opening.rotation]}>
+          <mesh position={[0, 0, 0.015]} castShadow><boxGeometry args={[opening.width, opening.height, 0.05]} /><meshStandardMaterial color={darkColor} roughness={0.88} /></mesh>
+          {[-opening.height * 0.28, opening.height * 0.28].map((height) => (
+            <mesh key={height} position={[0, height, shelfDepth / 2]} castShadow><boxGeometry args={[opening.width, 0.075, shelfDepth]} /><meshStandardMaterial color={shelfColor} roughness={0.78} /></mesh>
+          ))}
+          {[-1, 1].map((side) => <mesh key={side} position={[side * opening.width * 0.46, 0, shelfDepth / 2]} castShadow><boxGeometry args={[0.065, opening.height, shelfDepth]} /><meshStandardMaterial color={shelfColor} roughness={0.78} /></mesh>)}
+          {[-0.3, 0, 0.3].map((x, index) => <mesh key={x} position={[x * opening.width, opening.height * 0.42, shelfDepth * 0.5]} castShadow><boxGeometry args={[0.11, 0.2 + index * 0.035, shelfDepth * 0.55]} /><meshStandardMaterial color={colorTone(baseColor, [-0.12, 0.22, -0.28][index])} /></mesh>)}
+        </group>
+      </group>
+    )
+  }
+  if (opening.shape && isWallMirrorShape(opening.shape)) {
+    const frameWidth = Math.min(0.065, opening.width * 0.12, opening.height * 0.12)
+    const circular = opening.shape === 'mirrorCircular'
+    const radius = Math.min(opening.width, opening.height) / 2
+    return (
+      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.07]} {...interaction.events}>
+        {selected && (
+          <>
+            {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
+            <OpeningMoveGizmo
+              opening={opening}
+              dragEventsForAxis={interaction.dragEventsForAxis}
+              horizontal={canMoveHorizontal}
+              vertical={canMoveVertical}
+            />
+          </>
+        )}
+        <group rotation={[0, 0, opening.rotation]}>
+          {circular ? (
+            <>
+              <mesh castShadow><circleGeometry args={[radius, 48]} /><meshStandardMaterial color={darkColor} roughness={0.78} /></mesh>
+              <mesh position={[0, 0, 0.018]}><circleGeometry args={[radius - frameWidth, 48]} /><meshStandardMaterial color="#dce7e4" metalness={0.18} roughness={0.28} /></mesh>
+              <mesh position={[0, 0, 0.026]}><ringGeometry args={[radius - frameWidth, radius, 48]} /><meshStandardMaterial color={baseColor} roughness={0.8} /></mesh>
+              <mesh position={[-radius * 0.2, radius * 0.12, 0.03]} rotation={[0, 0, -0.55]}><planeGeometry args={[frameWidth * 0.65, radius * 1.1]} /><meshStandardMaterial color="#fffdf9" transparent opacity={0.55} /></mesh>
+            </>
+          ) : (
+            <>
+              <mesh castShadow><boxGeometry args={[opening.width, opening.height, 0.06]} /><meshStandardMaterial color={darkColor} roughness={0.8} /></mesh>
+              <mesh position={[0, 0, 0.034]}><boxGeometry args={[opening.width - frameWidth * 2, opening.height - frameWidth * 2, 0.012]} /><meshStandardMaterial color="#dce7e4" metalness={0.18} roughness={0.28} /></mesh>
+              <mesh position={[-opening.width * 0.2, opening.height * 0.12, 0.043]} rotation={[0, 0, -0.55]}><planeGeometry args={[frameWidth * 0.65, opening.height * 0.62]} /><meshStandardMaterial color="#fffdf9" transparent opacity={0.55} /></mesh>
+            </>
+          )}
+        </group>
+      </group>
+    )
+  }
+  if (opening.shape === 'wallSconce') {
+    return (
+      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.075]} {...interaction.events}>
+        {selected && (
+          <>
+            {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
+            <OpeningMoveGizmo
+              opening={opening}
+              dragEventsForAxis={interaction.dragEventsForAxis}
+              horizontal={canMoveHorizontal}
+              vertical={canMoveVertical}
+            />
+          </>
+        )}
+        <group rotation={[0, 0, opening.rotation]}>
+          <mesh position={[0, 0, 0.015]} castShadow><boxGeometry args={[0.16, 0.26, 0.055]} /><meshStandardMaterial color={darkColor} roughness={0.8} /></mesh>
+          <mesh position={[0, 0, 0.07]} rotation={[Math.PI / 2, 0, 0]} castShadow><cylinderGeometry args={[0.025, 0.025, 0.12, 12]} /><meshStandardMaterial color={darkColor} metalness={0.2} roughness={0.55} /></mesh>
+          <mesh position={[0, -0.035, 0.16]} rotation={[Math.PI / 2, 0, 0]} castShadow><coneGeometry args={[0.16, 0.22, 24, 1, true]} /><meshStandardMaterial color={baseColor} side={THREE.DoubleSide} roughness={0.72} /></mesh>
+          <mesh position={[0, -0.145, 0.16]} rotation={[Math.PI / 2, 0, 0]}><circleGeometry args={[0.135, 24]} /><meshStandardMaterial color={colorTone(baseColor, 0.38)} side={THREE.DoubleSide} emissive={colorTone(baseColor, 0.25)} emissiveIntensity={0.22} /></mesh>
+          <pointLight position={[0, -0.18, 0.18]} color="#ffe0a6" intensity={0.25} distance={1.8} />
+        </group>
+      </group>
+    )
+  }
+  if (opening.shape === 'pictureSmall' || opening.shape === 'pictureMedium' || opening.shape === 'pictureLarge') {
+    const frameWidth = Math.min(0.07, opening.width * 0.12, opening.height * 0.12)
+    const accent = colorTone(baseColor, -0.08)
+    return (
+      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.07]} {...interaction.events}>
+        {selected && (
+          <>
+            {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
+            <OpeningMoveGizmo
+              opening={opening}
+              dragEventsForAxis={interaction.dragEventsForAxis}
+              horizontal={canMoveHorizontal}
+              vertical={canMoveVertical}
+            />
+          </>
+        )}
+        <group rotation={[0, 0, opening.rotation]}>
+          <mesh castShadow>
+            <boxGeometry args={[opening.width, opening.height, 0.055]} />
+            <meshStandardMaterial color={darkColor} roughness={0.78} />
+          </mesh>
+          <mesh position={[0, 0, 0.034]}>
+            <boxGeometry args={[opening.width - frameWidth * 2, opening.height - frameWidth * 2, 0.014]} />
+            <meshStandardMaterial color={lightColor} roughness={0.92} />
+          </mesh>
+          <mesh position={[-opening.width * 0.2, opening.height * 0.16, 0.044]}>
+            <circleGeometry args={[Math.min(opening.width, opening.height) * 0.17, 24]} />
+            <meshStandardMaterial color={colorTone(baseColor, 0.42)} />
+          </mesh>
+          <mesh position={[opening.width * 0.13, -opening.height * 0.1, 0.045]} rotation={[0, 0, 0.2]}>
+            <planeGeometry args={[opening.width * 0.42, opening.height * 0.28]} />
+            <meshStandardMaterial color={accent} />
+          </mesh>
+          <mesh position={[-opening.width * 0.13, -opening.height * 0.22, 0.046]} rotation={[0, 0, -0.16]}>
+            <planeGeometry args={[opening.width * 0.32, opening.height * 0.16]} />
+            <meshStandardMaterial color={colorTone(baseColor, -0.3)} />
+          </mesh>
+        </group>
+      </group>
+    )
+  }
+  if (opening.shape === 'circular') {
+    const radius = Math.min(opening.width, opening.height) / 2
+    return (
+      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.01]} {...interaction.events}>
+        {selected && (
+          <>
+            {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
+            <OpeningMoveGizmo
+              opening={opening}
+              dragEventsForAxis={interaction.dragEventsForAxis}
+              horizontal={canMoveHorizontal}
+              vertical={canMoveVertical}
+            />
+          </>
+        )}
+        <group rotation={[0, 0, opening.rotation]}>
+          <mesh>
+            <circleGeometry args={[radius - frameWidth, 64]} />
+            <meshStandardMaterial color={lightColor} transparent opacity={0.62} roughness={0.15} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[0, 0, 0.04]}>
+            <ringGeometry args={[radius - frameWidth, radius, 64]} />
+            <meshStandardMaterial color={baseColor} roughness={0.72} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[0, 0, 0.05]}>
+            <boxGeometry args={[frameWidth * 0.72, (radius - frameWidth) * 2, 0.065]} />
+            <meshStandardMaterial color={lightColor} />
+          </mesh>
+          <mesh position={[0, 0, 0.05]}>
+            <boxGeometry args={[(radius - frameWidth) * 2, frameWidth * 0.72, 0.065]} />
+            <meshStandardMaterial color={lightColor} />
+          </mesh>
+        </group>
+      </group>
+    )
+  }
   return (
-    <group position={[opening.offset, opening.bottom + opening.height / 2, 0.01]} {...interaction}>
+    <group position={[opening.offset, opening.bottom + opening.height / 2, 0.01]} {...interaction.events}>
       {selected && (
         <>
-          <OpeningSelectionRing opening={opening} wall={wall} />
-          <OpeningMoveGizmo opening={opening} vertical />
+          {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
+          <OpeningMoveGizmo
+            opening={opening}
+            dragEventsForAxis={interaction.dragEventsForAxis}
+            horizontal={canMoveHorizontal}
+            vertical={canMoveVertical}
+          />
         </>
       )}
-      <mesh>
-        <boxGeometry args={[opening.width - frameWidth * 2, opening.height - frameWidth * 2, 0.035]} />
-        <meshStandardMaterial color="#a9d9df" transparent opacity={0.62} roughness={0.15} />
-      </mesh>
-      <mesh position={[0, 0, 0.026]}>
-        <boxGeometry args={[0.055, opening.height, 0.07]} />
-        <meshStandardMaterial color="#f0c58d" />
-      </mesh>
-      {[-1, 1].map((side) => (
-        <mesh key={side} position={[side * (opening.width / 2 - frameWidth / 2), 0, 0.035]}>
-          <boxGeometry args={[frameWidth, opening.height, 0.09]} />
-          <meshStandardMaterial color="#c88f58" />
+      <group rotation={[0, 0, opening.rotation]}>
+        <mesh>
+          <boxGeometry args={[opening.width - frameWidth * 2, opening.height - frameWidth * 2, 0.035]} />
+          <meshStandardMaterial color={lightColor} transparent opacity={0.62} roughness={0.15} />
         </mesh>
-      ))}
-      {[-1, 1].map((side) => (
-        <mesh key={side} position={[0, side * (opening.height / 2 - frameWidth / 2), 0.035]}>
-          <boxGeometry args={[opening.width, frameWidth, 0.09]} />
-          <meshStandardMaterial color="#c88f58" />
+        <mesh position={[0, 0, 0.026]}>
+          <boxGeometry args={[0.055, opening.height, 0.07]} />
+          <meshStandardMaterial color={lightColor} />
         </mesh>
-      ))}
+        {[-1, 1].map((side) => (
+          <mesh key={side} position={[side * (opening.width / 2 - frameWidth / 2), 0, 0.035]}>
+            <boxGeometry args={[frameWidth, opening.height, 0.09]} />
+            <meshStandardMaterial color={baseColor} />
+          </mesh>
+        ))}
+        {[-1, 1].map((side) => (
+          <mesh key={side} position={[0, side * (opening.height / 2 - frameWidth / 2), 0.035]}>
+            <boxGeometry args={[opening.width, frameWidth, 0.09]} />
+            <meshStandardMaterial color={baseColor} />
+          </mesh>
+        ))}
+      </group>
     </group>
   )
 }
@@ -700,6 +1378,7 @@ function PlanOpening({ room, opening, wall }: { room: RoomConfig; opening: WallO
   const interaction = useOpeningInteraction(room, opening, wall, true)
   const horizontal = wall === 'north' || wall === 'south'
   const selected = selectedId === opening.id
+  const canMoveHorizontal = openingCapabilities(opening.kind).translation.includes('wall-horizontal')
   const color = selected ? '#ea6f4c' : opening.kind === 'door' ? '#e9895b' : '#65b7c2'
   let position: [number, number, number]
   if (wall === 'north') position = [opening.offset, 0.035, -room.depth / 2]
@@ -707,13 +1386,13 @@ function PlanOpening({ room, opening, wall }: { room: RoomConfig; opening: WallO
   else if (wall === 'east') position = [room.width / 2, 0.035, opening.offset]
   else position = [-room.width / 2, 0.035, opening.offset]
   return (
-    <group position={position} rotation={horizontal ? [0, 0, 0] : [0, Math.PI / 2, 0]} {...interaction}>
+    <group position={position} rotation={horizontal ? [0, 0, 0] : [0, Math.PI / 2, 0]} {...interaction.events}>
       <mesh renderOrder={selected ? 6 : 0}>
         <boxGeometry args={[opening.width, selected ? 0.09 : 0.055, selected ? 0.16 : 0.1]} />
         <meshBasicMaterial color={color} />
       </mesh>
       {selected && (
-        <OpeningMoveGizmo opening={opening} planView />
+        <OpeningMoveGizmo opening={opening} dragEventsForAxis={interaction.dragEventsForAxis} horizontal={canMoveHorizontal} planView />
       )}
     </group>
   )
@@ -734,7 +1413,7 @@ function FloorGrid({ room, visible }: { room: RoomConfig; visible: boolean }) {
 
   if (!visible) return null
   return (
-    <lineSegments>
+    <lineSegments raycast={() => undefined}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
@@ -745,15 +1424,19 @@ function FloorGrid({ room, visible }: { room: RoomConfig; visible: boolean }) {
 
 function FurnitureModel({ item }: { item: FurnitureItem }) {
   const material = <meshStandardMaterial color={item.color} roughness={0.78} />
+  const darkColor = colorTone(item.color, -0.2)
+  const deeperColor = colorTone(item.color, -0.34)
+  const lightColor = colorTone(item.color, 0.28)
+  const paleColor = colorTone(item.color, 0.42)
   if (item.kind === 'armchair') {
     const armWidth = 0.15
     const backDepth = 0.16
     return (
       <group>
         <mesh position={[0, 0.34, 0]} castShadow><boxGeometry args={[item.width * 0.74, 0.32, item.depth * 0.68]} />{material}</mesh>
-        <mesh position={[0, 0.65, item.depth / 2 - backDepth / 2]} castShadow><boxGeometry args={[item.width, 0.55, backDepth]} />{material}</mesh>
+        <mesh position={[0, 0.65, -item.depth / 2 + backDepth / 2]} castShadow><boxGeometry args={[item.width, 0.55, backDepth]} />{material}</mesh>
         {[-1, 1].map((side) => <mesh key={side} position={[side * (item.width - armWidth) / 2, 0.46, 0]} castShadow><boxGeometry args={[armWidth, 0.42, item.depth]} />{material}</mesh>)}
-        {[-1, 1].map((side) => <mesh key={`leg-${side}`} position={[side * item.width * 0.32, 0.11, -item.depth * 0.2]}><boxGeometry args={[0.08, 0.22, 0.08]} /><meshStandardMaterial color="#795641" /></mesh>)}
+        {[-1, 1].map((side) => <mesh key={`leg-${side}`} position={[side * item.width * 0.32, 0.11, -item.depth * 0.2]}><boxGeometry args={[0.08, 0.22, 0.08]} /><meshStandardMaterial color={darkColor} /></mesh>)}
       </group>
     )
   }
@@ -762,10 +1445,10 @@ function FurnitureModel({ item }: { item: FurnitureItem }) {
     return (
       <group>
         <mesh position={[0, 0.34, 0]} castShadow><boxGeometry args={[item.width * 0.86, 0.3, item.depth * 0.72]} />{material}</mesh>
-        <mesh position={[0, 0.64, item.depth / 2 - 0.09]} castShadow><boxGeometry args={[item.width, 0.54, 0.18]} />{material}</mesh>
+        <mesh position={[0, 0.64, -item.depth / 2 + 0.09]} castShadow><boxGeometry args={[item.width, 0.54, 0.18]} />{material}</mesh>
         {[-1, 1].map((side) => <mesh key={side} position={[side * (item.width - armWidth) / 2, 0.45, 0]} castShadow><boxGeometry args={[armWidth, 0.4, item.depth]} />{material}</mesh>)}
-        <mesh position={[0, 0.5, -0.03]} castShadow><boxGeometry args={[0.045, 0.3, item.depth * 0.56]} /><meshStandardMaterial color="#9e594d" roughness={0.82} /></mesh>
-        {[-1, 1].flatMap((x) => [-1, 1].map((z) => <mesh key={`${x}-${z}`} position={[x * item.width * 0.4, 0.09, z * item.depth * 0.28]}><boxGeometry args={[0.08, 0.18, 0.08]} /><meshStandardMaterial color="#72503d" /></mesh>))}
+        <mesh position={[0, 0.5, -0.03]} castShadow><boxGeometry args={[0.045, 0.3, item.depth * 0.56]} /><meshStandardMaterial color={darkColor} roughness={0.82} /></mesh>
+        {[-1, 1].flatMap((x) => [-1, 1].map((z) => <mesh key={`${x}-${z}`} position={[x * item.width * 0.4, 0.09, z * item.depth * 0.28]}><boxGeometry args={[0.08, 0.18, 0.08]} /><meshStandardMaterial color={deeperColor} /></mesh>))}
       </group>
     )
   }
@@ -775,9 +1458,159 @@ function FurnitureModel({ item }: { item: FurnitureItem }) {
         <mesh position={[0, item.height - 0.08, 0]} castShadow><boxGeometry args={[item.width, 0.16, item.depth]} />{material}</mesh>
         {[-1, 1].flatMap((x) => [-1, 1].map((z) => (
           <mesh key={`${x}-${z}`} position={[x * item.width * 0.38, item.height / 2 - 0.08, z * item.depth * 0.34]} castShadow>
-            <boxGeometry args={[0.1, item.height - 0.16, 0.1]} /><meshStandardMaterial color="#8f6545" />
+            <boxGeometry args={[0.1, item.height - 0.16, 0.1]} /><meshStandardMaterial color={darkColor} />
           </mesh>
         )))}
+      </group>
+    )
+  }
+  if (item.kind === 'coffeeTable') {
+    return (
+      <group>
+        <mesh position={[0, item.height - 0.06, 0]} castShadow><boxGeometry args={[item.width, 0.12, item.depth]} />{material}</mesh>
+        {[-1, 1].flatMap((x) => [-1, 1].map((z) => (
+          <mesh key={`${x}-${z}`} position={[x * item.width * 0.4, item.height / 2 - 0.06, z * item.depth * 0.36]} castShadow>
+            <boxGeometry args={[0.07, item.height - 0.12, 0.07]} /><meshStandardMaterial color={darkColor} />
+          </mesh>
+        )))}
+      </group>
+    )
+  }
+  if (item.kind === 'desk') {
+    return (
+      <group>
+        <mesh position={[0, item.height - 0.06, 0]} castShadow><boxGeometry args={[item.width, 0.12, item.depth]} />{material}</mesh>
+        <mesh position={[-item.width * 0.29, item.height * 0.47, 0]} castShadow><boxGeometry args={[item.width * 0.32, item.height * 0.65, item.depth * 0.72]} /><meshStandardMaterial color={darkColor} /></mesh>
+        {[-1, 1].map((side) => <mesh key={side} position={[side * item.width * 0.42, item.height / 2 - 0.06, 0]} castShadow><boxGeometry args={[0.07, item.height - 0.12, item.depth * 0.84]} /><meshStandardMaterial color={deeperColor} /></mesh>)}
+        <mesh position={[-item.width * 0.29, item.height * 0.47, item.depth * 0.38]}><boxGeometry args={[item.width * 0.25, item.height * 0.21, 0.025]} /><meshStandardMaterial color={lightColor} /></mesh>
+      </group>
+    )
+  }
+  if (item.kind === 'deskChair') {
+    const casterAngles = Array.from({ length: 5 }, (_, index) => index * Math.PI * 2 / 5)
+    return (
+      <group>
+        <mesh position={[0, 0.47, 0.03]} castShadow><cylinderGeometry args={[item.width * 0.39, item.width * 0.39, 0.12, 28]} />{material}</mesh>
+        <mesh position={[0, 0.66, -item.depth * 0.35]} castShadow><boxGeometry args={[item.width * 0.82, 0.36, 0.1]} />{material}</mesh>
+        <mesh position={[0, 0.25, 0]}><cylinderGeometry args={[0.035, 0.045, 0.32, 16]} /><meshStandardMaterial color={darkColor} metalness={0.25} roughness={0.5} /></mesh>
+        <mesh position={[0, 0.08, 0]} castShadow><cylinderGeometry args={[0.065, 0.065, 0.07, 20]} /><meshStandardMaterial color={deeperColor} metalness={0.2} roughness={0.55} /></mesh>
+        {casterAngles.map((angle) => (
+          <group key={angle} rotation={[0, angle, 0]}>
+            <mesh position={[0, 0.075, 0.1]} castShadow><boxGeometry args={[0.045, 0.04, 0.2]} /><meshStandardMaterial color={deeperColor} /></mesh>
+            <mesh position={[0, 0.045, 0.21]} rotation={[Math.PI / 2, 0, 0]} castShadow><cylinderGeometry args={[0.04, 0.04, 0.035, 16]} /><meshStandardMaterial color={darkColor} /></mesh>
+          </group>
+        ))}
+      </group>
+    )
+  }
+  if (item.kind === 'vase') {
+    return (
+      <group>
+        <mesh position={[0, item.height * 0.45, 0]} castShadow><latheGeometry args={[[[0.1, 0], [0.16, 0.04], [0.22, 0.14], [0.25, 0.28], [0.22, 0.38], [0.12, 0.44], [0.1, 0.5]].map(([radius, height]) => new THREE.Vector2(radius, height))]} />{material}</mesh>
+        <mesh position={[0, item.height * 0.95, 0]}><cylinderGeometry args={[0.1, 0.1, 0.035, 24]} /><meshStandardMaterial color={darkColor} roughness={0.8} side={THREE.DoubleSide} /></mesh>
+        <mesh position={[0, item.height * 0.55, item.depth * 0.22]}><torusGeometry args={[0.16, 0.012, 8, 32]} /><meshStandardMaterial color={lightColor} roughness={0.8} /></mesh>
+      </group>
+    )
+  }
+  if (item.kind === 'tableLamp') {
+    return (
+      <group>
+        <mesh position={[0, 0.035, 0]} castShadow><cylinderGeometry args={[0.19, 0.22, 0.07, 24]} /><meshStandardMaterial color={darkColor} metalness={0.2} roughness={0.55} /></mesh>
+        <mesh position={[0, 0.22, 0]} castShadow><cylinderGeometry args={[0.025, 0.035, 0.32, 16]} /><meshStandardMaterial color={deeperColor} metalness={0.25} roughness={0.5} /></mesh>
+        <mesh position={[0, 0.44, 0]} castShadow><cylinderGeometry args={[0.11, 0.24, 0.3, 28, 1, true]} />{material}</mesh>
+        <mesh position={[0, 0.29, 0]} rotation={[Math.PI / 2, 0, 0]}><circleGeometry args={[0.11, 24]} /><meshStandardMaterial color={lightColor} emissive={lightColor} emissiveIntensity={0.12} side={THREE.DoubleSide} /></mesh>
+        <pointLight position={[0, 0.3, 0]} color="#ffe0a6" intensity={0.18} distance={1.5} />
+      </group>
+    )
+  }
+  if (item.kind === 'ceilingLamp') {
+    return (
+      <group>
+        <mesh position={[0, item.height - 0.025, 0]} castShadow><cylinderGeometry args={[0.18, 0.18, 0.05, 24]} /><meshStandardMaterial color={darkColor} metalness={0.2} roughness={0.55} /></mesh>
+        <mesh position={[0, item.height * 0.58, 0]} castShadow><cylinderGeometry args={[0.025, 0.025, item.height * 0.78, 12]} /><meshStandardMaterial color={deeperColor} metalness={0.25} roughness={0.5} /></mesh>
+        <mesh position={[0, item.height * 0.2, 0]} castShadow><cylinderGeometry args={[0.13, 0.27, item.height * 0.38, 28, 1, true]} />{material}</mesh>
+        <mesh position={[0, item.height * 0.01, 0]}><circleGeometry args={[0.13, 24]} /><meshStandardMaterial color={lightColor} emissive={lightColor} emissiveIntensity={0.2} side={THREE.DoubleSide} /></mesh>
+        <pointLight position={[0, 0, 0]} color="#ffe0a6" intensity={0.45} distance={3} />
+      </group>
+    )
+  }
+  if (item.kind === 'tvStand') {
+    return (
+      <group>
+        <mesh position={[0, item.height * 0.48, 0]} castShadow><boxGeometry args={[item.width * 0.96, item.height * 0.72, item.depth * 0.88]} />{material}</mesh>
+        <mesh position={[0, item.height - 0.04, 0]} castShadow><boxGeometry args={[item.width, 0.08, item.depth]} /><meshStandardMaterial color={darkColor} /></mesh>
+        <mesh position={[0, item.height * 0.43, item.depth * 0.45]}><boxGeometry args={[item.width * 0.035, item.height * 0.55, 0.025]} /><meshStandardMaterial color={darkColor} /></mesh>
+        {[-1, 1].map((side) => <mesh key={side} position={[side * item.width * 0.34, item.height * 0.48, item.depth * 0.46]}><boxGeometry args={[item.width * 0.24, item.height * 0.38, 0.025]} /><meshStandardMaterial color={lightColor} /></mesh>)}
+        {[-1, 1].map((side) => <mesh key={`leg-${side}`} position={[side * item.width * 0.4, 0.055, 0]}><boxGeometry args={[0.08, 0.11, item.depth * 0.75]} /><meshStandardMaterial color={deeperColor} /></mesh>)}
+      </group>
+    )
+  }
+  if (item.kind === 'television') {
+    return (
+      <group>
+        <mesh position={[0, item.height * 0.58, 0]} castShadow><boxGeometry args={[item.width, item.height * 0.78, 0.07]} /><meshStandardMaterial color={deeperColor} roughness={0.48} /></mesh>
+        <mesh position={[0, item.height * 0.58, 0.041]}><boxGeometry args={[item.width * 0.91, item.height * 0.68, 0.012]} /><meshStandardMaterial color={darkColor} roughness={0.32} metalness={0.12} /></mesh>
+        <mesh position={[0, item.height * 0.12, 0]}><boxGeometry args={[0.07, item.height * 0.24, 0.07]} /><meshStandardMaterial color={deeperColor} /></mesh>
+        <mesh position={[0, item.height * 0.025, 0.015]}><boxGeometry args={[item.width * 0.34, 0.035, item.depth * 0.68]} /><meshStandardMaterial color={darkColor} /></mesh>
+      </group>
+    )
+  }
+  if (item.kind === 'rug') {
+    return (
+      <group>
+        <mesh position={[0, 0.012, 0]} receiveShadow><boxGeometry args={[item.width, 0.02, item.depth]} /><meshStandardMaterial color={darkColor} roughness={0.96} /></mesh>
+        <mesh position={[0, 0.024, 0]} receiveShadow><boxGeometry args={[item.width * 0.96, 0.004, item.depth * 0.96]} />{material}</mesh>
+        {[-1, 1].map((side) => <mesh key={side} position={[side * item.width * 0.28, 0.027, 0]}><boxGeometry args={[0.035, 0.002, item.depth * 0.72]} /><meshStandardMaterial color={paleColor} roughness={0.95} /></mesh>)}
+        <mesh position={[0, 0.027, 0]}><boxGeometry args={[item.width * 0.62, 0.002, 0.035]} /><meshStandardMaterial color={paleColor} roughness={0.95} /></mesh>
+      </group>
+    )
+  }
+  if (item.kind === 'circularRug') {
+    const radius = Math.min(item.width, item.depth) / 2
+    return (
+      <group>
+        <mesh position={[0, 0.031, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <circleGeometry args={[radius, 64]} />
+          {material}
+        </mesh>
+        <mesh position={[0, 0.033, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[radius * 0.68, radius * 0.72, 64]} />
+          <meshStandardMaterial color={paleColor} roughness={0.95} />
+        </mesh>
+        <mesh position={[0, 0.033, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[radius * 0.28, radius * 0.32, 48]} />
+          <meshStandardMaterial color={paleColor} roughness={0.95} />
+        </mesh>
+      </group>
+    )
+  }
+  if (item.kind === 'plant') {
+    return (
+      <group>
+        <mesh position={[0, 0.16, 0]} castShadow><cylinderGeometry args={[item.width * 0.36, item.width * 0.28, 0.32, 24]} /><meshStandardMaterial color={darkColor} roughness={0.82} /></mesh>
+        <mesh position={[0, 0.325, 0]}><cylinderGeometry args={[item.width * 0.36, item.width * 0.36, 0.035, 24]} /><meshStandardMaterial color={deeperColor} /></mesh>
+        <mesh position={[0, 0.34, 0]}><cylinderGeometry args={[item.width * 0.3, item.width * 0.3, 0.02, 24]} /><meshStandardMaterial color="#59493c" roughness={1} /></mesh>
+        <mesh position={[0, 0.71, 0]} castShadow><cylinderGeometry args={[0.018, 0.025, 0.72, 10]} /><meshStandardMaterial color={deeperColor} /></mesh>
+        {[[-0.1, 0.68, 0], [0.1, 0.76, 0.02], [0, 0.88, 0.02], [-0.08, 0.91, 0.01], [0.09, 0.59, 0.02]].map(([x, y, z], index) => (
+          <mesh key={index} position={[x, y, z]} rotation={[0.2, index * 0.7, (index % 2 ? 1 : -1) * 0.3]} castShadow>
+            <sphereGeometry args={[0.15, 16, 12]} /><meshStandardMaterial color={index % 2 ? lightColor : item.color} roughness={0.9} />
+          </mesh>
+        ))}
+      </group>
+    )
+  }
+  if (item.kind === 'bedsideTable') {
+    return (
+      <group>
+        <mesh position={[0, 0.325, 0]} castShadow><boxGeometry args={[item.width * 0.9, 0.38, item.depth * 0.9]} />{material}</mesh>
+        {[0.41, 0.25].map((drawerY) => (
+          <group key={drawerY}>
+            <mesh position={[0, drawerY, item.depth * 0.46]} castShadow><boxGeometry args={[item.width * 0.78, 0.13, 0.035]} /><meshStandardMaterial color={darkColor} /></mesh>
+            <mesh position={[0, drawerY, item.depth * 0.5 + 0.02]}><sphereGeometry args={[0.025, 12, 12]} /><meshStandardMaterial color={paleColor} metalness={0.35} /></mesh>
+          </group>
+        ))}
+        <mesh position={[0, item.height - 0.035, 0]} castShadow><boxGeometry args={[item.width, 0.07, item.depth]} /><meshStandardMaterial color={darkColor} /></mesh>
+        {[-1, 1].flatMap((x) => [-1, 1].map((z) => <mesh key={`${x}-${z}`} position={[x * item.width * 0.4, 0.06, z * item.depth * 0.4]}><boxGeometry args={[0.055, 0.12, 0.055]} /><meshStandardMaterial color={deeperColor} /></mesh>))}
       </group>
     )
   }
@@ -785,22 +1618,33 @@ function FurnitureModel({ item }: { item: FurnitureItem }) {
     return (
       <group>
         <mesh position={[0, 0.46, 0]} castShadow><boxGeometry args={[item.width, 0.1, item.depth]} />{material}</mesh>
-        <mesh position={[0, 0.67, item.depth / 2 - 0.045]} castShadow><boxGeometry args={[item.width, 0.42, 0.09]} />{material}</mesh>
+        <mesh position={[0, 0.64, -item.depth / 2 + 0.045]} castShadow><boxGeometry args={[item.width, 0.42, 0.09]} />{material}</mesh>
         {[-1, 1].flatMap((x) => [-1, 1].map((z) => (
           <mesh key={`${x}-${z}`} position={[x * item.width * 0.38, 0.22, z * item.depth * 0.36]} castShadow>
-            <boxGeometry args={[0.055, 0.44, 0.055]} /><meshStandardMaterial color="#8f6545" />
+            <boxGeometry args={[0.055, 0.44, 0.055]} /><meshStandardMaterial color={darkColor} />
           </mesh>
         )))}
       </group>
     )
   }
-  if (item.kind === 'bed') {
+  if (item.kind === 'bed' || item.kind === 'singleBed') {
     return (
       <group>
-        <mesh position={[0, 0.13, 0]} castShadow><boxGeometry args={[item.width, 0.26, item.depth]} /><meshStandardMaterial color="#876650" roughness={0.86} /></mesh>
+        <mesh position={[0, 0.13, 0]} castShadow><boxGeometry args={[item.width, 0.26, item.depth]} /><meshStandardMaterial color={deeperColor} roughness={0.86} /></mesh>
         <mesh position={[0, 0.34, -item.depth * 0.03]} castShadow><boxGeometry args={[item.width * 0.94, 0.22, item.depth * 0.88]} />{material}</mesh>
-        <mesh position={[0, 0.46, item.depth * 0.28]} castShadow><boxGeometry args={[item.width * 0.72, 0.14, item.depth * 0.22]} /><meshStandardMaterial color="#eee3ce" roughness={0.95} /></mesh>
-        <mesh position={[0, item.height * 0.62, item.depth / 2 - 0.055]} castShadow><boxGeometry args={[item.width, item.height * 1.05, 0.11]} /><meshStandardMaterial color="#6f8d88" roughness={0.82} /></mesh>
+        <mesh position={[0, 0.46, -item.depth * 0.28]} castShadow><boxGeometry args={[item.width * 0.72, 0.14, item.depth * 0.22]} /><meshStandardMaterial color={paleColor} roughness={0.95} /></mesh>
+        <mesh position={[0, item.height * 0.62, -item.depth / 2 + 0.055]} castShadow><boxGeometry args={[item.width, item.height * 1.05, 0.11]} /><meshStandardMaterial color={darkColor} roughness={0.82} /></mesh>
+      </group>
+    )
+  }
+  if (item.kind === 'wardrobe') {
+    return (
+      <group>
+        <mesh position={[0, item.height / 2, 0]} castShadow><boxGeometry args={[item.width, item.height, item.depth]} />{material}</mesh>
+        <mesh position={[0, item.height / 2, item.depth / 2 + 0.012]}><boxGeometry args={[0.045, item.height * 0.91, 0.025]} /><meshStandardMaterial color={darkColor} /></mesh>
+        <mesh position={[0, item.height - 0.09, item.depth / 2 + 0.014]}><boxGeometry args={[item.width * 0.9, 0.06, 0.03]} /><meshStandardMaterial color={lightColor} /></mesh>
+        {[-0.12, 0.12].map((x) => <mesh key={x} position={[x, item.height * 0.52, item.depth / 2 + 0.04]}><capsuleGeometry args={[0.018, 0.11, 6, 10]} /><meshStandardMaterial color={paleColor} metalness={0.4} roughness={0.4} /></mesh>)}
+        <mesh position={[0, 0.055, 0]}><boxGeometry args={[item.width * 0.94, 0.11, item.depth * 0.9]} /><meshStandardMaterial color={deeperColor} /></mesh>
       </group>
     )
   }
@@ -808,17 +1652,41 @@ function FurnitureModel({ item }: { item: FurnitureItem }) {
     const board = 0.07
     return (
       <group>
-        <mesh position={[0, item.height / 2, item.depth / 2 - 0.035]} castShadow><boxGeometry args={[item.width, item.height, 0.07]} /><meshStandardMaterial color="#76543d" roughness={0.88} /></mesh>
+        <mesh position={[0, item.height / 2, -item.depth / 2 + 0.035]} castShadow><boxGeometry args={[item.width, item.height, 0.07]} /><meshStandardMaterial color={deeperColor} roughness={0.88} /></mesh>
         {[-1, 1].map((side) => <mesh key={side} position={[side * (item.width - board) / 2, item.height / 2, 0]} castShadow><boxGeometry args={[board, item.height, item.depth]} />{material}</mesh>)}
         {[0.05, 0.47, 0.89, 1.31, 1.73].map((height) => <mesh key={height} position={[0, Math.min(height, item.height - board / 2), 0]} castShadow><boxGeometry args={[item.width, board, item.depth]} />{material}</mesh>)}
+      </group>
+    )
+  }
+  if (item.kind === 'wastebasket') {
+    const topRadius = item.width * 0.43
+    return (
+      <group>
+        <mesh position={[0, item.height / 2, 0]} castShadow><cylinderGeometry args={[topRadius, item.width * 0.35, item.height, 28, 1, true]} /><meshStandardMaterial color={item.color} roughness={0.78} side={THREE.DoubleSide} /></mesh>
+        <mesh position={[0, 0.025, 0]}><cylinderGeometry args={[item.width * 0.35, item.width * 0.35, 0.05, 28]} /><meshStandardMaterial color={darkColor} /></mesh>
+        <mesh position={[0, item.height - 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[topRadius - 0.025, 32]} /><meshStandardMaterial color={deeperColor} side={THREE.DoubleSide} /></mesh>
+        <mesh position={[0, item.height + 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[topRadius - 0.028, topRadius, 32]} /><meshStandardMaterial color={darkColor} side={THREE.DoubleSide} /></mesh>
+      </group>
+    )
+  }
+  if (item.kind === 'pictureSmall' || item.kind === 'pictureMedium' || item.kind === 'pictureLarge') {
+    const centerY = 1.4
+    const frame = 0.065
+    return (
+      <group position={[0, centerY, 0]}>
+        <mesh castShadow><boxGeometry args={[item.width, item.height, 0.07]} /><meshStandardMaterial color={darkColor} roughness={0.85} /></mesh>
+        <mesh position={[0, 0, 0.045]}><boxGeometry args={[item.width - frame * 2, item.height - frame * 2, 0.035]} /><meshStandardMaterial color={lightColor} roughness={0.72} /></mesh>
+        <mesh position={[-item.width * 0.2, item.height * 0.13, 0.068]} rotation={[0, 0, -0.28]}><circleGeometry args={[Math.min(item.width, item.height) * 0.16, 24]} /><meshStandardMaterial color={paleColor} /></mesh>
+        <mesh position={[item.width * 0.14, -item.height * 0.11, 0.069]} rotation={[0, 0, 0.24]}><planeGeometry args={[item.width * 0.46, item.height * 0.23]} /><meshStandardMaterial color={item.color} /></mesh>
+        <mesh position={[-item.width * 0.14, -item.height * 0.2, 0.07]} rotation={[0, 0, -0.18]}><planeGeometry args={[item.width * 0.34, item.height * 0.16]} /><meshStandardMaterial color={deeperColor} /></mesh>
       </group>
     )
   }
   if (item.kind === 'lamp') {
     return (
       <group>
-        <mesh position={[0, 0.055, 0]} castShadow><cylinderGeometry args={[0.22, 0.25, 0.11, 28]} /><meshStandardMaterial color="#665a4d" metalness={0.25} roughness={0.55} /></mesh>
-        <mesh position={[0, item.height * 0.48, 0]} castShadow><cylinderGeometry args={[0.025, 0.025, item.height * 0.88, 16]} /><meshStandardMaterial color="#776a59" metalness={0.35} roughness={0.45} /></mesh>
+        <mesh position={[0, 0.055, 0]} castShadow><cylinderGeometry args={[0.22, 0.25, 0.11, 28]} /><meshStandardMaterial color={darkColor} metalness={0.25} roughness={0.55} /></mesh>
+        <mesh position={[0, item.height * 0.48, 0]} castShadow><cylinderGeometry args={[0.025, 0.025, item.height * 0.88, 16]} /><meshStandardMaterial color={deeperColor} metalness={0.35} roughness={0.45} /></mesh>
         <mesh position={[0, item.height * 0.88, 0]} castShadow><coneGeometry args={[0.28, 0.42, 28, 1, true]} />{material}</mesh>
         <pointLight position={[0, item.height * 0.82, 0]} intensity={0.35} distance={2.2} color="#ffd891" />
       </group>
@@ -827,14 +1695,14 @@ function FurnitureModel({ item }: { item: FurnitureItem }) {
   return (
     <group>
       <mesh position={[0, item.height / 2, 0]} castShadow>{material}<boxGeometry args={[item.width, item.height, item.depth]} /></mesh>
-      <mesh position={[0, item.height / 2, -item.depth / 2 + 0.012]}><boxGeometry args={[0.035, item.height * 0.86, 0.02]} /><meshStandardMaterial color="#506b63" /></mesh>
-      {[-0.15, 0.15].map((x) => <mesh key={x} position={[x, item.height / 2, -item.depth / 2 + 0.028]}><sphereGeometry args={[0.027, 12, 12]} /><meshStandardMaterial color="#e9c079" metalness={0.25} /></mesh>)}
-      {[-1, 1].map((x) => <mesh key={x} position={[x * item.width * 0.38, 0.06, 0]}><boxGeometry args={[0.09, 0.12, item.depth * 0.72]} /><meshStandardMaterial color="#40584f" /></mesh>)}
+      <mesh position={[0, item.height / 2, item.depth / 2 + 0.012]}><boxGeometry args={[0.035, item.height * 0.86, 0.02]} /><meshStandardMaterial color={darkColor} /></mesh>
+      {[-0.15, 0.15].map((x) => <mesh key={x} position={[x, item.height / 2, item.depth / 2 + 0.028]}><sphereGeometry args={[0.027, 12, 12]} /><meshStandardMaterial color={paleColor} metalness={0.25} /></mesh>)}
+      {[-1, 1].map((x) => <mesh key={x} position={[x * item.width * 0.38, 0.06, 0]}><boxGeometry args={[0.09, 0.12, item.depth * 0.72]} /><meshStandardMaterial color={deeperColor} /></mesh>)}
     </group>
   )
 }
 
-type FloorMoveAxis = 'x' | 'z'
+type FloorMoveAxis = 'x' | 'y' | 'z'
 
 function RotationHandle({ item }: { item: FurnitureItem }) {
   const setFurnitureRotation = useRoomStore((state) => state.setFurnitureRotation)
@@ -908,6 +1776,9 @@ function RotationHandle({ item }: { item: FurnitureItem }) {
     },
   }
   const color = dragging ? '#c63d2c' : hovered ? '#ff8a63' : '#ea6f4c'
+  const indicatorX = Math.sin(item.rotation) * radius
+  const indicatorY = -Math.cos(item.rotation) * radius
+  const indicatorAngle = Math.atan2(indicatorX, indicatorY)
 
   return (
     <group {...events} position={[0, 0.065, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -925,6 +1796,10 @@ function RotationHandle({ item }: { item: FurnitureItem }) {
         <ringGeometry args={[radius - 0.075, radius + 0.075, 64]} />
         <meshBasicMaterial transparent opacity={0} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
       </mesh>
+      <mesh position={[indicatorX, indicatorY, 0.018]} rotation={[0, 0, -indicatorAngle]} renderOrder={6}>
+        <boxGeometry args={[0.045, 0.2, 0.04]} />
+        <meshBasicMaterial color="#9f3f31" depthTest={false} depthWrite={false} toneMapped={false} />
+      </mesh>
     </group>
   )
 }
@@ -934,7 +1809,8 @@ function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall: WallSi
   const [dragging, setDragging] = useState(false)
   const [hovered, setHovered] = useState(false)
   const point = useMemo(() => new THREE.Vector3(), [])
-  const center = useMemo(() => new THREE.Vector3(item.x, item.height / 2 + 0.02, item.z), [item.height, item.x, item.z])
+  const wheelHeight = -0.42
+  const center = useMemo(() => new THREE.Vector3(item.x, wheelHeight, item.z), [item.x, item.z, wheelHeight])
   const plane = useMemo(() => {
     const normal = wall === 'north' || wall === 'south'
       ? new THREE.Vector3(0, 0, 1)
@@ -943,9 +1819,15 @@ function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall: WallSi
   }, [center, wall])
   const lastPointerAngle = useRef(0)
   const targetRotation = useRef(item.rotation)
-  const radius = Math.max(Math.hypot(item.width, item.depth) / 2, item.height / 2) + 0.18
+  const radius = 0.46
+  const wheelScaleY = 0.38
   const halfStroke = 0.042
   const ringRotation: [number, number, number] = wall === 'east' || wall === 'west' ? [0, Math.PI / 2, 0] : [0, 0, 0]
+  const indicatorRadius = radius - 0.025
+  const indicatorX = Math.sin(item.rotation) * indicatorRadius
+  const indicatorY = Math.cos(item.rotation) * indicatorRadius * wheelScaleY
+  const indicatorLength = Math.hypot(indicatorX, indicatorY)
+  const indicatorAngle = Math.atan2(indicatorX, indicatorY)
 
   const pointerAngle = (event: ThreeEvent<PointerEvent>) => {
     if (!event.ray.intersectPlane(plane, point)) return null
@@ -956,7 +1838,7 @@ function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall: WallSi
         : wall === 'east'
           ? point.z - item.z
           : item.z - point.z
-    return Math.atan2(point.y - center.y, screenX)
+    return Math.atan2(screenX, (point.y - center.y) / wheelScaleY)
   }
 
   const startRotation = (event: ThreeEvent<PointerEvent>) => {
@@ -982,10 +1864,7 @@ function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall: WallSi
     )
     targetRotation.current += delta
     lastPointerAngle.current = angle
-    setFurnitureRotation(
-      item.id,
-      event.nativeEvent.shiftKey ? targetRotation.current : snapFurnitureRotation(targetRotation.current),
-    )
+    setFurnitureRotation(item.id, targetRotation.current)
   }
 
   const stopRotation = (event: ThreeEvent<PointerEvent>) => {
@@ -1017,32 +1896,45 @@ function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall: WallSi
   const color = dragging ? '#c63d2c' : hovered ? '#ff8a63' : '#ea6f4c'
 
   return (
-    <group {...events} position={[0, item.height / 2, 0]} rotation={ringRotation}>
-      <mesh renderOrder={9}>
+    <group {...events} position={[0, wheelHeight, 0]} rotation={ringRotation}>
+      <mesh renderOrder={9} scale={[1, wheelScaleY, 1]}>
         <ringGeometry args={[radius - halfStroke, radius + halfStroke, 64]} />
         <meshBasicMaterial color={color} side={THREE.DoubleSide} depthTest={false} depthWrite={false} toneMapped={false} />
       </mesh>
       {dragging && (
-        <mesh renderOrder={8}>
+        <mesh renderOrder={8} scale={[1, wheelScaleY, 1]}>
           <ringGeometry args={[radius - 0.082, radius + 0.082, 64]} />
           <meshBasicMaterial color="#ff9b78" transparent opacity={0.3} side={THREE.DoubleSide} depthTest={false} depthWrite={false} toneMapped={false} />
         </mesh>
       )}
-      <mesh renderOrder={8}>
+      <mesh renderOrder={8} scale={[1, wheelScaleY, 1]}>
         <ringGeometry args={[radius - 0.075, radius + 0.075, 64]} />
         <meshBasicMaterial transparent opacity={0} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
+      </mesh>
+      <mesh
+        position={[indicatorX / 2, indicatorY / 2, 0.018]}
+        rotation={[0, 0, -indicatorAngle]}
+        renderOrder={11}
+      >
+        <boxGeometry args={[0.045, indicatorLength, 0.035]} />
+        <meshBasicMaterial color="#9f3f31" depthTest={false} depthWrite={false} toneMapped={false} />
       </mesh>
     </group>
   )
 }
 
-function AxisMoveGizmo({ item }: { item: FurnitureItem }) {
+function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canMoveVertically = true }: { item: FurnitureItem; groundLevel?: boolean; hideAxis?: FloorMoveAxis | null; canMoveVertically?: boolean }) {
+  const beginFurnitureMove = useRoomStore((state) => state.beginFurnitureMove)
+  const endFurnitureMove = useRoomStore((state) => state.endFurnitureMove)
   const moveFurniture = useRoomStore((state) => state.moveFurniture)
+  const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
+  const { camera, size } = useThree()
   const [draggingAxis, setDraggingAxis] = useState<FloorMoveAxis | null>(null)
   const [hoveredAxis, setHoveredAxis] = useState<FloorMoveAxis | null>(null)
   const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
   const point = useMemo(() => new THREE.Vector3(), [])
   const dragOffset = useRef(0)
+  const screenDrag = useRef<{ axis: FloorMoveAxis; clientX: number; clientY: number; x: number; y: number; z: number } | null>(null)
   const ringRadius = Math.hypot(item.width, item.depth) / 2 + 0.12
   const coneHeight = 0.24
   const tipDistance = ringRadius - 0.055
@@ -1051,9 +1943,31 @@ function AxisMoveGizmo({ item }: { item: FurnitureItem }) {
 
   const startDrag = (axis: FloorMoveAxis, event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation()
-    if (!event.ray.intersectPlane(floorPlane, point)) return
-    recordSceneInteraction('furniture.axis-drag-start', { id: item.id, name: item.name, axis, x: item.x, z: item.z })
-    dragOffset.current = axis === 'x' ? point.x - item.x : point.z - item.z
+    if (axis === 'y') {
+      screenDrag.current = {
+        axis,
+        clientX: event.nativeEvent.clientX,
+        clientY: event.nativeEvent.clientY,
+        x: item.x,
+        y: item.y,
+        z: item.z,
+      }
+    } else if (!event.ray.intersectPlane(floorPlane, point)) {
+      if (!groundLevel) return
+      screenDrag.current = {
+        axis,
+        clientX: event.nativeEvent.clientX,
+        clientY: event.nativeEvent.clientY,
+        x: item.x,
+        y: item.y,
+        z: item.z,
+      }
+    } else {
+      screenDrag.current = null
+      dragOffset.current = axis === 'x' ? point.x - item.x : point.z - item.z
+    }
+    recordSceneInteraction('furniture.axis-drag-start', { id: item.id, name: item.name, axis, x: item.x, y: item.y, z: item.z })
+    beginFurnitureMove()
     setDraggingAxis(axis)
     document.body.classList.add('can-grab')
     ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
@@ -1062,17 +1976,33 @@ function AxisMoveGizmo({ item }: { item: FurnitureItem }) {
   const drag = (event: ThreeEvent<PointerEvent>) => {
     if (!draggingAxis) return
     event.stopPropagation()
+    const fallback = screenDrag.current
+    if (fallback) {
+      const worldPerPixel = camera instanceof THREE.OrthographicCamera
+        ? (camera.right - camera.left) / camera.zoom / Math.max(size.width, 1)
+        : 0.01
+      const pixels = fallback.axis === 'x'
+        ? event.nativeEvent.clientX - fallback.clientX
+        : fallback.clientY - event.nativeEvent.clientY
+      const delta = pixels * worldPerPixel
+      if (fallback.axis === 'x') moveFurniture(item.id, fallback.x + delta, fallback.z)
+      else if (fallback.axis === 'y') moveFurnitureVertically(item.id, fallback.y + delta)
+      else moveFurniture(item.id, fallback.x, fallback.z + delta)
+      return
+    }
     if (!event.ray.intersectPlane(floorPlane, point)) return
     if (draggingAxis === 'x') moveFurniture(item.id, point.x - dragOffset.current, item.z)
-    else moveFurniture(item.id, item.x, point.z - dragOffset.current)
+    else if (draggingAxis === 'z') moveFurniture(item.id, item.x, point.z - dragOffset.current)
   }
 
   const stopDrag = (event: ThreeEvent<PointerEvent>) => {
     if (!draggingAxis) return
     event.stopPropagation()
     const finalItem = useRoomStore.getState().furniture.find((candidate) => candidate.id === item.id)
-    recordSceneInteraction('furniture.axis-drag-end', { id: item.id, name: item.name, axis: draggingAxis, x: finalItem?.x, z: finalItem?.z })
+    recordSceneInteraction('furniture.axis-drag-end', { id: item.id, name: item.name, axis: draggingAxis, x: finalItem?.x, y: finalItem?.y, z: finalItem?.z })
+    endFurnitureMove()
     setDraggingAxis(null)
+    screenDrag.current = null
     document.body.classList.remove('can-grab')
     ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
   }
@@ -1104,8 +2034,8 @@ function AxisMoveGizmo({ item }: { item: FurnitureItem }) {
   })
 
   return (
-    <group position={[0, item.height + 0.2, 0]}>
-      <group {...axisEvents('x')}>
+    <group position={[0, groundLevel ? 0.085 : item.height + 0.2, 0]}>
+      {hideAxis !== 'x' && <group {...axisEvents('x')}>
         {([-1, 1] as const).map((direction) => (
           <group key={direction}>
             <mesh position={[direction * shaftLength / 2, 0, 0]} renderOrder={8}>
@@ -1122,8 +2052,8 @@ function AxisMoveGizmo({ item }: { item: FurnitureItem }) {
             </mesh>
           </group>
         ))}
-      </group>
-      <group {...axisEvents('z')}>
+      </group>}
+      {hideAxis !== 'z' && <group {...axisEvents('z')}>
         {([-1, 1] as const).map((direction) => (
           <group key={direction}>
             <mesh position={[0, 0, direction * shaftLength / 2]} renderOrder={8}>
@@ -1140,18 +2070,187 @@ function AxisMoveGizmo({ item }: { item: FurnitureItem }) {
             </mesh>
           </group>
         ))}
+      </group>}
+      {hideAxis !== 'y' && canMoveVertically && <group {...axisEvents('y')}>
+        {([-1, 1] as const).map((direction) => (
+          <group key={direction}>
+            <mesh position={[0, direction * shaftLength / 2, 0]} renderOrder={8}>
+              <boxGeometry args={[0.055, shaftLength, 0.055]} />
+              {axisMaterial('y', '#4d75d8', '#7197ff')}
+            </mesh>
+            <mesh
+              position={[0, direction * coneCenter, 0]}
+              rotation={[direction < 0 ? Math.PI : 0, 0, 0]}
+              renderOrder={8}
+            >
+              <coneGeometry args={[0.115, coneHeight, 20]} />
+              {axisMaterial('y', '#4d75d8', '#7197ff')}
+            </mesh>
+          </group>
+        ))}
+      </group>}
+    </group>
+  )
+}
+
+function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: WallSide }) {
+  const beginFurnitureMove = useRoomStore((state) => state.beginFurnitureMove)
+  const endFurnitureMove = useRoomStore((state) => state.endFurnitureMove)
+  const moveFurniture = useRoomStore((state) => state.moveFurniture)
+  const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
+  const { camera, size } = useThree()
+  const [draggingAxis, setDraggingAxis] = useState<'horizontal' | 'vertical' | null>(null)
+  const [hoveredAxis, setHoveredAxis] = useState<'horizontal' | 'vertical' | null>(null)
+  const canMoveVertically = !isFloorBoundFurniture(item.kind) && !isCeilingMountedFurniture(item.kind)
+  const dragStart = useRef({ clientX: 0, clientY: 0, x: item.x, y: item.y, z: item.z })
+  const horizontalAxis = wall === 'north' || wall === 'south' ? 'x' : 'z'
+  const horizontalSign = wall === 'south' || wall === 'west' ? -1 : 1
+  const planeRotation: [number, number, number] = wall === 'north'
+    ? [0, 0, 0]
+    : wall === 'south'
+      ? [0, Math.PI, 0]
+      : wall === 'east'
+        ? [0, -Math.PI / 2, 0]
+        : [0, Math.PI / 2, 0]
+  const coneHeight = 0.3
+  const axisLength = Math.max(0.72, Math.min(1.05, Math.hypot(item.width, item.depth) / 2 + 0.22))
+  const shaftLength = Math.max(0.28, axisLength - coneHeight)
+  const coneCenter = axisLength - coneHeight / 2
+
+  const worldPerPixel = () => camera instanceof THREE.OrthographicCamera
+    ? (camera.right - camera.left) / camera.zoom / Math.max(size.width, 1)
+    : 0.01
+
+  const startDrag = (axis: 'horizontal' | 'vertical', event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation()
+    dragStart.current = {
+      clientX: event.nativeEvent.clientX,
+      clientY: event.nativeEvent.clientY,
+      x: item.x,
+      y: item.y,
+      z: item.z,
+    }
+    recordSceneInteraction('furniture.axis-drag-start', {
+      id: item.id,
+      name: item.name,
+      axis: axis === 'horizontal' ? horizontalAxis : 'y',
+      mode: 'front',
+      wall,
+      x: item.x,
+      y: item.y,
+      z: item.z,
+    })
+    beginFurnitureMove()
+    setDraggingAxis(axis)
+    document.body.classList.add('can-grab')
+    ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+  }
+
+  const drag = (event: ThreeEvent<PointerEvent>) => {
+    if (!draggingAxis) return
+    event.stopPropagation()
+    const deltaX = event.nativeEvent.clientX - dragStart.current.clientX
+    const deltaY = event.nativeEvent.clientY - dragStart.current.clientY
+    if (draggingAxis === 'horizontal') {
+      const delta = deltaX * worldPerPixel() * horizontalSign
+      moveFurniture(
+        item.id,
+        horizontalAxis === 'x' ? dragStart.current.x + delta : dragStart.current.x,
+        horizontalAxis === 'z' ? dragStart.current.z + delta : dragStart.current.z,
+      )
+    } else {
+      moveFurnitureVertically(item.id, dragStart.current.y - deltaY * worldPerPixel())
+    }
+  }
+
+  const stopDrag = (event: ThreeEvent<PointerEvent>) => {
+    if (!draggingAxis) return
+    event.stopPropagation()
+    const finalItem = useRoomStore.getState().furniture.find((candidate) => candidate.id === item.id)
+    recordSceneInteraction('furniture.axis-drag-end', {
+      id: item.id,
+      name: item.name,
+      axis: draggingAxis === 'horizontal' ? horizontalAxis : 'y',
+      mode: 'front',
+      wall,
+      x: finalItem?.x,
+      y: finalItem?.y,
+      z: finalItem?.z,
+    })
+    endFurnitureMove()
+    setDraggingAxis(null)
+    document.body.classList.remove('can-grab')
+    ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
+  }
+
+  const eventsForAxis = (axis: 'horizontal' | 'vertical') => ({
+    onPointerDown: (event: ThreeEvent<PointerEvent>) => startDrag(axis, event),
+    onPointerMove: drag,
+    onPointerUp: stopDrag,
+    onPointerCancel: stopDrag,
+    onPointerOver: (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation()
+      setHoveredAxis(axis)
+      document.body.classList.add('can-grab')
+    },
+    onPointerOut: (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation()
+      setHoveredAxis((current) => current === axis ? null : current)
+      if (!draggingAxis) document.body.classList.remove('can-grab')
+    },
+  })
+
+  const renderAxis = (axis: 'horizontal' | 'vertical') => {
+    const active = hoveredAxis === axis || draggingAxis === axis
+    const color = axis === 'horizontal'
+      ? active ? '#ff694f' : '#dd4f3f'
+      : active ? '#7197ff' : '#4d75d8'
+    return (
+      <group {...eventsForAxis(axis)}>
+        {([-1, 1] as const).map((direction) => (
+          <group key={direction}>
+            <mesh
+              position={axis === 'horizontal' ? [direction * shaftLength / 2, 0, 0] : [0, direction * shaftLength / 2, 0]}
+              renderOrder={11}
+            >
+              <boxGeometry args={axis === 'horizontal' ? [shaftLength, 0.075, 0.075] : [0.075, shaftLength, 0.075]} />
+              <meshBasicMaterial color={color} depthTest={false} depthWrite={false} toneMapped={false} />
+            </mesh>
+            <mesh
+              position={axis === 'horizontal' ? [direction * coneCenter, 0, 0] : [0, direction * coneCenter, 0]}
+              rotation={axis === 'horizontal' ? [0, 0, direction * -Math.PI / 2] : [direction < 0 ? Math.PI : 0, 0, 0]}
+              renderOrder={11}
+            >
+              <coneGeometry args={[0.15, coneHeight, 24]} />
+              <meshBasicMaterial color={color} depthTest={false} depthWrite={false} toneMapped={false} />
+            </mesh>
+          </group>
+        ))}
       </group>
+    )
+  }
+
+  return (
+    <group position={[item.x, item.y + item.height / 2, item.z]} rotation={planeRotation}>
+      {renderAxis('horizontal')}
+      {canMoveVertically && renderAxis('vertical')}
     </group>
   )
 }
 
 function FurnitureObject({ item, selected, canDrag, planView, frontWall }: { item: FurnitureItem; selected: boolean; canDrag: boolean; planView: boolean; frontWall: WallSide | null }) {
   const selectElement = useRoomStore((state) => state.selectElement)
+  const beginFurnitureMove = useRoomStore((state) => state.beginFurnitureMove)
+  const endFurnitureMove = useRoomStore((state) => state.endFurnitureMove)
   const moveFurniture = useRoomStore((state) => state.moveFurniture)
+  const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
+  const { camera, size } = useThree()
   const [dragging, setDragging] = useState(false)
+  const canMoveVertically = !isFloorBoundFurniture(item.kind)
   const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
   const point = useMemo(() => new THREE.Vector3(), [])
   const dragOffset = useRef({ x: 0, z: 0 })
+  const frontDragStart = useRef({ clientX: 0, clientY: 0, x: item.x, y: item.y, z: item.z })
 
   const handleDown = (event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation()
@@ -1169,14 +2268,48 @@ function FurnitureObject({ item, selected, canDrag, planView, frontWall }: { ite
     })
     selectElement(item.id)
     if (!canDrag) return
+    if (frontWall !== null) {
+      frontDragStart.current = {
+        clientX: event.nativeEvent.clientX,
+        clientY: event.nativeEvent.clientY,
+        x: item.x,
+        y: item.y,
+        z: item.z,
+      }
+      beginFurnitureMove()
+      setDragging(true)
+      ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+      return
+    }
     if (!event.ray.intersectPlane(floorPlane, point)) return
     dragOffset.current = { x: point.x - item.x, z: point.z - item.z }
+    beginFurnitureMove()
     setDragging(true)
     ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
   }
   const handleMove = (event: ThreeEvent<PointerEvent>) => {
     if (!dragging || !canDrag) return
     event.stopPropagation()
+    if (frontWall !== null) {
+      const worldPerPixel = camera instanceof THREE.OrthographicCamera
+        ? (camera.right - camera.left) / camera.zoom / Math.max(size.width, 1)
+        : 0.01
+      const horizontalAxis = frontWall === 'north' || frontWall === 'south' ? 'x' : 'z'
+      const horizontalSign = frontWall === 'south' || frontWall === 'west' ? -1 : 1
+      const horizontalDelta = (event.nativeEvent.clientX - frontDragStart.current.clientX) * worldPerPixel * horizontalSign
+      moveFurniture(
+        item.id,
+        horizontalAxis === 'x' ? frontDragStart.current.x + horizontalDelta : frontDragStart.current.x,
+        horizontalAxis === 'z' ? frontDragStart.current.z + horizontalDelta : frontDragStart.current.z,
+      )
+      if (canMoveVertically && !isCeilingMountedFurniture(item.kind)) {
+        moveFurnitureVertically(
+          item.id,
+          frontDragStart.current.y - (event.nativeEvent.clientY - frontDragStart.current.clientY) * worldPerPixel,
+        )
+      }
+      return
+    }
     if (event.ray.intersectPlane(floorPlane, point)) {
       moveFurniture(item.id, point.x - dragOffset.current.x, point.z - dragOffset.current.z)
     }
@@ -1185,20 +2318,31 @@ function FurnitureObject({ item, selected, canDrag, planView, frontWall }: { ite
     if (!dragging) return
     event.stopPropagation()
     const finalItem = useRoomStore.getState().furniture.find((candidate) => candidate.id === item.id)
-    recordSceneInteraction('furniture.drag-end', { id: item.id, name: item.name, x: finalItem?.x, z: finalItem?.z })
+    recordSceneInteraction('furniture.drag-end', {
+      id: item.id,
+      name: item.name,
+      mode: frontWall ? 'front' : planView ? 'top' : undefined,
+      x: finalItem?.x,
+      y: finalItem?.y,
+      z: finalItem?.z,
+    })
+    endFurnitureMove()
     setDragging(false)
     ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
   }
 
   return (
-    <group position={[item.x, 0.02, item.z]}>
+    <group position={[item.x, item.y + 0.02, item.z]}>
       <group
         rotation={[0, item.rotation, 0]}
         onPointerDown={handleDown}
         onPointerMove={handleMove}
         onPointerUp={handleUp}
         onPointerCancel={() => {
-          if (dragging) recordSceneInteraction('furniture.drag-cancel', { id: item.id, name: item.name })
+          if (dragging) {
+            recordSceneInteraction('furniture.drag-cancel', { id: item.id, name: item.name })
+            endFurnitureMove()
+          }
           setDragging(false)
         }}
         onPointerOver={() => { if (canDrag) document.body.classList.add('can-grab') }}
@@ -1210,9 +2354,11 @@ function FurnitureObject({ item, selected, canDrag, planView, frontWall }: { ite
         </mesh>
         <FurnitureModel item={item} />
       </group>
-      {selected && canDrag && (
+      {selected && canDrag && !isWallPictureKind(item.kind) && (
         <>
-          <AxisMoveGizmo item={item} />
+          {frontWall
+            ? <FrontAxisMoveGizmo item={item} wall={frontWall} />
+            : <AxisMoveGizmo item={item} groundLevel={!canMoveVertically} canMoveVertically={canMoveVertically} />}
           {frontWall ? <FrontRotationHandle item={item} wall={frontWall} /> : <RotationHandle item={item} />}
         </>
       )}
@@ -1242,7 +2388,7 @@ function StudioLight({ room }: { room: RoomConfig }) {
   )
 }
 
-function WallIdentityLabel({ room, wall, view }: { room: RoomConfig; wall: WallSide; view: ViewMode }) {
+function WallIdentityLabel({ room, wall, view, wallView }: { room: RoomConfig; wall: WallSide; view: ViewMode; wallView: WallSide | null }) {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas')
     canvas.width = 256
@@ -1291,8 +2437,9 @@ function WallIdentityLabel({ room, wall, view }: { room: RoomConfig; wall: WallS
   }, [wall])
   useEffect(() => () => texture.dispose(), [texture])
 
-  const height = room.height + (view === 'front' ? 0.95 : 0.44)
-  const wallOffset = view === 'top' ? 0.65 : 0.04
+  const isFrontSideWall = view === 'front' && wall !== (wallView ?? 'north')
+  const height = isFrontSideWall ? room.height / 2 : room.height + 0.44
+  const wallOffset = 0.6
   const position: [number, number, number] = wall === 'north'
     ? [0, height, -room.depth / 2 - wallOffset]
     : wall === 'south'
@@ -1308,55 +2455,86 @@ function WallIdentityLabel({ room, wall, view }: { room: RoomConfig; wall: WallS
   )
 }
 
-function RoomWorld(props: SceneProps) {
+function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null> }) {
   const selectedId = useRoomStore((state) => state.selectedId)
   const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
   const selectElement = useRoomStore((state) => state.selectElement)
+  const cameraRoom = {
+    ...props.room,
+    height: Math.max(props.room.height, ...props.structurePacks.map((pack) => pack.y + props.room.height)),
+  }
   let hidden: WallSide[] = []
-  if (props.view === 'top') hidden = ['north', 'east', 'south', 'west']
+  if (props.exportMode) hidden = []
+  else if (props.view === 'top') hidden = ['north', 'east', 'south', 'west']
   else if (props.view === 'front') hidden = [hiddenWallForCardinalTarget(props.wallView ?? 'north')]
   else if (props.view === 'isometric') hidden = hiddenWallsForOrientation(props.orientation)
-  const labeledWalls = props.view === 'front'
-    ? [props.wallView ?? 'north']
-    : props.view === 'isometric'
+  else if (props.view === 'free') hidden = hiddenWallsForOrientation(orientationForAzimuth(props.freeAzimuth))
+  const frontSideWalls = sideWallsForFrontView(props.wallView ?? 'north')
+  const frontWalls = [props.wallView ?? 'north', frontSideWalls.left, frontSideWalls.right]
+  const labeledWalls = props.exportMode ? [] : props.view === 'front'
+    ? frontWalls
+    : props.view === 'isometric' || props.view === 'free'
       ? WALL_SIDES.filter((wall) => !hidden.includes(wall))
       : WALL_SIDES
-  const gridWalls = props.view === 'front'
-    ? [props.wallView ?? 'north']
-    : props.view === 'isometric'
-      ? WALL_SIDES.filter((wall) => !hidden.includes(wall))
-      : []
+  const gridWalls = props.exportMode
+    ? []
+    : props.view === 'front'
+      ? frontWalls
+      : props.view === 'isometric' || props.view === 'free'
+        ? WALL_SIDES.filter((wall) => !hidden.includes(wall))
+        : []
 
   return (
     <>
-      <CameraRig room={props.room} view={props.view} isoAngle={props.isoAngle} isIsoOrbitDragging={props.isIsoOrbitDragging} cameraZoom={props.cameraZoom} wallView={props.wallView} frontCameraHeight={props.frontCameraHeight} povYaw={props.povYaw} />
+      <CameraRig room={cameraRoom} view={props.view} orientation={props.orientation} isoAngle={props.isoAngle} isIsoOrbitDragging={props.isIsoOrbitDragging} freeAzimuth={props.freeAzimuth} freeElevation={props.freeElevation} isFreeOrbitDragging={props.isFreeOrbitDragging} cameraZoom={props.cameraZoom} wallView={props.wallView} frontCameraHeight={props.frontCameraHeight} povYaw={props.povYaw} />
       <color attach="background" args={['#e8dfd3']} />
       <ambientLight intensity={1.35} />
       <StudioLight room={props.room} />
       <hemisphereLight args={['#ddecf0', '#bd9170', 0.75]} />
 
-      <group>
-        <mesh receiveShadow onPointerDown={(event) => {
+      <group ref={modelRootRef}>
+        <mesh receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
           event.stopPropagation()
           recordSceneInteraction('background.pointer-down', { target: 'floor' })
           selectElement(null)
         }}>
           <boxGeometry args={[props.room.width, 0.08, props.room.depth]} />
-          <meshStandardMaterial color="#dcc3a3" roughness={0.94} />
+          <meshStandardMaterial color={props.room.floorColor ?? DEFAULT_FLOOR_COLOR} roughness={0.94} />
         </mesh>
-        <FloorGrid room={props.room} visible={props.gridVisibility.floor} />
+        <FloorGrid room={props.room} visible={!props.exportMode && props.gridVisibility.floor} />
         {WALL_SIDES.map((wall) => (
           <SoftWall
             key={wall}
             room={props.room}
             wall={wall}
             hidden={hidden.includes(wall)}
-            showOpeningDetails={props.view !== 'top'}
+            showOpeningDetails={props.exportMode || props.view !== 'top'}
             showGrid={gridWalls.includes(wall) && props.gridVisibility[wall]}
+            exportMode={props.exportMode}
           />
         ))}
-        {labeledWalls.map((wall) => <WallIdentityLabel key={`label-${wall}`} room={props.room} wall={wall} view={props.view} />)}
-        {props.view === 'top' && WALL_SIDES.flatMap((wall) =>
+        {labeledWalls.map((wall) => <WallIdentityLabel key={`label-${wall}`} room={props.room} wall={wall} view={props.view} wallView={props.wallView} />)}
+        {props.structurePacks.map((pack) => (
+          <group key={pack.id} position={[pack.x, pack.y, pack.z]} visible={!hiddenElementIds.includes(pack.id)}>
+            {pack.surfaces.map((surface) => {
+              const surfaceId = `structure-surface:${pack.id}:${surface.id}`
+              const independentSurface = pack.id.startsWith('floor-object-') || pack.id.startsWith('wall-object-')
+              return (
+                <StructureSurfaceObject
+                  key={surface.id}
+                  room={props.room}
+                  packId={pack.id}
+                  packName={pack.name}
+                  surface={surface}
+                  hidden={hiddenElementIds.includes(surfaceId) || (!independentSurface && surface.kind === 'wall' && surface.wall !== undefined && hidden.includes(surface.wall))}
+                  selected={!props.exportMode && selectedId === surfaceId}
+                  onSelect={() => selectElement(surfaceId)}
+                />
+              )
+            })}
+          </group>
+        ))}
+        {!props.exportMode && props.view === 'top' && WALL_SIDES.flatMap((wall) =>
           openingsForWall(props.room, wall)
             .filter((opening) => !hiddenElementIds.includes(opening.id))
             .map((opening) => <PlanOpening key={`${wall}-${opening.id}`} room={props.room} opening={opening} wall={wall} />),
@@ -1365,13 +2543,13 @@ function RoomWorld(props: SceneProps) {
           <FurnitureObject
             key={item.id}
             item={item}
-            selected={item.id === selectedId}
+            selected={!props.exportMode && item.id === selectedId}
             canDrag={props.view !== 'pov'}
             planView={props.view === 'top'}
             frontWall={props.view === 'front' ? props.wallView ?? 'north' : null}
           />
         ))}
-        <mesh position={[0, -0.11, 0]} receiveShadow onPointerDown={(event) => {
+        <mesh position={[0, -0.11, 0]} receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
           event.stopPropagation()
           recordSceneInteraction('background.pointer-down', { target: 'platform' })
           selectElement(null)
@@ -1531,6 +2709,145 @@ function CompassIsoMarker({
   )
 }
 
+function CompassAxisLabel({
+  label,
+  color,
+  position,
+  onClick,
+}: {
+  label: string
+  color: string
+  position: [number, number, number]
+  onClick: () => void
+}) {
+  const [hovered, setHovered] = useState(false)
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 128
+    canvas.height = 128
+    const context = canvas.getContext('2d')
+    if (context) {
+      context.beginPath()
+      context.arc(64, 64, 51, 0, Math.PI * 2)
+      context.fillStyle = color
+      context.fill()
+      context.lineWidth = 5
+      context.strokeStyle = hovered ? '#fffdf9' : 'rgba(31, 39, 33, 0.22)'
+      context.stroke()
+      context.font = '900 60px Arial, sans-serif'
+      context.fillStyle = '#fffdf9'
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
+      context.fillText(label, 64, 66)
+    }
+    const nextTexture = new THREE.CanvasTexture(canvas)
+    nextTexture.colorSpace = THREE.SRGBColorSpace
+    return nextTexture
+  }, [color, hovered, label])
+  useEffect(() => () => texture.dispose(), [texture])
+
+  return (
+    <sprite
+      position={position}
+      scale={hovered ? [0.48, 0.48, 0.48] : [0.42, 0.42, 0.42]}
+      renderOrder={14}
+      onClick={(event: ThreeEvent<MouseEvent>) => {
+        event.stopPropagation()
+        onClick()
+      }}
+      onPointerEnter={() => {
+        setHovered(true)
+        document.body.style.cursor = 'pointer'
+      }}
+      onPointerLeave={() => {
+        setHovered(false)
+        document.body.style.cursor = ''
+      }}
+    >
+      <spriteMaterial map={texture} transparent depthTest={false} depthWrite={false} toneMapped={false} />
+    </sprite>
+  )
+}
+
+function CompassAxisDot({
+  color,
+  position,
+  onClick,
+}: {
+  color: string
+  position: [number, number, number]
+  onClick: () => void
+}) {
+  return (
+    <mesh
+      position={position}
+      onClick={(event: ThreeEvent<MouseEvent>) => {
+        event.stopPropagation()
+        onClick()
+      }}
+      onPointerEnter={() => { document.body.style.cursor = 'pointer' }}
+      onPointerLeave={() => { document.body.style.cursor = '' }}
+    >
+      <sphereGeometry args={[0.09, 16, 12]} />
+      <meshBasicMaterial color={color} />
+    </mesh>
+  )
+}
+
+export function FreeCameraCompass3D({
+  azimuth,
+  elevation,
+  onOrientationSelect,
+}: {
+  azimuth: number
+  elevation: number
+  onOrientationSelect: (azimuth: number, elevation: number) => void
+}) {
+  const cameraRotation = useMemo(() => {
+    const orientation = new THREE.Object3D()
+    const horizontal = Math.cos(elevation)
+    orientation.position.set(
+      Math.cos(azimuth) * horizontal,
+      Math.sin(elevation),
+      Math.sin(azimuth) * horizontal,
+    )
+    orientation.lookAt(0, 0, 0)
+    return orientation.quaternion.clone().invert()
+  }, [azimuth, elevation])
+
+  return (
+    <Canvas
+      className="compass-3d-scene"
+      orthographic
+      camera={{ position: [0, 0, 5], zoom: 45, near: 0.1, far: 20 }}
+      dpr={[1, 1.5]}
+      gl={{ alpha: true, antialias: true }}
+    >
+      <ambientLight intensity={1.8} />
+      <group quaternion={cameraRotation} scale={1.4}>
+        <mesh rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.025, 0.025, 1.35, 8]} />
+          <meshBasicMaterial color="#ef476f" />
+        </mesh>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.025, 0.025, 1.35, 8]} />
+          <meshBasicMaterial color="#2476d2" />
+        </mesh>
+        <mesh>
+          <cylinderGeometry args={[0.025, 0.025, 1.35, 8]} />
+          <meshBasicMaterial color="#1ab978" />
+        </mesh>
+        <CompassAxisDot color="#bc174d" position={[-0.77, 0, 0]} onClick={() => onOrientationSelect(Math.PI, 0)} />
+        <CompassAxisLabel label="X" color="#f52260" position={[0.83, 0, 0]} onClick={() => onOrientationSelect(0, 0)} />
+        <CompassAxisDot color="#1457a4" position={[0, 0, -0.77]} onClick={() => onOrientationSelect(-Math.PI / 2, 0)} />
+        <CompassAxisLabel label="Z" color="#2476d2" position={[0, 0, 0.83]} onClick={() => onOrientationSelect(Math.PI / 2, 0)} />
+        <CompassAxisDot color="#11915c" position={[0, -0.77, 0]} onClick={() => onOrientationSelect(azimuth, -1.42)} />
+        <CompassAxisLabel label="Y" color="#1ab978" position={[0, 0.83, 0]} onClick={() => onOrientationSelect(azimuth, 1.42)} />
+      </group>
+    </Canvas>
+  )
+}
+
 interface RoomCompass3DProps {
   visibleWalls: WallSide[]
   highlightTop: boolean
@@ -1545,16 +2862,16 @@ export function RoomCompass3D({ visibleWalls, highlightTop, activeOrientation, o
   const cubeRotation: [number, number, number] = [0.48, -0.62, 0]
   const cubeSize = 0.72
   const wallMarkerPositions: Record<WallSide, [number, number, number]> = {
-    north: [0, 1.42, 1.6],
-    east: [1.42, 0, 1.6],
-    south: [0, -1.42, 1.6],
-    west: [-1.42, 0, 1.6],
+    north: [1.02, 1.02, 1.6],
+    east: [1.02, -1.02, 1.6],
+    south: [-1.02, -1.02, 1.6],
+    west: [-1.02, 1.02, 1.6],
   }
   const isoMarkers: { orientation: number; walls: [WallSide, WallSide]; position: [number, number, number] }[] = [
-    { orientation: 1, walls: ['north', 'east'], position: [1.02, 1.02, 1.6] },
-    { orientation: 2, walls: ['east', 'south'], position: [1.02, -1.02, 1.6] },
-    { orientation: 3, walls: ['south', 'west'], position: [-1.02, -1.02, 1.6] },
-    { orientation: 0, walls: ['west', 'north'], position: [-1.02, 1.02, 1.6] },
+    { orientation: 0, walls: ['west', 'north'], position: [0, 1.42, 1.6] },
+    { orientation: 1, walls: ['north', 'east'], position: [1.42, 0, 1.6] },
+    { orientation: 2, walls: ['east', 'south'], position: [0, -1.42, 1.6] },
+    { orientation: 3, walls: ['south', 'west'], position: [-1.42, 0, 1.6] },
   ]
   const handleCubeFaceClick = (event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation()
@@ -1624,11 +2941,13 @@ export function RoomCompass3D({ visibleWalls, highlightTop, activeOrientation, o
 }
 
 export default function RoomScene(props: SceneProps) {
-  const perspective = props.view === 'pov'
+  const perspective = props.view === 'pov' || props.view === 'free'
   const selectElement = useRoomStore((state) => state.selectElement)
+  const modelRootRef = useRef<THREE.Group>(null)
   return (
     <Canvas
       key={perspective ? 'perspective' : 'orthographic'}
+      className={props.view === 'isometric' || props.view === 'free' ? 'room-scene-canvas--orbit' : 'room-scene-canvas'}
       orthographic={!perspective}
       camera={perspective ? { fov: 62, near: 0.05, far: 80 } : { near: 0.1, far: 80, zoom: 55 }}
       shadows
@@ -1643,11 +2962,178 @@ export default function RoomScene(props: SceneProps) {
         selectElement(null)
       }}
     >
-      <RoomWorld {...props} />
+      <RoomWorld {...props} modelRootRef={modelRootRef} />
+      <OrbitPointerController view={props.view === 'isometric' || props.view === 'free' ? props.view : null} />
+      <SceneExportController
+        modelRootRef={modelRootRef}
+        exportRequest={props.exportRequest}
+        exportDesignName={props.exportDesignName}
+        onExportComplete={props.onExportComplete}
+      />
     </Canvas>
   )
 }
 
-export function FurnitureSwatch({ kind }: { kind: keyof typeof FURNITURE_PRESETS }) {
-  return <span className={`furniture-swatch furniture-swatch--${kind}`} aria-hidden="true"><i /></span>
+function OrbitPointerController({ view }: { view: 'isometric' | 'free' | null }) {
+  const { camera, gl, scene } = useThree()
+
+  useEffect(() => {
+    if (!view) return
+
+    const canvas = gl.domElement
+    const raycaster = new THREE.Raycaster()
+    const pointer = new THREE.Vector2()
+    let drag: { pointerId: number; startX: number; startY: number; angle: number; elevation: number } | null = null
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return
+      const bounds = canvas.getBoundingClientRect()
+      pointer.set(
+        ((event.clientX - bounds.left) / bounds.width) * 2 - 1,
+        -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
+      )
+      raycaster.setFromCamera(pointer, camera)
+      const firstVisibleHit = raycaster
+        .intersectObjects(scene.children, true)
+        .find(({ object }) => !(object instanceof THREE.Line))
+      let hitOrbitSurface = firstVisibleHit?.object.userData.freeOrbitSurface === true
+      firstVisibleHit?.object.traverseAncestors((ancestor) => {
+        if (ancestor.userData.freeOrbitSurface === true) hitOrbitSurface = true
+      })
+      if (firstVisibleHit && !hitOrbitSurface) return
+
+      const state = useRoomStore.getState()
+      drag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        angle: view === 'isometric' ? state.isoAngle : state.freeAzimuth,
+        elevation: state.freeElevation,
+      }
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      canvas.setPointerCapture(event.pointerId)
+      state.selectElement(null)
+      if (view === 'isometric') state.setIsoOrbitDragging(true)
+      else state.setFreeOrbitDragging(true)
+    }
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (drag?.pointerId !== event.pointerId) return
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      const state = useRoomStore.getState()
+      if (view === 'isometric') {
+        state.setIsoAngle(drag.angle + (event.clientX - drag.startX) * 0.009)
+      } else {
+        state.setFreeOrbit(
+          drag.angle + (event.clientX - drag.startX) * 0.009,
+          drag.elevation + (event.clientY - drag.startY) * 0.009,
+        )
+      }
+    }
+
+    const finishDrag = (event: PointerEvent) => {
+      if (drag?.pointerId !== event.pointerId) return
+      event.stopImmediatePropagation()
+      drag = null
+      if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId)
+      const state = useRoomStore.getState()
+      if (view === 'isometric') state.setIsoOrbitDragging(false)
+      else state.setFreeOrbitDragging(false)
+    }
+
+    canvas.addEventListener('pointerdown', onPointerDown, true)
+    canvas.addEventListener('pointermove', onPointerMove, true)
+    canvas.addEventListener('pointerup', finishDrag, true)
+    canvas.addEventListener('pointercancel', finishDrag, true)
+    canvas.addEventListener('lostpointercapture', finishDrag, true)
+    return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown, true)
+      canvas.removeEventListener('pointermove', onPointerMove, true)
+      canvas.removeEventListener('pointerup', finishDrag, true)
+      canvas.removeEventListener('pointercancel', finishDrag, true)
+      canvas.removeEventListener('lostpointercapture', finishDrag, true)
+      if (drag) {
+        const state = useRoomStore.getState()
+        if (view === 'isometric') state.setIsoOrbitDragging(false)
+        else state.setFreeOrbitDragging(false)
+      }
+    }
+  }, [camera, gl, scene, view])
+
+  return null
+}
+
+function SceneExportController({
+  modelRootRef,
+  exportRequest,
+  exportDesignName,
+  onExportComplete,
+}: {
+  modelRootRef: RefObject<THREE.Group | null>
+  exportRequest: number
+  exportDesignName: string
+  onExportComplete: (error?: Error) => void
+}) {
+  useEffect(() => {
+    if (exportRequest === 0) return
+    const root = modelRootRef.current
+    if (!root) {
+      onExportComplete(new Error('La escena 3D todavía no está lista.'))
+      return
+    }
+
+    const exportRoot = root.clone(true)
+    exportRoot.visible = true
+    exportRoot.updateMatrixWorld(true)
+    const removeFromExport: THREE.Object3D[] = []
+    exportRoot.traverse((object) => {
+      const invisibleHitArea = object instanceof THREE.Mesh
+        && (Array.isArray(object.material) ? object.material : [object.material]).some((material) => !material.colorWrite)
+      if (
+        object instanceof THREE.Line
+        || object instanceof THREE.Sprite
+        || object instanceof THREE.Camera
+        || object instanceof THREE.Light
+        || invisibleHitArea
+      ) {
+        removeFromExport.push(object)
+      }
+    })
+    removeFromExport.forEach((object) => object.parent?.remove(object))
+
+    try {
+      new GLTFExporter().parse(
+        exportRoot,
+        (result) => {
+          if (!(result instanceof ArrayBuffer)) {
+            onExportComplete(new Error('No se pudo crear el archivo GLB.'))
+            return
+          }
+          const url = URL.createObjectURL(new Blob([result], { type: 'model/gltf-binary' }))
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `${exportDesignName}-${new Date().toISOString().slice(0, 10)}.glb`
+          link.click()
+          window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+          recordSceneInteraction('model.exported', { format: 'glb' })
+          onExportComplete()
+        },
+        (error) => {
+          recordSceneInteraction('model.export-failed', {
+            message: error instanceof Error ? error.message : 'Error al exportar el modelo 3D.',
+          })
+          onExportComplete(error instanceof Error ? error : new Error('Error al exportar el modelo 3D.'))
+        },
+        { binary: true, onlyVisible: true },
+      )
+    } catch (error) {
+      const exportError = error instanceof Error ? error : new Error('Error al exportar el modelo 3D.')
+      recordSceneInteraction('model.export-failed', { message: exportError.message })
+      onExportComplete(exportError)
+    }
+  }, [exportDesignName, exportRequest, modelRootRef, onExportComplete])
+
+  return null
 }

@@ -1,19 +1,27 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { DEFAULT_ROOM, FURNITURE_PRESETS, ROOM_LIMITS } from './constants'
+import { DEFAULT_ROOM, ROOM_LIMITS } from './constants'
+import { FURNITURE_PRESETS, OBJECT_CATALOG, OPENING_CATALOG } from './objectCatalog'
 import {
   buildWallSegments,
   canPlaceFurniture,
   clampFurniture,
+  clampFurnitureElevation,
   findFreeFurniturePosition,
   furnitureHalfExtents,
   furnitureItemsOverlap,
+  hasFurnitureCollisions,
+  frontWallForOrientation,
   hiddenWallForCardinalTarget,
   hiddenWallsForOrientation,
+  orientationForAzimuth,
+  orientationForFrontWall,
+  sideWallsForFrontView,
   shortestAngleDelta,
   snapFurnitureRotation,
   snapToPlacementGrid,
   snapToVisibleGrid,
+  topViewWallForOrientation,
   validateOpenings,
   visibleWallsForOrientation,
 } from './geometry'
@@ -42,6 +50,42 @@ describe('visibleWallsForOrientation', () => {
   })
 })
 
+describe('camera walls for orientation', () => {
+  it('aligns the top view with the visible corner for every orientation', () => {
+    assert.deepEqual(
+      [0, 1, 2, 3].map(topViewWallForOrientation),
+      ['north', 'east', 'south', 'west'],
+    )
+  })
+
+  it('selects the left wall for the front view and reverses that mapping', () => {
+    assert.deepEqual(
+      [0, 1, 2, 3].map(frontWallForOrientation),
+      ['west', 'north', 'east', 'south'],
+    )
+    for (const wall of ['north', 'east', 'south', 'west'] as const) {
+      assert.equal(frontWallForOrientation(orientationForFrontWall(wall)), wall)
+    }
+  })
+
+  it('identifies the side walls from each front-facing direction', () => {
+    assert.deepEqual(sideWallsForFrontView('north'), { left: 'west', right: 'east' })
+    assert.deepEqual(sideWallsForFrontView('east'), { left: 'north', right: 'south' })
+    assert.deepEqual(sideWallsForFrontView('south'), { left: 'east', right: 'west' })
+    assert.deepEqual(sideWallsForFrontView('west'), { left: 'south', right: 'north' })
+  })
+})
+
+describe('orientationForAzimuth', () => {
+  it('elige las paredes próximas a la cámara para cada cuadrante', () => {
+    assert.equal(orientationForAzimuth(Math.PI / 4), 0)
+    assert.equal(orientationForAzimuth(3 * Math.PI / 4), 1)
+    assert.equal(orientationForAzimuth(5 * Math.PI / 4), 2)
+    assert.equal(orientationForAzimuth(7 * Math.PI / 4), 3)
+    assert.equal(orientationForAzimuth(-Math.PI / 4), 3)
+  })
+})
+
 describe('hiddenWallForCardinalTarget', () => {
   it('oculta únicamente la pared situada entre la cámara y la habitación', () => {
     assert.equal(hiddenWallForCardinalTarget('north'), 'south')
@@ -60,15 +104,33 @@ describe('shortestAngleDelta', () => {
 
 describe('buildWallSegments', () => {
   it('conserva la superficie de pared salvo el hueco de puerta', () => {
-    const segments = buildWallSegments(5, 2.7, [{ id: 'door', kind: 'door', offset: 0, width: 0.9, bottom: 0, height: 2.1 }])
+    const segments = buildWallSegments(5, 2.7, [{ id: 'door', kind: 'door', offset: 0, width: 0.9, bottom: 0, height: 2.1, rotation: 0, color: '#ac704b' }])
     const area = segments.reduce((total, segment) => total + segment.size[0] * segment.size[1], 0)
     assert.ok(Math.abs(area - (5 * 2.7 - 0.9 * 2.1)) < 1e-6)
   })
 
   it('crea geometría alrededor de una ventana elevada', () => {
-    const segments = buildWallSegments(5, 2.7, [{ id: 'window', kind: 'window', offset: 0.5, width: 1.2, bottom: 0.9, height: 1.1 }])
+    const segments = buildWallSegments(5, 2.7, [{ id: 'window', kind: 'window', offset: 0.5, width: 1.2, bottom: 0.9, height: 1.1, rotation: 0, color: '#c88f58' }])
     assert.equal(segments.some((segment) => segment.center[1] < 0.9), true)
     assert.equal(segments.some((segment) => segment.center[1] > 2), true)
+  })
+
+  it('no abre huecos para estanterías de pared, cuadros ni espejos', () => {
+    for (const shape of ['wallShelf', 'pictureSmall', 'pictureMedium', 'pictureLarge', 'mirrorRectangular', 'mirrorCircular', 'wallSconce'] as const) {
+      const segments = buildWallSegments(5, 2.7, [{
+        id: shape,
+        kind: 'window',
+        shape,
+        offset: 0,
+        width: 1,
+        bottom: 1,
+        height: 0.75,
+        rotation: 0,
+        color: '#8c6448',
+      }])
+      const area = segments.reduce((total, segment) => total + segment.size[0] * segment.size[1], 0)
+      assert.ok(Math.abs(area - 5 * 2.7) < 1e-6)
+    }
   })
 })
 
@@ -107,7 +169,7 @@ describe('validateOpenings', () => {
 })
 
 describe('clampFurniture', () => {
-  const item: FurnitureItem = { id: 'x', kind: 'table', name: 'Mesa', x: 20, z: -20, rotation: 0, width: 1.25, depth: 0.75, height: 0.7, color: '#fff' }
+  const item: FurnitureItem = { id: 'x', kind: 'table', name: 'Mesa', x: 20, y: 0, z: -20, rotation: 0, width: 1.25, depth: 0.75, height: 0.7, color: '#fff' }
 
   it('permite llegar exactamente al borde sin salir del suelo', () => {
     const result = clampFurniture(item, DEFAULT_ROOM, true)
@@ -138,21 +200,68 @@ describe('clampFurniture', () => {
     assert.ok(Math.abs(extents.halfWidth - expected) < 1e-8)
     assert.ok(Math.abs(extents.halfDepth - expected) < 1e-8)
   })
+
+  it('limita la elevación al espacio vertical disponible y la ajusta a la cuadrícula', () => {
+    assert.equal(clampFurnitureElevation({ ...item, y: 0.63 }, DEFAULT_ROOM, true), 0.625)
+    assert.equal(clampFurnitureElevation({ ...item, y: 20 }, DEFAULT_ROOM, false), DEFAULT_ROOM.height - item.height)
+    assert.equal(clampFurnitureElevation({ ...item, y: -1 }, DEFAULT_ROOM, false), 0)
+    assert.equal(clampFurnitureElevation({ ...item, kind: 'rug', y: 1 }, DEFAULT_ROOM, false), 0)
+    assert.equal(clampFurnitureElevation({ ...item, kind: 'circularRug', y: 1 }, DEFAULT_ROOM, false), 0)
+  })
 })
 
 describe('dimensiones del catálogo', () => {
-  it('ofrece diez tipos de elemento y alinea sus huellas con los cuadrados de 25 cm', () => {
-    assert.equal(Object.keys(FURNITURE_PRESETS).length + 2, 10)
+  it('registra treinta y seis definiciones y alinea sus huellas con los cuadrados de 25 cm', () => {
+    assert.equal(Object.keys(OBJECT_CATALOG.furniture).length + Object.keys(OBJECT_CATALOG.openings).length, 36)
     const dimensions = [
       DEFAULT_ROOM.door.width,
       DEFAULT_ROOM.windows[0].width,
       DEFAULT_ROOM.windows[0].height,
       DEFAULT_ROOM.windows[0].sill,
+      OPENING_CATALOG.circularWindow.width,
+      OPENING_CATALOG.circularWindow.height,
+      OPENING_CATALOG.circularWindow.defaultBottom,
+      OPENING_CATALOG.wallShelf.width,
+      OPENING_CATALOG.wallShelf.height,
+      OPENING_CATALOG.wallShelf.defaultBottom,
+      OPENING_CATALOG.pictureSmall.width,
+      OPENING_CATALOG.pictureSmall.height,
+      OPENING_CATALOG.pictureSmall.defaultBottom,
+      OPENING_CATALOG.pictureMedium.width,
+      OPENING_CATALOG.pictureMedium.height,
+      OPENING_CATALOG.pictureMedium.defaultBottom,
+      OPENING_CATALOG.pictureLarge.width,
+      OPENING_CATALOG.pictureLarge.height,
+      OPENING_CATALOG.pictureLarge.defaultBottom,
+      OPENING_CATALOG.mirrorRectangular.width,
+      OPENING_CATALOG.mirrorRectangular.height,
+      OPENING_CATALOG.mirrorRectangular.defaultBottom,
+      OPENING_CATALOG.mirrorCircular.width,
+      OPENING_CATALOG.mirrorCircular.height,
+      OPENING_CATALOG.mirrorCircular.defaultBottom,
+      OPENING_CATALOG.wallSconce.width,
+      OPENING_CATALOG.wallSconce.height,
+      OPENING_CATALOG.wallSconce.defaultBottom,
       ...Object.values(FURNITURE_PRESETS).flatMap((item) => [item.width, item.depth]),
     ]
     dimensions.forEach((dimension) => {
       assert.equal(dimension / ROOM_LIMITS.gridSize % 1, 0)
     })
+  })
+
+  it('declara en un único catálogo qué transformaciones admite cada apertura', () => {
+    assert.deepEqual(OPENING_CATALOG.door.capabilities.translation, ['wall-horizontal'])
+    assert.equal(OPENING_CATALOG.door.capabilities.rotation.enabled, false)
+    assert.deepEqual(OPENING_CATALOG.window.capabilities.translation, ['wall-horizontal', 'wall-vertical'])
+    assert.equal(OPENING_CATALOG.window.capabilities.rotation.axis, 'wall-normal')
+    assert.deepEqual(OPENING_CATALOG.circularWindow.capabilities, OPENING_CATALOG.window.capabilities)
+    assert.deepEqual(OPENING_CATALOG.wallShelf.capabilities, OPENING_CATALOG.window.capabilities)
+    assert.deepEqual(OPENING_CATALOG.pictureSmall.capabilities, OPENING_CATALOG.window.capabilities)
+    assert.deepEqual(OPENING_CATALOG.pictureMedium.capabilities, OPENING_CATALOG.window.capabilities)
+    assert.deepEqual(OPENING_CATALOG.pictureLarge.capabilities, OPENING_CATALOG.window.capabilities)
+    assert.deepEqual(OPENING_CATALOG.mirrorRectangular.capabilities, OPENING_CATALOG.window.capabilities)
+    assert.deepEqual(OPENING_CATALOG.mirrorCircular.capabilities, OPENING_CATALOG.window.capabilities)
+    assert.deepEqual(OPENING_CATALOG.wallSconce.capabilities, OPENING_CATALOG.window.capabilities)
   })
 })
 
@@ -164,7 +273,7 @@ describe('snapFurnitureRotation', () => {
 })
 
 describe('furniture collisions', () => {
-  const table: FurnitureItem = { id: 'table', kind: 'table', name: 'Mesa', x: 0, z: 0, rotation: 0, width: 1.2, depth: 0.8, height: 0.7, color: '#fff' }
+  const table: FurnitureItem = { id: 'table', kind: 'table', name: 'Mesa', x: 0, y: 0, z: 0, rotation: 0, width: 1.2, depth: 0.8, height: 0.7, color: '#fff' }
 
   it('detecta dos huellas que se solapan', () => {
     const chair: FurnitureItem = { ...table, id: 'chair', kind: 'armchair', x: 0.5 }
@@ -189,6 +298,19 @@ describe('furniture collisions', () => {
     const cabinet: FurnitureItem = { ...table, id: 'cabinet', kind: 'cabinet', x: 1.25, width: 0.8, depth: 1.8 }
     assert.equal(furnitureItemsOverlap(table, cabinet), false)
     assert.equal(furnitureItemsOverlap(table, { ...cabinet, rotation: Math.PI / 2 }), true)
+  })
+
+  it('permite apilar muebles cuando sus volúmenes no se solapan', () => {
+    const chair: FurnitureItem = { ...table, id: 'chair', kind: 'chair', width: 0.5, depth: 0.5, height: 0.85, y: table.height }
+    assert.equal(furnitureItemsOverlap(table, chair), false)
+    assert.equal(canPlaceFurniture(chair, [table]), true)
+    assert.equal(hasFurnitureCollisions([table, chair]), false)
+  })
+
+  it('bloquea los muebles cuyos volúmenes todavía se cruzan en vertical', () => {
+    const chair: FurnitureItem = { ...table, id: 'chair', kind: 'chair', width: 0.5, depth: 0.5, height: 0.85, y: table.height - 0.01 }
+    assert.equal(furnitureItemsOverlap(table, chair), true)
+    assert.equal(canPlaceFurniture(chair, [table]), false)
   })
 
   it('encuentra el hueco libre más próximo al añadir', () => {

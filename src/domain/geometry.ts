@@ -1,8 +1,18 @@
-import { FURNITURE_ROTATION_STEP, ROOM_LIMITS, WALL_SIDES } from './constants'
+import { ROOM_LIMITS, WALL_SIDES } from './constants'
+import { DEFAULT_ROTATION_STEP, isCeilingMountedFurniture, isFloorBoundFurniture } from './objectCatalog'
 import type { DoorConfig, FurnitureItem, RoomConfig, WallOpening, WallSegment, WallSide, WindowConfig } from './types'
 
 export const wallLength = (room: RoomConfig, wall: WallSide) =>
   wall === 'north' || wall === 'south' ? room.width : room.depth
+
+export const isWallMountedDecoration = (shape?: WindowConfig['shape']) =>
+  shape === 'wallShelf'
+  || shape === 'pictureSmall'
+  || shape === 'pictureMedium'
+  || shape === 'pictureLarge'
+  || shape === 'mirrorRectangular'
+  || shape === 'mirrorCircular'
+  || shape === 'wallSconce'
 
 export function openingInterval(offset: number, width: number): [number, number] {
   return [offset - width / 2, offset + width / 2]
@@ -11,10 +21,10 @@ export function openingInterval(offset: number, width: number): [number, number]
 export function openingsForWall(room: RoomConfig, wall: WallSide): WallOpening[] {
   const openings: WallOpening[] = []
   if (room.door.wall === wall) {
-    openings.push({ id: 'door', kind: 'door', offset: room.door.offset, width: room.door.width, bottom: 0, height: room.door.height, rotation: room.door.rotation })
+    openings.push({ id: 'door', kind: 'door', offset: room.door.offset, width: room.door.width, bottom: 0, height: room.door.height, rotation: room.door.rotation, color: room.door.color ?? '#ac704b' })
   }
   room.windows.filter((window) => window.wall === wall).forEach((window) => {
-    openings.push({ id: window.id, kind: 'window', offset: window.offset, width: window.width, bottom: window.sill, height: window.height, rotation: window.rotation })
+    openings.push({ id: window.id, kind: 'window', shape: window.shape, offset: window.offset, width: window.width, bottom: window.sill, height: window.height, rotation: window.rotation, color: window.color ?? '#c88f58' })
   })
   return openings
 }
@@ -50,9 +60,10 @@ export function validateOpenings(room: RoomConfig): string | null {
 // Divides a wall into a small grid using every opening edge, then omits cells
 // whose centre lies inside an opening. The result preserves real door/window gaps.
 export function buildWallSegments(length: number, height: number, openings: WallOpening[]): WallSegment[] {
+  const cutOpenings = openings.filter((opening) => !isWallMountedDecoration(opening.shape))
   const xEdges = new Set([-length / 2, length / 2])
   const yEdges = new Set([0, height])
-  openings.forEach((opening) => {
+  cutOpenings.forEach((opening) => {
     const [start, end] = openingInterval(opening.offset, opening.width)
     xEdges.add(Math.max(-length / 2, start))
     xEdges.add(Math.min(length / 2, end))
@@ -66,7 +77,7 @@ export function buildWallSegments(length: number, height: number, openings: Wall
     for (let y = 0; y < ys.length - 1; y += 1) {
       const centerX = (xs[x] + xs[x + 1]) / 2
       const centerY = (ys[y] + ys[y + 1]) / 2
-      const insideOpening = openings.some((opening) => {
+      const insideOpening = cutOpenings.some((opening) => {
         const [start, end] = openingInterval(opening.offset, opening.width)
         return centerX > start && centerX < end && centerY > opening.bottom && centerY < opening.bottom + opening.height
       })
@@ -91,6 +102,34 @@ export const hiddenWallsForOrientation = (orientation: number): WallSide[] => {
 export const visibleWallsForOrientation = (orientation: number): WallSide[] => {
   const hidden = hiddenWallsForOrientation(orientation)
   return WALL_SIDES.filter((wall) => !hidden.includes(wall))
+}
+
+export const topViewWallForOrientation = (orientation: number): WallSide => (
+  WALL_SIDES[((orientation % 4) + 4) % 4]
+)
+
+export const frontWallForOrientation = (orientation: number): WallSide => (
+  WALL_SIDES[(((orientation % 4) + 4) % 4 + WALL_SIDES.length - 1) % WALL_SIDES.length]
+)
+
+export const orientationForFrontWall = (wall: WallSide): number => (
+  (WALL_SIDES.indexOf(wall) + 1) % WALL_SIDES.length
+)
+
+export const sideWallsForFrontView = (frontWall: WallSide): { left: WallSide; right: WallSide } => {
+  const sides: Record<WallSide, { left: WallSide; right: WallSide }> = {
+    north: { left: 'west', right: 'east' },
+    east: { left: 'north', right: 'south' },
+    south: { left: 'east', right: 'west' },
+    west: { left: 'south', right: 'north' },
+  }
+  return sides[frontWall]
+}
+
+export function orientationForAzimuth(azimuth: number) {
+  const fullTurn = Math.PI * 2
+  const normalized = ((azimuth % fullTurn) + fullTurn) % fullTurn
+  return (Math.round((normalized - Math.PI / 4) / (Math.PI / 2)) + 4) % 4
 }
 
 export const hiddenWallForCardinalTarget = (targetWall: WallSide): WallSide => {
@@ -118,7 +157,7 @@ export function snapToVisibleGrid(value: number) {
 }
 
 export function snapFurnitureRotation(rotation: number) {
-  return Math.round(rotation / FURNITURE_ROTATION_STEP) * FURNITURE_ROTATION_STEP
+  return Math.round(rotation / DEFAULT_ROTATION_STEP) * DEFAULT_ROTATION_STEP
 }
 
 export function furnitureHalfExtents(item: FurnitureItem) {
@@ -131,6 +170,12 @@ export function furnitureHalfExtents(item: FurnitureItem) {
 }
 
 export function furnitureItemsOverlap(a: FurnitureItem, b: FurnitureItem, clearance = FURNITURE_CLEARANCE) {
+  const aBottom = Number.isFinite(a.y) ? a.y : 0
+  const bBottom = Number.isFinite(b.y) ? b.y : 0
+  const verticalOverlap = aBottom < bBottom + b.height - 1e-9
+    && bBottom < aBottom + a.height - 1e-9
+  if (!verticalOverlap) return false
+
   const axes = (item: FurnitureItem) => {
     const cosine = Math.cos(item.rotation)
     const sine = Math.sin(item.rotation)
@@ -180,6 +225,15 @@ export function clampFurniture(item: FurnitureItem, room: RoomConfig, snap: bool
     x: constrain(item.x, limitX),
     z: constrain(item.z, limitZ),
   }
+}
+
+export function clampFurnitureElevation(item: FurnitureItem, room: RoomConfig, snap: boolean) {
+  if (isFloorBoundFurniture(item.kind)) return 0
+  if (isCeilingMountedFurniture(item.kind)) return Math.max(0, room.height - item.height)
+  const limit = Math.max(0, room.height - item.height)
+  const elevation = Number.isFinite(item.y) ? item.y : 0
+  const positioned = snap ? snapToPlacementGrid(elevation) : elevation
+  return Math.max(0, Math.min(limit, positioned))
 }
 
 export function findFreeFurniturePosition(
