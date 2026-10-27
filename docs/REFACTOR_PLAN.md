@@ -1,6 +1,6 @@
 # Plan de reorganización del código — fase siguiente
 
-**Estado:** R0 completada y R1 ejecutada en la rama de trabajo; R2–R5 siguen PROPUESTAS y no ejecutadas. Las decisiones de arquitectura futura no quedan aprobadas por esta actualización.
+**Estado:** R0 completada y R1 ejecutada en la rama de trabajo; R2.1–R2.3 ejecutadas en la rama de trabajo; R2.4–R2.9 y R3–R5 siguen pendientes. Las decisiones de arquitectura futura no quedan aprobadas por esta actualización.
 
 ## Antes de tocar código
 1. Confirmar alcance de esta documentación y enumerar cambios actuales sin commit; evitar sobrescribir trabajo de Codex.
@@ -19,7 +19,7 @@
 - Sacar de App.tsx cabecera, selector de vistas, catálogo, inspector, paneles de construcción y diálogos a componentes/herramientas propios.
 - Mantener el mismo DOM observable para pruebas cuando sea posible; evitar cambio visual grande.
 
-**R2 — Extraer escena**
+**R2 — Extraer escena (R2.1–R2.3 implementadas; R2.4–R2.9 pendientes)**
 - Separar CameraRig, habitación/paredes/aberturas, modelos de mobiliario, helpers de selección y exportador GLB de RoomScene.tsx.
 - Mantener los mismos valores por defecto, comportamiento y tres/cinco vistas.
 

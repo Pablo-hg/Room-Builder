@@ -531,3 +531,27 @@ Verificación: `npm test`, **49 pruebas aprobadas, 0 fallos**; `npm run build`, 
 `CameraRig` reside ahora en `src/scene/CameraRig.tsx`, con sus efectos, cálculos y animación originales. La declaración de `SceneProps` se ha trasladado a `src/scene/types.ts` sin alterar campos ni tipos. Se verificó por comparación textual que `CameraRig`, la interfaz y el bloque de `Canvas` mantienen el contenido original salvo las declaraciones de export/import. Se conservan los valores por defecto, el remount perspectiva/ortográfica, las duraciones de 0,55/0,75 s y la suscripción a movimiento reducido.
 
 Verificación: `npm test`, **49 pruebas aprobadas, 0 fallos**; `npm run build`, **correcto**, 75 módulos; `npm run test:e2e`, **21 passed (1.7m)**; `npm run capture:r0-baseline`, **1 passed (23.0s)**. Las nueve capturas fueron inspeccionadas y coinciden píxel a píxel con la baseline previa a R2. La captura usa movimiento reducido; los E2E existentes recorren las transiciones con la configuración normal. No se ha alterado la interfaz con `App` ni el store.
+
+### R2.3 — completada
+
+Se han trasladado `WallBody` y `wallPlacement` a `src/scene/Walls.tsx`, los polígonos/clipping/intervalos a `wallGeometry.ts` y las cuadrículas a `WallGrid.tsx` y `FloorGrid.tsx`. `RoomShell.tsx` contiene el suelo, plataforma, luz de estudio y etiquetas de pared; conserva el grupo raíz y la referencia usada por la exportación. `sceneInteraction.ts` comparte el logger original sin duplicar estado. `SoftWall` permanece como composición de cuerpo/cuadrícula y aperturas para no adelantar la interacción de R2.4 ni introducir dependencias circulares.
+
+Se comprobó por lectura y comparación de las declaraciones que 37 funciones mantienen exactamente cuerpo y firma salvo `export`; `CameraRig` ya se comprobó en R2.2. `RoomWorld` compone los módulos conservando materiales, geometrías, orden de nodos Three, handlers y coordenadas. Las props externas y los campos del store no se han modificado. `RoomScene.tsx` pasa de 3139 a **2538 líneas**; todavía no es la composición final de toda R2.
+
+Verificación: `npm test`, **54 pruebas aprobadas, 0 fallos**; `npm run build`, **correcto**, 81 módulos; `npm run test:e2e`, **21 passed (1.8m)**; `npm run capture:r0-baseline`, **1 passed (22.0s)**. Las nueve capturas se inspeccionaron y coinciden píxel a píxel con la baseline previa a R2. Las cinco pruebas nuevas comprueban área/centro de huecos girados, clipping en bordes, aproximación circular de 48 segmentos y cortes/fusión de intervalos de cuadrícula.
+
+### Cierre de la primera entrega y pendientes
+
+| Subtarea | Estado real |
+| --- | --- |
+| R2.1 | Completada: política de visibilidad extraída y caracterizada. |
+| R2.2 | Completada: cámara y transiciones trasladadas literalmente. |
+| R2.3 | Completada: shell, cuerpos de pared/huecos y cuadrículas extraídos. |
+| R2.4 | PENDIENTE: decoración e interacción de aperturas. |
+| R2.5 | PENDIENTE: superficies constructivas y gizmos. |
+| R2.6 | PENDIENTE: modelos de mobiliario y registro tipado. |
+| R2.7 | PENDIENTE: selección y gestos comunes. |
+| R2.8 | PENDIENTE: brújulas e integración de órbita. |
+| R2.9 | PENDIENTE: adaptador GLB y su smoke test. |
+
+Los resultados de R2.3 sirven también como comprobaciones de cierre: después solo se actualizaron documentos, sin cambios de código que requieran repetir las pruebas. La baseline y cada subtarea pasaron la suite E2E completa sin reproducir el fallo intermitente de R0. Se conservan las referencias visuales versionadas; las capturas de esta sesión quedan en `/tmp/room-r2/{baseline,r21,r22,r23}`. La comparación visual cubre este fixture y Chromium, no todos los entornos gráficos. Persiste el aviso previo de tamaño del bundle. No se ha iniciado R2.4 ni R3, ni se ha hecho merge o publicación.

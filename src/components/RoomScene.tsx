@@ -2,24 +2,18 @@ import { Canvas, type ThreeEvent, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import * as THREE from 'three'
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js'
-import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from '../domain/constants'
-import { isWallMountedDecoration, openingsForWall, snapFurnitureRotation, wallLength } from '../domain/geometry'
+import { DEFAULT_WALL_COLOR, ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from '../domain/constants'
+import { openingsForWall, snapFurnitureRotation, wallLength } from '../domain/geometry'
 import { isCeilingMountedFurniture, isFloorBoundFurniture, isWallMirrorShape, isWallPictureKind, openingCapabilities, OPENING_CATALOG, openingKindForShape } from '../domain/objectCatalog'
-import type { FurnitureItem, RoomConfig, StructureSurface, ViewMode, WallOpening, WallSide } from '../domain/types'
-import { recordInteraction, type InteractionDetails } from '../debug/interactionLog'
+import type { FurnitureItem, RoomConfig, StructureSurface, WallOpening, WallSide } from '../domain/types'
 import { structureSurfaceElementId, useRoomStore } from '../state/useRoomStore'
 import { CameraRig } from '../scene/CameraRig'
 import type { SceneProps } from '../scene/types'
 import { wallVisibility } from '../scene/wallVisibility'
-
-function recordSceneInteraction(action: string, details?: InteractionDetails) {
-  const state = useRoomStore.getState()
-  recordInteraction(`scene.${action}`, {
-    view: state.view,
-    selectedId: state.selectedId,
-    details,
-  })
-}
+import { WallBody, wallPlacement } from '../scene/Walls'
+import { WallGrid } from '../scene/WallGrid'
+import { RoomShell, StudioLight, WallIdentityLabel } from '../scene/RoomShell'
+import { recordSceneInteraction } from '../scene/sceneInteraction'
 
 function colorTone(color: string, lightnessOffset: number) {
   const tone = new THREE.Color(color)
@@ -33,184 +27,6 @@ function openingName(opening: WallOpening) {
   return opening.kind === 'door'
     ? 'Puerta'
     : OPENING_CATALOG[openingKindForShape(opening.shape ?? 'rectangular')].name
-}
-
-const wallPlacement: Record<WallSide, (room: RoomConfig) => { position: [number, number, number]; rotation: [number, number, number] }> = {
-  north: (room) => ({ position: [0, 0, -room.depth / 2], rotation: [0, 0, 0] }),
-  south: (room) => ({ position: [0, 0, room.depth / 2], rotation: [0, Math.PI, 0] }),
-  east: (room) => ({ position: [room.width / 2, 0, 0], rotation: [0, -Math.PI / 2, 0] }),
-  west: (room) => ({ position: [-room.width / 2, 0, 0], rotation: [0, Math.PI / 2, 0] }),
-}
-
-type WallPoint = [number, number]
-
-function openingPolygon(opening: WallOpening): WallPoint[] {
-  const cosine = Math.cos(opening.rotation)
-  const sine = Math.sin(opening.rotation)
-  const centerY = opening.bottom + opening.height / 2
-  if (opening.shape === 'circular') {
-    return Array.from({ length: 48 }, (_, index): WallPoint => {
-      const angle = -index / 48 * Math.PI * 2
-      const x = Math.cos(angle) * opening.width / 2
-      const y = Math.sin(angle) * opening.height / 2
-      return [
-        opening.offset + x * cosine - y * sine,
-        centerY + x * sine + y * cosine,
-      ]
-    })
-  }
-  const corners: WallPoint[] = [
-    [-opening.width / 2, -opening.height / 2],
-    [-opening.width / 2, opening.height / 2],
-    [opening.width / 2, opening.height / 2],
-    [opening.width / 2, -opening.height / 2],
-  ]
-  return corners.map(([x, y]) => [
-    opening.offset + x * cosine - y * sine,
-    centerY + x * sine + y * cosine,
-  ])
-}
-
-function clipPolygonToWall(polygon: WallPoint[], length: number, height: number) {
-  const inset = 0.0005
-  const left = -length / 2 + inset
-  const right = length / 2 - inset
-  const bottom = inset
-  const top = height - inset
-  const clip = (
-    points: WallPoint[],
-    inside: (point: WallPoint) => boolean,
-    intersection: (from: WallPoint, to: WallPoint) => WallPoint,
-  ) => {
-    const result: WallPoint[] = []
-    points.forEach((point, index) => {
-      const previous = points[(index + points.length - 1) % points.length]
-      const pointInside = inside(point)
-      const previousInside = inside(previous)
-      if (pointInside !== previousInside) result.push(intersection(previous, point))
-      if (pointInside) result.push(point)
-    })
-    return result
-  }
-  const atX = (x: number) => (from: WallPoint, to: WallPoint): WallPoint => {
-    const ratio = (x - from[0]) / (to[0] - from[0])
-    return [x, from[1] + (to[1] - from[1]) * ratio]
-  }
-  const atY = (y: number) => (from: WallPoint, to: WallPoint): WallPoint => {
-    const ratio = (y - from[1]) / (to[1] - from[1])
-    return [from[0] + (to[0] - from[0]) * ratio, y]
-  }
-  let clipped = clip(polygon, ([x]) => x >= left, atX(left))
-  clipped = clip(clipped, ([x]) => x <= right, atX(right))
-  clipped = clip(clipped, ([, y]) => y >= bottom, atY(bottom))
-  return clip(clipped, ([, y]) => y <= top, atY(top))
-}
-
-function WallBody({ length, height, openings, color, onPointerDown }: { length: number; height: number; openings: WallOpening[]; color: string; onPointerDown: (event: ThreeEvent<PointerEvent>) => void }) {
-  const geometry = useMemo(() => {
-    const shape = new THREE.Shape()
-    shape.moveTo(-length / 2, 0)
-    shape.lineTo(length / 2, 0)
-    shape.lineTo(length / 2, height)
-    shape.lineTo(-length / 2, height)
-    shape.closePath()
-    openings.filter((opening) => !isWallMountedDecoration(opening.shape)).forEach((opening) => {
-      const polygon = clipPolygonToWall(openingPolygon(opening), length, height)
-      if (polygon.length < 3) return
-      const hole = new THREE.Path()
-      hole.moveTo(polygon[0][0], polygon[0][1])
-      polygon.slice(1).forEach(([x, y]) => hole.lineTo(x, y))
-      hole.closePath()
-      shape.holes.push(hole)
-    })
-    return new THREE.ExtrudeGeometry(shape, {
-      depth: 0.12,
-      bevelEnabled: false,
-      curveSegments: 1,
-      steps: 1,
-    })
-  }, [height, length, openings])
-  useEffect(() => () => geometry.dispose(), [geometry])
-
-  return (
-    <mesh geometry={geometry} position={[0, 0, -0.06]} castShadow receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={onPointerDown}>
-      <meshStandardMaterial color={color} roughness={0.92} />
-    </mesh>
-  )
-}
-
-function polygonInterval(polygon: WallPoint[], coordinate: number, vertical: boolean): [number, number] | null {
-  const intersections: number[] = []
-  const epsilon = 0.00001
-  polygon.forEach((point, index) => {
-    const next = polygon[(index + 1) % polygon.length]
-    const fixedFrom = vertical ? point[0] : point[1]
-    const fixedTo = vertical ? next[0] : next[1]
-    const variableFrom = vertical ? point[1] : point[0]
-    const variableTo = vertical ? next[1] : next[0]
-    if (Math.abs(fixedTo - fixedFrom) < epsilon) {
-      if (Math.abs(coordinate - fixedFrom) < epsilon) intersections.push(variableFrom, variableTo)
-      return
-    }
-    const ratio = (coordinate - fixedFrom) / (fixedTo - fixedFrom)
-    if (ratio >= -epsilon && ratio <= 1 + epsilon) {
-      intersections.push(variableFrom + (variableTo - variableFrom) * ratio)
-    }
-  })
-  const unique = intersections
-    .sort((a, b) => a - b)
-    .filter((value, index, values) => index === 0 || Math.abs(value - values[index - 1]) > epsilon)
-  return unique.length >= 2 ? [unique[0], unique[unique.length - 1]] : null
-}
-
-function visibleLineIntervals(start: number, end: number, cuts: [number, number][]) {
-  const merged: [number, number][] = []
-  cuts
-    .map(([from, to]) => [Math.max(start, from), Math.min(end, to)] as [number, number])
-    .filter(([from, to]) => to - from > 0.00001)
-    .sort((a, b) => a[0] - b[0])
-    .forEach(([from, to]) => {
-      const previous = merged[merged.length - 1]
-      if (previous && from <= previous[1] + 0.00001) previous[1] = Math.max(previous[1], to)
-      else merged.push([from, to])
-    })
-  const visible: [number, number][] = []
-  let cursor = start
-  merged.forEach(([from, to]) => {
-    if (from > cursor + 0.00001) visible.push([cursor, from])
-    cursor = Math.max(cursor, to)
-  })
-  if (cursor < end - 0.00001) visible.push([cursor, end])
-  return visible
-}
-
-function WallGrid({ length, height, openings }: { length: number; height: number; openings: WallOpening[] }) {
-  const positions = useMemo(() => {
-    const lines: number[] = []
-    const step = ROOM_LIMITS.gridSize
-    const epsilon = 0.001
-    const polygons = openings
-      .filter((opening) => !isWallMountedDecoration(opening.shape))
-      .map((opening) => clipPolygonToWall(openingPolygon(opening), length, height))
-    for (let x = Math.ceil((-length / 2 - epsilon) / step) * step; x <= length / 2 + epsilon; x += step) {
-      const cuts = polygons.map((polygon) => polygonInterval(polygon, x, true)).filter((interval): interval is [number, number] => interval !== null)
-      visibleLineIntervals(0, height, cuts).forEach(([from, to]) => lines.push(x, from, 0.066, x, to, 0.066))
-    }
-    for (let y = 0; y <= height + epsilon; y += step) {
-      const cuts = polygons.map((polygon) => polygonInterval(polygon, y, false)).filter((interval): interval is [number, number] => interval !== null)
-      visibleLineIntervals(-length / 2, length / 2, cuts).forEach(([from, to]) => lines.push(from, y, 0.066, to, y, 0.066))
-    }
-    return new Float32Array(lines)
-  }, [height, length, openings])
-
-  return (
-    <lineSegments renderOrder={2} raycast={() => undefined}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-      </bufferGeometry>
-      <lineBasicMaterial color="#8b8176" transparent opacity={0.44} depthWrite={false} />
-    </lineSegments>
-  )
 }
 
 function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exportMode }: { room: RoomConfig; wall: WallSide; hidden: boolean; showOpeningDetails: boolean; showGrid: boolean; exportMode: boolean }) {
@@ -1127,30 +943,6 @@ function PlanOpening({ room, opening, wall }: { room: RoomConfig; opening: WallO
         <OpeningMoveGizmo opening={opening} dragEventsForAxis={interaction.dragEventsForAxis} horizontal={canMoveHorizontal} planView />
       )}
     </group>
-  )
-}
-
-function FloorGrid({ room, visible }: { room: RoomConfig; visible: boolean }) {
-  const positions = useMemo(() => {
-    const lines: number[] = []
-    const step = ROOM_LIMITS.gridSize
-    for (let x = -room.width / 2; x <= room.width / 2 + 0.001; x += step) {
-      lines.push(x, 0.046, -room.depth / 2, x, 0.046, room.depth / 2)
-    }
-    for (let z = -room.depth / 2; z <= room.depth / 2 + 0.001; z += step) {
-      lines.push(-room.width / 2, 0.046, z, room.width / 2, 0.046, z)
-    }
-    return new Float32Array(lines)
-  }, [room.depth, room.width])
-
-  if (!visible) return null
-  return (
-    <lineSegments raycast={() => undefined}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-      </bufferGeometry>
-      <lineBasicMaterial color="#aa9a87" transparent opacity={0.48} depthWrite={false} />
-    </lineSegments>
   )
 }
 
@@ -2098,95 +1890,6 @@ function FurnitureObject({ item, selected, canDrag, planView, frontWall }: { ite
   )
 }
 
-function StudioLight({ room }: { room: RoomConfig }) {
-  const shadowExtent = Math.max(room.width, room.depth) / 2 + 1
-  return (
-    <directionalLight
-      position={[0.01, 14, 0.01]}
-      intensity={2.1}
-      color="#fff2dc"
-      castShadow
-      shadow-mapSize={[1536, 1536]}
-      shadow-camera-near={1}
-      shadow-camera-far={30}
-      shadow-camera-left={-shadowExtent}
-      shadow-camera-right={shadowExtent}
-      shadow-camera-top={shadowExtent}
-      shadow-camera-bottom={-shadowExtent}
-      shadow-bias={-0.00035}
-      shadow-normalBias={0.02}
-      shadow-radius={4}
-    />
-  )
-}
-
-function WallIdentityLabel({ room, wall, view, wallView }: { room: RoomConfig; wall: WallSide; view: ViewMode; wallView: WallSide | null }) {
-  const texture = useMemo(() => {
-    const canvas = document.createElement('canvas')
-    canvas.width = 256
-    canvas.height = 192
-    const context = canvas.getContext('2d')
-    if (context) {
-      context.clearRect(0, 0, canvas.width, canvas.height)
-
-      context.save()
-      context.shadowColor = 'rgba(42, 57, 48, 0.16)'
-      context.shadowBlur = 10
-      context.shadowOffsetY = 5
-      context.beginPath()
-      context.roundRect(16, 10, 224, 168, 26)
-      context.fillStyle = 'rgba(255, 253, 249, 0.98)'
-      context.fill()
-      context.restore()
-
-      context.save()
-      context.beginPath()
-      context.roundRect(16, 10, 224, 168, 26)
-      context.clip()
-      context.fillStyle = '#52705d'
-      context.fillRect(16, 10, 224, 56)
-      context.restore()
-
-      context.beginPath()
-      context.roundRect(16, 10, 224, 168, 26)
-      context.lineWidth = 4
-      context.strokeStyle = 'rgba(64, 87, 72, 0.38)'
-      context.stroke()
-
-      context.textAlign = 'center'
-      context.textBaseline = 'middle'
-      context.fillStyle = '#fffdf9'
-      context.font = '800 22px Arial, sans-serif'
-      context.fillText('PARED', 128, 38)
-      context.fillStyle = '#405748'
-      context.font = '900 78px Arial, sans-serif'
-      context.fillText(WALL_LABELS[wall], 128, 123)
-    }
-    const nextTexture = new THREE.CanvasTexture(canvas)
-    nextTexture.colorSpace = THREE.SRGBColorSpace
-    nextTexture.minFilter = THREE.LinearFilter
-    return nextTexture
-  }, [wall])
-  useEffect(() => () => texture.dispose(), [texture])
-
-  const isFrontSideWall = view === 'front' && wall !== (wallView ?? 'north')
-  const height = isFrontSideWall ? room.height / 2 : room.height + 0.44
-  const wallOffset = 0.6
-  const position: [number, number, number] = wall === 'north'
-    ? [0, height, -room.depth / 2 - wallOffset]
-    : wall === 'south'
-      ? [0, height, room.depth / 2 + wallOffset]
-      : wall === 'east'
-        ? [room.width / 2 + wallOffset, height, 0]
-        : [-room.width / 2 - wallOffset, height, 0]
-
-  return (
-    <sprite position={position} scale={[0.69, 0.52, 1]} renderOrder={30} raycast={() => undefined}>
-      <spriteMaterial map={texture} transparent depthTest={false} depthWrite={false} toneMapped={false} />
-    </sprite>
-  )
-}
-
 function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null> }) {
   const selectedId = useRoomStore((state) => state.selectedId)
   const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
@@ -2205,16 +1908,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
       <StudioLight room={props.room} />
       <hemisphereLight args={['#ddecf0', '#bd9170', 0.75]} />
 
-      <group ref={modelRootRef}>
-        <mesh receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
-          event.stopPropagation()
-          recordSceneInteraction('background.pointer-down', { target: 'floor' })
-          selectElement(null)
-        }}>
-          <boxGeometry args={[props.room.width, 0.08, props.room.depth]} />
-          <meshStandardMaterial color={props.room.floorColor ?? DEFAULT_FLOOR_COLOR} roughness={0.94} />
-        </mesh>
-        <FloorGrid room={props.room} visible={!props.exportMode && props.gridVisibility.floor} />
+      <RoomShell room={props.room} modelRootRef={modelRootRef} showFloorGrid={!props.exportMode && props.gridVisibility.floor}>
         {WALL_SIDES.map((wall) => (
           <SoftWall
             key={wall}
@@ -2262,15 +1956,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
             frontWall={props.view === 'front' ? props.wallView ?? 'north' : null}
           />
         ))}
-        <mesh position={[0, -0.11, 0]} receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
-          event.stopPropagation()
-          recordSceneInteraction('background.pointer-down', { target: 'platform' })
-          selectElement(null)
-        }}>
-          <boxGeometry args={[props.room.width + 0.28, 0.14, props.room.depth + 0.28]} />
-          <meshStandardMaterial color="#b7835d" roughness={0.9} />
-        </mesh>
-      </group>
+      </RoomShell>
     </>
   )
 }

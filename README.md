@@ -74,7 +74,8 @@ Este registro es de diagnóstico y no es la fuente del historial de «Deshacer»
 - `src/domain/objectCatalog.ts`: catálogo local tipado con las propiedades base y capacidades de transformación de cada objeto.
 - `src/domain`: tipos, constantes y geometría pura.
 - `src/state`: estado de diseño, estado temporal de cámara y persistencia.
-- `src/components/RoomScene.tsx`: cámaras, habitación, paredes y mobiliario React Three Fiber.
+- `src/components/RoomScene.tsx`: composición parcial de escena; conserva aperturas interactivas, modelos, selección, gizmos, brújulas y exportación pendientes de R2.4–R2.9.
+- `src/scene`: `CameraRig`, reglas de visibilidad, `RoomShell`, cuerpos de pared y geometría de huecos, cuadrículas de suelo/pared y logger compartido trasladados en R2.1–R2.3.
 - `src/App.tsx`: composición del editor, coordinación de la escena y exportación.
 - `src/components/editor`: cabecera y diseños guardados, paneles, controles, inspectores por selección y atajos del editor.
 
