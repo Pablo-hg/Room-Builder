@@ -6,9 +6,9 @@
 React 19, TypeScript, Vite 6, Three.js, React Three Fiber, Zustand, pruebas de Node/tsx y Playwright. Mantener salvo necesidad real medida; no hay que introducir otro motor de juego.
 
 ## Problema técnico real
-La auditoría original identificó concentración en `src/App.tsx`, `src/components/RoomScene.tsx` y `src/state/useRoomStore.ts`. R1 extrae la interfaz de `App.tsx` a `src/components/editor`; R2.1–R2.6 trasladan cámaras, paredes, aperturas, superficies y modelos de mobiliario a `src/scene`. La selección y los gestos de muebles, brújulas, órbita y exportación siguen en `RoomScene.tsx` hasta R2.7–R2.9. El store conserva sus responsabilidades para R3. El tamaño no demuestra errores por sí solo, pero dificulta comprensión, pruebas y cambios seguros.
+La auditoría original identificó concentración en `src/App.tsx`, `src/components/RoomScene.tsx` y `src/state/useRoomStore.ts`. R1 extrae la interfaz de `App.tsx` a `src/components/editor`; R2.1–R2.9 trasladan cámaras, paredes, aperturas, superficies, mobiliario, selección y gestos, brújulas, órbita y exportación a `src/scene`. `RoomScene.tsx` compone estos módulos y conserva los exports públicos de brújulas para `App`. El store conserva sus responsabilidades para R3. El tamaño no demuestra errores por sí solo, pero dificulta comprensión, pruebas y cambios seguros.
 
-## Extracción de escena implementada (R2.1–R2.6)
+## Extracción de escena implementada (R2.1–R2.9)
 
 - `scene/CameraRig.tsx`: cálculos, animación y movimiento reducido originales; `scene/types.ts` conserva el contrato de props.
 - `scene/wallVisibility.ts`: política de paredes ocultas, etiquetas y cuadrículas reutilizando las funciones existentes del dominio.
@@ -20,7 +20,11 @@ La auditoría original identificó concentración en `src/App.tsx`, `src/compone
 - `scene/StructureSurface.tsx` y `scene/StructureSurfaceGizmo.tsx`: superficies constructivas y su gizmo.
 - `scene/FurnitureModels.tsx`: registro tipado que cubre todos los tipos de mobiliario; `colorTone.ts` conserva el cálculo cromático compartido.
 
-Esta entrega no reorganiza dominio ni persistencia.
+- `scene/FurnitureObject.tsx` y `scene/FurnitureGizmos.tsx`: selección espacial, arrastre y cuatro gizmos originales; el cierre de cancelación nativa del cuerpo del mueble está documentado como corrección separada.
+- `scene/Compass.tsx` y `scene/OrbitPointerController.tsx`: brújulas y órbita nativa; el manejo del botón central de `App` conserva su integración.
+- `scene/SceneExportController.tsx`: efecto de petición de exportación y validación de la referencia; `scene/exportGlb.ts`: copia/filtrado y descarga mediante el exportador de Three.js, con `binary` y `onlyVisible` originales.
+
+La auditoría registra las verificaciones y limitaciones de cada subparte. Esta entrega no reorganiza dominio ni persistencia.
 
 ## Límites de responsabilidad objetivo
 - **domain/**: modelos, objetos, restricciones y geometría puros, sin React o Three donde sea viable.

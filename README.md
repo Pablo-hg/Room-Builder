@@ -76,8 +76,8 @@ Este registro es de diagnóstico y no es la fuente del historial de «Deshacer»
 - `src/domain/objectCatalog.ts`: catálogo local tipado con las propiedades base y capacidades de transformación de cada objeto.
 - `src/domain`: tipos, constantes y geometría pura.
 - `src/state`: estado de diseño, estado temporal de cámara y persistencia.
-- `src/components/RoomScene.tsx`: composición parcial de escena; conserva selección y gestos de muebles, brújulas, órbita y exportación pendientes de R2.7–R2.9.
-- `src/scene`: cámara, visibilidad de paredes, shell, aperturas, superficies constructivas y registro tipado de modelos de mobiliario extraídos en R2.1–R2.6.
+- `src/components/RoomScene.tsx`: composición de escena y reexportación compatible de las brújulas.
+- `src/scene`: cámara, visibilidad, shell, aperturas, superficies, modelos, selección y gizmos de mobiliario, brújulas, órbita y adaptador GLB extraídos en R2.1–R2.9.
 - `src/App.tsx`: composición del editor, coordinación de la escena y exportación.
 - `src/components/editor`: cabecera y diseños guardados, paneles, controles, inspectores por selección y atajos del editor.
 
