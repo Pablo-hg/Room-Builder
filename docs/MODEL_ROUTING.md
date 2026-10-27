@@ -1,6 +1,6 @@
 # Política de selección de modelos para Codex y OpenCode
 
-**Fecha:** 27/10/2026. **Estado:** configuración propuesta e implementada en el repositorio; **activación real pendiente de probar en tu OpenCode y Codex de VS Code.**
+**Fecha:** 27/10/2026. **Estado:** reglas y clasificador preparados; **cambio automático de sesión NO activado** hasta implementar y probar una API compatible con la instalación.
 
 Esta guía complementa [AGENT_EFFICIENCY.md](AGENT_EFFICIENCY.md) y [../AGENTS.md](../AGENTS.md), que prevalecen ante contradicciones.
 
@@ -32,12 +32,12 @@ Seleccionar por complejidad, no únicamente por número de archivos. Un fallo di
 - Cuando se introduzca una API/hook oficial que permita modificar una sesión Codex en curso desde el agente, integrarla, probarla y documentarla. No simular ese comportamiento con comandos que lanzan sesiones independientes.
 
 ### OpenCode
-- El plugin local [`.opencode/plugins/model-routing/index.ts`](../.opencode/plugins/model-routing/index.ts) utiliza el hook `prompt` y `ctx.session.switchModel` de **OpenCode v2** para intentar cambiar entre Luna, Terra y Sol **antes** de ejecutar la tarea.
+- El archivo [`.opencode/plugins/model-routing/index.ts`](../.opencode/plugins/model-routing/index.ts) es **un punto de integración seguro e inactivo**. La documentación oficial del plugin instalado no acredita un hook `prompt` ni `ctx.session.switchModel` con la interfaz prevista: por eso no realiza cambios automáticos. Debe implementarse tras validar un método público compatible.
 - El clasificador de bajo coste [`scripts/model-routing/policy.mjs`](../scripts/model-routing/policy.mjs) usa reglas deterministas: no consume llamadas extra de IA.
-- Solo actúa si la sesión actual utiliza el proveedor `openai` y el modelo destino existe en la cuenta. **Nunca pasa a otro proveedor ni modifica los comandos gratuitos existentes.**
+- La futura integración deberá actuar exclusivamente en sesiones del proveedor `openai`, comprobar disponibilidad de destino y no tocar proveedores gratuitos ni comandos existentes.
 - Si la tarea es ambigua, conserva Terra como recomendación habitual. Si el usuario selecciona explícitamente un modelo, respeta su etiqueta `#modelo:`.
-- La notificación de cambio se añade como aviso al mensaje del usuario que lo desencadenó para que el agente la comunique al comenzar.
-- No garantizamos que el plugin funcione en tu instalación **hasta comprobar versión y ejecutar una prueba en OpenCode**. Puede que versiones antiguas carezcan del hook o del método. Si eso sucede, conservar las reglas y desactivar el plugin o actualizar OpenCode antes de darlo por activo.
+- Mientras no se pruebe la integración, el aviso se solicita a Codex y OpenCode mediante `AGENTS.md`; no se garantiza una lectura automática del modelo en uso.
+- No se habilita selección automática en OpenCode por defecto. La integración se estudiará con la API exacta de la versión instalada y pruebas que confirmen el cambio real y el respeto de modelos gratuitos.
 
 ## Cómo verificarlo en tu entorno
 
@@ -46,13 +46,13 @@ Seleccionar por complejidad, no únicamente por número de archivos. Un fallo di
 node --test scripts/model-routing/policy.test.mjs
 ```
 
-**Prueba manual en OpenCode v2** (requerida para confirmar automatización):
-1. Recargar OpenCode en la carpeta del repositorio y comprobar que el plugin local aparece cargado sin errores.
-2. Seleccionar manualmente **GPT-6.1 Sol** en la sesión.
-3. Enviar «Corrige una errata de README.md sin editar archivos». Debe cambiar a **Luna**, si está disponible, y mostrar aviso real; si no, debe conservar Sol.
-4. Enviar «Investiga un bug complejo de cámara isométrica y gizmos, sin editar archivos». Debe cambiar a **Sol** y advertir, siempre que esté disponible.
+**Prueba de aceptación prevista para una integración futura (NO operativa hoy):**
+1. Validar la versión exacta de OpenCode y diseñar una integración compatible con los hooks oficiales.
+2. Preparar un test en una sesión de pruebas seleccionando **GPT-6.1 Sol**.
+3. Enviar «Corrige una errata de README.md sin editar archivos». Cuando la automatización futura esté implementada: verificar que cambia a Luna y avisa, o conserva Sol si no está disponible.
+4. Enviar «Investiga un bug complejo de cámara isométrica y gizmos, sin editar archivos». La futura automatización deberá cambiar a Sol y advertir, si existe autorización y está disponible.
 5. Ejecutar `/gratis` con una consulta sencilla: no debe modificar su proveedor/modelo gratuito ni iniciar llamadas de OpenAI pagadas.
-6. Confirmar en el indicador de modelo de la sesión qué modelo se usó realmente; si no coincide, registrar fallo y dejar el plugin inactivo.
+6. Confirmar en el indicador de modelo de la sesión qué modelo se usó realmente; no activar el plugin hasta verificar el funcionamiento completo.
 
 **Prueba manual en Codex VS Code:** abrir una sesión nueva desde el repositorio y verificar Terra predeterminado; seleccionar Luna y pedir un análisis complejo de cámaras. Debe **avisar** si detecta el modelo inadecuado, sin afirmar que ha podido cambiarlo cuando la extensión no ofrece la operación.
 
