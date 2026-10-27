@@ -625,3 +625,10 @@ Verificación: `npm test`, **57 aprobadas, 0 fallos**; `npm run build`, **correc
 `FurnitureGizmos.tsx` contiene los cuatro gizmos de movimiento y giro; `FurnitureObject.tsx` conserva selección, arrastre del cuerpo y composición de modelo/gizmos. Se verificó por comparación textual que las cinco funciones mantienen cuerpos y firmas de la versión corregida salvo `export`. No se generalizan cálculos ni se unifican planos distintos. Las aperturas y superficies conservan sus módulos de R2.4/R2.5; Zustand sigue gestionando mundo e historial. `RoomScene.tsx` queda en 664 líneas.
 
 Verificación: `npm test`, **57 aprobadas, 0 fallos**; `npm run build`, **correcto**, 88 módulos; E2E de gestos, **3 passed (32.5s)**; `npm run capture:r0-baseline`, **1 passed (21.1s)**. Las nueve capturas coinciden píxel a píxel con la baseline previa a R2; se inspeccionó la lámina de las nueve vistas. El recorrido táctil emulado cubre el cuerpo del mueble, no sustituye una comprobación física de todos los gizmos.
+
+
+### R2.8 — completada
+
+`Compass.tsx` reúne las dos brújulas y sus marcadores/materiales originales; `OrbitPointerController.tsx` contiene el controlador nativo de órbita. La comparación textual confirma contenido idéntico salvo imports/export. `RoomScene.tsx` reexporta las brújulas para conservar el contrato de importación de `App`; no cambia props, DOM, controles, sensibilidad de 0.009 ni cámaras. El manejo central de `App` permanece en su lugar, sin duplicarlo. `RoomScene.tsx` queda en 196 líneas.
+
+Verificación: `npm test`, **57 aprobadas, 0 fallos**; `npm run build`, **correcto**, 90 módulos; E2E de orientaciones, giro, órbita principal/central, libre y reselección, **7 passed (38.3s)**; `npm run capture:r0-baseline`, **1 passed (22.6s)**. Las nueve capturas se inspeccionaron y coinciden píxel a píxel con la baseline previa a R2. La reselección pasó en esta ejecución; no se declara resuelto su intermitente previo.

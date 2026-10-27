@@ -1,6 +1,6 @@
 # Plan de reorganización del código — fase siguiente
 
-**Estado:** R0 completada y R1 ejecutada en la rama de trabajo; R2.1–R2.7 ejecutadas en la rama de trabajo; R2.8–R2.9 y R3–R5 siguen pendientes. Las decisiones de arquitectura futura no quedan aprobadas por esta actualización.
+**Estado:** R0 completada y R1 ejecutada en la rama de trabajo; R2.1–R2.8 ejecutadas en la rama de trabajo; R2.9 y R3–R5 siguen pendientes. Las decisiones de arquitectura futura no quedan aprobadas por esta actualización.
 
 ## Antes de tocar código
 1. Confirmar alcance de esta documentación y enumerar cambios actuales sin commit; evitar sobrescribir trabajo de Codex.
@@ -19,7 +19,7 @@
 - Sacar de App.tsx cabecera, selector de vistas, catálogo, inspector, paneles de construcción y diálogos a componentes/herramientas propios.
 - Mantener el mismo DOM observable para pruebas cuando sea posible; evitar cambio visual grande.
 
-**R2 — Extraer escena (R2.1–R2.7 implementadas; R2.8–R2.9 pendientes)**
+**R2 — Extraer escena (R2.1–R2.8 implementadas; R2.9 pendiente)**
 - Separar CameraRig, habitación/paredes/aberturas, modelos de mobiliario, helpers de selección y exportador GLB de RoomScene.tsx.
 - Mantener los mismos valores por defecto, comportamiento y cinco vistas.
 
@@ -32,7 +32,7 @@ Subpartes, en orden de dependencia. Cada una se cierra con sus pruebas y captura
 - **R2.5 — Superficies constructivas y gizmo** (COMPLETADA; depende de R2.3): selección, movimiento, redimensionado y undo alineados con la habitación.
 - **R2.6 — Modelos de mobiliario a registro tipado** (COMPLETADA; depende de R2.3): silueta, color e icono coherentes en las cinco vistas.
 - **R2.7 — Gizmos y gestos comunes** (COMPLETADA; depende de R2.4–R2.6): arrastre con inicio, fin y cancelación en ratón y táctil, con un solo paso de historial por gesto.
-- **R2.8 — Brújulas e integración de órbita** (PENDIENTE; depende de R2.2 y R2.7): sin conflicto entre botón principal y central.
+- **R2.8 — Brújulas e integración de órbita** (COMPLETADA; depende de R2.2 y R2.7): sin conflicto entre botón principal y central.
 - **R2.9 — Exportación GLB** (PENDIENTE; depende de R2.3–R2.6): adaptador aislado, sin exportar helpers ni elementos ocultos, con smoke test y nombre de archivo.
 
 **R3 — Ordenar dominio y estado**
