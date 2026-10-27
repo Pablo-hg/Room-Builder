@@ -32,6 +32,13 @@ Crítico / revisión	Modelo elegido explícitamente por el usuario; no escalar d
 La tabla es orientativa, no un cambio automático de modelo ni una clasificación de calidad validada. La disponibilidad, fiabilidad y condiciones de gratuidad deben revisarse periódicamente.
 
 No escalar por el mero número de archivos; primero dividir la tarea o mejorar el contexto. No insistir con un modelo ligero si sus errores se repiten.
+3.1. Detección y cambio de modelo al iniciar tareas
+- El usuario ha autorizado la **selección automática entre modelos OpenAI de su suscripción ChatGPT**, si el cliente proporciona un método real para cambiar de modelo en la misma sesión. No autoriza proveedores externos de pago, API facturable ni recargas.
+- Aplicar la guía docs/MODEL_ROUTING.md. Codex nativo debe recomendar y avisar, pero **no afirmar un cambio que no puede realizar**; OpenCode v2 tiene un plugin de enrutamiento automático pendiente de validar localmente.
+- Modelos iniciales: documentación simple → Luna / Low; implementación habitual → Terra / Medium; R2/R3/R4 o problemas 3D/persistencia → Sol / Medium; Astra nunca automático.
+- Si no se dispone de un modelo recomendado, conservar el actual. No invocar subagentes para elegir modelo.
+- No aplicar el enrutador a /gratis*, -free ni al traspaso a Codex.
+
 4. Cuotas, proveedores y límites de gasto
 - El uso habitual consume la cuota de Codex correspondiente a la cuenta ChatGPT conectada; no debe contratarse una API de OpenAI ni otro servicio para sustituirla.
 - En modo gratuito, elegir solamente modelos verificados como gratuitos (identificador acabado en -free en nuestra selección), sin recarga automática ni API facturable.
