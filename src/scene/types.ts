@@ -22,4 +22,3 @@ export interface SceneProps {
   exportDesignName: string
   onExportComplete: (error?: Error) => void
 }
-

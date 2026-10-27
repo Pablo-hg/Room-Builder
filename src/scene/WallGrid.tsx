@@ -32,4 +32,3 @@ export function WallGrid({ length, height, openings }: { length: number; height:
     </lineSegments>
   )
 }
-

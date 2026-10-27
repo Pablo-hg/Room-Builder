@@ -252,4 +252,3 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
 
   return null
 }
-

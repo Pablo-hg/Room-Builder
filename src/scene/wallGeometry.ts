@@ -108,4 +108,3 @@ export function visibleLineIntervals(start: number, end: number, cuts: [number, 
   if (cursor < end - 0.00001) visible.push([cursor, end])
   return visible
 }
-

@@ -9,4 +9,3 @@ export function recordSceneInteraction(action: string, details?: InteractionDeta
     details,
   })
 }
-

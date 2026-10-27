@@ -126,4 +126,3 @@ export function WallIdentityLabel({ room, wall, view, wallView }: { room: RoomCo
     </sprite>
   )
 }
-

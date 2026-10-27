@@ -44,4 +44,3 @@ export function WallBody({ length, height, openings, color, onPointerDown }: { l
     </mesh>
   )
 }
-

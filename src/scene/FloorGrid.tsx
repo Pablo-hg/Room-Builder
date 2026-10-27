@@ -25,4 +25,3 @@ export function FloorGrid({ room, visible }: { room: RoomConfig; visible: boolea
     </lineSegments>
   )
 }
-
