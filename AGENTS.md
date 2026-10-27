@@ -42,6 +42,9 @@ Instrucciones permanentes para Codex y agentes — Room Builder
 - Si se cambia de agente o proveedor, transmitir un resumen compacto de tarea, rama, archivos, decisiones, pruebas y siguiente paso; el receptor comprobará el estado real antes de continuar.
 - Nunca sacrificar funcionalidad, seguridad ni verificaciones necesarias para consumir menos tokens.
 5. Política de modelos y proveedores
+- **Nueva autorización explícita:** antes de desarrollar una tarea, recomendar el nivel Luna / Terra / Sol según complejidad. Si el entorno permite comprobar y cambiar el modelo de la sesión con una operación real, se autoriza la selección automática SOLO entre los modelos OpenAI de la suscripción ChatGPT ya conectada, sin pagos adicionales y con aviso breve al usuario. Si el cambio no es posible o no se puede verificar, no afirmar que ha sucedido: indicarlo y recomendar el selector del cliente.
+- En el chat nativo de Codex VS Code, AGENTS.md no permite controlar por sí mismo el selector; seguir la política de aviso. En OpenCode el cambio automático aún NO está activado: el plugin actual es un marcador inactivo porque no se ha confirmado una API de cambio de sesión compatible. Debe avisar y recomendar hasta que se implemente y pruebe.
+- Detalles, excepciones, instrucciones de verificación y etiquetas `#modelo:`: docs/MODEL_ROUTING.md. No seleccionar Astra automáticamente.
 - Modo predeterminado: Codex, usando openai/gpt-6.1-terra con la suscripción ChatGPT conectada a OpenCode. No implica autorizar gasto adicional en API.
 - La clasificación rápido / equilibrado / profundo / crítico sirve para recomendar modelos adecuados, pero no autoriza al agente a cambiar de proveedor o modelo sin una orden explícita o una automatización previamente aprobada.
 - Modo gratuito solo bajo petición expresa del usuario: comandos como /gratis, /gratis-alternativa, /gratis-rapido, /gratis-profundo o /gratis-visual, o selección manual de un modelo -free desde /models.
