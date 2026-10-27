@@ -1,6 +1,6 @@
 # Plan de reorganización del código — fase siguiente
 
-**Estado:** PROPUESTO; **NO EJECUTADO**. Este documento autoriza planificación, no refactor automático.
+**Estado:** R0 completada y R1 ejecutada en la rama de trabajo; R2–R5 siguen PROPUESTAS y no ejecutadas. Las decisiones de arquitectura futura no quedan aprobadas por esta actualización.
 
 ## Antes de tocar código
 1. Confirmar alcance de esta documentación y enumerar cambios actuales sin commit; evitar sobrescribir trabajo de Codex.
@@ -15,7 +15,7 @@
 - Identificar conflictos entre mobiliario, aperturas y packs constructivos.
 - Preparar tests de caracterización sin cambiar comportamiento.
 
-**R1 — Extraer UI**
+**R1 — Extraer UI (implementado; verificación registrada en la auditoría)**
 - Sacar de App.tsx cabecera, selector de vistas, catálogo, inspector, paneles de construcción y diálogos a componentes/herramientas propios.
 - Mantener el mismo DOM observable para pruebas cuando sea posible; evitar cambio visual grande.
 

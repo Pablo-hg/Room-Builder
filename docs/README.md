@@ -18,6 +18,8 @@ Room Builder es una aplicación web independiente, de aspecto de juego, para rec
 | [DECISION_LOG.md](DECISION_LOG.md) | Confirmado frente a propuesta o pendiente |
 | [../GENERADOR_OBJETOS.md](../GENERADOR_OBJETOS.md) | Experimento separado: objetos parametrizados por texto |
 | [../AGENTS.md](../AGENTS.md) | Instrucciones que Codex debe revisar en cada tarea |
+| [AGENT_EFFICIENCY.md](AGENT_EFFICIENCY.md) | Uso mínimo de tokens, modelos gratuitos y continuidad de tareas |
+| [MODEL_ROUTING.md](MODEL_ROUTING.md) | Selección de Luna/Terra/Sol, aviso y automatización según cliente |
 
 ## Significado de los estados
 - **CONFIRMADO:** preferencia o regla expresamente acordada para Room Builder.

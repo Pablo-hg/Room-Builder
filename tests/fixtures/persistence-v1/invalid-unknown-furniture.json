@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "room": {
+    "width": 5.5,
+    "depth": 4.5,
+    "height": 2.7,
+    "door": {
+      "wall": "south",
+      "offset": 0,
+      "width": 1,
+      "height": 2.1,
+      "rotation": 0
+    },
+    "windows": []
+  },
+  "furniture": [
+    {
+      "id": "invalid-object",
+      "kind": "spaceship",
+      "name": "Objeto desconocido",
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "rotation": 0,
+      "width": 1,
+      "depth": 1,
+      "height": 1,
+      "color": "#ffffff"
+    }
+  ],
+  "gridSnap": true
+}
