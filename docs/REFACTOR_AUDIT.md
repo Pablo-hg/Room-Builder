@@ -567,3 +567,9 @@ Se continúa en `refactor/r2-escena` desde el código de `7314a14` y los cambios
 Verificación: `npm test`, **54 pruebas aprobadas**; `npm run build`, **correcto**, 83 módulos; `npm run test:e2e -- tests/opening-extraction.spec.ts`, **2 passed (19.4s)**; `npm run capture:r0-baseline`, **1 passed (26.0s)**. Las nueve capturas fueron inspeccionadas y coinciden píxel a píxel con la baseline previa a R2. Se cubren cambio de pared, giro y límites desde el inspector, deshacer y arrastre horizontal mediante el gizmo en escena.
 
 Durante la caracterización, el primer intento de arrastre no movió la ventana: la prueba había pulsado el eje vertical. Se reprodujo en una copia temporal anterior a R2.4 y se verificó que el eje horizontal sí desplaza la ventana; la prueba se corrigió para pulsar el eje correspondiente. Tampoco se alteró la deselección existente tras deshacer/rehacer, que los primeros borradores de las pruebas no contemplaban.
+
+### R2.5 — completada
+
+`StructureSurface.tsx` y `StructureSurfaceGizmo.tsx` contienen la superficie, su posición y el gizmo existente. Las tres funciones trasladadas conservan literalmente cuerpo y firma salvo `export`; la fuente de verdad sigue siendo el store y no se han modificado las props externas. La selección, posición, redimensionado y agrupación de movimiento mantienen el comportamiento anterior.
+
+Verificación: `npm test`, **54 pruebas aprobadas**; `npm run build`, **correcto**, 85 módulos; `npm run test:e2e -- tests/structure-extraction.spec.ts`, **2 passed (16.6s)**; el caso existente de selección de pack también pasó; `npm run capture:r0-baseline`, **1 passed (21.8s)**. Las nueve capturas se inspeccionaron y coinciden píxel a píxel con la baseline. Los recorridos cubren seleccionar, mover/redimensionar desde el inspector, deshacer/rehacer y arrastrar el gizmo en planta con deshacer de un gesto. El arrastre se comprobó también en una copia de la versión anterior.
