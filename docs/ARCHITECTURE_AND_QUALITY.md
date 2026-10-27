@@ -20,7 +20,7 @@ La auditoría original identificó concentración en `src/App.tsx`, `src/compone
 - `scene/StructureSurface.tsx` y `scene/StructureSurfaceGizmo.tsx`: superficies constructivas y su gizmo.
 - `scene/FurnitureModels.tsx`: registro tipado que cubre todos los tipos de mobiliario; `colorTone.ts` conserva el cálculo cromático compartido.
 
-- `scene/FurnitureObject.tsx` y `scene/FurnitureGizmos.tsx`: selección espacial, arrastre y cuatro gizmos originales; el cierre de cancelación nativa del cuerpo del mueble está documentado como corrección separada.
+- `scene/FurnitureObject.tsx` y `scene/FurnitureGizmos.tsx`: selección espacial, arrastre y cuatro gizmos originales; `scene/usePointerCancellation.ts` comparte el cierre de cancelación nativa entre cuerpo y gizmos, documentado como corrección separada.
 - `scene/Compass.tsx` y `scene/OrbitPointerController.tsx`: brújulas y órbita nativa; el manejo del botón central de `App` conserva su integración.
 - `scene/SceneExportController.tsx`: efecto de petición de exportación y validación de la referencia; `scene/exportGlb.ts`: copia/filtrado y descarga mediante el exportador de Three.js, con `binary` y `onlyVisible` originales.
 

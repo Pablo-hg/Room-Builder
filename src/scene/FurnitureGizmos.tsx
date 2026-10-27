@@ -6,6 +6,7 @@ import { isCeilingMountedFurniture, isFloorBoundFurniture } from '../domain/obje
 import type { FurnitureItem, WallSide } from '../domain/types'
 import { useRoomStore } from '../state/useRoomStore'
 import { recordSceneInteraction } from './sceneInteraction'
+import { usePointerCancellation } from './usePointerCancellation'
 
 type FloorMoveAxis = 'x' | 'y' | 'z'
 
@@ -34,7 +35,7 @@ export function RotationHandle({ item }: { item: FurnitureItem }) {
     targetRotation.current = item.rotation
     setDragging(true)
     document.body.classList.add('can-grab')
-    ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+    capturePointer(event)
   }
 
   const rotate = (event: ThreeEvent<PointerEvent>) => {
@@ -63,6 +64,8 @@ export function RotationHandle({ item }: { item: FurnitureItem }) {
     document.body.classList.remove('can-grab')
     ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
   }
+
+  const capturePointer = usePointerCancellation(stopRotation)
 
   const events = {
     onPointerDown: startRotation,
@@ -155,7 +158,7 @@ export function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall:
     targetRotation.current = item.rotation
     setDragging(true)
     document.body.classList.add('can-grab')
-    ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+    capturePointer(event)
   }
 
   const rotate = (event: ThreeEvent<PointerEvent>) => {
@@ -181,6 +184,8 @@ export function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall:
     document.body.classList.remove('can-grab')
     ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
   }
+
+  const capturePointer = usePointerCancellation(stopRotation)
 
   const events = {
     onPointerDown: startRotation,
@@ -275,7 +280,7 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
     beginFurnitureMove()
     setDraggingAxis(axis)
     document.body.classList.add('can-grab')
-    ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+    capturePointer(event)
   }
 
   const drag = (event: ThreeEvent<PointerEvent>) => {
@@ -311,6 +316,8 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
     document.body.classList.remove('can-grab')
     ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
   }
+
+  const capturePointer = usePointerCancellation(stopDrag)
 
   const axisMaterial = (axis: FloorMoveAxis, color: string, activeColor: string) => (
     <meshBasicMaterial
@@ -448,7 +455,7 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
     beginFurnitureMove()
     setDraggingAxis(axis)
     document.body.classList.add('can-grab')
-    ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+    capturePointer(event)
   }
 
   const drag = (event: ThreeEvent<PointerEvent>) => {
@@ -487,6 +494,8 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
     document.body.classList.remove('can-grab')
     ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
   }
+
+  const capturePointer = usePointerCancellation(stopDrag)
 
   const eventsForAxis = (axis: 'horizontal' | 'vertical') => ({
     onPointerDown: (event: ThreeEvent<PointerEvent>) => startDrag(axis, event),

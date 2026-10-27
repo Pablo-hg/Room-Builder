@@ -1,10 +1,11 @@
 import { type ThreeEvent, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { isCeilingMountedFurniture, isFloorBoundFurniture, isWallPictureKind } from '../domain/objectCatalog'
 import type { FurnitureItem, WallSide } from '../domain/types'
 import { useRoomStore } from '../state/useRoomStore'
 import { recordSceneInteraction } from './sceneInteraction'
+import { usePointerCancellation } from './usePointerCancellation'
 
 import { FurnitureModel } from './FurnitureModels'
 import { AxisMoveGizmo, FrontAxisMoveGizmo, RotationHandle, FrontRotationHandle } from './FurnitureGizmos'
@@ -15,33 +16,23 @@ export function FurnitureObject({ item, selected, canDrag, planView, frontWall }
   const endFurnitureMove = useRoomStore((state) => state.endFurnitureMove)
   const moveFurniture = useRoomStore((state) => state.moveFurniture)
   const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
-  const { camera, size, gl } = useThree()
+  const { camera, size } = useThree()
   const [dragging, setDragging] = useState(false)
   const canMoveVertically = !isFloorBoundFurniture(item.kind)
   const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
   const point = useMemo(() => new THREE.Vector3(), [])
   const dragOffset = useRef({ x: 0, z: 0 })
   const frontDragStart = useRef({ clientX: 0, clientY: 0, x: item.x, y: item.y, z: item.z })
-  const activePointerId = useRef<number | null>(null)
 
   const cancelDrag = () => {
     if (dragging) {
       recordSceneInteraction('furniture.drag-cancel', { id: item.id, name: item.name })
       endFurnitureMove()
     }
-    activePointerId.current = null
     setDragging(false)
   }
 
-  useEffect(() => {
-    // Fiber 9.8.2 limpia el hover al cancelar, pero no despacha el handler del objeto.
-    const cancelPointer = (event: PointerEvent) => {
-      if (event.pointerId === activePointerId.current) cancelDrag()
-    }
-    const canvas = gl.domElement
-    canvas.addEventListener('pointercancel', cancelPointer)
-    return () => canvas.removeEventListener('pointercancel', cancelPointer)
-  }, [gl, dragging, endFurnitureMove, item.id, item.name])
+  const capturePointer = usePointerCancellation(cancelDrag)
 
   const handleDown = (event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation()
@@ -69,16 +60,14 @@ export function FurnitureObject({ item, selected, canDrag, planView, frontWall }
       }
       beginFurnitureMove()
       setDragging(true)
-      activePointerId.current = event.pointerId
-      ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+      capturePointer(event)
       return
     }
     if (!event.ray.intersectPlane(floorPlane, point)) return
     dragOffset.current = { x: point.x - item.x, z: point.z - item.z }
     beginFurnitureMove()
     setDragging(true)
-    activePointerId.current = event.pointerId
-    ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+    capturePointer(event)
   }
   const handleMove = (event: ThreeEvent<PointerEvent>) => {
     if (!dragging || !canDrag) return
@@ -121,7 +110,6 @@ export function FurnitureObject({ item, selected, canDrag, planView, frontWall }
     })
     endFurnitureMove()
     setDragging(false)
-    activePointerId.current = null
     ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
   }
 

@@ -642,4 +642,30 @@ Verificación: `npm test`, **58 aprobadas, 0 fallos**; `npm run build`, **correc
 
 La suite completa `npm run test:e2e` dio **29 passed (2.0m), 1 failed**, de nuevo en la reselección del sillón (`room-builder.spec.ts:484`), mismo síntoma que en la baseline anterior a la extracción. No se declara suite completa verde ni se atribuye a una causa raíz no demostrada. Pasaron todos los recorridos nuevos de gestos y GLB. La comprobación posterior del gizmo X confirmó que la misma cancelación nativa de Fiber mantiene abierto su historial (**1 failed**, esperando X=0.75 tras deshacer la edición posterior, obtenido X=0). Se completará el puente común en una corrección separada antes del cierre final.
 
-Capturas tras R2.9: `npm run capture:r0-baseline`, **1 passed (22.7s)**. Las nueve imágenes se inspeccionaron y coinciden píxel a píxel con la baseline previa a R2. Se mantienen intactas las referencias versionadas.
+Capturas tras R2.9: `npm run capture:r0-baseline`, **1 passed (23.9s)**. Las nueve imágenes se inspeccionaron y coinciden píxel a píxel con la baseline previa a R2. Se mantienen intactas las referencias versionadas.
+
+
+### Corrección común de cancelación en mobiliario y gizmos
+
+La reproducción específica sobre el eje X confirmó el mismo historial abierto que en el cuerpo. La corrección autorizada se completa fuera de los commits de extracción mediante `usePointerCancellation.ts`: escucha los eventos nativos del canvas, conserva la referencia del puntero capturado y llama al handler de cierre original al recibir `pointercancel` para ese mismo id. El fin normal limpia la referencia. Lo comparten el cuerpo y los cuatro gizmos de mobiliario; no se alteran geometría, cálculos, store ni duración del gesto. La solución inicial específica del cuerpo se sustituye por el puente común.
+
+Se amplió el recorrido a cuerpo y gizmo X, cada uno con ratón, fin táctil y cancelación táctil. `npm run test:e2e -- tests/furniture-gestures.spec.ts --workers=1`: **6 passed (58.7s)**. Se conservan las aserciones de separación de la siguiente edición, un solo deshacer por arrastre y rehacer. `npm test`: **58 aprobadas, 0 fallos**. `npm run build`: **correcto**, 93 módulos; persiste el aviso previo de tamaño de chunk. El caso antes fallido del eje X pasa sin relajar expectativas.
+
+
+### Cierre de R2.7–R2.9 y estado de R2
+
+| Subtarea | Estado final | Evidencia principal |
+| --- | --- | --- |
+| R2.7 | Completada | Extracción literal de selección/gestos y cuatro gizmos; corrección nativa de cancelación en commits separados; seis recorridos de ratón/táctil/historial aprobados. |
+| R2.8 | Completada | Brújulas y órbita extraídas literalmente; siete recorridos de orientaciones, botones principal/central, libre y reselección aprobados. |
+| R2.9 | Completada | Adaptador GLB y controlador aislados; prueba de copia/filtrado y dos descargas GLB aprobadas. |
+
+Sobre el código final: `npm test`, **58 aprobadas, 0 fallos**; `npm run build`, **correcto**, 93 módulos (JS 1316.28 kB; gzip 361.84 kB; aviso previo de chunk superior a 500 kB); `npm run test:e2e -- --workers=1`, **33 passed (2.9m)**, incluida la reselección. Esta ejecución se hizo en serie para contrastar el comportamiento con la ejecución paralela; no se cambió la configuración por defecto ni se omitieron tests. El resultado paralelo anterior permanece registrado: **29 passed, 1 failed**. No se declara resuelta la incidencia ni se deduce su causa a partir de que la ejecución serial pase.
+
+`RoomScene.tsx` es composición de 123 líneas. Se comprobó que los cuerpos de `RoomWorld` y del `Canvas` siguen idénticos a los de R2.6. Las cuatro funciones de gizmo solo difieren por el puente de cancelación autorizado. `App`, `SceneProps`, `CameraRig`, dominio y store no se modificaron; tampoco formatos persistidos, geometrías, materiales, coordenadas ni defaults de cámara. README, plan y arquitectura reflejan los módulos reales. Se conservan los resultados históricos de la auditoría.
+
+**R2 está completada como extracción, con una incidencia de validación previa pendiente de causa raíz:** reselección intermitente del sillón en la suite completa con configuración por defecto. La base tiene build, unitarios y E2E completos seriales aprobados; no una garantía de estabilidad de E2E paralelos. El fallo de cancelación de mobiliario/gizmos sí tiene reproducción, causa y corrección verificadas. No se ha iniciado R3, ni se ha hecho merge o push. Los cambios locales ajenos a R2 se conservan sin incluir en estos commits.
+
+Limitaciones: verificaciones en Chromium; táctil emulado por CDP, sin dispositivos físicos. Los seis recorridos caracterizan cuerpo y gizmo X en planta; los otros gizmos comparten el puente, pero no se afirma cobertura táctil física de cada eje/vista. No se amplió esta corrección a la cancelación de aperturas o superficies constructivas, que no se caracterizó aquí. Se reutiliza la validación de 78 capturas del catálogo de R2.6 porque sus modelos no cambiaron; las nueve capturas generales se repiten por subparte. Los artefactos visuales temporales están en `/tmp/room-r2/{pre27,r27,r28,r29}` y el material de diagnóstico en `/tmp/room-r2-final`; no son artefactos permanentes.
+
+Captura de cierre sobre el código final: `npm run capture:r0-baseline`, **1 passed (21.1s)**. Se inspeccionó la lámina de las cinco vistas y cuatro orientaciones; las nueve imágenes coinciden píxel a píxel con la baseline previa a R2. Copia temporal en `/tmp/room-r2/final`; referencias versionadas restauradas sin cambios.
