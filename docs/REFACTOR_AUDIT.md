@@ -555,3 +555,15 @@ Verificación: `npm test`, **54 pruebas aprobadas, 0 fallos**; `npm run build`, 
 | R2.9 | PENDIENTE: adaptador GLB y su smoke test. |
 
 Los resultados de R2.3 sirven también como comprobaciones de cierre: después solo se actualizaron documentos y se normalizaron líneas vacías al final de archivos, sin cambios de comportamiento que requieran repetir las pruebas. La baseline y cada subtarea pasaron la suite E2E completa sin reproducir el fallo intermitente de R0. Se conservan las referencias visuales versionadas; las capturas de esta sesión quedan en `/tmp/room-r2/{baseline,r21,r22,r23}`. La comparación visual cubre este fixture y Chromium, no todos los entornos gráficos. Persiste el aviso previo de tamaño del bundle. No se ha iniciado R2.4 ni R3, ni se ha hecho merge o publicación.
+
+## 18. R2 — segunda entrega: R2.4–R2.6
+
+Se continúa en `refactor/r2-escena` desde el código de `7314a14` y los cambios documentales posteriores. Antes de la extracción se conservó la baseline de R2.3, todavía válida porque el código no había cambiado. Además se generaron e inspeccionaron 78 capturas de los 26 elementos del catálogo en isométrica, planta y frontal; los tres cuadros se representan como elementos murales, conforme al comportamiento actual.
+
+### R2.4 — completada
+
+`Openings.tsx` contiene la interacción, gizmos, decoración y representación en planta de las aperturas. `SoftWall` pasa a `Walls.tsx` y `colorTone.ts` comparte la función cromática original. Ocho funciones mantienen exactamente sus cuerpos y firmas salvo `export`; no se ha alterado el contrato externo ni el store.
+
+Verificación: `npm test`, **54 pruebas aprobadas**; `npm run build`, **correcto**, 83 módulos; `npm run test:e2e -- tests/opening-extraction.spec.ts`, **2 passed (19.4s)**; `npm run capture:r0-baseline`, **1 passed (26.0s)**. Las nueve capturas fueron inspeccionadas y coinciden píxel a píxel con la baseline previa a R2. Se cubren cambio de pared, giro y límites desde el inspector, deshacer y arrastre horizontal mediante el gizmo en escena.
+
+Durante la caracterización, el primer intento de arrastre no movió la ventana: la prueba había pulsado el eje vertical. Se reprodujo en una copia temporal anterior a R2.4 y se verificó que el eje horizontal sí desplaza la ventana; la prueba se corrigió para pulsar el eje correspondiente. Tampoco se alteró la deselección existente tras deshacer/rehacer, que los primeros borradores de las pruebas no contemplaban.

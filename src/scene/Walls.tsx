@@ -1,9 +1,14 @@
 import type { ThreeEvent } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { isWallMountedDecoration } from '../domain/geometry'
+import { DEFAULT_WALL_COLOR } from '../domain/constants'
+import { isWallMountedDecoration, openingsForWall, wallLength } from '../domain/geometry'
 import type { RoomConfig, WallOpening, WallSide } from '../domain/types'
 import { clipPolygonToWall, openingPolygon } from './wallGeometry'
+import { useRoomStore } from '../state/useRoomStore'
+import { OpeningDetail } from './Openings'
+import { WallGrid } from './WallGrid'
+import { recordSceneInteraction } from './sceneInteraction'
 
 export const wallPlacement: Record<WallSide, (room: RoomConfig) => { position: [number, number, number]; rotation: [number, number, number] }> = {
   north: (room) => ({ position: [0, 0, -room.depth / 2], rotation: [0, 0, 0] }),
@@ -42,5 +47,40 @@ export function WallBody({ length, height, openings, color, onPointerDown }: { l
     <mesh geometry={geometry} position={[0, 0, -0.06]} castShadow receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={onPointerDown}>
       <meshStandardMaterial color={color} roughness={0.92} />
     </mesh>
+  )
+}
+
+export function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exportMode }: { room: RoomConfig; wall: WallSide; hidden: boolean; showOpeningDetails: boolean; showGrid: boolean; exportMode: boolean }) {
+  const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
+  const selectedId = useRoomStore((state) => state.selectedId)
+  const selectElement = useRoomStore((state) => state.selectElement)
+  const length = wallLength(room, wall)
+  const openings = useMemo(() => openingsForWall(room, wall), [room.door, room.windows, wall])
+  const placement = wallPlacement[wall](room)
+
+  return (
+    <group position={placement.position} rotation={placement.rotation}>
+      {!hidden && <group>
+        <WallBody length={length} height={room.height} openings={openings} color={room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR} onPointerDown={(event) => {
+          event.stopPropagation()
+          recordSceneInteraction('background.pointer-down', { target: 'wall', wall })
+          selectElement(null)
+        }} />
+        <mesh position={[0, 0.055, 0.075]} userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
+          event.stopPropagation()
+          recordSceneInteraction('background.pointer-down', { target: 'baseboard', wall })
+          selectElement(null)
+        }}>
+          <boxGeometry args={[length, 0.11, 0.07]} />
+          <meshStandardMaterial color="#d5a86e" />
+        </mesh>
+        {showGrid && <WallGrid length={length} height={room.height} openings={openings} />}
+      </group>}
+      {openings.map((opening) => (
+        <group key={opening.id} visible={showOpeningDetails && !hiddenElementIds.includes(opening.id)}>
+          <OpeningDetail room={room} wall={wall} opening={opening} selected={!exportMode && selectedId === opening.id} />
+        </group>
+      ))}
+    </group>
   )
 }
