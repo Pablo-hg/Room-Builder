@@ -41,3 +41,10 @@ test('every furniture and opening icon renders a shared, decorative SVG canvas',
     assert.match(markup, /aria-hidden="true"/)
   }
 })
+
+test('cada icono de mobiliario usa el color base del catálogo', () => {
+  for (const kind of Object.keys(FURNITURE_CATALOG) as (keyof typeof FURNITURE_CATALOG)[]) {
+    const markup = renderToStaticMarkup(createElement(FurnitureIcon, { kind }))
+    assert.ok(markup.includes(`--object-color:${FURNITURE_CATALOG[kind].base.color}`), `Color del icono ${kind}`)
+  }
+})

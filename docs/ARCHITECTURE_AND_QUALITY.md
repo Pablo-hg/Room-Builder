@@ -6,9 +6,9 @@
 React 19, TypeScript, Vite 6, Three.js, React Three Fiber, Zustand, pruebas de Node/tsx y Playwright. Mantener salvo necesidad real medida; no hay que introducir otro motor de juego.
 
 ## Problema técnico real
-La auditoría original identificó concentración en `src/App.tsx`, `src/components/RoomScene.tsx` y `src/state/useRoomStore.ts`. R1 extrae la interfaz de `App.tsx` a `src/components/editor`; R2.1–R2.3 trasladan cámaras, política de paredes, shell, cuerpos de pared/huecos y cuadrículas a `src/scene`. La interacción de aperturas, mobiliario, gizmos, brújulas y exportación sigue en `RoomScene.tsx` hasta R2.4–R2.9. El store conserva sus responsabilidades para R3. El tamaño no demuestra errores por sí solo, pero dificulta comprensión, pruebas y cambios seguros.
+La auditoría original identificó concentración en `src/App.tsx`, `src/components/RoomScene.tsx` y `src/state/useRoomStore.ts`. R1 extrae la interfaz de `App.tsx` a `src/components/editor`; R2.1–R2.6 trasladan cámaras, paredes, aperturas, superficies y modelos de mobiliario a `src/scene`. La selección y los gestos de muebles, brújulas, órbita y exportación siguen en `RoomScene.tsx` hasta R2.7–R2.9. El store conserva sus responsabilidades para R3. El tamaño no demuestra errores por sí solo, pero dificulta comprensión, pruebas y cambios seguros.
 
-## Extracción de escena implementada (R2.1–R2.3)
+## Extracción de escena implementada (R2.1–R2.6)
 
 - `scene/CameraRig.tsx`: cálculos, animación y movimiento reducido originales; `scene/types.ts` conserva el contrato de props.
 - `scene/wallVisibility.ts`: política de paredes ocultas, etiquetas y cuadrículas reutilizando las funciones existentes del dominio.
@@ -16,7 +16,11 @@ La auditoría original identificó concentración en `src/App.tsx`, `src/compone
 - `scene/Walls.tsx` y `scene/wallGeometry.ts`: colocación, cuerpo de pared y cálculo de huecos; `WallGrid.tsx` y `FloorGrid.tsx` conservan las cuadrículas.
 - `scene/sceneInteraction.ts`: logger de escena compartido, sin estado duplicado. Zustand sigue siendo la única fuente de verdad.
 
-`SoftWall` permanece como composición de cuerpo/cuadrícula y aperturas en `RoomScene.tsx`; la interacción y decoración mural se extraerán en R2.4. Esta entrega no reorganiza dominio ni persistencia.
+- `scene/Openings.tsx`: representación e interacción de aperturas; `SoftWall` reside en `Walls.tsx`.
+- `scene/StructureSurface.tsx` y `scene/StructureSurfaceGizmo.tsx`: superficies constructivas y su gizmo.
+- `scene/FurnitureModels.tsx`: registro tipado que cubre todos los tipos de mobiliario; `colorTone.ts` conserva el cálculo cromático compartido.
+
+Esta entrega no reorganiza dominio ni persistencia.
 
 ## Límites de responsabilidad objetivo
 - **domain/**: modelos, objetos, restricciones y geometría puros, sin React o Three donde sea viable.
