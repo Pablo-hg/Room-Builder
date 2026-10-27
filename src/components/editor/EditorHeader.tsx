@@ -1,0 +1,66 @@
+import { useRoomStore } from '../../state/useRoomStore'
+import { VIEW_OPTIONS } from './viewOptions'
+import { SavedDesignsMenu } from './SavedDesignsMenu'
+
+export function EditorHeader({ state, exportMode, onExport }: {
+  state: ReturnType<typeof useRoomStore.getState>
+  exportMode: boolean
+  onExport: () => void
+}) {
+  return (
+      <header className="topbar">
+        <a className="brand" href="#main" aria-label="Room Builder, ir al editor">
+          <span className="brand-mark"><i /><i /></span>
+          <span><strong>Room Builder</strong><small>Make a space feel yours</small></span>
+          <b>V0.1</b>
+        </a>
+        <nav className="view-switcher" aria-label="Cambiar vista">
+          {VIEW_OPTIONS.map((option) => (
+            <button type="button" key={option.id} className={state.view === option.id ? 'active' : ''} onClick={() => state.setView(option.id)} aria-pressed={state.view === option.id}>
+              <span aria-hidden="true">{option.icon}</span>{option.label}
+            </button>
+          ))}
+        </nav>
+        <div className="save-actions">
+          <button
+            type="button"
+            className="secondary-button undo-button"
+            onClick={state.undo}
+            disabled={state.undoCount === 0}
+            aria-label="Deshacer el último cambio"
+            title="Deshacer el último cambio (Ctrl/⌘+Z)"
+          >
+            ↶ <span>Deshacer</span>
+          </button>
+          <button
+            type="button"
+            className="secondary-button undo-button"
+            onClick={state.redo}
+            disabled={state.redoCount === 0}
+            aria-label="Rehacer el último cambio deshecho"
+            title="Rehacer el último cambio deshecho (Ctrl/⌘+Shift+Z)"
+          >
+            ↷ <span>Rehacer</span>
+          </button>
+          <span className={`save-state${state.hasUnsavedChanges ? ' save-state--dirty' : ''}`} aria-live="polite">
+            {state.hasUnsavedChanges ? 'Cambios sin guardar' : state.selectedSavedDesignId ? 'Guardado' : 'Sin guardar'}
+          </span>
+          <button
+            type="button"
+            className="secondary-button export-button"
+            disabled={exportMode}
+            onClick={() => {
+              onExport()
+            }}
+            title="Descargar la habitación como modelo 3D GLB"
+          >
+            ⇩ <span>{exportMode ? 'Exportando…' : 'Descargar 3D'}</span>
+          </button>
+          <SavedDesignsMenu state={state} />
+          <button type="button" className="primary-button" onClick={state.saveDesign}>
+            ✓ <span>{state.selectedSavedDesignId ? 'Guardar cambios' : 'Guardar como'}</span>
+          </button>
+        </div>
+      </header>
+  )
+}

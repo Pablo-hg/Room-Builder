@@ -75,7 +75,8 @@ Este registro es de diagnóstico y no es la fuente del historial de «Deshacer»
 - `src/domain`: tipos, constantes y geometría pura.
 - `src/state`: estado de diseño, estado temporal de cámara y persistencia.
 - `src/components/RoomScene.tsx`: cámaras, habitación, paredes y mobiliario React Three Fiber.
-- `src/App.tsx`: controles, paneles y composición de la interfaz.
+- `src/App.tsx`: composición del editor, coordinación de la escena y exportación.
+- `src/components/editor`: cabecera y diseños guardados, paneles, controles, inspectores por selección y atajos del editor.
 
 Las posiciones de muebles y aperturas pertenecen siempre al mundo. Cambiar de cámara solo modifica la proyección y visibilidad de paredes; no transforma los datos del diseño. La vista libre mantiene su orientación orbital como estado temporal de cámara, no como parte del diseño guardado.
 

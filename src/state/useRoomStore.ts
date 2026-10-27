@@ -420,7 +420,7 @@ function applyFurnitureRotation(state: RoomState, item: FurnitureItem, rotation:
   }
 }
 
-export const useRoomStore = create<RoomState>((storeSet, get) => {
+export const createRoomStore = () => create<RoomState>((storeSet, get) => {
   const undoHistory: PersistedDesign[] = []
   const redoHistory: PersistedDesign[] = []
   let copiedElement: FurnitureItem | WindowConfig | null = null
@@ -1530,3 +1530,5 @@ export const useRoomStore = create<RoomState>((storeSet, get) => {
   clearNotice: () => set({ notice: '' }),
   }
 })
+
+export const useRoomStore = createRoomStore()

@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { test } from 'node:test'
+import { beforeEach, test } from 'node:test'
 import { DEFAULT_ROOM } from '../domain/constants'
 import type { PersistedDesign } from '../domain/types'
-import { useRoomStore } from './useRoomStore'
+import { createRoomStore } from './useRoomStore'
+
+let testStore: ReturnType<typeof createRoomStore>
+beforeEach(() => { testStore = createRoomStore() })
 
 class MemoryStorage {
   private values = new Map<string, string>()
@@ -44,7 +47,7 @@ test('deshace cambios y administra hasta cinco diseños locales', () => {
   })
 
   try {
-    const store = useRoomStore
+    const store = testStore
     const originalWidth = store.getState().room.width
     store.getState().setWallColor('#aabbcc')
     assert.deepEqual(store.getState().room.wallColors, {
@@ -142,7 +145,7 @@ test('deshace cambios y administra hasta cinco diseños locales', () => {
 })
 
 test('conserva la orientación de las paredes al cambiar a plano y frontal', () => {
-  const store = useRoomStore
+  const store = testStore
   store.getState().lookFromIsoOrientation(2)
   store.getState().setView('top')
   assert.equal(store.getState().topOrientation, 2)
@@ -152,7 +155,7 @@ test('conserva la orientación de las paredes al cambiar a plano y frontal', () 
 })
 
 test('deshace un arrastre de mueble hasta la posición que tenía al empezar', () => {
-  const store = useRoomStore
+  const store = testStore
   store.getState().createDesign('blank', 'Prueba de arrastre')
   store.getState().addFurniture('table')
   const table = store.getState().furniture[0]
@@ -179,7 +182,7 @@ test('deshace un arrastre de mueble hasta la posición que tenía al empezar', (
 })
 
 test('copia y pega elementos seleccionados y permite deshacer y rehacer', () => {
-  const store = useRoomStore
+  const store = testStore
   const originalCount = store.getState().furniture.length
   store.getState().addFurniture('table')
   const originalId = store.getState().selectedId
@@ -229,7 +232,7 @@ test('migra espejos de diseños guardados desde el suelo a una pared', () => {
       },
     }]))
 
-    const store = useRoomStore
+    const store = testStore
     store.getState().initializeSavedDesigns()
     store.getState().loadDesign('legacy-mirror-design')
 
@@ -245,7 +248,7 @@ test('migra espejos de diseños guardados desde el suelo a una pared', () => {
 })
 
 test('permite habitaciones de hasta 10 m y limita el zoom entre 25 % y 300 %', () => {
-  const store = useRoomStore
+  const store = testStore
 
   store.getState().setDimension('height', 10)
   assert.equal(store.getState().room.height, 10)
@@ -274,22 +277,31 @@ test('considera equivalentes los opcionales v1 ausentes y sus valores vacios', (
     ] as const) {
       const data = readPersistenceFixture(fixtureName) as PersistedDesign
       putSavedFixture(storage, id, data)
-      useRoomStore.setState({ savedDesigns: [], selectedSavedDesignId: '', notice: '' })
+      testStore.setState({ savedDesigns: [], selectedSavedDesignId: '', notice: '' })
 
-      useRoomStore.getState().initializeSavedDesigns()
-      useRoomStore.getState().loadDesign(id)
+      testStore.getState().initializeSavedDesigns()
+      testStore.getState().loadDesign(id)
 
-      assert.equal(useRoomStore.getState().notice, 'Dise\u00f1o recuperado.')
-      assert.equal(useRoomStore.getState().hasUnsavedChanges, false)
-      if (id === 'complete') assert.equal(useRoomStore.getState().furniture.length, 4)
-      if (id === 'legacy') assert.equal(useRoomStore.getState().savedDesigns[0].data.structurePacks, undefined)
+      assert.equal(testStore.getState().notice, 'Dise\u00f1o recuperado.')
+      assert.equal(testStore.getState().hasUnsavedChanges, false)
+      if (id === 'complete') assert.equal(testStore.getState().furniture.length, 4)
+      if (id === 'legacy') assert.equal(testStore.getState().savedDesigns[0].data.structurePacks, undefined)
 
-      const originalWidth = useRoomStore.getState().room.width
-      useRoomStore.getState().setDimension('width', originalWidth + 0.5)
-      assert.equal(useRoomStore.getState().hasUnsavedChanges, true)
-      useRoomStore.getState().undo()
-      assert.equal(useRoomStore.getState().room.width, originalWidth)
-      assert.equal(useRoomStore.getState().hasUnsavedChanges, false)
+      const originalWidth = testStore.getState().room.width
+      testStore.getState().setDimension('width', originalWidth + 0.5)
+      assert.equal(testStore.getState().hasUnsavedChanges, true)
+      testStore.getState().undo()
+      assert.equal(testStore.getState().room.width, originalWidth)
+      assert.equal(testStore.getState().hasUnsavedChanges, false)
+      testStore.getState().redo()
+      assert.equal(testStore.getState().room.width, originalWidth + 0.5)
+      assert.equal(testStore.getState().hasUnsavedChanges, true)
+      testStore.getState().saveDesign()
+      assert.equal(testStore.getState().hasUnsavedChanges, false)
+      testStore.getState().undo()
+      assert.equal(testStore.getState().hasUnsavedChanges, true)
+      testStore.getState().redo()
+      assert.equal(testStore.getState().hasUnsavedChanges, false)
     }
   } finally {
     if (previousStorage) {
@@ -307,21 +319,21 @@ test('usa fixtures v1 para rechazar versiones y contenidos invalidos', () => {
 
   try {
     putSavedFixture(storage, 'unsupported', readPersistenceFixture('invalid-unsupported-version.json'))
-    useRoomStore.setState({ savedDesigns: [], selectedSavedDesignId: '', notice: '' })
-    useRoomStore.getState().initializeSavedDesigns()
-    assert.equal(useRoomStore.getState().savedDesigns.length, 0)
-    assert.equal(useRoomStore.getState().notice, 'No se pudieron leer los dise\u00f1os guardados.')
+    testStore.setState({ savedDesigns: [], selectedSavedDesignId: '', notice: '' })
+    testStore.getState().initializeSavedDesigns()
+    assert.equal(testStore.getState().savedDesigns.length, 0)
+    assert.equal(testStore.getState().notice, 'No se pudieron leer los dise\u00f1os guardados.')
 
     for (const [fixtureName, id] of [
       ['invalid-malformed-room.json', 'malformed-room'],
       ['invalid-unknown-furniture.json', 'unknown-furniture'],
     ] as const) {
       putSavedFixture(storage, id, readPersistenceFixture(fixtureName))
-      useRoomStore.setState({ savedDesigns: [], selectedSavedDesignId: '', notice: '' })
-      useRoomStore.getState().initializeSavedDesigns()
-      assert.equal(useRoomStore.getState().savedDesigns.length, 1)
-      useRoomStore.getState().loadDesign(id)
-      assert.equal(useRoomStore.getState().notice, 'El dise\u00f1o guardado no es v\u00e1lido.')
+      testStore.setState({ savedDesigns: [], selectedSavedDesignId: '', notice: '' })
+      testStore.getState().initializeSavedDesigns()
+      assert.equal(testStore.getState().savedDesigns.length, 1)
+      testStore.getState().loadDesign(id)
+      assert.equal(testStore.getState().notice, 'El dise\u00f1o guardado no es v\u00e1lido.')
     }
   } finally {
     if (previousStorage) {
@@ -330,4 +342,17 @@ test('usa fixtures v1 para rechazar versiones y contenidos invalidos', () => {
       Reflect.deleteProperty(globalThis, 'localStorage')
     }
   }
+})
+
+test('aísla el historial y el portapapeles entre instancias del store', () => {
+  const first = createRoomStore()
+  const second = createRoomStore()
+  first.getState().addFurniture('table')
+  assert.equal(first.getState().copySelected(), true)
+  assert.equal(first.getState().undoCount, 1)
+  assert.equal(second.getState().undoCount, 0)
+  assert.equal(second.getState().pasteSelected(), false)
+  second.getState().undo()
+  assert.equal(first.getState().furniture.length, 1)
+  assert.equal(second.getState().furniture.length, 0)
 })

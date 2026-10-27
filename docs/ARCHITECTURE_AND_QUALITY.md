@@ -6,7 +6,7 @@
 React 19, TypeScript, Vite 6, Three.js, React Three Fiber, Zustand, pruebas de Node/tsx y Playwright. Mantener salvo necesidad real medida; no hay que introducir otro motor de juego.
 
 ## Problema técnico real
-La lógica principal está concentrada en src/App.tsx (~74 KB), src/components/RoomScene.tsx (~141 KB) y src/state/useRoomStore.ts (~62 KB). El tamaño no demuestra errores por sí solo, pero dificulta comprensión, pruebas y cambios seguros.
+La auditoría original identificó concentración en `src/App.tsx`, `src/components/RoomScene.tsx` y `src/state/useRoomStore.ts`. R1 extrae la interfaz de `App.tsx` a `src/components/editor`; la escena y el store siguen concentrando sus responsabilidades y su reorganización pertenece a fases posteriores. El tamaño no demuestra errores por sí solo, pero dificulta comprensión, pruebas y cambios seguros.
 
 ## Límites de responsabilidad objetivo
 - **domain/**: modelos, objetos, restricciones y geometría puros, sin React o Three donde sea viable.

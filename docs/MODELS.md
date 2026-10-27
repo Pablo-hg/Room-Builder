@@ -28,7 +28,8 @@ Los niveles Low y Medium son **orientaciones**. El razonamiento Medium de Terra 
 
 ## 3. Modelos gratuitos de OpenCode
 
-Todos los siguientes identificadores están contemplados en `opencode.jsonc`. La disponibilidad y gratuidad reales deben comprobarse en el momento de usarlos.
+Todos los siguientes identificadores están contemplados en `opencode.jsonc`. La dis
+ponibilidad y gratuidad reales deben comprobarse en el momento de usarlos.
 
 | Modelo gratuito | Identificador exacto | Comando | Para qué lo usamos |
 |---|---|---|---|

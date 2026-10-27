@@ -478,3 +478,33 @@ R0 queda documentada con:
 - resultados reproducibles de tests, build y limitación E2E.
 
 Antes de iniciar R1 se recomienda decidir si el fallo unitario y la provisión de Chromium se resuelven como preparación técnica independiente. No se recomienda empezar movimientos masivos con una baseline roja o sin capturas de las vistas existentes.
+
+## 15. Cierre de R0 — 27/10/2026
+
+Este apartado actualiza el estado de la rama `fix/r0-baseline` en `0c3edb1` y conserva las observaciones históricas anteriores. Al iniciar el cierre, la rama estaba limpia y, tras actualizar la referencia remota, coincidía con `origin/fix/r0-baseline`. Los cambios de persistencia, fixtures, pruebas E2E y capturas ya estaban incorporados; no se han rehecho.
+
+- **R0.1 — completado:** Chromium 1193 de Playwright está disponible y se han ejecutado los 19 recorridos E2E. En la primera ejecución pasaron 18: el primer caso no encontró el control de visibilidad del sillón. El caso aislado y una segunda ejecución completa pasaron; no se ha identificado la causa de esa incidencia intermitente.
+- **R0.2 — completado:** se ha reproducido la captura con el fixture v1 y se han inspeccionado visualmente las cinco vistas y las cuatro diagonales. La antigua captura frontal mostraba una transición incompleta; se ha sustituido por la frontal reproducida, conservando las otras referencias. Son referencias visuales, no comparaciones automáticas de píxeles; pueden variar según el entorno gráfico.
+- **R0.3 — completado:** se han verificado los fixtures completos, antiguos con opcionales ausentes y los casos inválidos de versión, habitación y mobiliario, además de la migración ya cubierta del espejo antiguo. No se ha modificado el formato v1.
+- **R0.4 — completado:** la normalización previa de opcionales vacíos y ausentes supera las pruebas. Se ha comprobado el indicador de cambios al editar, guardar, deshacer y rehacer, también tras guardar la edición.
+- **R0.5 — completado:** `createRoomStore` crea instancias con historial, portapapeles y cierres independientes; producción mantiene una única instancia. Cada prueba del store comienza con una instancia nueva y se ha comprobado el aislamiento entre dos instancias.
+
+Resultados reales en Linux, Node 18 y Chromium de Playwright:
+
+| Comprobación | Resultado |
+| --- | --- |
+| `npm test` | 45 pruebas aprobadas, 0 fallos. El sandbox bloqueó inicialmente el socket de `tsx`; ejecución con permisos adecuados correcta. |
+| `npm run test:e2e` | Segunda ejecución: 19 aprobadas. Primera ejecución: 18 aprobadas y un fallo intermitente descrito arriba; repetición aislada aprobada. |
+| `npm run capture:r0-baseline` | 1 prueba aprobada; nueve capturas inspeccionadas. |
+| `npm run build` | Correcto, 59 módulos; persiste el aviso de chunk superior a 500 kB. |
+| `node --test scripts/model-routing/policy.test.mjs` | Correcto; prueba del clasificador aprobada. |
+
+**Estado:** R0 completada y base preparada para comenzar R1, sin haber iniciado la reorganización. Pendientes de seguimiento: el fallo E2E intermitente sin causa determinada y el aviso de tamaño del bundle; ninguno se presenta como corregido. La validación visual se limita a las capturas revisadas, no certifica todos los entornos gráficos.
+
+## 16. R1 — extracción de la interfaz
+
+En `fix/r0-baseline`, manteniendo los cambios locales de R0, se ha reducido `App.tsx` a la composición del editor y coordinación de escena/exportación. `src/components/editor` contiene controles comunes, paneles de ajustes y objetos, inspector dividido por pack, superficie, mueble y apertura, cabecera y menú de diseños, controles de vista y hook de atajos. El DOM y las acciones existentes se han conservado; no se ha reorganizado `RoomScene` ni la lógica de producción del store como parte de R1.
+
+Validación: `npm test` aprobó 45 pruebas; `npm run build` terminó correctamente con el aviso previo de chunk superior a 500 kB. Playwright aprobó los 19 recorridos existentes y, en una ejecución separada, dos recorridos nuevos sobre diseños guardados/foco y selección de pack/superficie. El primer intento del nuevo test de diseños usó un nombre accesible incompleto (el botón incluye «Actual»); corregido el localizador, pasó. `npm run capture:r0-baseline` generó nueve vistas y se compararon visualmente con R0: no se observaron cambios de composición. La frontal fue idéntica píxel a píxel; las otras referencias existentes tienen un píxel más de altura que las nuevas capturas en este entorno, por lo que no se afirma igualdad exacta. Se conservaron las referencias R0.
+
+**Estado:** R1 implementada y validada para los recorridos indicados. R2 y fases posteriores permanecen pendientes; sigue pendiente de observación el fallo E2E intermitente registrado en R0.
