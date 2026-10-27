@@ -525,3 +525,9 @@ Validación: `npm test` aprobó 45 pruebas; `npm run build` terminó correctamen
 Se ha trasladado sin cambiar sus ramas la política de paredes ocultas, etiquetas y cuadrículas de `RoomWorld` a `src/scene/wallVisibility.ts`. Reutiliza las funciones existentes de `domain/geometry`; no cambia la política distinta de etiquetas y cuadrículas de POV y planta ni las reglas de exportación.
 
 Verificación: `npm test`, **49 pruebas aprobadas, 0 fallos**; `npm run build`, **correcto**, 74 módulos; `npm run test:e2e`, **21 passed (1.7m)**; `npm run capture:r0-baseline`, **1 passed (23.3s)**. Las nueve imágenes se inspeccionaron y coinciden píxel a píxel con la baseline registrada antes de R2. Los cuatro tests nuevos caracterizan diagonales/libre, frontales, planta/POV y exportación. No hay cambios en contratos de `App`, store, datos persistidos ni DOM.
+
+### R2.2 — completada
+
+`CameraRig` reside ahora en `src/scene/CameraRig.tsx`, con sus efectos, cálculos y animación originales. La declaración de `SceneProps` se ha trasladado a `src/scene/types.ts` sin alterar campos ni tipos. Se verificó por comparación textual que `CameraRig`, la interfaz y el bloque de `Canvas` mantienen el contenido original salvo las declaraciones de export/import. Se conservan los valores por defecto, el remount perspectiva/ortográfica, las duraciones de 0,55/0,75 s y la suscripción a movimiento reducido.
+
+Verificación: `npm test`, **49 pruebas aprobadas, 0 fallos**; `npm run build`, **correcto**, 75 módulos; `npm run test:e2e`, **21 passed (1.7m)**; `npm run capture:r0-baseline`, **1 passed (23.0s)**. Las nueve capturas fueron inspeccionadas y coinciden píxel a píxel con la baseline previa a R2. La captura usa movimiento reducido; los E2E existentes recorren las transiciones con la configuración normal. No se ha alterado la interfaz con `App` ni el store.
