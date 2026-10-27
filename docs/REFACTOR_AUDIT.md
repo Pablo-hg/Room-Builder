@@ -587,3 +587,34 @@ La galería completa se reproduce con `R2_CAPTURE_DIR=/tmp/room-builder-catalog 
 ### Cierre de R2.4–R2.6 y pendientes
 
 R2.4, R2.5 y R2.6 están completadas y verificadas. `RoomScene.tsx` queda en 1331 líneas y aún contiene la selección y los gestos de muebles, brújulas, órbita y exportación. R2.7, R2.8 y R2.9 siguen **PENDIENTES**; R3 no se ha iniciado. El fallo E2E intermitente de R0 no se reprodujo. Las comprobaciones de puntero se han realizado con ratón en Chromium; no constituyen validación en dispositivos táctiles físicos ni en otros motores gráficos. Las referencias temporales de esta sesión están en `/tmp/room-r2-next/catalog-before` y `/tmp/room-r2-next/catalog-after`; las capturas versionadas de R0 se conservan sin modificar. Sin merge ni push.
+
+
+## 19. R2 — tercera entrega: R2.7–R2.9
+
+### Incidencia de la validación previa: reselección del sillón
+
+Antes de modificar código de producción, en `6883340`, `npm test` dio **57 aprobadas, 0 fallos** y `npm run build` terminó correctamente (86 módulos; persiste el aviso de chunk superior a 500 kB). La suite E2E completa dio **24 passed (2.0m), 1 failed** en `tests/room-builder.spec.ts:431`, «permite volver a seleccionar un mueble después de pulsar fuera»: falló la aserción final `reselected === true` de la línea 484. No es el fallo de localización del checkbox registrado en R0.
+
+El test deselecciona pulsando fuera y después prueba siete coordenadas normalizadas del canvas, esperando hasta 500 ms en cada una. El log de la sesión `1793112439053-w6d7lj` muestra la creación del sillón en (0, 0), su deselección y siete deselecciones posteriores; no aparece `scene.furniture.pointer-down` sobre el sillón ni movimiento del objeto. Esto localiza el síntoma en que esos clics no alcanzaron el mueble, pero **no demuestra la causa raíz**. Una desincronización entre proyección/render y coordenadas de prueba es una hipótesis, no una corrección confirmada.
+
+Diagnóstico sobre el mismo código: ejecución aislada con `--repeat-each=3 --workers=1`, **3 passed (18.0s)**; ejecución con `--repeat-each=6 --workers=3 --trace=on`, **6 passed (25.2s)**. Las repeticiones no reprodujeron el fallo ni prueban que esté resuelto. Se clasifica como **intermitente previo a R2.7, causa pendiente**, separado del registrado en R0. No se ha cambiado el test, su timeout, las cámaras ni la selección para obtener un resultado verde. El usuario autorizó investigar, documentar y continuar; se conserva como riesgo para la validación final. Las trazas de diagnóstico y los logs son artefactos locales, no referencias persistentes del repositorio.
+
+
+### R2.7 — caracterización previa y bloqueo de cancelación táctil
+
+Se añadió `tests/furniture-gestures.spec.ts` antes de extraer funciones: arrastre del cuerpo de un sillón en planta, ocho movimientos, edición posterior del inspector, deshacer del inspector, deshacer completo del gesto y rehacer. Cubre ratón, fin táctil y cancelación táctil mediante `Input.dispatchTouchEvent` de Chromium; no equivale a probar un dispositivo físico.
+
+La preparación inicial del test contenía dos errores, corregidos sin alterar producción: buscaba el nombre exacto «Posición X» aunque el nombre accesible incluye el valor, y pulsaba el centro del gizmo, que en planta alcanza el eje Y en vez del cuerpo del mueble. El DOM y el log identificaron ambos errores; no se relajaron las aserciones de historial.
+
+Con los puntos de interacción corregidos, sobre la escena original sin extraer: `npm run test:e2e -- tests/furniture-gestures.spec.ts --workers=1` dio **2 passed (35.0s), 1 failed**. Pasan ratón y fin táctil. Falla la cancelación táctil: tras el gesto, la edición del inspector y un deshacer se esperaba X=0.75 (posición anterior a la edición del inspector), pero se obtuvo X=0 (posición anterior al gesto). El log muestra movimiento pero ningún `furniture.drag-cancel` ni cierre del gesto en esa sesión.
+
+**Causa identificada:** `@react-three/fiber` instalado es 9.8.2. En su implementación `handlePointer`, `onPointerCancel` devuelve `cancelPointer([])`, que solo despacha `onPointerOut`/`onPointerLeave`; no invoca el `onPointerCancel` del objeto. Por tanto, el handler de cancelación presente en `FurnitureObject` no llama a `endFurnitureMove()` y queda abierta la agrupación de historial. La siguiente edición se agrupa con el arrastre. Es un fallo previo, reproducido antes de mover código; no se ha modificado la dependencia ni el store.
+
+**Estado:** R2.7–R2.9 todavía sin extracción. La cancelación impide cerrar la verificación exigida de R2.7. Se solicita autorización para una corrección mínima de ciclo de vida del puntero en un commit separado, antes de continuar la extracción literal. El test de cancelación se conserva fallando como evidencia; no se elimina ni se omite para declarar éxito.
+
+
+### Corrección autorizada antes de la extracción
+
+El usuario autorizó corregir la cancelación en un commit separado. `FurnitureObject` escucha ahora el `pointercancel` nativo del canvas y comprueba el identificador del puntero activo para ejecutar el cierre ya existente (`endFurnitureMove` y estado local de arrastre). El fin normal elimina ese identificador. No cambia el store, la proyección, los cálculos de movimiento ni la semántica de cancelación (conservar lo movido y cerrar el gesto).
+
+Verificación: `npm test`, **57 aprobadas, 0 fallos**; `npm run build`, **correcto**, 86 módulos; `npm run test:e2e -- tests/furniture-gestures.spec.ts --workers=1`, **3 passed (40.5s)**. El test antes fallido se conserva con las mismas aserciones de historial y ahora pasa. La reselección intermitente permanece como incidencia distinta, sin causa raíz confirmada.
