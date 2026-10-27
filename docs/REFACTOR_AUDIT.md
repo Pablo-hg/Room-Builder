@@ -618,3 +618,10 @@ Con los puntos de interacción corregidos, sobre la escena original sin extraer:
 El usuario autorizó corregir la cancelación en un commit separado. `FurnitureObject` escucha ahora el `pointercancel` nativo del canvas y comprueba el identificador del puntero activo para ejecutar el cierre ya existente (`endFurnitureMove` y estado local de arrastre). El fin normal elimina ese identificador. No cambia el store, la proyección, los cálculos de movimiento ni la semántica de cancelación (conservar lo movido y cerrar el gesto).
 
 Verificación: `npm test`, **57 aprobadas, 0 fallos**; `npm run build`, **correcto**, 86 módulos; `npm run test:e2e -- tests/furniture-gestures.spec.ts --workers=1`, **3 passed (40.5s)**. El test antes fallido se conserva con las mismas aserciones de historial y ahora pasa. La reselección intermitente permanece como incidencia distinta, sin causa raíz confirmada.
+
+
+### R2.7 — extracción completada
+
+`FurnitureGizmos.tsx` contiene los cuatro gizmos de movimiento y giro; `FurnitureObject.tsx` conserva selección, arrastre del cuerpo y composición de modelo/gizmos. Se verificó por comparación textual que las cinco funciones mantienen cuerpos y firmas de la versión corregida salvo `export`. No se generalizan cálculos ni se unifican planos distintos. Las aperturas y superficies conservan sus módulos de R2.4/R2.5; Zustand sigue gestionando mundo e historial. `RoomScene.tsx` queda en 664 líneas.
+
+Verificación: `npm test`, **57 aprobadas, 0 fallos**; `npm run build`, **correcto**, 88 módulos; E2E de gestos, **3 passed (32.5s)**; `npm run capture:r0-baseline`, **1 passed (21.1s)**. Las nueve capturas coinciden píxel a píxel con la baseline previa a R2; se inspeccionó la lámina de las nueve vistas. El recorrido táctil emulado cubre el cuerpo del mueble, no sustituye una comprobación física de todos los gizmos.
