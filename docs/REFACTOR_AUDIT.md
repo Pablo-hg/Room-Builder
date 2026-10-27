@@ -508,3 +508,20 @@ En `fix/r0-baseline`, manteniendo los cambios locales de R0, se ha reducido `App
 Validación: `npm test` aprobó 45 pruebas; `npm run build` terminó correctamente con el aviso previo de chunk superior a 500 kB. Playwright aprobó los 19 recorridos existentes y, en una ejecución separada, dos recorridos nuevos sobre diseños guardados/foco y selección de pack/superficie. El primer intento del nuevo test de diseños usó un nombre accesible incompleto (el botón incluye «Actual»); corregido el localizador, pasó. `npm run capture:r0-baseline` generó nueve vistas y se compararon visualmente con R0: no se observaron cambios de composición. La frontal fue idéntica píxel a píxel; las otras referencias existentes tienen un píxel más de altura que las nuevas capturas en este entorno, por lo que no se afirma igualdad exacta. Se conservaron las referencias R0.
 
 **Estado:** R1 implementada y validada para los recorridos indicados. R2 y fases posteriores permanecen pendientes; sigue pendiente de observación el fallo E2E intermitente registrado en R0.
+
+## 17. R2 — primera entrega: R2.1–R2.3
+
+**Alcance autorizado:** exclusivamente R2.1–R2.3, en `refactor/r2-escena`, creada desde `dev` en `926e58b`. El checkout inicial estaba limpio. R2.4–R2.9 quedan para otra entrega; no se ejecuta R3. Se conservan las observaciones históricas de esta auditoría.
+
+### Baseline antes de extraer
+
+- `npm test`: **45 pruebas aprobadas, 0 fallos**.
+- `npm run build`: **correcto**, 73 módulos. Persiste el aviso de chunk superior a 500 kB.
+- `npm run test:e2e`: **21 passed (1.6m)**. No se reprodujo el fallo intermitente registrado en R0.
+- `npm run capture:r0-baseline`: **1 passed (21.1s)**. Nueve capturas inspeccionadas: cinco vistas y cuatro diagonales, con movimiento reducido. Las referencias versionadas se conservaron; las nuevas imágenes se archivaron localmente en `/tmp/room-r2/baseline` para comparar cada paso en el mismo entorno.
+
+### R2.1 — completada
+
+Se ha trasladado sin cambiar sus ramas la política de paredes ocultas, etiquetas y cuadrículas de `RoomWorld` a `src/scene/wallVisibility.ts`. Reutiliza las funciones existentes de `domain/geometry`; no cambia la política distinta de etiquetas y cuadrículas de POV y planta ni las reglas de exportación.
+
+Verificación: `npm test`, **49 pruebas aprobadas, 0 fallos**; `npm run build`, **correcto**, 74 módulos; `npm run test:e2e`, **21 passed (1.7m)**; `npm run capture:r0-baseline`, **1 passed (23.3s)**. Las nueve imágenes se inspeccionaron y coinciden píxel a píxel con la baseline registrada antes de R2. Los cuatro tests nuevos caracterizan diagonales/libre, frontales, planta/POV y exportación. No hay cambios en contratos de `App`, store, datos persistidos ni DOM.

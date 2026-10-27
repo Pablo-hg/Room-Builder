@@ -3,11 +3,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject }
 import * as THREE from 'three'
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js'
 import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from '../domain/constants'
-import { doorWorldPosition, hiddenWallForCardinalTarget, hiddenWallsForOrientation, inwardDirection, isWallMountedDecoration, openingsForWall, orientationForAzimuth, shortestAngleDelta, sideWallsForFrontView, snapFurnitureRotation, topViewWallForOrientation, wallLength } from '../domain/geometry'
+import { doorWorldPosition, inwardDirection, isWallMountedDecoration, openingsForWall, shortestAngleDelta, snapFurnitureRotation, topViewWallForOrientation, wallLength } from '../domain/geometry'
 import { isCeilingMountedFurniture, isFloorBoundFurniture, isWallMirrorShape, isWallPictureKind, openingCapabilities, OPENING_CATALOG, openingKindForShape } from '../domain/objectCatalog'
 import type { FurnitureItem, GridSurface, RoomConfig, StructurePack, StructureSurface, ViewMode, WallOpening, WallSide } from '../domain/types'
 import { recordInteraction, type InteractionDetails } from '../debug/interactionLog'
 import { structureSurfaceElementId, useRoomStore } from '../state/useRoomStore'
+import { wallVisibility } from '../scene/wallVisibility'
 
 const ISOMETRIC_CAMERA_TARGET_HEIGHT = 0.8
 
@@ -2463,26 +2464,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
     ...props.room,
     height: Math.max(props.room.height, ...props.structurePacks.map((pack) => pack.y + props.room.height)),
   }
-  let hidden: WallSide[] = []
-  if (props.exportMode) hidden = []
-  else if (props.view === 'top') hidden = ['north', 'east', 'south', 'west']
-  else if (props.view === 'front') hidden = [hiddenWallForCardinalTarget(props.wallView ?? 'north')]
-  else if (props.view === 'isometric') hidden = hiddenWallsForOrientation(props.orientation)
-  else if (props.view === 'free') hidden = hiddenWallsForOrientation(orientationForAzimuth(props.freeAzimuth))
-  const frontSideWalls = sideWallsForFrontView(props.wallView ?? 'north')
-  const frontWalls = [props.wallView ?? 'north', frontSideWalls.left, frontSideWalls.right]
-  const labeledWalls = props.exportMode ? [] : props.view === 'front'
-    ? frontWalls
-    : props.view === 'isometric' || props.view === 'free'
-      ? WALL_SIDES.filter((wall) => !hidden.includes(wall))
-      : WALL_SIDES
-  const gridWalls = props.exportMode
-    ? []
-    : props.view === 'front'
-      ? frontWalls
-      : props.view === 'isometric' || props.view === 'free'
-        ? WALL_SIDES.filter((wall) => !hidden.includes(wall))
-        : []
+  const { hidden, labeledWalls, gridWalls } = wallVisibility(props)
 
   return (
     <>
