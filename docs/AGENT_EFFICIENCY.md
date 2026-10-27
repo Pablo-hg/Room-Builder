@@ -21,21 +21,13 @@ Esta guía complementa AGENTS.md; no altera sus restricciones ni modifica por s�
 Modo predeterminado: Codex mediante la suscripción de ChatGPT conectada a OpenCode. El archivo opencode.jsonc establece openai/gpt-6.1-terra como modelo predeterminado para trabajo nuevo. Una selección manual de /models en la sesión puede prevalecer sobre ese valor.
 
 Modo gratuito: exclusivamente cuando el usuario lo solicite, con /gratis* o selección manual en /models. Nunca sustituir de manera silenciosa un modelo de Codex por otro proveedor.
-Nivel de tarea	Codex: modelo orientativo	En modo gratuito: modelo orientativo	Cuándo corresponde
-Rápido	openai/gpt-6-luna (si se elige expresamente) o Terra actual	opencode/glm-5.3-flash-free	Erratas, documentación corta, cambios pequeños y aislados
-Equilibrado	openai/gpt-6.1-terra (predeterminado)	opencode/deepseek-v4.1-flash-free; alternativa opencode/mimo-v2.6-flash-free	React/TypeScript, componentes, hooks, bugs habituales
-Profundo	openai/gpt-6.1-sol si se selecciona expresamente; de lo contrario Terra	opencode/nemotron-3-ultra-free	Refactors extensos, arquitectura, 3D, cámaras, persistencia, migraciones
-Visual	Terra o Sol, según lo seleccionado	opencode/nemotron-3.5-super-vl-free	Interpretar capturas, UI y escenas 3D
-Crítico / revisión	Modelo elegido explícitamente por el usuario; no escalar de forma autónoma	Revisor gratuito independiente si su capacidad es suficiente	Riesgo alto de regresiones, pérdida de datos o decisiones relevantes
-
-
-La tabla es orientativa, no un cambio automático de modelo ni una clasificación de calidad validada. La disponibilidad, fiabilidad y condiciones de gratuidad deben revisarse periódicamente.
+Para elegir el modelo concreto, su identificador, nivel de razonamiento recomendado y comando gratuito, consultar [MODELS.md](MODELS.md), que es la fuente central. Las asociaciones por tarea son orientativas: no constituyen una clasificación de calidad demostrada ni provocan un cambio automático de sesión.
 
 No escalar por el mero número de archivos; primero dividir la tarea o mejorar el contexto. No insistir con un modelo ligero si sus errores se repiten.
 3.1. Detección y cambio de modelo al iniciar tareas
 - El usuario ha autorizado la **selección automática entre modelos OpenAI de su suscripción ChatGPT**, si el cliente proporciona un método real para cambiar de modelo en la misma sesión. No autoriza proveedores externos de pago, API facturable ni recargas.
 - Aplicar la guía docs/MODEL_ROUTING.md. Codex nativo debe recomendar y avisar, pero **no afirmar un cambio que no puede realizar**; OpenCode tiene un punto de integración inactivo y un clasificador de recomendaciones, pero NO cambia modelos automáticamente hasta implementar y probar una API compatible.
-- Modelos iniciales: documentación simple → Luna / Low; implementación habitual → Terra / Medium; R2/R3/R4 o problemas 3D/persistencia → Sol / Medium; Astra nunca automático.
+- Consultar [MODELS.md](MODELS.md) para los modelos y perfiles concretos. Astra nunca se selecciona automáticamente.
 - Si no se dispone de un modelo recomendado, conservar el actual. No invocar subagentes para elegir modelo.
 - No aplicar el enrutador a /gratis*, -free ni al traspaso a Codex.
 

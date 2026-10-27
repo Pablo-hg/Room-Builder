@@ -6,12 +6,7 @@ Esta guía complementa [AGENT_EFFICIENCY.md](AGENT_EFFICIENCY.md) y [../AGENTS.m
 
 ## Selección habitual
 
-| Tarea | Modelo | Razonamiento sugerido |
-|---|---|---|
-| Textos, erratas, Markdown y cambios triviales | GPT-6 Luna | Low |
-| React, TypeScript, tests, UI, R0 y R1 por piezas | **GPT-6.1 Terra (predeterminado)** | Medium |
-| Escena 3D/cámaras (R2), Zustand/persistencia (R3), arquitectura de habitaciones (R4) | GPT-6.1 Sol | Medium |
-| Revisión excepcional que justifique alto consumo | GPT-6 Astra | Solo por petición explícita |
+La **tabla única de modelos, identificadores, perfiles de razonamiento y usos** está en [MODELS.md](MODELS.md). Esta guía se limita a determinar cuándo recomendar un cambio y a explicar las restricciones de automatización.
 
 Seleccionar por complejidad, no únicamente por número de archivos. Un fallo difícil de resolver puede requerir Sol; un cambio sencillo en un fichero 3D puede seguir siendo Terra. El resultado correcto con pocas repeticiones importa más que los tokens de un solo intento. No se garantizan cifras de consumo.
 

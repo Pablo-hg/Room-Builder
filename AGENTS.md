@@ -44,13 +44,13 @@ Instrucciones permanentes para Codex y agentes — Room Builder
 5. Política de modelos y proveedores
 - **Nueva autorización explícita:** antes de desarrollar una tarea, recomendar el nivel Luna / Terra / Sol según complejidad. Si el entorno permite comprobar y cambiar el modelo de la sesión con una operación real, se autoriza la selección automática SOLO entre los modelos OpenAI de la suscripción ChatGPT ya conectada, sin pagos adicionales y con aviso breve al usuario. Si el cambio no es posible o no se puede verificar, no afirmar que ha sucedido: indicarlo y recomendar el selector del cliente.
 - En el chat nativo de Codex VS Code, AGENTS.md no permite controlar por sí mismo el selector; seguir la política de aviso. En OpenCode el cambio automático aún NO está activado: el plugin actual es un marcador inactivo porque no se ha confirmado una API de cambio de sesión compatible. Debe avisar y recomendar hasta que se implemente y pruebe.
-- Detalles, excepciones, instrucciones de verificación y etiquetas `#modelo:`: docs/MODEL_ROUTING.md. No seleccionar Astra automáticamente.
+- Catálogo único de modelos, usos, identificadores y comandos: docs/MODELS.md. Reglas de enrutamiento y etiquetas `#modelo:`: docs/MODEL_ROUTING.md. No seleccionar Astra automáticamente.
 - Modo predeterminado: Codex, usando openai/gpt-6.1-terra con la suscripción ChatGPT conectada a OpenCode. No implica autorizar gasto adicional en API.
 - La clasificación rápido / equilibrado / profundo / crítico sirve para recomendar modelos adecuados, pero no autoriza al agente a cambiar de proveedor o modelo sin una orden explícita o una automatización previamente aprobada.
 - Modo gratuito solo bajo petición expresa del usuario: comandos como /gratis, /gratis-alternativa, /gratis-rapido, /gratis-profundo o /gratis-visual, o selección manual de un modelo -free desde /models.
 - Los comandos /gratis* ejecutan la petición indicada con su modelo gratuito en la sesión actual. No cambian necesariamente el modelo de los mensajes siguientes; si se desea mantener el modo gratuito para varias peticiones, elegirlo desde /models.
 - Si Codex alcanza el límite de uso, no intentar un cambio automático no configurado. Informar de la limitación y continuar en modo gratuito cuando el usuario lo indique; conservar código, cambios locales y contexto de la sesión.
-- Dentro del modo gratuito, usar los modelos enumerados en docs/AGENT_EFFICIENCY.md y disponibles en la cuenta. No emplear versiones sin -free como sustitutos implícitos.
+- Dentro del modo gratuito, usar los modelos enumerados en docs/MODELS.md y disponibles en la cuenta. No emplear versiones sin -free como sustitutos implícitos.
 - Preferir un agente para tareas simples; no incorporar agentes paralelos o revisores si el riesgo y la complejidad no lo justifican.
 - No utilizar modelos de API facturables, servicios de pago adicionales ni recargas automáticas sin autorización expresa. No lanzar subagentes que puedan consumir modelos de pago durante un comando gratuito.
 - Un fallback entre modelos gratuitos solo se considerará activo tras configurarlo y probarlo en un orquestador compatible; escribirlo en Markdown no lo activa.
@@ -59,6 +59,6 @@ Instrucciones permanentes para Codex y agentes — Room Builder
 - docs/DECISION_LOG.md registra estados y decisiones.
 - docs/PRODUCT_VISION.md delimita el propósito; docs/MVP_SCOPE.md, el alcance.
 - VISUAL_STYLE_GUIDE.md define el diseño visual; docs/DATA_AND_FORMATS.md, el contrato de datos propuesto.
-- docs/AGENT_EFFICIENCY.md desarrolla pautas de eficiencia y elección de modelos; no prevalece sobre seguridad, alcance ni reglas de producto de este archivo.
+- docs/MODELS.md es la referencia central de modelos y casos de uso; docs/MODEL_ROUTING.md establece la política de selección y docs/AGENT_EFFICIENCY.md, las pautas de eficiencia. Estos documentos no prevalecen sobre seguridad, alcance ni reglas de producto de este archivo.
 - El código es la fuente del estado implementado, no de la validez de decisiones de producto.
 - Ante contradicciones relevantes entre documentación, decisiones y código, no elegir silenciosamente: explicar la discrepancia y solicitar decisión cuando sea necesaria.
