@@ -1,4 +1,38 @@
 Instrucciones permanentes para Codex y agentes — Room Builder
+
+### Recomendación de modelo y razonamiento
+
+Ante una nueva tarea de desarrollo o una consulta sobre
+qué modelo utilizar, indicar:
+
+- Modelo recomendado y versión exacta.
+- Esfuerzo de razonamiento recomendado:
+  Low, Medium, High o Extra High.
+- Motivo breve de la elección.
+- Modelo actualmente seleccionado, si puede verificarse.
+- Si conviene mantener o cambiar el modelo.
+
+Formato:
+
+**Recomendación: [MODELO] · [RAZONAMIENTO]**
+
+Motivo: [Explicación breve].
+
+Modelo actual: [MODELO], si se conoce.
+Acción: [Mantener / Cambiar].
+
+No es necesario consultar ni mencionar el esfuerzo de
+razonamiento actualmente configurado.
+
+El razonamiento indicado es siempre una RECOMENDACIÓN,
+no una confirmación de la configuración activa.
+
+No repetir la recomendación durante una misma tarea
+salvo que cambie su complejidad, el modelo o el usuario
+solicite una nueva evaluación.
+
+La recomendación no debe interrumpir el desarrollo.
+
 1. Inicio de tarea y lectura selectiva
 - Antes de modificar código, comprender la petición, comprobar la rama y los cambios locales, e inspeccionar los archivos de código implicados. No sobrescribir trabajo existente.
 - No leer toda la documentación al comenzar cada tarea. Consultar únicamente la necesaria según el alcance; ampliar la lectura si aparecen dependencias, riesgos o contradicciones.
@@ -55,6 +89,47 @@ Instrucciones permanentes para Codex y agentes — Room Builder
 - No utilizar modelos de API facturables, servicios de pago adicionales ni recargas automáticas sin autorización expresa. No lanzar subagentes que puedan consumir modelos de pago durante un comando gratuito.
 - Un fallback entre modelos gratuitos solo se considerará activo tras configurarlo y probarlo en un orquestador compatible; escribirlo en Markdown no lo activa.
 - Los modelos y sus condiciones pueden cambiar. Comprobar identificadores reales, disponibilidad, costes y límites antes de actualizar las rutas de selección.
+
+### Recomendación obligatoria de modelo y razonamiento
+
+Antes de comenzar una tarea de desarrollo, recomendar SIEMPRE:
+
+- **Modelo:** nombre y versión exacta (Luna, Terra, Sol o Astra).
+- **Razonamiento:** Low, Medium, High o Extra High.
+- **Motivo:** explicación breve de por qué es adecuado.
+- **Configuración actual:** modelo y razonamiento, solo si pueden verificarse.
+- **Acción:** indicar si conviene mantener o cambiar la configuración.
+
+Formato obligatorio:
+
+"Recomiendo [MODELO] · [RAZONAMIENTO] para esta tarea
+porque [MOTIVO].
+
+Configuración actual: [MODELO] · [RAZONAMIENTO],
+si está disponible.
+
+Acción: [Mantener / Cambiar a MODELO · RAZONAMIENTO]."
+
+Reglas adicionales:
+
+- No recomendar cambiar de modelo únicamente por ahorrar tokens.
+- Priorizar Terra · Medium para desarrollo habitual.
+- Priorizar Luna · Low para cambios triviales.
+- Priorizar Sol · Medium para arquitectura, geometría 3D,
+  cámaras, persistencia y refactors complejos.
+- Usar High o Extra High únicamente cuando la dificultad
+  lo justifique. No seleccionarlos automáticamente.
+- Astra requiere autorización expresa.
+- Evaluar la complejidad real de la tarea, no solo su fase
+  o número de archivos.
+- Si el modelo actual es adecuado, recomendar mantenerlo.
+- No afirmar que se ha cambiado el modelo o razonamiento
+  sin comprobar que el cambio se ha realizado.
+- Si no puede consultarse la configuración actual, indicarlo.
+- Respetar siempre las selecciones explícitas del usuario.
+- Aplicar las reglas detalladas de docs/MODEL_ROUTING.md
+  y consultar docs/MODELS.md cuando sea necesario.
+
 6. Jerarquía documental
 - docs/DECISION_LOG.md registra estados y decisiones.
 - docs/PRODUCT_VISION.md delimita el propósito; docs/MVP_SCOPE.md, el alcance.

@@ -59,3 +59,25 @@ Documentación técnica:
 - [Instrucciones AGENTS.md para Codex](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
 - [Opciones de modelos de Codex CLI](https://learn.chatgpt.com/docs/cli/reference)
 - [Hooks y cambios de modelo en sesiones OpenCode v2](https://opencode.ai/v2/docs/build/plugins/server)
+
+### Formato obligatorio de recomendación
+
+Al recomendar un modelo, indicar SIEMPRE:
+
+- Modelo recomendado: nombre y versión.
+- Razonamiento recomendado: Low, Medium, High o Extra High.
+- Modelo y razonamiento actuales, si pueden verificarse.
+- Motivo breve de la recomendación.
+- Si es necesario cambiar la configuración actual.
+
+Formato:
+"Recomiendo [MODELO] · [RAZONAMIENTO]
+para esta tarea porque [MOTIVO].
+Configuración actual: [MODELO] · [RAZONAMIENTO].
+[Cambiar / Mantener configuración]."
+
+No recomendar cambiar de modelo sin justificar
+el beneficio frente al consumo adicional.
+No afirmar conocer el esfuerzo actual si no
+puede comprobarse.
+
