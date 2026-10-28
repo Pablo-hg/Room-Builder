@@ -1,7 +1,10 @@
 import { useEffect } from 'react'
 import { useRoomStore } from '../../state/useRoomStore'
+import { useShallow } from 'zustand/react/shallow'
+import { selectEditorShortcuts } from '../../state/selectors'
 
-export function useEditorShortcuts(state: ReturnType<typeof useRoomStore.getState>) {
+export function useEditorShortcuts() {
+  const state = useRoomStore(useShallow(selectEditorShortcuts))
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
       const target = event.target

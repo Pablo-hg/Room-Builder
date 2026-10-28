@@ -1,3 +1,4 @@
+import { useInspectorGesture } from './useInspectorGesture'
 import { ROOM_LIMITS, WALL_LABELS } from '../../domain/constants'
 import { FurnitureIcon } from '../iconCatalog'
 import { wallLength } from '../../domain/geometry'
@@ -10,6 +11,7 @@ type RoomState = ReturnType<typeof useRoomStore.getState>
 type SelectedOpening = (RoomState['room']['door'] & { id: 'door'; kind: 'door'; sill: number }) | (RoomState['room']['windows'][number] & { kind: 'window' })
 
 export function OpeningInspector({ selectedOpening }: { selectedOpening: SelectedOpening }) {
+  const gesture = useInspectorGesture(selectedOpening.id)
   const room = useRoomStore((state) => state.room)
   const setDoor = useRoomStore((state) => state.setDoor)
   const updateWindow = useRoomStore((state) => state.updateWindow)
@@ -47,7 +49,7 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
     } else updateWindow(selectedOpening.id, partial)
   }
   return (
-    <section className="panel-section selection-section selection-section--inspector">
+    <section className="panel-section selection-section selection-section--inspector" {...gesture.events}>
       <span className="eyebrow">Inspector del elemento</span>
       <div className="selected-heading">{pictureShape ? <FurnitureIcon kind={pictureShape} color={selectedOpening.color ?? '#d49a72'} /> : openingSwatchKind && <OpeningSwatch kind={openingSwatchKind} color={selectedOpening.color} />}<div><h2>{openingName}</h2><p>{wallShelf || wallPicture || wallMirror || wallSconce ? 'Elemento montado en pared' : 'Apertura seleccionada'}</p></div></div>
       <div className="property-grid" aria-label={`Características de ${openingName.toLowerCase()}`}>

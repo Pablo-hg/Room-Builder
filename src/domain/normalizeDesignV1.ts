@@ -1,0 +1,116 @@
+import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, WALL_SIDES } from './constants'
+import { DEFAULT_GRID_VISIBILITY, type PersistedDesign } from './designV1'
+import { snapToVisibleGrid } from './geometry'
+import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, isWindowShape, OPENING_CATALOG, openingKindForShape } from './objectCatalog'
+import { createStructureSurface } from './structureRules'
+import type { GridSurface, RoomConfig, StructurePack, StructureSurface, StructureSurfaceKey } from './types'
+
+export function normalizeStructurePacks(value: unknown, room: RoomConfig): StructurePack[] {
+  if (value === undefined) return []
+  if (!Array.isArray(value)) throw new Error('invalid structure packs')
+  return value.map((candidate) => {
+    if (!candidate || typeof candidate !== 'object') throw new Error('invalid structure pack')
+    const pack = candidate as Partial<StructurePack>
+    if (
+      typeof pack.id !== 'string'
+      || typeof pack.name !== 'string'
+      || ![pack.x, pack.y, pack.z].every((position) => typeof position === 'number' && Number.isFinite(position))
+      || !Array.isArray(pack.surfaces)
+    ) throw new Error('invalid structure pack')
+    const seen = new Set<string>()
+    const surfaces = pack.surfaces.map((surfaceCandidate) => {
+      if (!surfaceCandidate || typeof surfaceCandidate !== 'object') throw new Error('invalid structure surface')
+      const surface = surfaceCandidate as Partial<StructureSurface>
+      const validWall = surface.wall === 'north' || surface.wall === 'east' || surface.wall === 'south' || surface.wall === 'west'
+      const defaultSurface = ['floor', 'ceiling', 'wall-north', 'wall-east', 'wall-south', 'wall-west'].includes(surface.id ?? '')
+        ? createStructureSurface(room, surface.id as StructureSurfaceKey)
+        : null
+      if (
+        typeof surface.id !== 'string'
+        || !['floor', 'ceiling', 'wall-north', 'wall-east', 'wall-south', 'wall-west'].includes(surface.id)
+        || typeof surface.name !== 'string'
+        || !['wall', 'floor', 'ceiling'].includes(surface.kind ?? '')
+        || ![surface.x, surface.y, surface.z].every((position) => typeof position === 'number' && Number.isFinite(position))
+        || ![surface.width ?? defaultSurface?.width, surface.height ?? defaultSurface?.height, surface.depth ?? defaultSurface?.depth, surface.rotation ?? 0]
+          .every((dimension) => typeof dimension === 'number' && Number.isFinite(dimension) && dimension > 0)
+        || typeof surface.color !== 'string'
+        || seen.has(surface.id)
+        || (surface.kind === 'wall' && (!validWall || surface.id !== `wall-${surface.wall}`))
+        || (surface.kind !== 'wall' && surface.wall !== undefined)
+        || (surface.id === 'floor' && surface.kind !== 'floor')
+        || (surface.id === 'ceiling' && surface.kind !== 'ceiling')
+      ) throw new Error('invalid structure surface')
+      seen.add(surface.id)
+      return {
+        ...defaultSurface,
+        ...surface,
+        width: surface.width ?? defaultSurface!.width,
+        height: surface.height ?? defaultSurface!.height,
+        depth: surface.depth ?? defaultSurface!.depth,
+        rotation: surface.rotation ?? 0,
+      } as StructureSurface
+    })
+    return { ...pack, surfaces } as StructurePack
+  })
+}
+
+export function normalizeDesignRoom(data: PersistedDesign): RoomConfig {
+  return {
+    ...data.room,
+    wallColor: typeof data.room.wallColor === 'string' ? data.room.wallColor : DEFAULT_WALL_COLOR,
+    wallColors: Object.fromEntries(WALL_SIDES.flatMap((wall) => {
+      const color = data.room.wallColors?.[wall]
+      return typeof color === 'string' ? [[wall, color]] : []
+    })),
+    floorColor: typeof data.room.floorColor === 'string' ? data.room.floorColor : DEFAULT_FLOOR_COLOR,
+    door: {
+      ...data.room.door,
+      width: OPENING_CATALOG.door.width,
+      height: OPENING_CATALOG.door.height,
+      rotation: 0,
+      color: typeof data.room.door.color === 'string' ? data.room.door.color : '#ac704b',
+    },
+    windows: data.room.windows.map((window) => {
+      const shape = isWindowShape(window.shape) ? window.shape : 'rectangular'
+      const definition = OPENING_CATALOG[openingKindForShape(shape)]
+      return {
+        ...window,
+        shape,
+        width: definition.width,
+        height: definition.height,
+        offset: snapToVisibleGrid(window.offset),
+        sill: typeof window.sill === 'number'
+          ? snapToVisibleGrid(window.sill)
+          : definition.defaultBottom,
+        rotation: typeof window.rotation === 'number' ? window.rotation : 0,
+        color: typeof window.color === 'string'
+          ? window.color
+          : isWallPictureShape(shape)
+            ? FURNITURE_PRESETS[shape].color
+            : isWallMirrorShape(shape)
+              ? '#9a8067'
+              : shape === 'wallSconce'
+                ? '#d3a755'
+              : '#c88f58',
+      }
+    }),
+  }
+}
+
+export function normalizeDesignPreferences(data: PersistedDesign) {
+  return {
+    gridSnap: typeof data.gridSnap === 'boolean' ? data.gridSnap : true,
+    gridVisibility: (Object.keys(DEFAULT_GRID_VISIBILITY) as GridSurface[]).reduce<Record<GridSurface, boolean>>(
+      (visibility, surface) => ({
+        ...visibility,
+        [surface]: typeof data.gridVisibility?.[surface] === 'boolean'
+          ? data.gridVisibility[surface]
+          : DEFAULT_GRID_VISIBILITY[surface],
+      }),
+      { ...DEFAULT_GRID_VISIBILITY },
+    ),
+    hiddenElementIds: Array.isArray(data.hiddenElementIds)
+      ? data.hiddenElementIds.filter((id): id is string => typeof id === 'string')
+      : [],
+  }
+}

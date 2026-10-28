@@ -103,15 +103,7 @@ export interface StructurePack {
   surfaces: StructureSurface[]
 }
 
-export interface PersistedDesign {
-  version: 1
-  room: RoomConfig
-  furniture: FurnitureItem[]
-  structurePacks?: StructurePack[]
-  gridSnap: boolean
-  gridVisibility?: Record<GridSurface, boolean>
-  hiddenElementIds?: string[]
-}
+export type { PersistedDesign } from './designV1'
 
 export interface WallOpening {
   id: string

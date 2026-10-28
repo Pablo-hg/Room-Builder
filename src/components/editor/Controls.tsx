@@ -38,14 +38,10 @@ export function StructurePositionControls({
   label,
   position,
   onChange,
-  onStart,
-  onEnd,
 }: {
   label: string
   position: { x: number; y: number; z: number }
   onChange: (axis: 'x' | 'y' | 'z', value: number) => void
-  onStart: () => void
-  onEnd: () => void
 }) {
   return (
     <>
@@ -58,10 +54,6 @@ export function StructurePositionControls({
             max={Math.ceil(Math.max(10, position[axis]) / 0.05) * 0.05}
             step="0.05"
             value={position[axis]}
-            onPointerDown={onStart}
-            onPointerUp={onEnd}
-            onPointerCancel={onEnd}
-            onBlur={onEnd}
             onChange={(event) => onChange(axis, Number(event.target.value))}
           />
         </label>
@@ -73,13 +65,9 @@ export function StructurePositionControls({
 export function StructureSizeControls({
   surface,
   onChange,
-  onStart,
-  onEnd,
 }: {
   surface: { width: number; height: number; depth: number }
   onChange: (dimension: 'width' | 'height' | 'depth', value: number) => void
-  onStart: () => void
-  onEnd: () => void
 }) {
   return (
     <>
@@ -94,10 +82,6 @@ export function StructureSizeControls({
               max={Math.max(10, Math.ceil(surface[dimension] * 4) / 4)}
               step="0.25"
               value={surface[dimension]}
-              onPointerDown={onStart}
-              onPointerUp={onEnd}
-              onPointerCancel={onEnd}
-              onBlur={onEnd}
               onChange={(event) => onChange(dimension, Number(event.target.value))}
             />
           </label>

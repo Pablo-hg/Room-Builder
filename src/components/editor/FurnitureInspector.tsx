@@ -1,3 +1,4 @@
+import { useInspectorGesture } from './useInspectorGesture'
 import { ROOM_LIMITS } from '../../domain/constants'
 import { FurnitureIcon } from '../iconCatalog'
 import { furnitureHalfExtents } from '../../domain/geometry'
@@ -8,6 +9,7 @@ import { ColorControl, RotationControl } from './Controls'
 type RoomState = ReturnType<typeof useRoomStore.getState>
 
 export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: RoomState['furniture'][number] }) {
+  const gesture = useInspectorGesture(selectedFurniture.id)
   const room = useRoomStore((state) => state.room)
   const moveFurniture = useRoomStore((state) => state.moveFurniture)
   const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
@@ -21,7 +23,7 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
   const xLimit = Math.max(0, room.width / 2 - extents.halfWidth)
   const zLimit = Math.max(0, room.depth / 2 - extents.halfDepth)
   return (
-    <section className="panel-section selection-section selection-section--inspector">
+    <section className="panel-section selection-section selection-section--inspector" {...gesture.events}>
       <span className="eyebrow">Inspector del elemento</span>
       <div className="selected-heading"><FurnitureIcon kind={selectedFurniture.kind} color={selectedFurniture.color} /><div><h2>{selectedFurniture.name}</h2><p>{selectedFurniture.x.toFixed(2)}, {selectedFurniture.z.toFixed(2)} m</p></div></div>
       <div className="property-grid" aria-label="Características del mueble">

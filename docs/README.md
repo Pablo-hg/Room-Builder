@@ -30,6 +30,10 @@ Room Builder es una aplicación web independiente, de aspecto de juego, para rec
 
 Las guías no suponen aprobación de la V1 pública de Pablo Web 2.0. El proyecto independiente y el portfolio tienen decisiones y calendarios distintos.
 
+## Informes de progreso
+
+Se conserva un único informe Markdown por fase R en `docs/progress/`: [informe de R3](progress/R3_PROGRESS.md). Sus subpartes y continuaciones amplían ese mismo archivo, manteniendo contexto, resultados y límites históricos. No se borra al cerrar la fase. Las mediciones JSON se conservan como evidencias enlazadas desde el informe.
+
 ## Mantenimiento documental
 - Cambiar una decisión implica actualizar DECISION_LOG y los documentos afectados en la misma propuesta.
 - Si una regla visual cambia, modificar VISUAL_STYLE_GUIDE y comprobar modelos e iconos existentes.

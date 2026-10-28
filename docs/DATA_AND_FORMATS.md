@@ -10,7 +10,21 @@
 - Puertas y ventanas hacen referencia a pared y posición; las aberturas no son objetos flotantes.
 
 ## Persistencia realmente implementada (26/10/2026)
-src/domain/types.ts declara PersistedDesign versión 1 con room, furniture, structurePacks opcionales, gridSnap, gridVisibility y hiddenElementIds. src/state/useRoomStore.ts persiste hasta cinco diseños en localStorage; la cámara es temporal. Existe exportación GLB de escena. **No existe importación/exportación JSON editable pública ni modelo real multihabitación.**
+`src/domain/designV1.ts` declara `PersistedDesign` versión 1 (reexportado desde `src/domain/types.ts`) con room, furniture, structurePacks opcionales, gridSnap, gridVisibility y hiddenElementIds. `src/state/useRoomStore.ts` compone las acciones de diseños, que persisten hasta cinco diseños mediante `src/persistence/localDesignRepository.ts`; la cámara es temporal. Existe exportación GLB de escena. **No existe importación/exportación JSON editable pública ni modelo real multihabitación.**
+
+## Organización del lector v1 tras R3.3
+
+El contrato y la serialización canónica están en `domain/designV1.ts`; la normalización de habitación, packs y preferencias está en `domain/normalizeDesignV1.ts`. Se conservan versión, claves, defaults y aceptación anteriores. La comprobación de cabecera usada para listar diseños es parcial; la carga aplica después la normalización, validación geométrica y colocación. No constituye una validación estricta para importaciones públicas. Desde R3.4, las migraciones puras están en `persistence/designMigrations.ts` y el acceso a `localStorage` en `persistence/localDesignRepository.ts`. R3.5 conserva el orden de carga en `state/actions/designActions.ts`, dentro del store compuesto.
+
+Las pruebas incluyen diseños completos, antiguos con opcionales ausentes, malformados y el fixture `valid-boundary.json`, con habitación de 10 m, pack e ID compuesto antiguo. El rechazo previo de superficies con rotación cero o negativa se mantiene y documenta como incidencia, sin cambiar el contrato durante la extracción.
+
+## Almacenamiento y migraciones tras R3.4
+
+Se mantienen `room-builder:v0.1:designs` para la lista actual y `room-builder:v0.1:design` para el diseño legacy. La lista actual tiene prioridad; un error al leerla no activa una recuperación silenciosa desde legacy. El lector mantiene el límite de las primeras cinco entradas y las acciones conservan el límite de creación/guardado.
+
+Si no existe la lista actual y la cabecera legacy es válida, se crea una entrada con ID/fecha nuevos y el nombre anterior, se escribe la lista y se conserva la clave original. Releer usa la lista creada y mantiene ese ID. Las migraciones de decoración mural se aplican al cargar en memoria; no reescriben por sí solas el diseño guardado. Los errores de lectura, parseo o escritura llegan a las acciones, que mantienen los avisos anteriores y actualizan la lista en memoria solo después de una escritura satisfactoria.
+
+El contrato v1 y sus límites de validación se conservan. Ver [informe de R3.4/R3.5](progress/R3_PROGRESS.md#r3-4-5) para pruebas de migración, errores de almacenamiento y conservación de cinco diseños.
 
 ## Formato futuro propuesto
 Separa **proyecto** (una vivienda), **planta**, **habitaciones**, **paredes/aberturas estructurales**, **definiciones de objetos** e **instancias**, y **variantes de distribución**. Ejemplo conceptual, NO esquema implementado:
