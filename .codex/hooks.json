@@ -1,0 +1,28 @@
+{
+  "description": "EXPERIMENTAL: traspaso local con monitor de cuota Codex; umbral 5 % restante; integración real pendiente de validar.",
+  "hooks": {
+    "UserPromptSubmit": [{
+      "hooks": [{
+        "type": "command",
+        "command": "python3 \"$(git rev-parse --show-toplevel)/scripts/ai/codex_quota_handoff.py\"",
+        "timeout": 15,
+        "statusMessage": "Comprobando cuota Codex"
+      }]
+    }],
+    "PostToolUse": [{
+      "matcher": "Bash|apply_patch|Edit|Write",
+      "hooks": [{
+        "type": "command",
+        "command": "python3 \"$(git rev-parse --show-toplevel)/scripts/ai/codex_quota_handoff.py\"",
+        "timeout": 15
+      }]
+    }],
+    "Stop": [{
+      "hooks": [{
+        "type": "command",
+        "command": "python3 \"$(git rev-parse --show-toplevel)/scripts/ai/codex_quota_handoff.py\"",
+        "timeout": 15
+      }]
+    }]
+  }
+}

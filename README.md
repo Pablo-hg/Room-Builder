@@ -56,6 +56,8 @@ npm test
 npm run test:e2e
 ```
 
+La caracterización visual del catálogo se reproduce con `R2_CAPTURE_DIR=/tmp/room-builder-catalog npx playwright test --config=playwright.catalog.config.ts`; genera una captura por tipo en isométrica, planta y frontal. Los cuadros se cargan como elementos murales.
+
 Las pruebas unitarias verifican las cuatro parejas de paredes ocultas, la geometría alrededor de puertas/ventanas, la validación de aperturas y los límites de los objetos. Las pruebas de Playwright recorren las cuatro orientaciones e interacciones principales. La primera ejecución de Playwright puede requerir instalar Chromium con `npx playwright install chromium`.
 
 ## Registro de diagnóstico
@@ -74,7 +76,8 @@ Este registro es de diagnóstico y no es la fuente del historial de «Deshacer»
 - `src/domain/objectCatalog.ts`: catálogo local tipado con las propiedades base y capacidades de transformación de cada objeto.
 - `src/domain`: tipos, constantes y geometría pura.
 - `src/state`: estado de diseño, estado temporal de cámara y persistencia.
-- `src/components/RoomScene.tsx`: cámaras, habitación, paredes y mobiliario React Three Fiber.
+- `src/components/RoomScene.tsx`: composición de escena y reexportación compatible de las brújulas.
+- `src/scene`: cámara, visibilidad, shell, aperturas, superficies, modelos, selección y gizmos de mobiliario, brújulas, órbita y adaptador GLB extraídos en R2.1–R2.9.
 - `src/App.tsx`: composición del editor, coordinación de la escena y exportación.
 - `src/components/editor`: cabecera y diseños guardados, paneles, controles, inspectores por selección y atajos del editor.
 

@@ -1,17 +1,43 @@
-Instrucciones permanentes para Codex y agentes — Room Builder
-1. Inicio de tarea y lectura selectiva
+# Instrucciones permanentes para Codex y agentes — Room Builder
+
+## Selección de modelo y razonamiento
+
+- Recomienda un modelo únicamente cuando el usuario solicite ayuda para elegirlo o compararlo.
+- Cuando se solicite una recomendación, indica:
+  - Modelo y versión exacta.
+  - Razonamiento recomendado: Low, Medium, High o Extra High.
+  - Motivo breve de la elección.
+  - Si conviene mantener o cambiar el modelo actual.
+- No es necesario verificar el razonamiento activo.
+- No afirmes conocer la configuración si no puedes verificarla.
+- Si el usuario ya ha seleccionado un modelo, considera la elección confirmada.
+- No repitas recomendaciones al comenzar tareas, continuar fases o recuperar contexto.
+- No interrumpas el desarrollo para evaluar modelos.
+- Prioriza ejecutar la tarea y minimizar el consumo de cuota y contexto.
+
+Formato de recomendación (solo cuando se solicite):
+
+**Recomendación: [MODELO] · [RAZONAMIENTO]**
+
+Motivo: [Explicación breve].
+Acción: [Mantener / Cambiar].
+
+## 1. Inicio de tarea y lectura selectiva
+
 - Antes de modificar código, comprender la petición, comprobar la rama y los cambios locales, e inspeccionar los archivos de código implicados. No sobrescribir trabajo existente.
 - No leer toda la documentación al comenzar cada tarea. Consultar únicamente la necesaria según el alcance; ampliar la lectura si aparecen dependencias, riesgos o contradicciones.
-- Usar docs/README.md para localizar fuentes y conocer estados cuando sea necesario.
+- Usar `docs/README.md` para localizar fuentes y conocer estados cuando sea necesario.
 - Documentación por temática:
-  - Propósito y alcance: docs/PRODUCT_VISION.md y docs/MVP_SCOPE.md.
-  - Interfaz, cámaras y diseño visual: docs/UX_AND_CAMERAS.md y VISUAL_STYLE_GUIDE.md.
-  - Objetos, modelos 3D y formatos: docs/OBJECTS_AND_ASSETS.md y docs/DATA_AND_FORMATS.md.
-  - Arquitectura y refactorización: docs/ARCHITECTURE_AND_QUALITY.md, docs/REFACTOR_PLAN.md y docs/DECISION_LOG.md.
-  - Creador mediante texto: GENERADOR_OBJETOS.md (propuesta; no funcionalidad entregada).
-- Consultar docs/DECISION_LOG.md cuando una tarea implique decisiones aprobadas, pendientes o contradictorias. Antes de reorganizar archivos, seguir docs/REFACTOR_PLAN.md.
+  - Propósito y alcance: `docs/PRODUCT_VISION.md` y `docs/MVP_SCOPE.md`.
+  - Interfaz, cámaras y diseño visual: `docs/UX_AND_CAMERAS.md` y `VISUAL_STYLE_GUIDE.md`.
+  - Objetos, modelos 3D y formatos: `docs/OBJECTS_AND_ASSETS.md` y `docs/DATA_AND_FORMATS.md`.
+  - Arquitectura y refactorización: `docs/ARCHITECTURE_AND_QUALITY.md`, `docs/REFACTOR_PLAN.md` y `docs/DECISION_LOG.md`.
+  - Creador mediante texto: `GENERADOR_OBJETOS.md` (propuesta; no funcionalidad entregada).
+- Consultar `docs/DECISION_LOG.md` cuando una tarea implique decisiones aprobadas, pendientes o contradictorias. Antes de reorganizar archivos, seguir `docs/REFACTOR_PLAN.md`.
 - La documentación indica intención y decisiones; el código actual determina lo que está implementado. Si no coinciden, señalar la diferencia; no ocultarla.
-2. Reglas de producto y desarrollo
+
+## 2. Reglas de producto y desarrollo
+
 - Producto independiente: crear y reorganizar habitaciones reales con facilidad de videojuego; futuro multihabitación. La versión mini del Laboratorio de Pablo Web 2.0 es otro alcance y no modifica el portfolio.
 - Priorizar usabilidad y legibilidad sobre realismo, funciones o complejidad técnica. Mantener la estética 3D low-poly estilizada, tipo diorama; no pixel art ni CAD.
 - No cambiar por iniciativa propia el alcance MVP, la arquitectura aprobada, las guías visuales, los formatos persistidos ni las decisiones marcadas PENDIENTE. Proponer y documentar primero cualquier cambio de ese tipo.
@@ -24,41 +50,51 @@ Instrucciones permanentes para Codex y agentes — Room Builder
 - No copiar assets ni código de Rooms.xyz, Room Studio u otros proyectos sin comprobar licencia y atribución.
 - Preservar compatibilidad con ratón, pantalla táctil y teclado; accesibilidad textual, movimiento reducido y mensajes claros. Evitar cargas iniciales pesadas.
 - Hacer el cambio mínimo coherente con la petición. No mezclar refactorizaciones con nuevas funciones ni modificar archivos ajenos al objetivo sin justificación.
-3. Verificación y seguridad del trabajo
+
+## 3. Verificación y seguridad del trabajo
+
 - Inspeccionar el código real antes de actuar. Evaluar efectos sobre vistas, dimensiones, selección, persistencia y migraciones cuando sean áreas afectadas.
-- Ejecutar primero las pruebas pertinentes para los archivos modificados. Ampliar la validación según alcance y riesgo, utilizando npm test, npm run test:e2e y npm run build cuando corresponda.
+- Ejecutar primero las pruebas pertinentes para los archivos modificados. Ampliar la validación según alcance y riesgo, utilizando `npm test`, `npm run test:e2e` y `npm run build` cuando corresponda.
 - En cambios amplios o antes de integrar, ejecutar las comprobaciones generales aplicables. Si alguna no puede ejecutarse o no corresponde a la tarea, explicarlo en el resumen final.
 - No repetir pruebas costosas si no hay cambios relevantes desde una ejecución válida, salvo para comprobar estabilidad o por requisitos de integración.
 - No afirmar que una vista ha sido validada visualmente sin haberla comprobado. No ocultar fallos, resultados incompletos ni riesgos conocidos.
 - No sobrescribir trabajo ajeno ni borrar cambios locales. No hacer commits no solicitados, merges ni publicaciones sin autorización expresa. Trabajar en la rama indicada y entregar un resumen verificable.
-4. Eficiencia de tokens y contexto
+
+## 4. Eficiencia de tokens y contexto
+
 - Prioridad: corrección y seguridad > alcance solicitado > verificaciones necesarias > ahorro de tokens > velocidad.
 - Buscar primero rutas y símbolos concretos; leer solo fragmentos relevantes. Evitar volcar repositorios, historiales o logs completos sin necesidad.
 - Reutilizar decisiones, análisis y pruebas anteriores solo si siguen siendo válidos para la rama y el código actuales.
 - Resolver directamente tareas sencillas; elaborar un plan breve para cambios complejos, de varios módulos o con riesgo elevado.
 - Evitar análisis reiterativos, explicaciones largas, soluciones sobrediseñadas y agentes paralelos sin beneficio claro.
 - Resumir las respuestas con: qué ha cambiado, qué se ha probado, resultado y pendientes.
-- Para tareas largas, trabajo con varios agentes o traspasos de contexto, consultar docs/AGENT_EFFICIENCY.md. No cargar ese documento completo por defecto en tareas triviales.
+- Para tareas largas, trabajo con varios agentes o traspasos de contexto, consultar `docs/AGENT_EFFICIENCY.md`. No cargar ese documento completo por defecto en tareas triviales.
 - Si se cambia de agente o proveedor, transmitir un resumen compacto de tarea, rama, archivos, decisiones, pruebas y siguiente paso; el receptor comprobará el estado real antes de continuar.
 - Nunca sacrificar funcionalidad, seguridad ni verificaciones necesarias para consumir menos tokens.
-5. Política de modelos y proveedores
-- **Nueva autorización explícita:** antes de desarrollar una tarea, recomendar el nivel Luna / Terra / Sol según complejidad. Si el entorno permite comprobar y cambiar el modelo de la sesión con una operación real, se autoriza la selección automática SOLO entre los modelos OpenAI de la suscripción ChatGPT ya conectada, sin pagos adicionales y con aviso breve al usuario. Si el cambio no es posible o no se puede verificar, no afirmar que ha sucedido: indicarlo y recomendar el selector del cliente.
-- En el chat nativo de Codex VS Code, AGENTS.md no permite controlar por sí mismo el selector; seguir la política de aviso. En OpenCode el cambio automático aún NO está activado: el plugin actual es un marcador inactivo porque no se ha confirmado una API de cambio de sesión compatible. Debe avisar y recomendar hasta que se implemente y pruebe.
-- Catálogo único de modelos, usos, identificadores y comandos: docs/MODELS.md. Reglas de enrutamiento y etiquetas `#modelo:`: docs/MODEL_ROUTING.md. No seleccionar Astra automáticamente.
-- Modo predeterminado: Codex, usando openai/gpt-6.1-terra con la suscripción ChatGPT conectada a OpenCode. No implica autorizar gasto adicional en API.
-- La clasificación rápido / equilibrado / profundo / crítico sirve para recomendar modelos adecuados, pero no autoriza al agente a cambiar de proveedor o modelo sin una orden explícita o una automatización previamente aprobada.
-- Modo gratuito solo bajo petición expresa del usuario: comandos como /gratis, /gratis-alternativa, /gratis-rapido, /gratis-profundo o /gratis-visual, o selección manual de un modelo -free desde /models.
-- Los comandos /gratis* ejecutan la petición indicada con su modelo gratuito en la sesión actual. No cambian necesariamente el modelo de los mensajes siguientes; si se desea mantener el modo gratuito para varias peticiones, elegirlo desde /models.
+
+## 5. Política de modelos y proveedores
+
+- La selección del modelo corresponde al usuario. Recomendar Luna, Terra, Sol o Astra únicamente cuando solicite ayuda para elegir o comparar modelos.
+- Si el usuario ya ha seleccionado un modelo, respetar su elección sin volver a evaluarla al comenzar o continuar una tarea.
+- El cambio automático de modelo permanece inactivo hasta disponer de una integración compatible y verificada. No afirmar que un cambio automático se ha realizado.
+- En el chat nativo de Codex VS Code, `AGENTS.md` no controla el selector. En OpenCode, el plugin de cambio automático también permanece inactivo hasta que se pruebe una API compatible. No mostrar avisos de modelo salvo cuando el usuario los solicite.
+- Catálogo único de modelos, usos, identificadores y comandos: `docs/MODELS.md`. Reglas de enrutamiento y etiquetas `#modelo:`: `docs/MODEL_ROUTING.md`. No seleccionar Astra automáticamente.
+- Modo predeterminado: Codex, usando `openai/gpt-6.1-terra` con la suscripción ChatGPT conectada a OpenCode. No implica autorizar gasto adicional en API.
+- La clasificación rápido / equilibrado / profundo / crítico sirve para recomendar modelos adecuados cuando se solicite, pero no autoriza al agente a cambiar de proveedor o modelo sin una orden explícita o una automatización previamente aprobada e implementada.
+- Modo gratuito solo bajo petición expresa del usuario: comandos como `/gratis`, `/gratis-auto`, `/gratis-alternativa`, `/gratis-rapido`, `/gratis-profundo` o `/gratis-visual`, o selección manual de un modelo `-free` desde `/models`.
+- Los comandos `/gratis*` ejecutan la petición indicada con su modelo gratuito en la sesión actual. No cambian necesariamente el modelo de los mensajes siguientes; si se desea mantener el modo gratuito para varias peticiones, elegirlo desde `/models`.
 - Si Codex alcanza el límite de uso, no intentar un cambio automático no configurado. Informar de la limitación y continuar en modo gratuito cuando el usuario lo indique; conservar código, cambios locales y contexto de la sesión.
-- Dentro del modo gratuito, usar los modelos enumerados en docs/MODELS.md y disponibles en la cuenta. No emplear versiones sin -free como sustitutos implícitos.
+- Dentro del modo gratuito, usar los modelos enumerados en `docs/MODELS.md` y disponibles en la cuenta. No emplear versiones sin `-free` como sustitutos implícitos.
 - Preferir un agente para tareas simples; no incorporar agentes paralelos o revisores si el riesgo y la complejidad no lo justifican.
 - No utilizar modelos de API facturables, servicios de pago adicionales ni recargas automáticas sin autorización expresa. No lanzar subagentes que puedan consumir modelos de pago durante un comando gratuito.
 - Un fallback entre modelos gratuitos solo se considerará activo tras configurarlo y probarlo en un orquestador compatible; escribirlo en Markdown no lo activa.
 - Los modelos y sus condiciones pueden cambiar. Comprobar identificadores reales, disponibilidad, costes y límites antes de actualizar las rutas de selección.
-6. Jerarquía documental
-- docs/DECISION_LOG.md registra estados y decisiones.
-- docs/PRODUCT_VISION.md delimita el propósito; docs/MVP_SCOPE.md, el alcance.
-- VISUAL_STYLE_GUIDE.md define el diseño visual; docs/DATA_AND_FORMATS.md, el contrato de datos propuesto.
-- docs/MODELS.md es la referencia central de modelos y casos de uso; docs/MODEL_ROUTING.md establece la política de selección y docs/AGENT_EFFICIENCY.md, las pautas de eficiencia. Estos documentos no prevalecen sobre seguridad, alcance ni reglas de producto de este archivo.
+
+## 6. Jerarquía documental
+
+- `docs/DECISION_LOG.md` registra estados y decisiones.
+- `docs/PRODUCT_VISION.md` delimita el propósito; `docs/MVP_SCOPE.md`, el alcance.
+- `VISUAL_STYLE_GUIDE.md` define el diseño visual; `docs/DATA_AND_FORMATS.md`, el contrato de datos propuesto.
+- `docs/MODELS.md` es la referencia central de modelos y casos de uso; `docs/MODEL_ROUTING.md` establece la política de selección y `docs/AGENT_EFFICIENCY.md`, las pautas de eficiencia. Estos documentos no prevalecen sobre seguridad, alcance ni reglas de producto de este archivo.
 - El código es la fuente del estado implementado, no de la validez de decisiones de producto.
 - Ante contradicciones relevantes entre documentación, decisiones y código, no elegir silenciosamente: explicar la discrepancia y solicitar decisión cuando sea necesaria.
