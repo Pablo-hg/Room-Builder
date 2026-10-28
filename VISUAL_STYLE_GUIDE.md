@@ -25,7 +25,7 @@ La interfaz combina fondos papel y crema (`--paper`, `--cream`), tinta verde gri
 
 ## Objetos 3D
 
-Los modelos se implementan en `FurnitureModel` y los elementos murales/aperturas en los componentes de escena de `src/components/RoomScene.tsx`.
+Los modelos se implementan en `src/scene/FurnitureModels.tsx` y los elementos murales/aperturas en `src/scene/Openings.tsx`.
 
 - Usar geometría simple (cajas, cilindros, planos y formas básicas) ensamblada para representar piezas reconocibles: asiento y respaldo, tablero y patas, colchón y cabecero, marco y lámina, etc.
 - Respetar las dimensiones en metros del catálogo. Centrar el objeto en su huella horizontal y apoyar los muebles de suelo en `y = 0`; los elementos de pared deben conservar su colocación y orientación sobre la pared.
@@ -61,6 +61,6 @@ Si se cambia el tipo, color, dimensiones o detalles visibles de un objeto existe
 
 - Catálogo, dimensiones y colores base: `src/domain/objectCatalog.ts`.
 - Registro único de iconos SVG y componentes reutilizables: `src/components/iconCatalog.tsx`.
-- Modelos 3D y aperturas: `src/components/RoomScene.tsx`.
-- Composición del catálogo y del inspector: `src/App.tsx`.
+- Modelos 3D y aperturas: `src/scene/FurnitureModels.tsx` y `src/scene/Openings.tsx`.
+- Composición del catálogo y del inspector: `src/components/editor`.
 - Estilo compartido del lienzo SVG: `src/styles.css`.

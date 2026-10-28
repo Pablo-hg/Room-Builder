@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "room": {
+    "width": "cinco",
+    "depth": 4.5,
+    "height": 2.7
+  },
+  "furniture": [],
+  "gridSnap": true
+}

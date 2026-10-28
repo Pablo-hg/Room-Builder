@@ -6,7 +6,25 @@
 React 19, TypeScript, Vite 6, Three.js, React Three Fiber, Zustand, pruebas de Node/tsx y Playwright. Mantener salvo necesidad real medida; no hay que introducir otro motor de juego.
 
 ## Problema técnico real
-La lógica principal está concentrada en src/App.tsx (~74 KB), src/components/RoomScene.tsx (~141 KB) y src/state/useRoomStore.ts (~62 KB). El tamaño no demuestra errores por sí solo, pero dificulta comprensión, pruebas y cambios seguros.
+La auditoría original identificó concentración en `src/App.tsx`, `src/components/RoomScene.tsx` y `src/state/useRoomStore.ts`. R1 extrae la interfaz de `App.tsx` a `src/components/editor`; R2.1–R2.9 trasladan cámaras, paredes, aperturas, superficies, mobiliario, selección y gestos, brújulas, órbita y exportación a `src/scene`. `RoomScene.tsx` compone estos módulos y conserva los exports públicos de brújulas para `App`. El store conserva sus responsabilidades para R3. El tamaño no demuestra errores por sí solo, pero dificulta comprensión, pruebas y cambios seguros.
+
+## Extracción de escena implementada (R2.1–R2.9)
+
+- `scene/CameraRig.tsx`: cálculos, animación y movimiento reducido originales; `scene/types.ts` conserva el contrato de props.
+- `scene/wallVisibility.ts`: política de paredes ocultas, etiquetas y cuadrículas reutilizando las funciones existentes del dominio.
+- `scene/RoomShell.tsx`: suelo, plataforma, iluminación y etiquetas; su grupo conserva la referencia usada para exportar y recibe el contenido de la escena por composición.
+- `scene/Walls.tsx` y `scene/wallGeometry.ts`: colocación, cuerpo de pared y cálculo de huecos; `WallGrid.tsx` y `FloorGrid.tsx` conservan las cuadrículas.
+- `scene/sceneInteraction.ts`: logger de escena compartido, sin estado duplicado. Zustand sigue siendo la única fuente de verdad.
+
+- `scene/Openings.tsx`: representación e interacción de aperturas; `SoftWall` reside en `Walls.tsx`.
+- `scene/StructureSurface.tsx` y `scene/StructureSurfaceGizmo.tsx`: superficies constructivas y su gizmo.
+- `scene/FurnitureModels.tsx`: registro tipado que cubre todos los tipos de mobiliario; `colorTone.ts` conserva el cálculo cromático compartido.
+
+- `scene/FurnitureObject.tsx` y `scene/FurnitureGizmos.tsx`: selección espacial, arrastre y cuatro gizmos originales; `scene/usePointerCancellation.ts` comparte el cierre de cancelación nativa entre cuerpo y gizmos, documentado como corrección separada.
+- `scene/Compass.tsx` y `scene/OrbitPointerController.tsx`: brújulas y órbita nativa; el manejo del botón central de `App` conserva su integración.
+- `scene/SceneExportController.tsx`: efecto de petición de exportación y validación de la referencia; `scene/exportGlb.ts`: copia/filtrado y descarga mediante el exportador de Three.js, con `binary` y `onlyVisible` originales.
+
+La auditoría registra las verificaciones y limitaciones de cada subparte. Esta entrega no reorganiza dominio ni persistencia.
 
 ## Límites de responsabilidad objetivo
 - **domain/**: modelos, objetos, restricciones y geometría puros, sin React o Three donde sea viable.

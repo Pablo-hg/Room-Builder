@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "tsx --test src/**/*.test.ts",
     "test:watch": "tsx --test --watch src/**/*.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "capture:r0-baseline": "playwright test --config=playwright.baseline.config.ts"
   },
   "dependencies": {
     "@react-three/fiber": "^9.4.0",
