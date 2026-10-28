@@ -68,6 +68,7 @@ Acción: [Mantener / Cambiar].
 - Resolver directamente tareas sencillas; elaborar un plan breve para cambios complejos, de varios módulos o con riesgo elevado.
 - Evitar análisis reiterativos, explicaciones largas, soluciones sobrediseñadas y agentes paralelos sin beneficio claro.
 - Resumir las respuestas con: qué ha cambiado, qué se ha probado, resultado y pendientes.
+- Mantener un único informe Markdown por fase R en `docs/progress/` (por ejemplo, `R3_PROGRESS.md`, `R4_PROGRESS.md`). Documentar todas sus subpartes y continuaciones dentro de ese archivo, conservando el historial, pruebas y límites; no crear informes separados por subparte. No borrar el informe al cerrar una fase ni al integrar ramas. Si se unifican informes existentes, conservar su contenido y actualizar los enlaces.
 - Para tareas largas, trabajo con varios agentes o traspasos de contexto, consultar `docs/AGENT_EFFICIENCY.md`. No cargar ese documento completo por defecto en tareas triviales.
 - Si se cambia de agente o proveedor, transmitir un resumen compacto de tarea, rama, archivos, decisiones, pruebas y siguiente paso; el receptor comprobará el estado real antes de continuar.
 - Nunca sacrificar funcionalidad, seguridad ni verificaciones necesarias para consumir menos tokens.

@@ -1,0 +1,22 @@
+{
+  "fixture": "valid-complete.json",
+  "updatesPerScenario": 10,
+  "mode": "Vite development + React StrictMode",
+  "method": "CDP precise function call coverage",
+  "measurements": {
+    "camera": {
+      "App": 0,
+      "EditorScene": 20,
+      "EditorHeader": 0,
+      "SettingsPanel": 0,
+      "ObjectsPanel": 0
+    },
+    "furnitureMove": {
+      "App": 0,
+      "EditorScene": 20,
+      "EditorHeader": 2,
+      "SettingsPanel": 0,
+      "ObjectsPanel": 20
+    }
+  }
+}

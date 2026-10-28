@@ -2,7 +2,10 @@ import type { ThreeEvent } from '@react-three/fiber'
 import { useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import type { StructureSurface } from '../domain/types'
-import { structureSurfaceElementId, useRoomStore } from '../state/useRoomStore'
+import { useHistoryGesture } from '../state/useHistoryGesture'
+import { releasePointer, usePointerCancellation } from './usePointerCancellation'
+import { useRoomStore } from '../state/useRoomStore'
+import { structureSurfaceElementId } from '../domain/elementIds'
 import { recordSceneInteraction } from './sceneInteraction'
 
 export function StructureSurfaceTransformGizmo({
@@ -10,8 +13,6 @@ export function StructureSurfaceTransformGizmo({
   name,
   surface,
   position,
-  beginMove,
-  endMove,
   move,
   rotate,
 }: {
@@ -19,11 +20,10 @@ export function StructureSurfaceTransformGizmo({
   name: string
   surface: StructureSurface
   position: [number, number, number]
-  beginMove: () => void
-  endMove: () => void
   move: (packId: string, surfaceId: StructureSurface['id'], axis: 'x' | 'y' | 'z', value: number) => void
   rotate: (packId: string, surfaceId: StructureSurface['id'], rotation: number) => void
 }) {
+  const gesture = useHistoryGesture(structureSurfaceElementId(packId, surface.id))
   const selectElement = useRoomStore((state) => state.selectElement)
   const [draggingAxis, setDraggingAxis] = useState<'x' | 'y' | 'z' | null>(null)
   const [hoveredAxis, setHoveredAxis] = useState<'x' | 'y' | 'z' | null>(null)
@@ -51,15 +51,15 @@ export function StructureSurfaceTransformGizmo({
     if (!event.ray.intersectPlane(dragPlane, pointerPoint)) return
     startPoint.current.copy(pointerPoint)
     startingPosition.current = { x: surface.x, y: surface.y, z: surface.z }
-    beginMove()
+    gesture.begin()
     setDraggingAxis(axis)
     document.body.classList.add('can-grab')
-    ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+    capturePointer(event)
     recordSceneInteraction('structure-surface.axis-drag-start', { packId, surfaceId: surface.id, name, axis })
   }
 
   const drag = (event: ThreeEvent<PointerEvent>) => {
-    if (!draggingAxis) return
+    if (!draggingAxis || !gesture.isActive()) return
     event.stopPropagation()
     if (!event.ray.intersectPlane(dragPlane, pointerPoint)) return
     const delta = draggingAxis === 'x'
@@ -73,10 +73,10 @@ export function StructureSurfaceTransformGizmo({
   const stopDrag = (event: ThreeEvent<PointerEvent>) => {
     if (!draggingAxis) return
     event.stopPropagation()
-    endMove()
+    gesture.commit()
     setDraggingAxis(null)
     document.body.classList.remove('can-grab')
-    ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
+    releasePointer(event)
     recordSceneInteraction('structure-surface.axis-drag-end', { packId, surfaceId: surface.id, name, axis: draggingAxis })
   }
 
@@ -84,7 +84,7 @@ export function StructureSurfaceTransformGizmo({
     onPointerDown: (event: ThreeEvent<PointerEvent>) => startDrag(axis, event),
     onPointerMove: drag,
     onPointerUp: stopDrag,
-    onPointerCancel: stopDrag,
+    onPointerCancel: (event: ThreeEvent<PointerEvent>) => { gesture.cancel(); stopDrag(event) },
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
       setHoveredAxis(axis)
@@ -116,27 +116,30 @@ export function StructureSurfaceTransformGizmo({
       if (!event.ray.intersectPlane(dragPlane, pointerPoint)) return
       lastRingAngle.current = Math.atan2(pointerPoint.z - position[2], pointerPoint.x - position[0])
       startingRotation.current = surface.rotation
+      gesture.begin()
       setRotating(true)
       document.body.classList.add('can-grab')
-      ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+      capturePointer(event)
       recordSceneInteraction('structure-surface.rotation-start', { packId, surfaceId: surface.id, name, rotation: surface.rotation })
     },
     onPointerMove: (event: ThreeEvent<PointerEvent>) => {
-      if (!rotating) return
+      if (!rotating || !gesture.isActive()) return
       event.stopPropagation()
       rotateFromPointer(event)
     },
     onPointerUp: (event: ThreeEvent<PointerEvent>) => {
       if (!rotating) return
       event.stopPropagation()
+      gesture.commit()
       setRotating(false)
       document.body.classList.remove('can-grab')
-      ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
+      releasePointer(event)
       recordSceneInteraction('structure-surface.rotation-end', { packId, surfaceId: surface.id, name, rotation: useRoomStore.getState().structurePacks.find((pack) => pack.id === packId)?.surfaces.find((candidate) => candidate.id === surface.id)?.rotation })
     },
     onPointerCancel: (event: ThreeEvent<PointerEvent>) => {
       if (!rotating) return
       event.stopPropagation()
+      gesture.cancel()
       setRotating(false)
       document.body.classList.remove('can-grab')
     },
@@ -151,6 +154,8 @@ export function StructureSurfaceTransformGizmo({
       if (!rotating) document.body.classList.remove('can-grab')
     },
   }
+
+  const capturePointer = usePointerCancellation((event) => { gesture.cancel(); stopDrag(event); ringEvents.onPointerCancel(event) })
 
   return (
     <group position={[position[0], position[1] + gizmoHeight, position[2]]} renderOrder={8}>

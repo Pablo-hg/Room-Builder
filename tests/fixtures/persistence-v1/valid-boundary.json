@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "room": {
+    "width": 10,
+    "depth": 10,
+    "height": 10,
+    "wallColor": "#f5eadb",
+    "wallColors": {
+      "north": "#f5eadb",
+      "east": "#f5eadb",
+      "south": "#f5eadb",
+      "west": "#f5eadb"
+    },
+    "floorColor": "#dcc3a3",
+    "door": {
+      "wall": "south",
+      "offset": 0,
+      "width": 1,
+      "height": 2.1,
+      "rotation": 0,
+      "color": "#ac704b"
+    },
+    "windows": []
+  },
+  "furniture": [],
+  "gridSnap": true,
+  "structurePacks": [
+    {
+      "id": "legacy:pack",
+      "name": "Piso límite",
+      "x": -10,
+      "y": 0,
+      "z": 10,
+      "surfaces": [
+        {
+          "id": "wall-east",
+          "kind": "wall",
+          "wall": "east",
+          "name": "Pared E",
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "width": 10,
+          "height": 10,
+          "depth": 0.08,
+          "rotation": 0.5,
+          "color": "#123456"
+        }
+      ]
+    }
+  ],
+  "hiddenElementIds": [
+    "structure-surface:legacy:pack:wall-east"
+  ]
+}

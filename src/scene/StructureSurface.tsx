@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type { RoomConfig, StructureSurface } from '../domain/types'
-import { structureSurfaceElementId, useRoomStore } from '../state/useRoomStore'
+import { useRoomStore } from '../state/useRoomStore'
+import { structureSurfaceElementId } from '../domain/elementIds'
 import { recordSceneInteraction } from './sceneInteraction'
 import { StructureSurfaceTransformGizmo } from './StructureSurfaceGizmo'
 
@@ -21,15 +22,13 @@ export function StructureSurfaceObject({
   onSelect: () => void
   packId: string
 }) {
-  if (hidden) return null
   const wall = surface.wall ?? 'north'
   const position = structureSurfacePosition(room, surface)
   const baseRotation = wall === 'north' ? 0 : wall === 'east' ? -Math.PI / 2 : wall === 'south' ? Math.PI : Math.PI / 2
-  const beginStructureMove = useRoomStore((state) => state.beginStructureMove)
-  const endStructureMove = useRoomStore((state) => state.endStructureMove)
   const moveStructureSurface = useRoomStore((state) => state.moveStructureSurface)
   const setStructureSurfaceRotation = useRoomStore((state) => state.setStructureSurfaceRotation)
   const surfaceId = structureSurfaceElementId(packId, surface.id)
+  if (hidden) return null
   const selectSurface = (event: { stopPropagation: () => void; object: THREE.Object3D }) => {
     event.stopPropagation()
     const clickedId = event.object.userData.structureSurfaceId
@@ -66,8 +65,6 @@ export function StructureSurfaceObject({
           name={packName}
           surface={surface}
           position={position}
-          beginMove={beginStructureMove}
-          endMove={endStructureMove}
           move={moveStructureSurface}
           rotate={setStructureSurfaceRotation}
         />

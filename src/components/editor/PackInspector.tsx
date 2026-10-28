@@ -1,15 +1,16 @@
-import { structureSurfaceElementId, useRoomStore } from '../../state/useRoomStore'
+import { useInspectorGesture } from './useInspectorGesture'
+import { useRoomStore } from '../../state/useRoomStore'
+import { structureSurfaceElementId } from '../../domain/elementIds'
 import type { StructureSurfaceKey } from '../../domain/types'
 import { StructurePositionControls } from './Controls'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
 
 export function PackInspector({ selectedPack }: { selectedPack: RoomState['structurePacks'][number] }) {
+  const gesture = useInspectorGesture(selectedPack.id)
   const moveStructurePack = useRoomStore((state) => state.moveStructurePack)
   const addStructureSurface = useRoomStore((state) => state.addStructureSurface)
   const removeStructurePack = useRoomStore((state) => state.removeStructurePack)
-  const beginStructureMove = useRoomStore((state) => state.beginStructureMove)
-  const endStructureMove = useRoomStore((state) => state.endStructureMove)
   const selectElement = useRoomStore((state) => state.selectElement)
   const toggleElementVisibility = useRoomStore((state) => state.toggleElementVisibility)
   const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
@@ -23,7 +24,7 @@ export function PackInspector({ selectedPack }: { selectedPack: RoomState['struc
     { id: 'wall-west', label: 'Pared oeste' },
   ]
   return (
-    <section className="panel-section selection-section selection-section--inspector">
+    <section className="panel-section selection-section selection-section--inspector" {...gesture.events}>
       <span className="eyebrow">Pack de construcción</span>
       <h2>{selectedPack.name}</h2>
       <p className="section-copy">Mueve el pack completo; selecciona una superficie en la escena o en la lista para editarla por separado.</p>
@@ -31,8 +32,6 @@ export function PackInspector({ selectedPack }: { selectedPack: RoomState['struc
         label="Mover pack"
         position={selectedPack}
         onChange={(axis, value) => moveStructurePack(selectedPack.id, axis, value)}
-        onStart={beginStructureMove}
-        onEnd={endStructureMove}
       />
       <h3>Superficies del pack</h3>
       {selectedPack.surfaces.map((surface) => {

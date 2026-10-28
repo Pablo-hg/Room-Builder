@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { useRoomStore } from '../../state/useRoomStore'
+import type { EditorHeaderState } from '../../state/selectors'
 
-export function SavedDesignsMenu({ state }: { state: ReturnType<typeof useRoomStore.getState> }) {
+export function SavedDesignsMenu({ state }: { state: EditorHeaderState }) {
   const [savedDesignsOpen, setSavedDesignsOpen] = useState(false)
   const [createDesignOpen, setCreateDesignOpen] = useState(false)
   const [newDesignName, setNewDesignName] = useState('')

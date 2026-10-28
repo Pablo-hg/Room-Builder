@@ -4,13 +4,15 @@ import * as THREE from 'three'
 import { snapFurnitureRotation } from '../domain/geometry'
 import { isCeilingMountedFurniture, isFloorBoundFurniture } from '../domain/objectCatalog'
 import type { FurnitureItem, WallSide } from '../domain/types'
+import { useHistoryGesture } from '../state/useHistoryGesture'
 import { useRoomStore } from '../state/useRoomStore'
 import { recordSceneInteraction } from './sceneInteraction'
-import { usePointerCancellation } from './usePointerCancellation'
+import { releasePointer, usePointerCancellation } from './usePointerCancellation'
 
 type FloorMoveAxis = 'x' | 'y' | 'z'
 
 export function RotationHandle({ item }: { item: FurnitureItem }) {
+  const gesture = useHistoryGesture(item.id)
   const setFurnitureRotation = useRoomStore((state) => state.setFurnitureRotation)
   const [dragging, setDragging] = useState(false)
   const [hovered, setHovered] = useState(false)
@@ -33,13 +35,14 @@ export function RotationHandle({ item }: { item: FurnitureItem }) {
     recordSceneInteraction('furniture.rotation-start', { id: item.id, name: item.name, mode: 'floor', rotation: item.rotation, shiftKey: event.nativeEvent.shiftKey })
     lastPointerAngle.current = angle
     targetRotation.current = item.rotation
+    gesture.begin()
     setDragging(true)
     document.body.classList.add('can-grab')
     capturePointer(event)
   }
 
   const rotate = (event: ThreeEvent<PointerEvent>) => {
-    if (!dragging) return
+    if (!dragging || !gesture.isActive()) return
     event.stopPropagation()
     const angle = pointerAngle(event)
     if (angle === null) return
@@ -60,18 +63,19 @@ export function RotationHandle({ item }: { item: FurnitureItem }) {
     event.stopPropagation()
     const finalItem = useRoomStore.getState().furniture.find((candidate) => candidate.id === item.id)
     recordSceneInteraction('furniture.rotation-end', { id: item.id, name: item.name, mode: 'floor', rotation: finalItem?.rotation })
+    gesture.commit()
     setDragging(false)
     document.body.classList.remove('can-grab')
-    ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
+    releasePointer(event)
   }
 
-  const capturePointer = usePointerCancellation(stopRotation)
+  const capturePointer = usePointerCancellation((event) => { gesture.cancel(); stopRotation(event) })
 
   const events = {
     onPointerDown: startRotation,
     onPointerMove: rotate,
     onPointerUp: stopRotation,
-    onPointerCancel: stopRotation,
+    onPointerCancel: (event: ThreeEvent<PointerEvent>) => { gesture.cancel(); stopRotation(event) },
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
       setHovered(true)
@@ -113,6 +117,7 @@ export function RotationHandle({ item }: { item: FurnitureItem }) {
 }
 
 export function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall: WallSide }) {
+  const gesture = useHistoryGesture(item.id)
   const setFurnitureRotation = useRoomStore((state) => state.setFurnitureRotation)
   const [dragging, setDragging] = useState(false)
   const [hovered, setHovered] = useState(false)
@@ -156,13 +161,14 @@ export function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall:
     recordSceneInteraction('furniture.rotation-start', { id: item.id, name: item.name, mode: 'front', wall, rotation: item.rotation, shiftKey: event.nativeEvent.shiftKey })
     lastPointerAngle.current = angle
     targetRotation.current = item.rotation
+    gesture.begin()
     setDragging(true)
     document.body.classList.add('can-grab')
     capturePointer(event)
   }
 
   const rotate = (event: ThreeEvent<PointerEvent>) => {
-    if (!dragging) return
+    if (!dragging || !gesture.isActive()) return
     event.stopPropagation()
     const angle = pointerAngle(event)
     if (angle === null) return
@@ -180,18 +186,19 @@ export function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall:
     event.stopPropagation()
     const finalItem = useRoomStore.getState().furniture.find((candidate) => candidate.id === item.id)
     recordSceneInteraction('furniture.rotation-end', { id: item.id, name: item.name, mode: 'front', wall, rotation: finalItem?.rotation })
+    gesture.commit()
     setDragging(false)
     document.body.classList.remove('can-grab')
-    ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
+    releasePointer(event)
   }
 
-  const capturePointer = usePointerCancellation(stopRotation)
+  const capturePointer = usePointerCancellation((event) => { gesture.cancel(); stopRotation(event) })
 
   const events = {
     onPointerDown: startRotation,
     onPointerMove: rotate,
     onPointerUp: stopRotation,
-    onPointerCancel: stopRotation,
+    onPointerCancel: (event: ThreeEvent<PointerEvent>) => { gesture.cancel(); stopRotation(event) },
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
       setHovered(true)
@@ -234,8 +241,7 @@ export function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall:
 }
 
 export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canMoveVertically = true }: { item: FurnitureItem; groundLevel?: boolean; hideAxis?: FloorMoveAxis | null; canMoveVertically?: boolean }) {
-  const beginFurnitureMove = useRoomStore((state) => state.beginFurnitureMove)
-  const endFurnitureMove = useRoomStore((state) => state.endFurnitureMove)
+  const gesture = useHistoryGesture(item.id)
   const moveFurniture = useRoomStore((state) => state.moveFurniture)
   const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
   const { camera, size } = useThree()
@@ -277,14 +283,14 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
       dragOffset.current = axis === 'x' ? point.x - item.x : point.z - item.z
     }
     recordSceneInteraction('furniture.axis-drag-start', { id: item.id, name: item.name, axis, x: item.x, y: item.y, z: item.z })
-    beginFurnitureMove()
+    gesture.begin()
     setDraggingAxis(axis)
     document.body.classList.add('can-grab')
     capturePointer(event)
   }
 
   const drag = (event: ThreeEvent<PointerEvent>) => {
-    if (!draggingAxis) return
+    if (!draggingAxis || !gesture.isActive()) return
     event.stopPropagation()
     const fallback = screenDrag.current
     if (fallback) {
@@ -310,14 +316,14 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
     event.stopPropagation()
     const finalItem = useRoomStore.getState().furniture.find((candidate) => candidate.id === item.id)
     recordSceneInteraction('furniture.axis-drag-end', { id: item.id, name: item.name, axis: draggingAxis, x: finalItem?.x, y: finalItem?.y, z: finalItem?.z })
-    endFurnitureMove()
+    gesture.commit()
     setDraggingAxis(null)
     screenDrag.current = null
     document.body.classList.remove('can-grab')
-    ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
+    releasePointer(event)
   }
 
-  const capturePointer = usePointerCancellation(stopDrag)
+  const capturePointer = usePointerCancellation((event) => { gesture.cancel(); stopDrag(event) })
 
   const axisMaterial = (axis: FloorMoveAxis, color: string, activeColor: string) => (
     <meshBasicMaterial
@@ -332,7 +338,7 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
     onPointerDown: (event: ThreeEvent<PointerEvent>) => startDrag(axis, event),
     onPointerMove: drag,
     onPointerUp: stopDrag,
-    onPointerCancel: stopDrag,
+    onPointerCancel: (event: ThreeEvent<PointerEvent>) => { gesture.cancel(); stopDrag(event) },
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
       setHoveredAxis(axis)
@@ -406,8 +412,7 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
 }
 
 export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: WallSide }) {
-  const beginFurnitureMove = useRoomStore((state) => state.beginFurnitureMove)
-  const endFurnitureMove = useRoomStore((state) => state.endFurnitureMove)
+  const gesture = useHistoryGesture(item.id)
   const moveFurniture = useRoomStore((state) => state.moveFurniture)
   const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
   const { camera, size } = useThree()
@@ -452,14 +457,14 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
       y: item.y,
       z: item.z,
     })
-    beginFurnitureMove()
+    gesture.begin()
     setDraggingAxis(axis)
     document.body.classList.add('can-grab')
     capturePointer(event)
   }
 
   const drag = (event: ThreeEvent<PointerEvent>) => {
-    if (!draggingAxis) return
+    if (!draggingAxis || !gesture.isActive()) return
     event.stopPropagation()
     const deltaX = event.nativeEvent.clientX - dragStart.current.clientX
     const deltaY = event.nativeEvent.clientY - dragStart.current.clientY
@@ -489,19 +494,19 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
       y: finalItem?.y,
       z: finalItem?.z,
     })
-    endFurnitureMove()
+    gesture.commit()
     setDraggingAxis(null)
     document.body.classList.remove('can-grab')
-    ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
+    releasePointer(event)
   }
 
-  const capturePointer = usePointerCancellation(stopDrag)
+  const capturePointer = usePointerCancellation((event) => { gesture.cancel(); stopDrag(event) })
 
   const eventsForAxis = (axis: 'horizontal' | 'vertical') => ({
     onPointerDown: (event: ThreeEvent<PointerEvent>) => startDrag(axis, event),
     onPointerMove: drag,
     onPointerUp: stopDrag,
-    onPointerCancel: stopDrag,
+    onPointerCancel: (event: ThreeEvent<PointerEvent>) => { gesture.cancel(); stopDrag(event) },
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
       setHoveredAxis(axis)

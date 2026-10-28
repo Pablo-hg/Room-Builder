@@ -1,20 +1,21 @@
+import { structureSurfaceElementId } from '../../domain/elementIds'
+import { useInspectorGesture } from './useInspectorGesture'
 import { useRoomStore } from '../../state/useRoomStore'
 import { ColorControl, StructurePositionControls, StructureSizeControls } from './Controls'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
 
 export function SurfaceInspector({ selectedSurface }: { selectedSurface: { pack: RoomState['structurePacks'][number]; surface: RoomState['structurePacks'][number]['surfaces'][number] } }) {
+  const gesture = useInspectorGesture(structureSurfaceElementId(selectedSurface.pack.id, selectedSurface.surface.id))
   const moveStructureSurface = useRoomStore((state) => state.moveStructureSurface)
   const resizeStructureSurface = useRoomStore((state) => state.resizeStructureSurface)
   const setStructureSurfaceRotation = useRoomStore((state) => state.setStructureSurfaceRotation)
   const setStructureSurfaceColor = useRoomStore((state) => state.setStructureSurfaceColor)
   const removeStructureSurface = useRoomStore((state) => state.removeStructureSurface)
-  const beginStructureMove = useRoomStore((state) => state.beginStructureMove)
-  const endStructureMove = useRoomStore((state) => state.endStructureMove)
   const selectElement = useRoomStore((state) => state.selectElement)
   const { pack, surface } = selectedSurface
   return (
-    <section className="panel-section selection-section selection-section--inspector">
+    <section className="panel-section selection-section selection-section--inspector" {...gesture.events}>
       <span className="eyebrow">Superficie de construcción</span>
       <h2>{surface.name}</h2>
       <p className="section-copy">{pack.name} · posición independiente respecto al pack.</p>
@@ -22,14 +23,10 @@ export function SurfaceInspector({ selectedSurface }: { selectedSurface: { pack:
         label="Desplazamiento"
         position={surface}
         onChange={(axis, value) => moveStructureSurface(pack.id, surface.id, axis, value)}
-        onStart={beginStructureMove}
-        onEnd={endStructureMove}
       />
       <StructureSizeControls
         surface={surface}
         onChange={(dimension, value) => resizeStructureSurface(pack.id, surface.id, dimension, value)}
-        onStart={beginStructureMove}
-        onEnd={endStructureMove}
       />
       {surface.kind === 'wall' && (
         <label className="range-control compact">

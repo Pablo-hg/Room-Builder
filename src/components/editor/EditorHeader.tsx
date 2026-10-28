@@ -1,12 +1,14 @@
 import { useRoomStore } from '../../state/useRoomStore'
+import { useShallow } from 'zustand/react/shallow'
+import { selectEditorHeader } from '../../state/selectors'
 import { VIEW_OPTIONS } from './viewOptions'
 import { SavedDesignsMenu } from './SavedDesignsMenu'
 
-export function EditorHeader({ state, exportMode, onExport }: {
-  state: ReturnType<typeof useRoomStore.getState>
+export function EditorHeader({ exportMode, onExport }: {
   exportMode: boolean
   onExport: () => void
 }) {
+  const state = useRoomStore(useShallow(selectEditorHeader))
   return (
       <header className="topbar">
         <a className="brand" href="#main" aria-label="Room Builder, ir al editor">

@@ -4,6 +4,8 @@ import * as THREE from 'three'
 import { snapFurnitureRotation } from '../domain/geometry'
 import { isWallMirrorShape, openingCapabilities, OPENING_CATALOG, openingKindForShape } from '../domain/objectCatalog'
 import type { RoomConfig, WallOpening, WallSide } from '../domain/types'
+import { useHistoryGesture } from '../state/useHistoryGesture'
+import { releasePointer, usePointerCancellation } from './usePointerCancellation'
 import { useRoomStore } from '../state/useRoomStore'
 import { recordSceneInteraction } from './sceneInteraction'
 import { colorTone } from './colorTone'
@@ -15,6 +17,7 @@ function openingName(opening: WallOpening) {
 }
 
 function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: WallSide, planView: boolean) {
+  const gesture = useHistoryGesture(opening.id)
   const selectElement = useRoomStore((state) => state.selectElement)
   const setDoor = useRoomStore((state) => state.setDoor)
   const updateWindow = useRoomStore((state) => state.updateWindow)
@@ -63,12 +66,13 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
     dragAxis.current = axis
     dragOffset.current = offsetAtPoint(point) - opening.offset
     dragSill.current = point.y - opening.bottom
+    gesture.begin()
     setDragging(true)
     document.body.classList.add('can-grab')
-    ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+    capturePointer(event)
   }
   const drag = (event: ThreeEvent<PointerEvent>) => {
-    if (!dragging) return
+    if (!dragging || !gesture.isActive()) return
     event.stopPropagation()
     if (event.ray.intersectPlane(plane, point)) {
       const axis = dragAxis.current
@@ -96,10 +100,13 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
       offset: finalOpening?.offset,
       sill: finalOpening && 'sill' in finalOpening ? finalOpening.sill : undefined,
     })
+    gesture.commit()
     setDragging(false)
     document.body.classList.remove('can-grab')
-    ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
+    releasePointer(event)
   }
+
+  const capturePointer = usePointerCancellation((event) => { gesture.cancel(); stopDrag(event) })
 
   const hoverEvents = {
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
@@ -117,14 +124,14 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
       onPointerDown: (event: ThreeEvent<PointerEvent>) => startDrag(event, 'free'),
       onPointerMove: drag,
       onPointerUp: stopDrag,
-      onPointerCancel: stopDrag,
+      onPointerCancel: (event: ThreeEvent<PointerEvent>) => { gesture.cancel(); stopDrag(event) },
       ...hoverEvents,
     },
     dragEventsForAxis: (axis: 'horizontal' | 'vertical') => ({
       onPointerDown: (event: ThreeEvent<PointerEvent>) => startDrag(event, axis),
       onPointerMove: drag,
       onPointerUp: stopDrag,
-      onPointerCancel: stopDrag,
+      onPointerCancel: (event: ThreeEvent<PointerEvent>) => { gesture.cancel(); stopDrag(event) },
       ...hoverEvents,
     }),
   }
@@ -213,6 +220,7 @@ function OpeningMoveGizmo({ opening, dragEventsForAxis, horizontal = true, planV
 }
 
 function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: { opening: WallOpening; wall: WallSide; centerY?: number; planView?: boolean }) {
+  const gesture = useHistoryGesture(opening.id)
   const updateWindow = useRoomStore((state) => state.updateWindow)
   const [hovered, setHovered] = useState(false)
   const [active, setActive] = useState(false)
@@ -249,9 +257,10 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
     if (angle === null) return
     lastPointerAngle.current = angle
     targetRotation.current = opening.rotation
+    gesture.begin()
     setActive(true)
     document.body.classList.add('can-grab')
-    ;(event.target as Element | null)?.setPointerCapture(event.pointerId)
+    capturePointer(event)
     recordSceneInteraction('opening.rotation-start', {
       id: opening.id,
       kind: opening.kind,
@@ -263,7 +272,7 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
   }
 
   const rotate = (event: ThreeEvent<PointerEvent>) => {
-    if (!active) return
+    if (!active || !gesture.isActive()) return
     event.stopPropagation()
     const angle = angleAtPointer(event)
     if (angle === null) return
@@ -291,10 +300,13 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
       wall,
       rotation: finalRotation,
     })
+    gesture.commit()
     setActive(false)
     document.body.classList.remove('can-grab')
-    ;(event.target as Element | null)?.releasePointerCapture(event.pointerId)
+    releasePointer(event)
   }
+
+  const capturePointer = usePointerCancellation((event) => { gesture.cancel(); stopRotation(event) })
 
   return (
     <group
@@ -304,7 +316,7 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
       onPointerDown={startRotation}
       onPointerMove={rotate}
       onPointerUp={stopRotation}
-      onPointerCancel={stopRotation}
+      onPointerCancel={(event) => { gesture.cancel(); stopRotation(event) }}
       onPointerOver={(event) => {
         event.stopPropagation()
         setHovered(true)

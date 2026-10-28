@@ -5,6 +5,8 @@ import type { ViewMode, WallSide } from './domain/types'
 import RoomScene, { FreeCameraCompass3D, RoomCompass3D } from './components/RoomScene'
 import InteractionLogger from './components/InteractionLogger'
 import { useRoomStore } from './state/useRoomStore'
+import { useShallow } from 'zustand/react/shallow'
+import { selectActiveDesignName, selectEditorScene } from './state/selectors'
 import { SettingsPanel } from './components/editor/SettingsPanel'
 import { ObjectsPanel } from './components/editor/ObjectsPanel'
 import { ViewControls } from './components/editor/ViewControls'
@@ -38,13 +40,16 @@ function isOrbitCanvasTarget(target: EventTarget | null): target is HTMLCanvasEl
   return target instanceof HTMLCanvasElement && target.closest('.room-scene-canvas--orbit') !== null
 }
 
-function App() {
-  const state = useRoomStore()
-  const [settingsCollapsed, setSettingsCollapsed] = useState(false)
-  const [objectsCollapsed, setObjectsCollapsed] = useState(false)
-  const [exportMode, setExportMode] = useState(false)
-  const [exportRequest, setExportRequest] = useState(0)
-  const [exportNotice, setExportNotice] = useState('')
+function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, onToggleObjects, exportMode, exportRequest, onExportComplete }: {
+  settingsCollapsed: boolean
+  objectsCollapsed: boolean
+  onToggleSettings: () => void
+  onToggleObjects: () => void
+  exportMode: boolean
+  exportRequest: number
+  onExportComplete: (error?: Error) => void
+}) {
+  const state = useRoomStore(useShallow(selectEditorScene))
   const sceneOrbitDrag = useRef<{
     pointerId: number
     mode: 'isometric' | 'free'
@@ -62,17 +67,7 @@ function App() {
   const viewLabel = state.view === 'front' && state.wallView
     ? `Frontal · ${WALL_LABELS[state.wallView]}`
     : currentView.label
-  const activeDesignName = state.savedDesigns.find((design) => design.id === state.selectedSavedDesignId)?.name ?? 'Room Builder'
-  useEffect(() => {
-    state.initializeSavedDesigns()
-  }, [state.initializeSavedDesigns])
-
-  useEffect(() => {
-    if (!state.notice) return
-    const timer = window.setTimeout(state.clearNotice, 3200)
-    return () => window.clearTimeout(timer)
-  }, [state.notice, state.clearNotice])
-
+  const activeDesignName = useRoomStore(selectActiveDesignName)
   const startSceneOrbitDrag = (event: ReactPointerEvent<HTMLElement>) => {
     if ((state.view !== 'isometric' && state.view !== 'free') || event.button !== 1 || !isOrbitCanvasTarget(event.target)) return
     event.preventDefault()
@@ -115,17 +110,6 @@ function App() {
     else state.setFreeOrbitDragging(false)
   }
 
-  useEffect(() => {
-    if (!exportNotice) return
-    const timer = window.setTimeout(() => setExportNotice(''), 3200)
-    return () => window.clearTimeout(timer)
-  }, [exportNotice])
-
-  const handleExportComplete = useCallback((error?: Error) => {
-    setExportMode(false)
-    setExportNotice(error ? `No se pudo descargar el modelo: ${error.message}` : 'Modelo 3D descargado en formato GLB.')
-  }, [])
-
   const exportDesignName = activeDesignName
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -133,21 +117,7 @@ function App() {
     .replace(/^-+|-+$/g, '')
     .toLowerCase() || 'room-builder'
 
-  useEditorShortcuts(state)
-
   return (
-    <div className="app">
-      <InteractionLogger />
-      <EditorHeader state={state} exportMode={exportMode} onExport={() => {
-        setExportMode(true)
-        setExportRequest((request) => request + 1)
-      }} />
-
-      <main
-        id="main"
-        className={`workspace${settingsCollapsed ? ' workspace--settings-collapsed' : ''}${objectsCollapsed ? ' workspace--objects-collapsed' : ''}`}
-      >
-        <SettingsPanel />
         <section
           className={`scene-panel${state.view === 'isometric' || state.view === 'free' ? ' scene-panel--orbit-ready' : ''}${state.view === 'isometric' ? ' scene-panel--orbit-ready-isometric' : ''}${state.isIsoOrbitDragging || state.isFreeOrbitDragging ? ' scene-panel--orbit-dragging' : ''}`}
           aria-label={`Vista ${viewLabel}`}
@@ -179,7 +149,7 @@ function App() {
             aria-expanded={!settingsCollapsed}
             aria-label={settingsCollapsed ? 'Mostrar panel izquierdo' : 'Minimizar panel izquierdo'}
             title={settingsCollapsed ? 'Mostrar panel izquierdo' : 'Minimizar panel izquierdo'}
-            onClick={() => setSettingsCollapsed((collapsed) => !collapsed)}
+            onClick={onToggleSettings}
           >
             <span aria-hidden="true">{settingsCollapsed ? '›' : '‹'}</span>
           </button>
@@ -190,7 +160,7 @@ function App() {
             aria-expanded={!objectsCollapsed}
             aria-label={objectsCollapsed ? 'Mostrar panel derecho' : 'Minimizar panel derecho'}
             title={objectsCollapsed ? 'Mostrar panel derecho' : 'Minimizar panel derecho'}
-            onClick={() => setObjectsCollapsed((collapsed) => !collapsed)}
+            onClick={onToggleObjects}
           >
             <span aria-hidden="true">{objectsCollapsed ? '‹' : '›'}</span>
           </button>
@@ -221,7 +191,7 @@ function App() {
             structurePacks={state.structurePacks}
             exportMode={exportMode}
             exportRequest={exportRequest}
-            onExportComplete={handleExportComplete}
+            onExportComplete={onExportComplete}
             exportDesignName={exportDesignName}
           />
           {!hasPlacedSceneContent && state.view !== 'pov' && (
@@ -275,13 +245,66 @@ function App() {
             ))}
           </div>
         </section>
+  )
+}
+
+function EditorNotice({ exportNotice }: { exportNotice: string }) {
+  const notice = useRoomStore((state) => state.notice)
+  const clearNotice = useRoomStore((state) => state.clearNotice)
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(clearNotice, 3200)
+    return () => window.clearTimeout(timer)
+  }, [notice, clearNotice])
+  return (notice || exportNotice) ? <div className="toast" role="status" aria-live="polite">{exportNotice || notice}</div> : null
+}
+
+function App() {
+  const initializeSavedDesigns = useRoomStore((state) => state.initializeSavedDesigns)
+  const [settingsCollapsed, setSettingsCollapsed] = useState(false)
+  const [objectsCollapsed, setObjectsCollapsed] = useState(false)
+  const [exportMode, setExportMode] = useState(false)
+  const [exportRequest, setExportRequest] = useState(0)
+  const [exportNotice, setExportNotice] = useState('')
+  useEditorShortcuts()
+  useEffect(() => { initializeSavedDesigns() }, [initializeSavedDesigns])
+  useEffect(() => {
+    if (!exportNotice) return
+    const timer = window.setTimeout(() => setExportNotice(''), 3200)
+    return () => window.clearTimeout(timer)
+  }, [exportNotice])
+  const handleExportComplete = useCallback((error?: Error) => {
+    setExportMode(false)
+    setExportNotice(error ? `No se pudo descargar el modelo: ${error.message}` : 'Modelo 3D descargado en formato GLB.')
+  }, [])
+  return (
+    <div className="app">
+      <InteractionLogger />
+      <EditorHeader exportMode={exportMode} onExport={() => {
+        setExportMode(true)
+        setExportRequest((request) => request + 1)
+      }} />
+      <main
+        id="main"
+        className={`workspace${settingsCollapsed ? ' workspace--settings-collapsed' : ''}${objectsCollapsed ? ' workspace--objects-collapsed' : ''}`}
+      >
+        <SettingsPanel />
+        <EditorScene
+          settingsCollapsed={settingsCollapsed}
+          objectsCollapsed={objectsCollapsed}
+          onToggleSettings={() => setSettingsCollapsed((collapsed) => !collapsed)}
+          onToggleObjects={() => setObjectsCollapsed((collapsed) => !collapsed)}
+          exportMode={exportMode}
+          exportRequest={exportRequest}
+          onExportComplete={handleExportComplete}
+        />
         <ObjectsPanel />
       </main>
       <footer className="statusbar">
         <span><i className="status-dot" /> Guardado local en tu navegador</span>
         <span>Cuadrado visible: 25 cm · ajuste: 12,5 cm</span>
       </footer>
-      {(state.notice || exportNotice) && <div className="toast" role="status" aria-live="polite">{exportNotice || state.notice}</div>}
+      <EditorNotice exportNotice={exportNotice} />
     </div>
   )
 }

@@ -4,7 +4,8 @@ import { visibleWallsForView } from './viewHelpers'
 import { FURNITURE_CATALOG, FURNITURE_FAMILIES, FURNITURE_PRESETS, isWallPictureKind, isWallPictureShape, isWallMirrorShape, OPENING_CATALOG, openingKindForShape } from '../../domain/objectCatalog'
 import type { FurnitureKind } from '../../domain/types'
 import { FurnitureIcon, StructurePackIcon, StructureSurfaceIcon } from '../iconCatalog'
-import { structureSurfaceElementId, useRoomStore } from '../../state/useRoomStore'
+import { useRoomStore } from '../../state/useRoomStore'
+import { structureSurfaceElementId } from '../../domain/elementIds'
 import { OpeningSwatch } from './Controls'
 
 export function ObjectsPanel() {
