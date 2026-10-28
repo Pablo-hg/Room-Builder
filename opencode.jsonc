@@ -1,3 +1,4 @@
+
 {
   "$schema": "https://opencode.ai/config.json",
   "model": "openai/gpt-6.1-terra",
@@ -6,7 +7,7 @@
       "description": "Petición o continuación con DeepSeek gratuito (ejecución puntual)",
       "model": "opencode/deepseek-v4.1-flash-free",
       "subagent": false,
-      "template": "Petición: $ARGUMENTS. Usa el contexto disponible y resuelve lo pedido con el menor trabajo necesario. Si es una consulta sencilla, responde sin inspeccionar Git, archivos ni documentación. Si implica modificar código o retomar trabajo, comprueba solo la rama, los cambios locales y los archivos relevantes; si esta sesión no conoce la tarea anterior de Codex, consulta .ai/TASK_HANDOFF.md si existe y solicita únicamente el objetivo que falte. Cumple AGENTS.md y lee la documentación pertinente solo si hace falta; evita volver a investigar lo ya verificado. Usa únicamente este modelo gratuito, sin subagentes ni APIs de pago. No hagas commits ni merges sin autorización. Resume brevemente cambios, pruebas y pendientes."
+      "template": "Petición: $ARGUMENTS. Usa el contexto disponible y resuelve lo pedido con el menor trabajo necesario. Si es una consulta sencilla, responde sin inspeccionar Git, archivos ni documentación. Si implica modificar código o retomar trabajo, comprueba solo la rama, los cambios locales y los archivos relevantes; si esta sesión no conoce la tarea anterior de Codex, consulta primero .ai/CODEX_HANDOFF.md y, si no existe, .ai/TASK_HANDOFF.md y solicita únicamente el objetivo que falte. Cumple AGENTS.md y lee la documentación pertinente solo si hace falta; evita volver a investigar lo ya verificado. Usa únicamente este modelo gratuito, sin subagentes ni APIs de pago. No hagas commits ni merges sin autorización. Resume brevemente cambios, pruebas y pendientes."
     },
     "gratis-alternativa": {
       "description": "Continuar con MiMo gratuito (una ejecución)",
@@ -37,6 +38,117 @@
       "model": "opencode/deepseek-v4.1-flash-free",
       "subagent": false,
       "template": "Prepara el traspaso a Codex de la tarea actual. Crea o actualiza .ai/TASK_HANDOFF.md con TAREA (objetivo y aceptación), RAMA y estado Git, BASE anterior al trabajo gratuito si se conoce (no inventarla), HECHO (archivos y decisiones), PRUEBAS realizadas con su resultado, PENDIENTE, RIESGOS y ASPECTOS A REVISAR POR CODEX. Apóyate en el contexto de esta sesión y en git status/diff; no reproduzcas diffs enteros, ni incluyas secretos. No cambies código ni repitas pruebas salvo que una comprobación mínima sea imprescindible para reflejar el estado. No hagas commits ni merges. Responde con la ruta creada y un resumen de 3 líneas."
+    },
+    "gratis-auto": {
+      "description": "EXPERIMENTAL: analiza el trabajo interrumpido y delega en un modelo gratuito; integración pendiente de validar",
+      "agent": "selector-gratuito",
+      "model": "opencode/glm-5.3-flash-free",
+      "subagent": false,
+      "template": "MODO GRATUITO SOLICITADO. Objetivo o pista del usuario: $ARGUMENTS. Tu función es clasificar la tarea y delegarla, no implementar tú. No tienes acceso al chat nativo de Codex. Recaba el contexto mínimo: lee primero .ai/CODEX_HANDOFF.md y, si no existe, .ai/TASK_HANDOFF.md, comprueba rama, cambios locales y archivos afectados; consulta docs/MODELS.md solo si lo necesitas. No presupongas que los cambios sin commit pertenecen a Codex ni que el diff cuenta toda la tarea. Si no puedes identificar con seguridad qué se estaba desarrollando o qué falta, pide al usuario una frase con el objetivo y NO modifiques código. Si el objetivo es claro, selecciona UN ÚNICO subagente gratuito usando la herramienta de subagentes: rb-gratis-rapido (erratas o cambios triviales), rb-gratis-desarrollo (React/TypeScript, bugs y tareas normales), rb-gratis-alternativa (segunda opción de desarrollo si hay una razón concreta o falla DeepSeek), rb-gratis-profundo (arquitectura, geometría 3D, cámaras, persistencia o refactors difíciles), rb-gratis-visual (capturas o problemas de interfaz que requieran visión, solo si tiene acceso a la imagen). Si no está claro el nivel, usa rb-gratis-desarrollo. Explícale al subagente el objetivo, lo comprobado, la rama, las restricciones y los criterios de aceptación; pídele que continúe la implementación, respete los cambios existentes y ejecute solo verificaciones relevantes. No inicies agentes en paralelo ni uses modelos de pago. Explica en una frase por qué lo has elegido e identifica el modelo del subagente. Si el subagente falla por cuota o disponibilidad, informa de ello; no realices reintentos en bucle. No hagas commits, merges, push ni publicaciones sin autorización. Resume brevemente el resultado y las pruebas; advierte que el comando usa un agente selector gratuito y un subagente de ejecución; al terminar puede quedar activo el agente selector, no necesariamente Build/Codex. Para volver al flujo de Codex, seleccionar el agente Build y Terra en /models."
+    }
+  },
+  "agents": {
+    "selector-gratuito": {
+      "description": "Clasifica trabajo de Codex y delega a un único modelo gratuito. No modifica archivos por su cuenta.",
+      "mode": "primary",
+      "model": "opencode/glm-5.3-flash-free",
+      "permissions": [
+        {
+          "action": "edit",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "subagent",
+          "resource": "rb-gratis-rapido",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "rb-gratis-desarrollo",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "rb-gratis-alternativa",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "rb-gratis-profundo",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "rb-gratis-visual",
+          "effect": "allow"
+        }
+      ]
+    },
+    "rb-gratis-rapido": {
+      "description": "Ajustes triviales, documentación, erratas y modificaciones muy pequeñas.",
+      "mode": "subagent",
+      "model": "opencode/glm-5.3-flash-free",
+      "permissions": [
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        }
+      ]
+    },
+    "rb-gratis-desarrollo": {
+      "description": "Desarrollo normal, React, TypeScript, bugs y continuación de funciones.",
+      "mode": "subagent",
+      "model": "opencode/deepseek-v4.1-flash-free",
+      "permissions": [
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        }
+      ]
+    },
+    "rb-gratis-alternativa": {
+      "description": "Alternativa para programación si DeepSeek no encaja o falla.",
+      "mode": "subagent",
+      "model": "opencode/mimo-v2.6-flash-free",
+      "permissions": [
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        }
+      ]
+    },
+    "rb-gratis-profundo": {
+      "description": "Análisis e implementación de refactors difíciles, geometría 3D, cámaras, arquitectura y persistencia.",
+      "mode": "subagent",
+      "model": "opencode/nemotron-3-ultra-free",
+      "permissions": [
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        }
+      ]
+    },
+    "rb-gratis-visual": {
+      "description": "Análisis y corrección de UI o escenas a partir de imágenes accesibles.",
+      "mode": "subagent",
+      "model": "opencode/nemotron-3.5-super-vl-free",
+      "permissions": [
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        }
+      ]
     }
   }
 }
