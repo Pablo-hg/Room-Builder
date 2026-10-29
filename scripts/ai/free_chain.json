@@ -1,0 +1,25 @@
+{
+  "_comment": "Cambia enabled a true solo tras comprobar credenciales, modelo y cuota Free sin facturacion. Los IDs estan restringidos por allowlist del script.",
+  "routes": [
+    {
+      "provider": "opencode",
+      "model": "opencode/deepseek-v4.1-flash-free",
+      "enabled": true
+    },
+    {
+      "provider": "google",
+      "model": "google/gemma-4-31b-it",
+      "enabled": true
+    },
+    {
+      "provider": "groq",
+      "model": "groq/openai/gpt-oss-120b",
+      "enabled": false
+    },
+    {
+      "provider": "openrouter",
+      "model": "openrouter/openrouter/free",
+      "enabled": true
+    }
+  ]
+}

@@ -1,4 +1,3 @@
-
 {
   "$schema": "https://opencode.ai/config.json",
   "model": "openai/gpt-6.1-terra",
@@ -40,56 +39,14 @@
       "template": "Prepara el traspaso a Codex de la tarea actual. Crea o actualiza .ai/TASK_HANDOFF.md con TAREA (objetivo y aceptación), RAMA y estado Git, BASE anterior al trabajo gratuito si se conoce (no inventarla), HECHO (archivos y decisiones), PRUEBAS realizadas con su resultado, PENDIENTE, RIESGOS y ASPECTOS A REVISAR POR CODEX. Apóyate en el contexto de esta sesión y en git status/diff; no reproduzcas diffs enteros, ni incluyas secretos. No cambies código ni repitas pruebas salvo que una comprobación mínima sea imprescindible para reflejar el estado. No hagas commits ni merges. Responde con la ruta creada y un resumen de 3 líneas."
     },
     "gratis-auto": {
-      "description": "EXPERIMENTAL: analiza el trabajo interrumpido y delega en un modelo gratuito; integración pendiente de validar",
-      "agent": "selector-gratuito",
+      "description": "Retoma o ejecuta tareas directamente con respaldo automático entre proveedores gratuitos",
+      "agent": "gratis-auto",
       "model": "opencode/glm-5.3-flash-free",
       "subagent": false,
-      "template": "MODO GRATUITO SOLICITADO. Objetivo o pista del usuario: $ARGUMENTS. Tu función es clasificar la tarea y delegarla, no implementar tú. No tienes acceso al chat nativo de Codex. Recaba el contexto mínimo: lee primero .ai/CODEX_HANDOFF.md y, si no existe, .ai/TASK_HANDOFF.md, comprueba rama, cambios locales y archivos afectados; consulta docs/MODELS.md solo si lo necesitas. No presupongas que los cambios sin commit pertenecen a Codex ni que el diff cuenta toda la tarea. Si no puedes identificar con seguridad qué se estaba desarrollando o qué falta, pide al usuario una frase con el objetivo y NO modifiques código. Si el objetivo es claro, selecciona UN ÚNICO subagente gratuito usando la herramienta de subagentes: rb-gratis-rapido (erratas o cambios triviales), rb-gratis-desarrollo (React/TypeScript, bugs y tareas normales), rb-gratis-alternativa (segunda opción de desarrollo si hay una razón concreta o falla DeepSeek), rb-gratis-profundo (arquitectura, geometría 3D, cámaras, persistencia o refactors difíciles), rb-gratis-visual (capturas o problemas de interfaz que requieran visión, solo si tiene acceso a la imagen). Si no está claro el nivel, usa rb-gratis-desarrollo. Explícale al subagente el objetivo, lo comprobado, la rama, las restricciones y los criterios de aceptación; pídele que continúe la implementación, respete los cambios existentes y ejecute solo verificaciones relevantes. No inicies agentes en paralelo ni uses modelos de pago. Explica en una frase por qué lo has elegido e identifica el modelo del subagente. Si el subagente falla por cuota o disponibilidad, informa de ello; no realices reintentos en bucle. No hagas commits, merges, push ni publicaciones sin autorización. Resume brevemente el resultado y las pruebas; advierte que el comando usa un agente selector gratuito y un subagente de ejecución; al terminar puede quedar activo el agente selector, no necesariamente Build/Codex. Para volver al flujo de Codex, seleccionar el agente Build y Terra en /models."
+      "template": "MODO GRATUITO — EJECUCION DIRECTA, SIN SUBAGENTES. Solicitud del usuario: $ARGUMENTS. Tu función es ejecutar la tarea directamente; NO delegues a subagentes ni lances agentes paralelos. Si el usuario pide RETOMAR una tarea de Codex o la tarea actual carece de contexto, lee .ai/CODEX_HANDOFF.md (o, si no existe, .ai/TASK_HANDOFF.md); si es una tarea nueva y está clara, no leas esos documentos por rutina. Antes de modificar archivos, comprueba la rama y git status --short, después inspecciona solo el código y documentación relacionados. Conserva TODO trabajo local, incluidos archivos sin seguimiento. Compara los requisitos con el código actual y desarrolla únicamente lo que falte. Las imágenes solo pueden verificarse si son accesibles en esta sesión; si no, identifica la limitación y trabaja solo sobre lo comprobable. Aplica cambios mínimos, comprueba lo relevante con pruebas focalizadas y evita repetir suites caras que sigan siendo válidas. Cuando un proveedor gratuito falle por cuota o disponibilidad, deja que el plugin opencode-fallback gestione el cambio en esta misma sesión; no cambies de proveedor por tu cuenta, no reinicies la tarea desde cero y verifica el estado de los archivos antes de reanudar cualquier operación. Usa exclusivamente los modelos gratuitos configurados; nunca modelos facturables, recargas ni subagentes. No hagas commits, merges, push o publicaciones sin permiso. Al terminar, resume: realizado, pruebas ejecutadas, resultado y pendientes. Si la petición es ambigua en un punto esencial, pregunta solo por ese punto; no inventes objetivos o resultados de pruebas."
     }
   },
-  "agents": {
-    "selector-gratuito": {
-      "description": "Clasifica trabajo de Codex y delega a un único modelo gratuito. No modifica archivos por su cuenta.",
-      "mode": "primary",
-      "model": "opencode/glm-5.3-flash-free",
-      "permissions": [
-        {
-          "action": "edit",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "subagent",
-          "resource": "*",
-          "effect": "deny"
-        },
-        {
-          "action": "subagent",
-          "resource": "rb-gratis-rapido",
-          "effect": "allow"
-        },
-        {
-          "action": "subagent",
-          "resource": "rb-gratis-desarrollo",
-          "effect": "allow"
-        },
-        {
-          "action": "subagent",
-          "resource": "rb-gratis-alternativa",
-          "effect": "allow"
-        },
-        {
-          "action": "subagent",
-          "resource": "rb-gratis-profundo",
-          "effect": "allow"
-        },
-        {
-          "action": "subagent",
-          "resource": "rb-gratis-visual",
-          "effect": "allow"
-        }
-      ]
-    },
+  "agent": {
     "rb-gratis-rapido": {
       "description": "Ajustes triviales, documentación, erratas y modificaciones muy pequeñas.",
       "mode": "subagent",
@@ -100,6 +57,10 @@
           "resource": "*",
           "effect": "deny"
         }
+      ],
+      "fallback_models": [
+        "google/gemma-4-31b-it",
+        "openrouter/openrouter/free"
       ]
     },
     "rb-gratis-desarrollo": {
@@ -112,6 +73,10 @@
           "resource": "*",
           "effect": "deny"
         }
+      ],
+      "fallback_models": [
+        "google/gemma-4-31b-it",
+        "openrouter/openrouter/free"
       ]
     },
     "rb-gratis-alternativa": {
@@ -124,6 +89,10 @@
           "resource": "*",
           "effect": "deny"
         }
+      ],
+      "fallback_models": [
+        "google/gemma-4-31b-it",
+        "openrouter/openrouter/free"
       ]
     },
     "rb-gratis-profundo": {
@@ -136,6 +105,10 @@
           "resource": "*",
           "effect": "deny"
         }
+      ],
+      "fallback_models": [
+        "google/gemma-4-31b-it",
+        "openrouter/openrouter/free"
       ]
     },
     "rb-gratis-visual": {
@@ -148,7 +121,32 @@
           "resource": "*",
           "effect": "deny"
         }
+      ],
+      "fallback_models": [
+        "openrouter/nvidia/nemotron-3.5-super-vl:free",
+        "google/gemma-4-31b-it"
+      ]
+    },
+    "gratis-auto": {
+      "description": "Desarrolla directamente con modelos gratuitos y respaldo automático; sin subagentes.",
+      "mode": "primary",
+      "model": "opencode/glm-5.3-flash-free",
+      "permissions": [
+        {
+          "action": "subagent",
+          "resource": "*",
+          "effect": "deny"
+        }
+      ],
+      "fallback_models": [
+        "google/gemma-4-31b-it",
+        "openrouter/recursive/flint-v1.0:free",
+        "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+        "openrouter/openrouter/free"
       ]
     }
-  }
+  },
+  "plugins": [
+    "opencode-runtime-fallback@0.3.0"
+  ]
 }
