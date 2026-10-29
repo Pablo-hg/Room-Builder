@@ -7,8 +7,11 @@ import type { RoomConfig, WallOpening, WallSide } from '../domain/types'
 import { useHistoryGesture } from '../state/useHistoryGesture'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
 import { useRoomStore } from '../state/useRoomStore'
-import { recordSceneInteraction } from './sceneInteraction'
+import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
 import { colorTone } from './colorTone'
+import { SelectionBounds } from './SelectionBounds'
+import { AXIS_COLORS } from './axisColors'
+import { AxisAnchor } from './AxisAnchor'
 
 function openingName(opening: WallOpening) {
   return opening.kind === 'door'
@@ -16,9 +19,8 @@ function openingName(opening: WallOpening) {
     : OPENING_CATALOG[openingKindForShape(opening.shape ?? 'rectangular')].name
 }
 
-function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: WallSide, planView: boolean) {
+function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: WallSide, planView: boolean, locked: boolean) {
   const gesture = useHistoryGesture(opening.id)
-  const selectElement = useRoomStore((state) => state.selectElement)
   const setDoor = useRoomStore((state) => state.setDoor)
   const updateWindow = useRoomStore((state) => state.updateWindow)
   const [dragging, setDragging] = useState(false)
@@ -61,7 +63,10 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
       pointerId: event.pointerId,
       intersectionCount: event.intersections.length,
     })
-    selectElement(opening.id)
+    if (axis === 'free') {
+      if (selectSceneObject(opening.id, event.nativeEvent)) return
+    } else useRoomStore.getState().selectElement(opening.id)
+    if (locked) return
     if (!event.ray.intersectPlane(plane, point)) return
     dragAxis.current = axis
     dragOffset.current = offsetAtPoint(point) - opening.offset
@@ -111,11 +116,11 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
   const hoverEvents = {
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
-      document.body.classList.add('can-grab')
+      if (!locked) document.body.classList.add('can-grab')
     },
     onPointerOut: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
-      if (!dragging) document.body.classList.remove('can-grab')
+      document.body.classList.remove('can-grab')
     },
   }
 
@@ -144,17 +149,16 @@ const openingRingRadius = (opening: WallOpening, planView: boolean) => planView
 function OpeningMoveGizmo({ opening, dragEventsForAxis, horizontal = true, planView = false, vertical = false }: { opening: WallOpening; dragEventsForAxis: ReturnType<typeof useOpeningInteraction>['dragEventsForAxis']; horizontal?: boolean; planView?: boolean; vertical?: boolean }) {
   const [hoveredAxis, setHoveredAxis] = useState<'horizontal' | 'vertical' | null>(null)
   const [activeAxis, setActiveAxis] = useState<'horizontal' | 'vertical' | null>(null)
-  const ringRadius = openingRingRadius(opening, planView)
-  const coneHeight = 0.24
-  const tipDistance = ringRadius - 0.055
+  const wall = useRoomStore((state) => opening.kind === 'door' ? state.room.door.wall : state.room.windows.find((item) => item.id === opening.id)?.wall ?? 'north')
+  const coneHeight = 0.15
+  const tipDistance = 0.5
   const coneCenter = tipDistance - coneHeight / 2
   const shaftLength = Math.max(0.08, tipDistance - coneHeight)
   const axisMaterial = (axis: 'horizontal' | 'vertical') => {
     const active = hoveredAxis === axis || activeAxis === axis
-    const color = axis === 'horizontal'
-      ? active ? '#ff6a54' : '#d85243'
-      : active ? '#46b98f' : '#2d987f'
-    return <meshBasicMaterial color={color} depthTest={false} depthWrite={false} toneMapped={false} />
+    const colors = AXIS_COLORS[axis === 'vertical' ? 'y' : wall === 'north' || wall === 'south' ? 'x' : 'z']
+    const color = active ? colors.active : colors.normal
+    return <meshBasicMaterial color={color} transparent depthTest={false} depthWrite={false} toneMapped={false} />
   }
   const axisEvents = (axis: 'horizontal' | 'vertical') => {
     const dragEvents = dragEventsForAxis(axis)
@@ -184,18 +188,19 @@ function OpeningMoveGizmo({ opening, dragEventsForAxis, horizontal = true, planV
   }
 
   return (
-    <group position={[0, planView ? 0.13 : 0, planView ? 0 : 0.2]} renderOrder={8}>
+    <AxisAnchor center={planView ? [0, 0.13, 0] : [0, 0, 0.12]} dimensions={planView ? [opening.width, 0.1, 0.16] : [opening.width, opening.height, 0.2]}>
       {horizontal && <group {...axisEvents('horizontal')}>
         {([-1, 1] as const).map((direction) => (
           <group key={`horizontal-${direction}`}>
           <mesh position={[direction * shaftLength / 2, 0, 0]} renderOrder={8}>
-            <boxGeometry args={[shaftLength, 0.055, 0.055]} />
+            <boxGeometry args={[shaftLength, 0.025, 0.025]} />
             {axisMaterial('horizontal')}
           </mesh>
           <mesh position={[direction * coneCenter, 0, 0]} rotation={[0, 0, direction * -Math.PI / 2]} renderOrder={8}>
-            <coneGeometry args={[0.11, coneHeight, 20]} />
+            <coneGeometry args={[0.065, coneHeight, 20]} />
             {axisMaterial('horizontal')}
           </mesh>
+          <mesh position={[direction * tipDistance / 2, 0, 0]}><boxGeometry args={[tipDistance, 0.18, 0.18]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
           </group>
         ))}
       </group>}
@@ -204,18 +209,19 @@ function OpeningMoveGizmo({ opening, dragEventsForAxis, horizontal = true, planV
           {([-1, 1] as const).map((direction) => (
             <group key={`vertical-${direction}`}>
               <mesh position={[0, direction * shaftLength / 2, 0]} renderOrder={8}>
-                <boxGeometry args={[0.055, shaftLength, 0.055]} />
+                <boxGeometry args={[0.025, shaftLength, 0.025]} />
                 {axisMaterial('vertical')}
               </mesh>
               <mesh position={[0, direction * coneCenter, 0]} rotation={[0, 0, direction === 1 ? 0 : Math.PI]} renderOrder={8}>
-                <coneGeometry args={[0.11, coneHeight, 20]} />
+                <coneGeometry args={[0.065, coneHeight, 20]} />
                 {axisMaterial('vertical')}
               </mesh>
+              <mesh position={[0, direction * tipDistance / 2, 0]}><boxGeometry args={[0.18, tipDistance, 0.18]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
             </group>
           ))}
         </group>
       )}
-    </group>
+    </AxisAnchor>
   )
 }
 
@@ -233,7 +239,7 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
   const lastPointerAngle = useRef(0)
   const targetRotation = useRef(opening.rotation)
   const radius = openingRingRadius(opening, planView)
-  const halfStroke = 0.042
+  const halfStroke = 0.015
   const color = active ? '#c63d2c' : hovered ? '#ff8a63' : '#ea6f4c'
   const indicatorX = Math.sin(opening.rotation) * radius
   const indicatorY = -Math.cos(opening.rotation) * radius
@@ -311,6 +317,7 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
   return (
     <group
       ref={ringRef}
+      userData={{ selectionGizmo: true }}
       position={planView ? [0, 0.11, 0] : [0, centerY, 0.18]}
       rotation={planView ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}
       onPointerDown={startRotation}
@@ -354,15 +361,15 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
         renderOrder={10}
         raycast={() => undefined}
       >
-        <boxGeometry args={[0.045, 0.2, 0.04]} />
+        <boxGeometry args={[0.055, 0.12, 0.04]} />
         <meshBasicMaterial color="#9f3f31" depthTest={false} depthWrite={false} toneMapped={false} />
       </mesh>
     </group>
   )
 }
 
-export function OpeningDetail({ room, opening, wall, selected }: { room: RoomConfig; opening: WallOpening; wall: WallSide; selected: boolean }) {
-  const interaction = useOpeningInteraction(room, opening, wall, false)
+export function OpeningDetail({ room, opening, wall, selected, locked }: { room: RoomConfig; opening: WallOpening; wall: WallSide; selected: boolean; locked: boolean }) {
+  const interaction = useOpeningInteraction(room, opening, wall, false, locked)
   const capabilities = openingCapabilities(opening.kind)
   const canMoveHorizontal = capabilities.translation.includes('wall-horizontal')
   const canMoveVertical = capabilities.translation.includes('wall-vertical')
@@ -373,7 +380,7 @@ export function OpeningDetail({ room, opening, wall, selected }: { room: RoomCon
     const frameWidth = 0.07
     return (
       <group position={[opening.offset, 0, 0.02]} {...interaction.events}>
-        {selected && (
+        {selected && !locked && (
           <group position={[0, opening.height / 2, 0]}>
             <OpeningMoveGizmo
               opening={opening}
@@ -406,7 +413,7 @@ export function OpeningDetail({ room, opening, wall, selected }: { room: RoomCon
     const shelfColor = baseColor
     return (
       <group position={[opening.offset, opening.bottom + opening.height / 2, 0.08]} {...interaction.events}>
-        {selected && (
+        {selected && !locked && (
           <>
             {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
             <OpeningMoveGizmo
@@ -434,7 +441,7 @@ export function OpeningDetail({ room, opening, wall, selected }: { room: RoomCon
     const radius = Math.min(opening.width, opening.height) / 2
     return (
       <group position={[opening.offset, opening.bottom + opening.height / 2, 0.07]} {...interaction.events}>
-        {selected && (
+        {selected && !locked && (
           <>
             {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
             <OpeningMoveGizmo
@@ -467,7 +474,7 @@ export function OpeningDetail({ room, opening, wall, selected }: { room: RoomCon
   if (opening.shape === 'wallSconce') {
     return (
       <group position={[opening.offset, opening.bottom + opening.height / 2, 0.075]} {...interaction.events}>
-        {selected && (
+        {selected && !locked && (
           <>
             {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
             <OpeningMoveGizmo
@@ -493,7 +500,7 @@ export function OpeningDetail({ room, opening, wall, selected }: { room: RoomCon
     const accent = colorTone(baseColor, -0.08)
     return (
       <group position={[opening.offset, opening.bottom + opening.height / 2, 0.07]} {...interaction.events}>
-        {selected && (
+        {selected && !locked && (
           <>
             {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
             <OpeningMoveGizmo
@@ -533,7 +540,7 @@ export function OpeningDetail({ room, opening, wall, selected }: { room: RoomCon
     const radius = Math.min(opening.width, opening.height) / 2
     return (
       <group position={[opening.offset, opening.bottom + opening.height / 2, 0.01]} {...interaction.events}>
-        {selected && (
+        {selected && !locked && (
           <>
             {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
             <OpeningMoveGizmo
@@ -567,7 +574,7 @@ export function OpeningDetail({ room, opening, wall, selected }: { room: RoomCon
   }
   return (
     <group position={[opening.offset, opening.bottom + opening.height / 2, 0.01]} {...interaction.events}>
-      {selected && (
+      {selected && !locked && (
         <>
           {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
           <OpeningMoveGizmo
@@ -604,9 +611,11 @@ export function OpeningDetail({ room, opening, wall, selected }: { room: RoomCon
   )
 }
 
-export function PlanOpening({ room, opening, wall }: { room: RoomConfig; opening: WallOpening; wall: WallSide }) {
+export function PlanOpening({ room, opening, wall, groupSelected = false }: { room: RoomConfig; opening: WallOpening; wall: WallSide; groupSelected?: boolean }) {
   const selectedId = useRoomStore((state) => state.selectedId)
-  const interaction = useOpeningInteraction(room, opening, wall, true)
+  const outlined = useRoomStore((state) => state.selectedIds.includes(opening.id))
+  const locked = useRoomStore((state) => state.lockedElementIds.includes(opening.id))
+  const interaction = useOpeningInteraction(room, opening, wall, true, locked)
   const horizontal = wall === 'north' || wall === 'south'
   const selected = selectedId === opening.id
   const canMoveHorizontal = openingCapabilities(opening.kind).translation.includes('wall-horizontal')
@@ -622,7 +631,8 @@ export function PlanOpening({ room, opening, wall }: { room: RoomConfig; opening
         <boxGeometry args={[opening.width, selected ? 0.09 : 0.055, selected ? 0.16 : 0.1]} />
         <meshBasicMaterial color={color} />
       </mesh>
-      {selected && (
+      {outlined && !groupSelected && <SelectionBounds width={opening.width} height={selected ? 0.09 : 0.055} depth={selected ? 0.16 : 0.1} />}
+      {selected && !locked && (
         <OpeningMoveGizmo opening={opening} dragEventsForAxis={interaction.dragEventsForAxis} horizontal={canMoveHorizontal} planView />
       )}
     </group>

@@ -5,7 +5,7 @@ import { wallLength } from '../../domain/geometry'
 import { isWallMirrorShape, isWallPictureShape, openingKindForShape, OPENING_CATALOG } from '../../domain/objectCatalog'
 import { useRoomStore } from '../../state/useRoomStore'
 import type { WallSide } from '../../domain/types'
-import { ColorControl, OpeningSwatch, RotationControl, WallPicker } from './Controls'
+import { ColorControl, OpeningSwatch, PositionControl, RotationControl, WallPicker } from './Controls'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
 type SelectedOpening = (RoomState['room']['door'] & { id: 'door'; kind: 'door'; sill: number }) | (RoomState['room']['windows'][number] & { kind: 'window' })
@@ -16,6 +16,7 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
   const setDoor = useRoomStore((state) => state.setDoor)
   const updateWindow = useRoomStore((state) => state.updateWindow)
   const removeWindow = useRoomStore((state) => state.removeWindow)
+  const locked = useRoomStore((state) => state.lockedElementIds.includes(selectedOpening.id))
   const pictureShape = selectedOpening.kind === 'window' && isWallPictureShape(selectedOpening.shape)
     ? selectedOpening.shape
     : null
@@ -38,7 +39,7 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
           ? null
           : 'window'
   const capabilities = OPENING_CATALOG[catalogKind].capabilities
-  const openingName = OPENING_CATALOG[catalogKind].name
+  const openingName = selectedOpening.name || OPENING_CATALOG[catalogKind].name
   const rawMaxOffset = Math.max(0, wallLength(room, selectedOpening.wall) / 2 - selectedOpening.width / 2 - ROOM_LIMITS.edgeMargin)
   const openingStep = selectedOpening.kind === 'window' ? ROOM_LIMITS.gridSize : ROOM_LIMITS.placementStep
   const maxOffset = Math.floor(rawMaxOffset / openingStep) * openingStep
@@ -67,27 +68,17 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
         <RotationControl
           rotation={selectedOpening.rotation}
           onChange={(rotation) => update({ rotation })}
+          disabled={locked}
         />
       )}
-      {capabilities.canChangeWall && <WallPicker label="Pared" value={selectedOpening.wall} onChange={(wall) => update({ wall })} />}
-      {capabilities.translation.includes('wall-horizontal') && <label className="range-control compact">
-        <span><span>Posición lateral</span><strong>{selectedOpening.offset.toFixed(2)} m</strong></span>
-        <input type="range" min={-maxOffset} max={maxOffset} step={openingStep} value={selectedOpening.offset} onChange={(event) => update({ offset: Number(event.target.value) })} />
-      </label>}
+      {capabilities.canChangeWall && <WallPicker label="Pared" value={selectedOpening.wall} onChange={(wall) => update({ wall })} disabled={locked} />}
+      {capabilities.translation.includes('wall-horizontal') && <PositionControl label="Posición lateral" min={-maxOffset} max={maxOffset} step={openingStep} value={selectedOpening.offset} disabled={locked} onChange={(value) => update({ offset: value })} />}
       {selectedOpening.kind === 'window' && capabilities.translation.includes('wall-vertical') && (
-        <label className="range-control compact">
-          <span><span>Altura desde el suelo</span><strong>{selectedOpening.sill.toFixed(2)} m</strong></span>
-          <input
-            type="range"
-            min={0}
-            max={maxSill}
-            step={ROOM_LIMITS.gridSize}
-            value={selectedOpening.sill}
-            onChange={(event) => updateWindow(selectedOpening.id, { sill: Number(event.target.value) })}
-          />
-        </label>
+        <PositionControl label="Altura desde el suelo" min={0} max={maxSill} step={ROOM_LIMITS.gridSize} value={selectedOpening.sill} disabled={locked} onChange={(value) => updateWindow(selectedOpening.id, { sill: value })} />
       )}
-      <p className="rotation-hint">{capabilities.rotation.enabled ? 'Arrastra los ejes para mover el elemento y el aro naranja para girarlo.' : 'Arrastra las flechas horizontales para moverla a izquierda o derecha.'}</p>
+      {locked
+        ? <p className="lock-hint">Elemento bloqueado: desbloquea el candado de la lista para moverlo o girarlo.</p>
+        : <p className="rotation-hint">{capabilities.rotation.enabled ? 'Arrastra los ejes para mover el elemento y el aro naranja para girarlo.' : 'Arrastra las flechas horizontales para moverla a izquierda o derecha.'}</p>}
       {selectedOpening.kind === 'window' && capabilities.removable && <button type="button" className="text-button danger" onClick={() => removeWindow(selectedOpening.id)}>Eliminar {openingName.toLowerCase()}</button>}
     </section>
   )

@@ -14,6 +14,7 @@ export function PackInspector({ selectedPack }: { selectedPack: RoomState['struc
   const selectElement = useRoomStore((state) => state.selectElement)
   const toggleElementVisibility = useRoomStore((state) => state.toggleElementVisibility)
   const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
+  const locked = useRoomStore((state) => state.lockedElementIds.includes(selectedPack.id))
   const existingSurfaces = new Set(selectedPack.surfaces.map((surface) => surface.id))
   const availableSurfaces: { id: StructureSurfaceKey; label: string }[] = [
     { id: 'floor', label: 'Suelo' },
@@ -32,7 +33,9 @@ export function PackInspector({ selectedPack }: { selectedPack: RoomState['struc
         label="Mover pack"
         position={selectedPack}
         onChange={(axis, value) => moveStructurePack(selectedPack.id, axis, value)}
+        disabled={locked}
       />
+      {locked && <p className="lock-hint">Pack bloqueado: desbloquea el candado de la lista para moverlo.</p>}
       <h3>Superficies del pack</h3>
       {selectedPack.surfaces.map((surface) => {
         const id = structureSurfaceElementId(selectedPack.id, surface.id)

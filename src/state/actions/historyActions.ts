@@ -2,7 +2,7 @@ import { persistedDesign } from '../../domain/designV1'
 import { recordInteraction } from '../../debug/interactionLog'
 import { MAX_UNDO_STEPS } from '../defaults'
 import { beginHistoryTransaction, finishHistoryTransaction } from '../historyTransactions'
-import type { RoomActionContext, RoomState } from '../types'
+import type { HistoryGestureToken, RoomActionContext, RoomState } from '../types'
 
 type HistoryActions = Pick<
   RoomState,
@@ -16,10 +16,22 @@ type HistoryActions = Pick<
 
 export function createHistoryActions(context: Pick<RoomActionContext, 'set' | 'get' | 'runtime'>): HistoryActions {
   const { set, get, runtime } = context
+  const restoreDesign = (design: ReturnType<typeof persistedDesign>) => {
+    runtime.isUndoing = true
+    set({ ...design, structurePacks: design.structurePacks ?? [] })
+    runtime.isUndoing = false
+  }
+  const endGesture = (token?: HistoryGestureToken) => {
+    const restore = finishHistoryTransaction(runtime, token, persistedDesign(get()))
+    if (restore) restoreDesign(restore)
+  }
   return {
-    beginHistoryGesture: (targetId = get().selectedId) => beginHistoryTransaction(runtime, persistedDesign(get()), targetId),
-    commitHistoryGesture: (token) => finishHistoryTransaction(runtime, token),
-    cancelHistoryGesture: (token) => finishHistoryTransaction(runtime, token),
+    beginHistoryGesture: (targetId = get().selectedId) => {
+      endGesture()
+      return beginHistoryTransaction(runtime, persistedDesign(get()), targetId)
+    },
+    commitHistoryGesture: (token) => endGesture(token),
+    cancelHistoryGesture: (token) => endGesture(token),
     isHistoryGestureActive: (token) => runtime.activeGesture?.token === token,
     undo: () => {
       finishHistoryTransaction(runtime)

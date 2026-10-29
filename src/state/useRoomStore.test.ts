@@ -81,7 +81,7 @@ test('deshace cambios y administra hasta cinco diseños locales', () => {
     store.getState().moveFurnitureVertically(table.id, 0.63)
     assert.equal(store.getState().furniture[0].y, 0.625)
     store.getState().moveFurnitureVertically(table.id, 20)
-    assert.equal(store.getState().furniture[0].y, store.getState().room.height - table.height)
+    assert.equal(store.getState().furniture[0].y, 20)
     store.getState().addFurniture('chair')
     const chair = store.getState().furniture.find((item) => item.kind === 'chair')
     assert.ok(chair)
@@ -263,6 +263,53 @@ test('permite habitaciones de hasta 10 m y limita el zoom entre 25 % y 300 %', (
 
   for (let step = 0; step < 60; step += 1) store.getState().adjustCameraZoom(-120)
   assert.equal(store.getState().cameraZoom, 3)
+})
+
+test('limita el zoom de POV al 100 % y conserva el zoom de las demás vistas', () => {
+  const store = testStore
+  store.getState().setView('isometric')
+  store.getState().adjustCameraZoom(120)
+  const otherZoom = store.getState().cameraZoom
+  store.getState().setView('pov')
+  for (let step = 0; step < 20; step += 1) store.getState().adjustCameraZoom(120)
+  assert.equal(store.getState().povCameraZoom, 1)
+  store.getState().adjustCameraZoom(-120)
+  assert.ok(store.getState().povCameraZoom > 1)
+  for (let step = 0; step < 20; step += 1) store.getState().adjustCameraZoom(120)
+  assert.equal(store.getState().povCameraZoom, 1)
+  store.getState().setView('isometric')
+  assert.equal(store.getState().cameraZoom, otherZoom)
+})
+
+test('girar la cámara libre después de desplazarse conserva su posición', () => {
+  const store = createRoomStore()
+  store.getState().setView('free')
+  store.getState().moveFreeCamera(1, 2, -3)
+  const position = () => {
+    const state = store.getState()
+    const height = Math.max(state.room.height, ...state.structurePacks.filter((pack) => pack.id.startsWith('floor-pack-')).map((pack) => pack.y + state.room.height))
+    const radius = Math.max(state.room.width, state.room.depth, height) * 2.6
+    return [state.freeCameraOffset.x + Math.cos(state.freeAzimuth) * Math.cos(state.freeElevation) * radius, state.freeCameraOffset.y + Math.sin(state.freeElevation) * radius, state.freeCameraOffset.z + Math.sin(state.freeAzimuth) * Math.cos(state.freeElevation) * radius]
+  }
+  const before = position()
+  store.getState().setFreeOrbit(2, 0.9)
+  position().forEach((value, index) => assert.ok(Math.abs(value - before[index]) < 1e-9))
+  store.getState().lookFromFreeOrbit(0.5, 0.2)
+  position().forEach((value, index) => assert.ok(Math.abs(value - before[index]) < 1e-9))
+})
+
+test('permite zoom de hasta el 400 % en vista libre sin alterar las demás vistas', () => {
+  const store = testStore
+  store.getState().setView('isometric')
+  const otherZoom = store.getState().cameraZoom
+  store.getState().setView('free')
+  for (let step = 0; step < 60; step += 1) store.getState().adjustCameraZoom(-120)
+  assert.equal(store.getState().freeCameraZoom, 4)
+  store.getState().setView('isometric')
+  assert.equal(store.getState().cameraZoom, otherZoom)
+  store.getState().setView('pov')
+  assert.equal(store.getState().povCameraZoom, 1)
+  store.getState().setView('isometric')
 })
 
 test('considera equivalentes los opcionales v1 ausentes y sus valores vacios', () => {

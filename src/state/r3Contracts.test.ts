@@ -22,7 +22,7 @@ test('R3: rechaza reducir una habitación si el clamp solapa los muebles', () =>
   assert.equal(store.getState().undoCount, 0)
 })
 
-test('R3: el cambio de altura conserva el anclaje de lámparas y limita muebles elevados', () => {
+test('el cambio de altura conserva las posiciones ya fuera de los límites anteriores', () => {
   const store = createRoomStore()
   store.setState({ furniture: [
     { ...item('ceilingLamp', 'ceiling', -1), y: 2.4 },
@@ -30,8 +30,8 @@ test('R3: el cambio de altura conserva el anclaje de lámparas y limita muebles 
   ] })
   store.getState().setDimension('height', 2.5)
   assert.equal(store.getState().room.height, 2.5)
-  assert.equal(store.getState().furniture[0].y, 2.5 - FURNITURE_PRESETS.ceilingLamp.height)
-  assert.equal(store.getState().furniture[1].y, 2.5 - FURNITURE_PRESETS.table.height)
+  assert.equal(store.getState().furniture[0].y, 2.4)
+  assert.equal(store.getState().furniture[1].y, 2.3)
   store.getState().undo()
   assert.equal(store.getState().room.height, DEFAULT_ROOM.height)
   assert.equal(store.getState().furniture[1].y, 2.3)
@@ -52,8 +52,8 @@ test('R3: rotación bloqueada, giro normalizado y movimiento conservan historial
   assert.equal(store.getState().furniture[0].rotation, Math.PI * 1.5)
   store.getState().moveFurniture(table.id, 100, -100)
   const moved = store.getState().furniture[0]
-  assert.equal(moved.x, (DEFAULT_ROOM.width - table.depth) / 2)
-  assert.equal(moved.z, -(DEFAULT_ROOM.depth - table.width) / 2)
+  assert.equal(moved.x, 100)
+  assert.equal(moved.z, -100)
   store.getState().undo()
   assert.equal(store.getState().furniture[0].x, 0)
 })
@@ -107,9 +107,9 @@ test('R3: carga v1 mantiene normalización, campos opcionales y fallos de superf
     for (const rotation of [0, -1]) {
       fixture.structurePacks[0].surfaces[0].rotation = rotation
       const store = load(fixture)
-      assert.equal(store.getState().notice, 'El diseño guardado no es válido.')
-      assert.equal(store.getState().room.windows[0].offset, DEFAULT_ROOM.windows[0].offset)
-      assert.equal(store.getState().undoCount, 0)
+      assert.equal(store.getState().notice, 'Diseño recuperado.')
+      assert.equal(store.getState().structurePacks[0].surfaces[0].rotation, rotation)
+      assert.equal(store.getState().undoCount, 1)
     }
     fixture.structurePacks[0].surfaces[0].rotation = 0.5
     const surface = load(fixture).getState().structurePacks[0].surfaces[0]

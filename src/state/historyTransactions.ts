@@ -5,14 +5,20 @@ import type { PersistedDesign } from '../domain/designV1'
 export function beginHistoryTransaction(runtime: RoomRuntime, before: PersistedDesign, targetId: string | null): HistoryGestureToken {
   const token = Symbol('history-gesture')
   // A new gesture closes the previous one at its last accepted position.
-  runtime.activeGesture = { token, before, targetId, hasChanges: false }
+  runtime.activeGesture = {
+    token,
+    before,
+    targetId,
+    hasChanges: false,
+  }
   return token
 }
 
-export function finishHistoryTransaction(runtime: RoomRuntime, token?: HistoryGestureToken) {
-  if (token !== undefined && runtime.activeGesture?.token !== token) return
-  // Commit and cancel both keep the last accepted world state, as before R3.6.
+export function finishHistoryTransaction(runtime: RoomRuntime, token?: HistoryGestureToken, _current?: PersistedDesign): PersistedDesign | null {
+  const gesture = runtime.activeGesture
+  if (token !== undefined && gesture?.token !== token) return null
   runtime.activeGesture = null
+  return null
 }
 
 export function recordHistoryChange(runtime: RoomRuntime, previous: PersistedDesign) {

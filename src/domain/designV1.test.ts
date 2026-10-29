@@ -34,7 +34,7 @@ test('v1 conserva fixtures completos, antiguos y de límite sin mutaciones ni ca
 })
 
 test('v1 mantiene el control de cabecera y diferencia validación de lista y carga anidada', () => {
-  for (const value of [null, [], 1, '', {}, { version: 1 }, { version: 2, room: {}, furniture: [] }, { version: 1, room: {}, furniture: {} }]) {
+  for (const value of [null, [], 1, '', {}, { version: 1 }, { version: 5, room: {}, furniture: [] }, { version: 1, room: {}, furniture: {} }]) {
     assert.equal(isPersistedDesign(value), false)
   }
   assert.equal(isPersistedDesign(fixture('invalid-unsupported-version')), false)
@@ -57,7 +57,7 @@ test('v1 firma igual los opcionales ausentes y vacíos y conserva los falsos exp
   assert.equal(preferences.gridVisibility.floor, false)
   assert.notEqual(preferences.gridVisibility, data.gridVisibility)
   assert.notEqual(preferences.hiddenElementIds, data.hiddenElementIds)
-  assert.deepEqual(normalizeDesignPreferences(legacy), { gridSnap: true, gridVisibility: DEFAULT_GRID_VISIBILITY, hiddenElementIds: [] })
+  assert.deepEqual(normalizeDesignPreferences(legacy), { gridSnap: true, gridVisibility: DEFAULT_GRID_VISIBILITY, hiddenElementIds: [], lockedElementIds: [], elementFolders: [], elementFolderAssignments: {}, sceneElementOrder: [] })
 })
 
 test('v1 conserva defaults de todas las aperturas y no endurece formas antiguas desconocidas', () => {
@@ -86,13 +86,14 @@ test('v1 conserva defaults de todas las aperturas y no endurece formas antiguas 
   assert.deepEqual(data, before)
 })
 
-test('v1 rechaza packs y superficies malformados conservando la regla previa de rotación positiva', () => {
+test('v1 acepta giros finitos y rechaza packs y superficies malformados', () => {
   const pack: StructurePack = { id: 'old:pack', name: 'Pack', x: 0, y: 0, z: 0, surfaces: [{ ...createStructureSurface(DEFAULT_ROOM, 'floor'), rotation: 0.5 }] }
   const surface = pack.surfaces[0]
   const before = structuredClone(pack)
   assert.deepEqual(normalizeStructurePacks([pack], DEFAULT_ROOM), [pack])
+  for (const rotation of [0, -1]) assert.equal(normalizeStructurePacks([{ ...pack, surfaces: [{ ...surface, rotation }] }], DEFAULT_ROOM)[0].surfaces[0].rotation, rotation)
   const invalid: unknown[] = [null, {}, [null], [{ ...pack, x: Number.NaN }], [{ ...pack, surfaces: null }],
-    ...[0, -1, Number.POSITIVE_INFINITY].map((rotation) => [{ ...pack, surfaces: [{ ...surface, rotation }] }]),
+    ...[Number.NaN, Number.POSITIVE_INFINITY].map((rotation) => [{ ...pack, surfaces: [{ ...surface, rotation }] }]),
     [{ ...pack, surfaces: [{ ...surface, width: 0 }] }],
     [{ ...pack, surfaces: [surface, surface] }],
     [{ ...pack, surfaces: [{ ...surface, id: 'wall-north', kind: 'wall', wall: 'east' }] }],

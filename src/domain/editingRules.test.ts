@@ -53,7 +53,7 @@ test('recoloca muebles en orden conservando dimensiones del catálogo y sin muta
   assert.equal(arranged[0].y, 0)
   assert.equal(arranged[1].id, 'second')
   assert.notDeepEqual([arranged[1].x, arranged[1].z], [0, 0])
-  assert.equal(arranged[2].y, DEFAULT_ROOM.height - FURNITURE_PRESETS.ceilingLamp.height)
+  assert.equal(arranged[2].y, 0)
   assert.equal(hasFurnitureCollisions(arranged), false)
   assert.equal(arrangeFurniture([{ ...table, kind: 'removed-kind' } as unknown as FurnitureItem], DEFAULT_ROOM, true), null)
   const tooSmall = { ...DEFAULT_ROOM, width: table.width, depth: table.depth }

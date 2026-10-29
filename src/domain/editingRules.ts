@@ -15,8 +15,13 @@ type FurnitureRuleUpdate = Partial<{ furniture: FurnitureItem[]; notice: string 
 export function safeRoomUpdate(current: RoomEditingData, candidate: RoomConfig): RoomRuleUpdate {
   const error = validateOpenings(candidate)
   if (error) return { notice: error }
-  const furniture = current.furniture.map((item) => ({ ...item, ...clampFurniture(item, candidate, current.gridSnap) }))
+  const furniture = current.furniture.map((item) => {
+    const oldBounds = clampFurniture(item, current.room, false)
+    const outside = oldBounds.x !== item.x || oldBounds.z !== item.z
+    return outside ? { ...item } : { ...item, ...clampFurniture(item, candidate, current.gridSnap) }
+  })
   furniture.forEach((item) => {
+    if (clampFurnitureElevation(item, current.room, false) !== item.y) return
     item.y = isCeilingMountedFurniture(item.kind)
       ? Math.max(0, candidate.height - item.height)
       : clampFurnitureElevation(item, candidate, current.gridSnap)
@@ -45,8 +50,7 @@ export function arrangeFurniture(items: FurnitureItem[], room: RoomConfig, snap:
         ? Math.max(0, room.height - preset.height)
         : typeof item.y === 'number' && Number.isFinite(item.y) ? item.y : 0,
     }
-    const clamped = { ...normalized, ...clampFurniture(normalized, room, snap) }
-    clamped.y = clampFurnitureElevation(clamped, room, snap)
+    const clamped = { ...normalized, x: Number.isFinite(item.x) ? item.x : 0, y: typeof item.y === 'number' && Number.isFinite(item.y) ? item.y : normalized.y, z: Number.isFinite(item.z) ? item.z : 0 }
     if (canPlaceFurniture(clamped, arranged)) {
       arranged.push(clamped)
       continue
@@ -62,7 +66,7 @@ export function applyFurnitureRotation(state: RoomEditingData, item: FurnitureIt
   const fullTurn = Math.PI * 2
   const normalizedRotation = ((rotation % fullTurn) + fullTurn) % fullTurn
   const rotated = { ...item, rotation: normalizedRotation }
-  const positioned = { ...rotated, ...clampFurniture(rotated, state.room, state.gridSnap) }
+  const positioned = rotated
   if (!canPlaceFurniture(positioned, state.furniture)) {
     return showNotice ? { notice: 'No hay espacio suficiente para girar el objeto.' } : {}
   }
@@ -98,13 +102,15 @@ export function roomForWindowUpdate(room: RoomConfig, currentWindow: WindowConfi
 }
 
 export function movedFurniture(state: RoomEditingData, item: FurnitureItem, x: number, z: number) {
-  const moved = { ...item, ...clampFurniture({ ...item, x, z }, state.room, state.gridSnap) }
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return null
+  const moved = { ...item, x: state.gridSnap ? snapToPlacementGrid(x) : x, z: state.gridSnap ? snapToPlacementGrid(z) : z }
   return canPlaceFurniture(moved, state.furniture) ? moved : null
 }
 
 export function elevatedFurniture(state: RoomEditingData, item: FurnitureItem, y: number) {
   if (isWallPictureKind(item.kind)) return null
-  const movedY = clampFurnitureElevation({ ...item, y }, state.room, state.gridSnap)
+  if (!Number.isFinite(y)) return null
+  const movedY = state.gridSnap ? snapToPlacementGrid(y) : y
   if (movedY === item.y) return null
   const moved = { ...item, y: movedY }
   return canPlaceFurniture(moved, state.furniture) ? moved : null

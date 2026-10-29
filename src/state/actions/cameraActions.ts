@@ -19,9 +19,21 @@ const orientationForIsoAngle = (angle: number) => (
   Math.round((normalizeIsoAngle(angle) - ISO_BASE_ANGLE) / ISO_QUARTER_TURN) + 4
 ) % 4
 
+function freeOrbitPosition(state: RoomState, azimuth: number, elevation: number) {
+  if (!state.freeCameraNavigated) return {}
+  const height = Math.max(state.room.height, ...state.structurePacks.filter((pack) => pack.id.startsWith('floor-pack-')).map((pack) => pack.y + state.room.height))
+  const radius = Math.max(state.room.width, state.room.depth, height) * 2.6
+  const vector = (angle: number, tilt: number) => ({ x: Math.cos(angle) * Math.cos(tilt) * radius, y: Math.sin(tilt) * radius, z: Math.sin(angle) * Math.cos(tilt) * radius })
+  const before = vector(state.freeAzimuth, state.freeElevation)
+  const after = vector(azimuth, elevation)
+  return { freeCameraOffset: { x: state.freeCameraOffset.x + before.x - after.x, y: state.freeCameraOffset.y + before.y - after.y, z: state.freeCameraOffset.z + before.z - after.z } }
+}
+
 type CameraActions = Pick<
   RoomState,
   | 'setView'
+  | 'setTopCameraPosition'
+  | 'resetTopCamera'
   | 'lookAtWall'
   | 'setFrontCameraHeight'
   | 'lookFromIsoOrientation'
@@ -39,6 +51,8 @@ type CameraActions = Pick<
 export function createCameraActions(context: Pick<RoomActionContext, 'set'>): CameraActions {
   const { set } = context
   return {
+    setTopCameraPosition: (topCameraX, topCameraZ) => set({ topCameraX, topCameraZ }),
+    resetTopCamera: () => set({ topCameraX: 0, topCameraZ: 0, cameraZoom: 1 }),
     setView: (view) => set((state) => {
       recordInteraction('state.view.changed', {
         view: state.view,
@@ -57,6 +71,7 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
         : frontWallForOrientation(orientation)
       return {
         view,
+        ...(view === 'isometric' && state.view !== 'isometric' ? { isoCameraHeight: state.structurePacks.find((pack) => pack.id === state.activeRoomId)?.y ?? 0 } : {}),
         topOrientation: view === 'top' ? orientation : state.topOrientation,
         wallView: view === 'front' || view === 'top' ? frontWall : null,
         isIsoOrbitDragging: false,
@@ -91,6 +106,7 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
       })
       return {
         view: 'isometric',
+        ...(state.view !== 'isometric' ? { isoCameraHeight: state.structurePacks.find((pack) => pack.id === state.activeRoomId)?.y ?? 0 } : {}),
         isoOrientation: normalizedOrientation,
         isoAngle: normalizeIsoAngle(ISO_BASE_ANGLE + normalizedOrientation * ISO_QUARTER_TURN),
         isIsoOrbitDragging: false,
@@ -126,6 +142,7 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
         view: 'free',
         freeAzimuth: nextAzimuth,
         freeElevation: nextElevation,
+        ...freeOrbitPosition(state, nextAzimuth, nextElevation),
         isFreeOrbitDragging: false,
         isIsoOrbitDragging: false,
         wallView: null,
@@ -141,20 +158,22 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
         coalesceKey: 'camera-free-orbit',
         details: { azimuth: nextAzimuth, elevation: nextElevation, mode: 'free' },
       })
-      return { freeAzimuth: nextAzimuth, freeElevation: nextElevation }
+      return { freeAzimuth: nextAzimuth, freeElevation: nextElevation, ...freeOrbitPosition(state, nextAzimuth, nextElevation) }
     }),
     setFreeOrbitDragging: (isFreeOrbitDragging) => set({ isFreeOrbitDragging }),
     adjustCameraZoom: (deltaY) => set((state) => {
       const limitedDelta = Math.max(-120, Math.min(120, deltaY))
-      const cameraZoom = state.cameraZoom * Math.exp(-limitedDelta * 0.0015)
-      const nextZoom = Math.max(MIN_CAMERA_ZOOM, Math.min(MAX_CAMERA_ZOOM, cameraZoom))
+      const isPov = state.view === 'pov'
+      const isFree = state.view === 'free'
+      const cameraZoom = (isPov ? state.povCameraZoom : isFree ? state.freeCameraZoom : state.cameraZoom) * Math.exp(-limitedDelta * 0.0015)
+      const nextZoom = Math.max(isPov ? 1 : MIN_CAMERA_ZOOM, Math.min(isFree ? 4 : MAX_CAMERA_ZOOM, cameraZoom))
       recordInteraction('state.camera.zoom', {
         view: state.view,
         selectedId: state.selectedId,
         coalesceKey: 'camera-zoom',
         details: { zoom: nextZoom },
       })
-      return { cameraZoom: nextZoom }
+      return isPov ? { povCameraZoom: nextZoom } : isFree ? { freeCameraZoom: nextZoom } : { cameraZoom: nextZoom }
     }),
     rotateFront: (direction) => set((state) => {
       const walls: WallSide[] = ['north', 'east', 'south', 'west']

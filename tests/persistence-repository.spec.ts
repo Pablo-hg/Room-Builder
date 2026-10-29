@@ -15,7 +15,7 @@ test('migra el diseño legacy una vez y recupera el espejo antiguo desde el men�
   expect(migrated[0].data).toEqual(legacy)
   await trigger.click()
   await page.getByRole('button', { name: 'Diseño guardado anteriormente', exact: true }).click()
-  await expect(page.getByRole('checkbox', { name: /Mostrar Espejo rectangular/ })).toBeChecked()
+  await expect(page.getByRole('button', { name: /Mostrar Espejo rectangular|Ocultar Espejo rectangular/ })).toHaveAttribute('aria-pressed', 'true')
   await page.reload()
   await expect(trigger).toContainText('1/5')
   const reloaded = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs')!))

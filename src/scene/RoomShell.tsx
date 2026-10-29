@@ -1,39 +1,69 @@
 import type { ReactNode, RefObject } from 'react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import { useThree, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { DEFAULT_FLOOR_COLOR, WALL_LABELS } from '../domain/constants'
 import type { RoomConfig, ViewMode, WallSide } from '../domain/types'
 import { useRoomStore } from '../state/useRoomStore'
 import { FloorGrid } from './FloorGrid'
 import { recordSceneInteraction } from './sceneInteraction'
+import { releasePointer, usePointerCancellation } from './usePointerCancellation'
+import { BASE_FLOOR_ID } from '../domain/elementFolders'
 
-export function RoomShell({ room, modelRootRef, showFloorGrid, children }: {
+export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, children }: {
   room: RoomConfig
   modelRootRef: RefObject<THREE.Group | null>
   showFloorGrid: boolean
+  showBase?: boolean
   children: ReactNode
 }) {
   const selectElement = useRoomStore((state) => state.selectElement)
+  const view = useRoomStore((state) => state.view)
+  const floorHidden = useRoomStore((state) => state.hiddenElementIds.includes(BASE_FLOOR_ID))
+  const { camera, size } = useThree()
+  const pan = useRef<{ pointerId: number; x: number; y: number; cameraX: number; cameraZ: number; right: THREE.Vector3; up: THREE.Vector3; scale: number } | null>(null)
+  const capturePan = usePointerCancellation(() => { pan.current = null })
+  const startPan = (event: ThreeEvent<PointerEvent>) => {
+    if (view !== 'top' || event.button !== 0 || !(camera instanceof THREE.OrthographicCamera)) return
+    const state = useRoomStore.getState()
+    pan.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, cameraX: state.topCameraX, cameraZ: state.topCameraZ, right: new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion), scale: (camera.right - camera.left) / camera.zoom / Math.max(size.width, 1) }
+    capturePan(event)
+  }
+  const movePan = (event: ThreeEvent<PointerEvent>) => {
+    const drag = pan.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    event.stopPropagation()
+    const dx = (event.clientX - drag.x) * drag.scale
+    const dy = (event.clientY - drag.y) * drag.scale
+    useRoomStore.getState().setTopCameraPosition(drag.cameraX - dx * drag.right.x + dy * drag.up.x, drag.cameraZ - dx * drag.right.z + dy * drag.up.z)
+  }
+  const endPan = (event: ThreeEvent<PointerEvent>) => {
+    if (pan.current?.pointerId !== event.pointerId) return
+    pan.current = null
+    event.stopPropagation()
+    releasePointer(event)
+  }
   return (
     <group ref={modelRootRef}>
-      <mesh receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
+      {showBase && !floorHidden && <mesh receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
         event.stopPropagation()
         recordSceneInteraction('background.pointer-down', { target: 'floor' })
         selectElement(null)
-      }}>
+        startPan(event)
+      }} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={endPan} onLostPointerCapture={() => { pan.current = null }}>
         <boxGeometry args={[room.width, 0.08, room.depth]} />
         <meshStandardMaterial color={room.floorColor ?? DEFAULT_FLOOR_COLOR} roughness={0.94} />
-      </mesh>
-      <FloorGrid room={room} visible={showFloorGrid} />
+      </mesh>}
+      <FloorGrid room={room} visible={showBase && !floorHidden && showFloorGrid} />
       {children}
-      <mesh position={[0, -0.11, 0]} receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
+      {showBase && <mesh position={[0, -0.11, 0]} receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
         event.stopPropagation()
         recordSceneInteraction('background.pointer-down', { target: 'platform' })
         selectElement(null)
       }}>
         <boxGeometry args={[room.width + 0.28, 0.14, room.depth + 0.28]} />
         <meshStandardMaterial color="#b7835d" roughness={0.9} />
-      </mesh>
+      </mesh>}
     </group>
   )
 }

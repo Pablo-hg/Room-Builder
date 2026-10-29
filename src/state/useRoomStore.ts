@@ -11,6 +11,8 @@ import { createFurnitureActions } from './actions/furnitureActions'
 import { createSelectionActions } from './actions/selectionActions'
 import { createHistoryActions } from './actions/historyActions'
 import { createDesignActions } from './actions/designActions'
+import { createFolderActions } from './actions/folderActions'
+import { initialRoomFolder } from '../domain/elementFolders'
 
 export { structureSurfaceElementId } from '../domain/elementIds'
 
@@ -19,16 +21,27 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     undoHistory: [],
     redoHistory: [],
     copiedElement: null,
+    copiedElements: null,
     isUndoing: false,
     activeGesture: null,
   }
   const set = (update: RoomUpdate) => {
-    const current = get()
-    const nextUpdate = typeof update === 'function' ? update(current) : update
-    const nextState = { ...current, ...nextUpdate }
-    if (runtime.activeGesture && (current.selectedId !== nextState.selectedId || current.view !== nextState.view)) {
-      finishHistoryTransaction(runtime)
+    let current = get()
+    const rawUpdate = typeof update === 'function' ? update(current) : update
+    const interruptsGesture = runtime.activeGesture && ['selectedId', 'selectedIds', 'view'].some((key) => Object.prototype.hasOwnProperty.call(rawUpdate, key))
+    if (interruptsGesture) {
+      const restore = finishHistoryTransaction(runtime, undefined, persistedDesign(current))
+      if (restore) {
+        runtime.isUndoing = true
+        storeSet({ ...restore, structurePacks: restore.structurePacks ?? [] })
+        runtime.isUndoing = false
+        current = get()
+      }
     }
+    const nextUpdate = Object.prototype.hasOwnProperty.call(rawUpdate, 'selectedId') && !Object.prototype.hasOwnProperty.call(rawUpdate, 'selectedIds')
+      ? { ...rawUpdate, selectedIds: rawUpdate.selectedId ? [rawUpdate.selectedId] : [], selectionAnchor: rawUpdate.selectedId ?? null }
+      : rawUpdate
+    const nextState = { ...current, ...nextUpdate }
     const designChanged = persistedDesignSignature(persistedDesign(current)) !== persistedDesignSignature(persistedDesign(nextState))
     if (designChanged) {
       recordHistoryChange(runtime, persistedDesign(current))
@@ -51,21 +64,39 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     furniture: [],
     structurePacks: [],
     selectedId: null,
+    selectedIds: [],
+    selectionAnchor: null,
     view: 'isometric',
     isoOrientation: 0,
     topOrientation: 0,
+    topCameraX: 0,
+    topCameraZ: 0,
+    activeRoomId: null,
+    setActiveRoomId: (activeRoomId) => set((state) => ({ activeRoomId, ...(state.view === 'isometric' ? { isoCameraHeight: state.structurePacks.find((pack) => pack.id === activeRoomId)?.y ?? 0 } : {}) })),
     isoAngle: ISO_BASE_ANGLE,
+    isoCameraHeight: 0,
+    setIsoCameraHeight: (isoCameraHeight) => set({ isoCameraHeight }),
+    freeCameraOffset: { x: 0, y: 0, z: 0 },
+    freeCameraNavigated: false,
+    moveFreeCamera: (x, y, z) => set((state) => ({ freeCameraNavigated: true, freeCameraOffset: { x: state.freeCameraOffset.x + x, y: state.freeCameraOffset.y + y, z: state.freeCameraOffset.z + z } })),
     isIsoOrbitDragging: false,
     freeAzimuth: ISO_BASE_ANGLE,
     freeElevation: 0.58,
     isFreeOrbitDragging: false,
     cameraZoom: 1,
+    freeCameraZoom: 1,
+    povCameraZoom: 1,
     wallView: null,
     frontCameraHeight: DEFAULT_ROOM.height / 2,
     povYaw: 0,
     gridSnap: true,
     gridVisibility: { ...DEFAULT_GRID_VISIBILITY },
+    showSelectionBounds: true,
+    toggleSelectionBounds: () => set((state) => ({ showSelectionBounds: !state.showSelectionBounds })),
     hiddenElementIds: [],
+    lockedElementIds: [],
+    ...initialRoomFolder(DEFAULT_ROOM),
+    sceneElementOrder: [],
     notice: '',
     undoCount: 0,
     redoCount: 0,
@@ -76,6 +107,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     ...createConstructionActions(context),
     ...createFurnitureActions(context),
     ...createSelectionActions(context),
+    ...createFolderActions(context),
     ...createHistoryActions(context),
     ...createDesignActions(context),
   }

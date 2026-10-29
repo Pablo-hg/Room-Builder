@@ -1,9 +1,14 @@
 import * as THREE from 'three'
+import type { ThreeEvent } from '@react-three/fiber'
 import type { RoomConfig, StructureSurface } from '../domain/types'
 import { useRoomStore } from '../state/useRoomStore'
-import { structureSurfaceElementId } from '../domain/elementIds'
-import { recordSceneInteraction } from './sceneInteraction'
+import { structureGridElementId, structureSurfaceElementId } from '../domain/elementIds'
+import { FloorGrid } from './FloorGrid'
+import { WallGrid } from './WallGrid'
+import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
 import { StructureSurfaceTransformGizmo } from './StructureSurfaceGizmo'
+import { SelectionBounds } from './SelectionBounds'
+import { independentSurfaceHasSpatialWarning } from '../domain/structureCollisions'
 
 export function StructureSurfaceObject({
   room,
@@ -12,6 +17,10 @@ export function StructureSurfaceObject({
   surface,
   hidden,
   selected,
+  outlined,
+  locked,
+  showGrid,
+  showCollision = true,
   onSelect,
 }: {
   room: RoomConfig
@@ -19,6 +28,10 @@ export function StructureSurfaceObject({
   surface: StructureSurface
   hidden: boolean
   selected: boolean
+  outlined: boolean
+  locked: boolean
+  showGrid: boolean
+  showCollision?: boolean
   onSelect: () => void
   packId: string
 }) {
@@ -28,8 +41,15 @@ export function StructureSurfaceObject({
   const moveStructureSurface = useRoomStore((state) => state.moveStructureSurface)
   const setStructureSurfaceRotation = useRoomStore((state) => state.setStructureSurfaceRotation)
   const surfaceId = structureSurfaceElementId(packId, surface.id)
+  const gridHidden = useRoomStore((state) => state.hiddenElementIds.includes(structureGridElementId(packId, surface.id)))
+  const collision = useRoomStore((state) => showCollision && independentSurfaceHasSpatialWarning(state, surfaceId))
   if (hidden) return null
-  const selectSurface = (event: { stopPropagation: () => void; object: THREE.Object3D }) => {
+  const selectSurface = (event: ThreeEvent<PointerEvent>) => {
+    if (selected && event.intersections.some(({ object }) => {
+      let isGizmo = false
+      object.traverseAncestors((ancestor) => { if (ancestor.userData.structureSurfaceGizmo === surfaceId) isGizmo = true })
+      return isGizmo
+    })) return
     event.stopPropagation()
     const clickedId = event.object.userData.structureSurfaceId
     const clickedSurfaceId = typeof clickedId === 'string' ? clickedId : surfaceId
@@ -40,6 +60,10 @@ export function StructureSurfaceObject({
       kind: surface.kind,
       selectedBefore,
     })
+    if (event.nativeEvent.ctrlKey || event.nativeEvent.metaKey || event.nativeEvent.shiftKey) {
+      selectSceneObject(clickedSurfaceId, event.nativeEvent)
+      return
+    }
     if (!selectedBefore) onSelect()
   }
   return (
@@ -47,9 +71,8 @@ export function StructureSurfaceObject({
       <mesh
         position={position}
         rotation={surface.kind === 'wall' ? [0, baseRotation + surface.rotation, 0] : [0, 0, 0]}
-        userData={{ freeOrbitSurface: true, structureSurfaceId: surfaceId }}
+        userData={{ structureSurfaceId: surfaceId }}
         onPointerDown={selectSurface}
-        onClick={selectSurface}
       >
         <boxGeometry args={[surface.width, surface.height, surface.depth]} />
         <meshStandardMaterial
@@ -59,7 +82,21 @@ export function StructureSurfaceObject({
           roughness={0.9}
         />
       </mesh>
-      {selected && (
+      {(outlined || collision) && <group position={position} rotation={surface.kind === 'wall' ? [0, baseRotation + surface.rotation, 0] : [0, 0, 0]}>
+        <SelectionBounds width={surface.width} height={surface.height} depth={surface.depth} collision={collision} />
+      </group>}
+      {showGrid && !gridHidden && (surface.kind === 'floor' ? (
+        <group position={[position[0], position[1] + surface.height / 2 - 0.04, position[2]]}>
+          <FloorGrid room={{ ...room, width: surface.width, depth: surface.depth }} visible />
+        </group>
+      ) : surface.kind === 'wall' ? (
+        <group position={position} rotation={[0, baseRotation + surface.rotation, 0]}>
+          {[0, Math.PI].map((rotation) => <group key={rotation} rotation={[0, rotation, 0]} position={[0, -surface.height / 2, 0]}>
+            <group position={[0, 0, surface.depth / 2 - 0.06]}><WallGrid length={surface.width} height={surface.height} openings={[]} /></group>
+          </group>)}
+        </group>
+      ) : null)}
+      {selected && !locked && (
         <StructureSurfaceTransformGizmo
           packId={packId}
           name={packName}

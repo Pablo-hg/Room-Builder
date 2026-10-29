@@ -28,7 +28,7 @@ test('las acciones retenidas leen el mundo actual y comparten un solo historial 
   add('table')
   const table = store.getState().furniture[0]
   move(table.id, 100, 0)
-  assert.equal(store.getState().furniture[0].x, (7 - table.width) / 2)
+  assert.equal(store.getState().furniture[0].x, 100)
   const before = store.getState().undoCount
   store.getState().setView('top')
   store.getState().selectElement(table.id)
@@ -39,7 +39,7 @@ test('las acciones retenidas leen el mundo actual y comparten un solo historial 
   store.getState().endFurnitureMove()
   assert.equal(store.getState().undoCount, before + 1)
   store.getState().undo()
-  assert.equal(store.getState().furniture[0].x, (7 - table.width) / 2)
+  assert.equal(store.getState().furniture[0].x, 100)
   assert.equal(store.getState().view, 'top')
   store.getState().redo()
   assert.equal(store.getState().furniture[0].x, 0)
