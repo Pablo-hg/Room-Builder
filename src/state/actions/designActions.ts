@@ -1,6 +1,8 @@
 import { MAX_SAVED_DESIGNS } from '../../persistence/localDesignRepository'
 import { migrateWallPictures } from '../../persistence/designMigrations'
 import { arrangeFurniture } from '../../domain/editingRules'
+import { initialRoomFolder } from '../../domain/elementFolders'
+import { DEFAULT_ROOM } from '../../domain/constants'
 import { DEFAULT_GRID_VISIBILITY, isPersistedDesign, persistedDesign, type SavedDesign } from '../../domain/designV1'
 import { normalizeDesignPreferences, normalizeDesignRoom, normalizeStructurePacks } from '../../domain/normalizeDesignV1'
 import { makeId } from '../../domain/elementIds'
@@ -72,6 +74,9 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           gridSnap: true,
           gridVisibility: { ...DEFAULT_GRID_VISIBILITY },
           hiddenElementIds: [],
+          lockedElementIds: [],
+          ...initialRoomFolder(DEFAULT_ROOM),
+          sceneElementOrder: [],
         }
       const savedAt = new Date().toISOString()
       const design: SavedDesign = {
@@ -97,6 +102,10 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           gridSnap: data.gridSnap,
           gridVisibility: data.gridVisibility ?? { ...DEFAULT_GRID_VISIBILITY },
           hiddenElementIds: data.hiddenElementIds ?? [],
+          lockedElementIds: data.lockedElementIds ?? [],
+          elementFolders: data.elementFolders ?? [],
+          elementFolderAssignments: data.elementFolderAssignments ?? {},
+          sceneElementOrder: data.sceneElementOrder ?? [],
           selectedId: null,
           hasUnsavedChanges: false,
           notice: mode === 'blank' ? 'Diseño nuevo creado en blanco.' : 'Copia del diseño creada.',

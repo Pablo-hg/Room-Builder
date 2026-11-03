@@ -31,8 +31,9 @@ export function normalizeStructurePacks(value: unknown, room: RoomConfig): Struc
         || typeof surface.name !== 'string'
         || !['wall', 'floor', 'ceiling'].includes(surface.kind ?? '')
         || ![surface.x, surface.y, surface.z].every((position) => typeof position === 'number' && Number.isFinite(position))
-        || ![surface.width ?? defaultSurface?.width, surface.height ?? defaultSurface?.height, surface.depth ?? defaultSurface?.depth, surface.rotation ?? 0]
+        || ![surface.width ?? defaultSurface?.width, surface.height ?? defaultSurface?.height, surface.depth ?? defaultSurface?.depth]
           .every((dimension) => typeof dimension === 'number' && Number.isFinite(dimension) && dimension > 0)
+        || typeof (surface.rotation ?? 0) !== 'number' || !Number.isFinite(surface.rotation ?? 0)
         || typeof surface.color !== 'string'
         || seen.has(surface.id)
         || (surface.kind === 'wall' && (!validWall || surface.id !== `wall-${surface.wall}`))
@@ -55,6 +56,8 @@ export function normalizeStructurePacks(value: unknown, room: RoomConfig): Struc
 }
 
 export function normalizeDesignRoom(data: PersistedDesign): RoomConfig {
+  const validName = (name: unknown) => typeof name === 'string' && name.trim() && name.trim().length <= 80 ? name.trim() : undefined
+  const { name: doorName, ...door } = data.room.door
   return {
     ...data.room,
     wallColor: typeof data.room.wallColor === 'string' ? data.room.wallColor : DEFAULT_WALL_COLOR,
@@ -64,17 +67,20 @@ export function normalizeDesignRoom(data: PersistedDesign): RoomConfig {
     })),
     floorColor: typeof data.room.floorColor === 'string' ? data.room.floorColor : DEFAULT_FLOOR_COLOR,
     door: {
-      ...data.room.door,
+      ...door,
+      ...(data.version >= 2 && validName(doorName) ? { name: validName(doorName) } : {}),
       width: OPENING_CATALOG.door.width,
       height: OPENING_CATALOG.door.height,
       rotation: 0,
       color: typeof data.room.door.color === 'string' ? data.room.door.color : '#ac704b',
     },
     windows: data.room.windows.map((window) => {
+      const { name: windowName, ...windowData } = window
       const shape = isWindowShape(window.shape) ? window.shape : 'rectangular'
       const definition = OPENING_CATALOG[openingKindForShape(shape)]
       return {
-        ...window,
+        ...windowData,
+        ...(data.version >= 2 && validName(windowName) ? { name: validName(windowName) } : {}),
         shape,
         width: definition.width,
         height: definition.height,
@@ -98,6 +104,33 @@ export function normalizeDesignRoom(data: PersistedDesign): RoomConfig {
 }
 
 export function normalizeDesignPreferences(data: PersistedDesign) {
+  const elementFolders: import('./types').ElementFolder[] = Array.isArray(data.elementFolders)
+    ? data.elementFolders.flatMap((folder) => (
+      folder && typeof folder === 'object'
+        && typeof folder.id === 'string' && folder.id.length > 0
+        && typeof folder.name === 'string' && folder.name.trim().length > 0
+        ? [{ id: folder.id, name: folder.name.trim().slice(0, 48) }]
+        : []
+    ))
+    : []
+  const folderIds = new Set(elementFolders.map((folder) => folder.id))
+  if (data.version >= 3 && Array.isArray(data.elementFolders)) {
+    const originals = new Map(data.elementFolders.filter((folder) => folder && typeof folder === 'object' && typeof folder.id === 'string').map((folder) => [folder.id, folder]))
+    for (const folder of elementFolders) {
+      const parentId = originals.get(folder.id)?.parentId
+      if (typeof parentId !== 'string' || !folderIds.has(parentId)) continue
+      const visited = new Set([folder.id])
+      let current: string | undefined = parentId
+      while (current && folderIds.has(current) && !visited.has(current)) {
+        visited.add(current)
+        current = originals.get(current)?.parentId
+      }
+      if (!current || !folderIds.has(current)) folder.parentId = parentId
+    }
+  }
+  const elementFolderAssignments = Object.fromEntries(
+    Object.entries(data.elementFolderAssignments ?? {}).filter(([, folderId]) => typeof folderId === 'string' && folderIds.has(folderId)),
+  )
   return {
     gridSnap: typeof data.gridSnap === 'boolean' ? data.gridSnap : true,
     gridVisibility: (Object.keys(DEFAULT_GRID_VISIBILITY) as GridSurface[]).reduce<Record<GridSurface, boolean>>(
@@ -112,5 +145,11 @@ export function normalizeDesignPreferences(data: PersistedDesign) {
     hiddenElementIds: Array.isArray(data.hiddenElementIds)
       ? data.hiddenElementIds.filter((id): id is string => typeof id === 'string')
       : [],
+    lockedElementIds: Array.isArray(data.lockedElementIds)
+      ? data.lockedElementIds.filter((id): id is string => typeof id === 'string')
+      : [],
+    elementFolders,
+    elementFolderAssignments,
+    sceneElementOrder: data.version >= 4 && Array.isArray(data.sceneElementOrder) ? [...new Set(data.sceneElementOrder.filter((id): id is string => typeof id === 'string' && id.length > 0))] : [],
   }
 }

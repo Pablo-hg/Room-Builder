@@ -1,24 +1,26 @@
 import { type ThreeEvent, useThree } from '@react-three/fiber'
 import { useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { isCeilingMountedFurniture, isFloorBoundFurniture, isWallPictureKind } from '../domain/objectCatalog'
+import { isWallPictureKind } from '../domain/objectCatalog'
 import type { FurnitureItem, WallSide } from '../domain/types'
 import { useHistoryGesture } from '../state/useHistoryGesture'
 import { useRoomStore } from '../state/useRoomStore'
-import { recordSceneInteraction } from './sceneInteraction'
+import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
 
 import { FurnitureModel } from './FurnitureModels'
 import { AxisMoveGizmo, FrontAxisMoveGizmo, RotationHandle, FrontRotationHandle } from './FurnitureGizmos'
+import { SelectionBounds } from './SelectionBounds'
+import { furnitureHasSpatialWarning } from '../domain/structureCollisions'
 
-export function FurnitureObject({ item, selected, canDrag, planView, frontWall }: { item: FurnitureItem; selected: boolean; canDrag: boolean; planView: boolean; frontWall: WallSide | null }) {
-  const selectElement = useRoomStore((state) => state.selectElement)
+export function FurnitureObject({ item, selected, outlined, canDrag, planView, frontWall, showCollision = true }: { item: FurnitureItem; selected: boolean; outlined: boolean; canDrag: boolean; planView: boolean; frontWall: WallSide | null; showCollision?: boolean }) {
   const gesture = useHistoryGesture(item.id)
   const moveFurniture = useRoomStore((state) => state.moveFurniture)
   const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
+  const collision = useRoomStore((state) => showCollision && furnitureHasSpatialWarning(state, item))
   const { camera, size } = useThree()
   const [dragging, setDragging] = useState(false)
-  const canMoveVertically = !isFloorBoundFurniture(item.kind)
+  const canMoveVertically = true
   const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
   const point = useMemo(() => new THREE.Vector3(), [])
   const dragOffset = useRef({ x: 0, z: 0 })
@@ -48,7 +50,7 @@ export function FurnitureObject({ item, selected, canDrag, planView, frontWall }
       x: Math.round(event.nativeEvent.clientX),
       y: Math.round(event.nativeEvent.clientY),
     })
-    selectElement(item.id)
+    if (selectSceneObject(item.id, event.nativeEvent)) return
     if (!canDrag) return
     if (frontWall !== null) {
       frontDragStart.current = {
@@ -84,7 +86,7 @@ export function FurnitureObject({ item, selected, canDrag, planView, frontWall }
         horizontalAxis === 'x' ? frontDragStart.current.x + horizontalDelta : frontDragStart.current.x,
         horizontalAxis === 'z' ? frontDragStart.current.z + horizontalDelta : frontDragStart.current.z,
       )
-      if (canMoveVertically && !isCeilingMountedFurniture(item.kind)) {
+      if (canMoveVertically) {
         moveFurnitureVertically(
           item.id,
           frontDragStart.current.y - (event.nativeEvent.clientY - frontDragStart.current.clientY) * worldPerPixel,
@@ -129,12 +131,13 @@ export function FurnitureObject({ item, selected, canDrag, planView, frontWall }
           <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
         </mesh>
         <FurnitureModel item={item} />
+        {(outlined || collision) && <group position={[0, item.height / 2, 0]}><SelectionBounds width={item.width} height={item.height} depth={item.depth} collision={collision} /></group>}
       </group>
       {selected && canDrag && !isWallPictureKind(item.kind) && (
         <>
           {frontWall
             ? <FrontAxisMoveGizmo item={item} wall={frontWall} />
-            : <AxisMoveGizmo item={item} groundLevel={!canMoveVertically} canMoveVertically={canMoveVertically} />}
+            : <AxisMoveGizmo item={item} groundLevel={!canMoveVertically} canMoveVertically={canMoveVertically} hideAxis={planView ? 'y' : null} />}
           {frontWall ? <FrontRotationHandle item={item} wall={frontWall} /> : <RotationHandle item={item} />}
         </>
       )}

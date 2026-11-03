@@ -7,6 +7,8 @@ import { releasePointer, usePointerCancellation } from './usePointerCancellation
 import { useRoomStore } from '../state/useRoomStore'
 import { structureSurfaceElementId } from '../domain/elementIds'
 import { recordSceneInteraction } from './sceneInteraction'
+import { AXIS_COLORS } from './axisColors'
+import { AxisAnchor } from './AxisAnchor'
 
 export function StructureSurfaceTransformGizmo({
   packId,
@@ -25,6 +27,7 @@ export function StructureSurfaceTransformGizmo({
 }) {
   const gesture = useHistoryGesture(structureSurfaceElementId(packId, surface.id))
   const selectElement = useRoomStore((state) => state.selectElement)
+  const planView = useRoomStore((state) => state.view === 'top')
   const [draggingAxis, setDraggingAxis] = useState<'x' | 'y' | 'z' | null>(null)
   const [hoveredAxis, setHoveredAxis] = useState<'x' | 'y' | 'z' | null>(null)
   const [rotating, setRotating] = useState(false)
@@ -36,10 +39,17 @@ export function StructureSurfaceTransformGizmo({
   const lastRingAngle = useRef(0)
   const startingRotation = useRef(surface.rotation)
   const radius = Math.max(0.65, Math.min(1.6, Math.hypot(surface.width, surface.depth) / 2 + 0.28))
-  const coneHeight = 0.22
-  const coneCenter = radius - coneHeight / 2
-  const shaftLength = Math.max(0.1, radius - coneHeight)
+  const coneHeight = 0.15
+  const axisLength = 0.5
+  const coneCenter = axisLength - coneHeight / 2
+  const shaftLength = axisLength - coneHeight
   const gizmoHeight = surface.kind === 'floor' ? 0.18 : 0
+  const rotation = surface.kind === 'wall' ? ({ north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 }[surface.wall ?? 'north'] + surface.rotation) : 0
+  const width = Math.abs(Math.cos(rotation)) * surface.width + Math.abs(Math.sin(rotation)) * surface.depth
+  const depth = Math.abs(Math.sin(rotation)) * surface.width + Math.abs(Math.cos(rotation)) * surface.depth
+  const indicatorX = Math.sin(surface.rotation) * radius
+  const indicatorY = -Math.cos(surface.rotation) * radius
+  const indicatorAngle = Math.atan2(indicatorX, indicatorY)
 
   const startDrag = (axis: 'x' | 'y' | 'z', event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation()
@@ -97,17 +107,16 @@ export function StructureSurfaceTransformGizmo({
     },
   })
   const axisMaterial = (axis: 'x' | 'y' | 'z') => {
-    const colors = { x: ['#d85243', '#ff6a54'], y: ['#4d75d8', '#7197ff'], z: ['#34876f', '#46b98f'] }
-    const [normal, active] = colors[axis]
+    const { normal, active } = AXIS_COLORS[axis]
     return <meshBasicMaterial color={hoveredAxis === axis || draggingAxis === axis ? active : normal} depthTest={false} depthWrite={false} toneMapped={false} />
   }
   const rotateFromPointer = (event: ThreeEvent<PointerEvent>) => {
     if (!event.ray.intersectPlane(dragPlane, pointerPoint)) return
     const angle = Math.atan2(pointerPoint.z - position[2], pointerPoint.x - position[0])
     const delta = Math.atan2(Math.sin(angle - lastRingAngle.current), Math.cos(angle - lastRingAngle.current))
-    rotate(packId, surface.id, startingRotation.current + delta)
+    rotate(packId, surface.id, startingRotation.current - delta)
     lastRingAngle.current = angle
-    startingRotation.current += delta
+    startingRotation.current -= delta
   }
   const ringEvents = {
     onPointerDown: (event: ThreeEvent<PointerEvent>) => {
@@ -158,15 +167,15 @@ export function StructureSurfaceTransformGizmo({
   const capturePointer = usePointerCancellation((event) => { gesture.cancel(); stopDrag(event); ringEvents.onPointerCancel(event) })
 
   return (
-    <group position={[position[0], position[1] + gizmoHeight, position[2]]} renderOrder={8}>
-      {(['x', 'y', 'z'] as const).map((axis) => {
+    <group position={[position[0], position[1] + gizmoHeight, position[2]]} renderOrder={8} userData={{ structureSurfaceGizmo: structureSurfaceElementId(packId, surface.id) }}>
+      <AxisAnchor center={[0, -gizmoHeight, 0]} dimensions={[width, surface.height, depth]}>{(['x', 'y', 'z'] as const).filter((axis) => !planView || axis !== 'y').map((axis) => {
         const direction: [number, number, number] = axis === 'x' ? [1, 0, 0] : axis === 'y' ? [0, 1, 0] : [0, 0, 1]
         return (
           <group key={axis} {...axisEvents(axis)}>
             {([-1, 1] as const).map((side) => (
               <group key={side}>
                 <mesh position={[direction[0] * side * shaftLength / 2, direction[1] * side * shaftLength / 2, direction[2] * side * shaftLength / 2]} renderOrder={8}>
-                  <boxGeometry args={axis === 'x' ? [shaftLength, 0.045, 0.045] : axis === 'y' ? [0.045, shaftLength, 0.045] : [0.045, 0.045, shaftLength]} />
+                  <boxGeometry args={axis === 'x' ? [shaftLength, 0.025, 0.025] : axis === 'y' ? [0.025, shaftLength, 0.025] : [0.025, 0.025, shaftLength]} />
                   {axisMaterial(axis)}
                 </mesh>
                 <mesh
@@ -178,14 +187,18 @@ export function StructureSurfaceTransformGizmo({
                       : [Math.PI / 2 * side, 0, 0]}
                   renderOrder={8}
                 >
-                  <coneGeometry args={[0.09, coneHeight, 16]} />
+                  <coneGeometry args={[0.065, coneHeight, 16]} />
                   {axisMaterial(axis)}
+                </mesh>
+                <mesh position={[direction[0] * side * axisLength / 2, direction[1] * side * axisLength / 2, direction[2] * side * axisLength / 2]}>
+                  <boxGeometry args={axis === 'x' ? [axisLength, 0.18, 0.18] : axis === 'y' ? [0.18, axisLength, 0.18] : [0.18, 0.18, axisLength]} />
+                  <meshBasicMaterial transparent opacity={0} depthWrite={false} />
                 </mesh>
               </group>
             ))}
           </group>
         )
-      })}
+      })}</AxisAnchor>
       {surface.kind === 'wall' && (
         <group
           position={[0, 0.035, 0]}
@@ -193,8 +206,18 @@ export function StructureSurfaceTransformGizmo({
           {...ringEvents}
         >
           <mesh renderOrder={7}>
-            <ringGeometry args={[radius - 0.035, radius + 0.035, 64]} />
+            <ringGeometry args={[radius - 0.015, radius + 0.015, 64]} />
             <meshBasicMaterial color={rotating ? '#c63d2c' : ringHovered ? '#ff8a63' : '#ea6f4c'} side={THREE.DoubleSide} depthTest={false} depthWrite={false} toneMapped={false} />
+          </mesh>
+          {rotating && (
+            <mesh renderOrder={6}>
+              <ringGeometry args={[radius - 0.082, radius + 0.082, 64]} />
+              <meshBasicMaterial color="#ff9b78" transparent opacity={0.3} side={THREE.DoubleSide} depthTest={false} depthWrite={false} toneMapped={false} />
+            </mesh>
+          )}
+          <mesh position={[indicatorX, indicatorY, 0.018]} rotation={[0, 0, -indicatorAngle]} renderOrder={8}>
+            <boxGeometry args={[0.055, 0.12, 0.04]} />
+            <meshBasicMaterial color="#9f3f31" depthTest={false} depthWrite={false} toneMapped={false} />
           </mesh>
           <mesh renderOrder={6}>
             <ringGeometry args={[radius - 0.11, radius + 0.11, 64]} />

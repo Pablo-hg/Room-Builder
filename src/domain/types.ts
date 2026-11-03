@@ -30,7 +30,14 @@ export type FurnitureKind =
   | 'ceilingLamp'
 export type WindowShape = 'rectangular' | 'circular' | 'wallShelf' | 'pictureSmall' | 'pictureMedium' | 'pictureLarge' | 'mirrorRectangular' | 'mirrorCircular' | 'wallSconce'
 
+export interface ElementFolder {
+  id: string
+  name: string
+  parentId?: string
+}
+
 export interface DoorConfig {
+  name?: string
   wall: WallSide
   offset: number
   width: number
@@ -40,6 +47,7 @@ export interface DoorConfig {
 }
 
 export interface WindowConfig {
+  name?: string
   id: string
   shape: WindowShape
   wall: WallSide

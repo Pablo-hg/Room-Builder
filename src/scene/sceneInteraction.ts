@@ -9,3 +9,15 @@ export function recordSceneInteraction(action: string, details?: InteractionDeta
     details,
   })
 }
+
+/** In the scene there is no meaningful spatial range, so modifiers toggle individual objects. */
+export function selectSceneObject(id: string, event: PointerEvent | MouseEvent) {
+  const state = useRoomStore.getState()
+  if (event.ctrlKey || event.metaKey || event.shiftKey) {
+    event.preventDefault()
+    state.selectSceneListItem(id, 'toggle', [id])
+    return true
+  }
+  state.selectElement(id)
+  return false
+}

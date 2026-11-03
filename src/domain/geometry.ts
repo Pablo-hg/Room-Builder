@@ -240,6 +240,7 @@ export function findFreeFurniturePosition(
   item: FurnitureItem,
   room: RoomConfig,
   furniture: FurnitureItem[],
+  accept: (candidate: FurnitureItem) => boolean = () => true,
 ): Pick<FurnitureItem, 'x' | 'z'> | null {
   const { halfWidth, halfDepth } = furnitureHalfExtents(item)
   const limitX = room.width / 2 - halfWidth
@@ -254,7 +255,7 @@ export function findFreeFurniturePosition(
     }
   }
   candidates.sort((a, b) => a.x ** 2 + a.z ** 2 - (b.x ** 2 + b.z ** 2))
-  return candidates.find((position) => canPlaceFurniture({ ...item, ...position }, furniture)) ?? null
+  return candidates.find((position) => canPlaceFurniture({ ...item, ...position }, furniture) && accept({ ...item, ...position })) ?? null
 }
 
 export function doorWorldPosition(room: RoomConfig, door: DoorConfig): [number, number, number] {

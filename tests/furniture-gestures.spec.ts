@@ -1,5 +1,27 @@
 import { expect, test } from '@playwright/test'
 
+test('la flecha X del control de ejes compartidos inicia el arrastre de ese eje', async ({ page }) => {
+  const axes: string[] = []
+  page.on('request', (request) => {
+    if (!request.url().includes('/__room-builder/interaction-log') || request.method() !== 'POST') return
+    const entry = request.postDataJSON() as { action?: string; details?: { axis?: string } }
+    if (entry.action === 'scene.furniture.axis-drag-start' && entry.details?.axis) axes.push(entry.details.axis)
+  })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Plano', exact: true }).click()
+  await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
+  const canvas = await page.locator('.scene-panel canvas').first().boundingBox()
+  if (!canvas) throw new Error('Canvas no disponible')
+  const x = canvas.x + canvas.width / 2 + 26
+  const y = canvas.y + canvas.height / 2
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x + 30, y, { steps: 5 })
+  await page.mouse.up()
+  await expect.poll(() => axes).toContain('x')
+})
+
 for (const target of ['cuerpo', 'eje X'] as const) {
   for (const gesture of ['ratón', 'táctil', 'cancelación táctil'] as const) {
     test(`agrupa el arrastre de mobiliario en un paso de historial: ${target}, ${gesture}`, async ({ page, context }) => {

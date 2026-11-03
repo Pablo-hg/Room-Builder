@@ -4,13 +4,23 @@ import * as THREE from 'three'
 import { doorWorldPosition, inwardDirection, shortestAngleDelta, topViewWallForOrientation } from '../domain/geometry'
 import type { ViewMode, WallSide } from '../domain/types'
 import type { SceneProps } from './types'
+import { useRoomStore } from '../state/useRoomStore'
+import { shouldOrbitFront } from './cameraTransitions'
 
 const ISOMETRIC_CAMERA_TARGET_HEIGHT = 0.8
 
 export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDragging, freeAzimuth, freeElevation, isFreeOrbitDragging, cameraZoom, wallView, frontCameraHeight, povYaw }: Pick<SceneProps, 'room' | 'view' | 'orientation' | 'isoAngle' | 'isIsoOrbitDragging' | 'freeAzimuth' | 'freeElevation' | 'isFreeOrbitDragging' | 'cameraZoom' | 'wallView' | 'frontCameraHeight' | 'povYaw'>) {
   const { camera, size } = useThree()
+  const topCameraX = useRoomStore((state) => state.topCameraX)
+  const topCameraZ = useRoomStore((state) => state.topCameraZ)
+  const isoCameraHeight = useRoomStore((state) => state.isoCameraHeight)
+  const freeCameraOffset = useRoomStore((state) => state.freeCameraOffset)
+  const activeRoomId = useRoomStore((state) => state.activeRoomId)
+  const activeRoom = useRoomStore((state) => state.structurePacks.find((pack) => pack.id === activeRoomId && pack.id.startsWith('floor-pack-')))
+  const hasFloors = useRoomStore((state) => state.structurePacks.some((pack) => pack.id.startsWith('floor-pack-')))
   const initialized = useRef(false)
-  const previousMode = useRef({ view, wallView })
+  const previousMode = useRef({ view, wallView, activeRoomId, roomX: activeRoom?.x ?? 0, roomY: activeRoom?.y ?? 0, roomZ: activeRoom?.z ?? 0, isoCameraHeight })
+  const previousFreeOffset = useRef(freeCameraOffset)
   const [reduceMotion, setReduceMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   const animation = useRef<{
     active: boolean
@@ -64,29 +74,35 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
 
   useLayoutEffect(() => {
     const previous = previousMode.current
-    previousMode.current = { view, wallView }
+    const freeMoved = previousFreeOffset.current !== freeCameraOffset
+    previousFreeOffset.current = freeCameraOffset
+    previousMode.current = { view, wallView, activeRoomId, roomX: activeRoom?.x ?? 0, roomY: activeRoom?.y ?? 0, roomZ: activeRoom?.z ?? 0, isoCameraHeight }
     const targetCamera = camera.clone()
-    const frontLookHeight = room.height / 2
+    const roomX = activeRoom?.x ?? 0
+    const roomY = activeRoom?.y ?? 0
+    const roomZ = activeRoom?.z ?? 0
+    const frontLookHeight = roomY + room.height / 2
     let targetZoom = 1
 
     if (view === 'pov') {
       const position = doorWorldPosition(room, room.door)
       const direction = new THREE.Vector3(...inwardDirection(room.door.wall))
       direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(povYaw))
-      targetCamera.position.set(...position)
+      targetCamera.position.set(position[0] + roomX, position[1] + roomY, position[2] + roomZ)
+      if (activeRoom) targetCamera.position.addScaledVector(new THREE.Vector3(...inwardDirection(room.door.wall)), 0.16)
       targetCamera.up.set(0, 1, 0)
-      targetCamera.lookAt(position[0] + direction.x, position[1] - 0.04, position[2] + direction.z)
+      targetCamera.lookAt(targetCamera.position.x + direction.x, targetCamera.position.y - 0.04, targetCamera.position.z + direction.z)
       if (targetCamera instanceof THREE.PerspectiveCamera) targetCamera.aspect = size.width / Math.max(size.height, 1)
     } else if (view === 'free') {
       const radius = Math.max(room.width, room.depth, room.height) * 2.6
       const horizontalRadius = Math.cos(freeElevation) * radius
       targetCamera.position.set(
-        Math.cos(freeAzimuth) * horizontalRadius,
-        0.45 + Math.sin(freeElevation) * radius,
-        Math.sin(freeAzimuth) * horizontalRadius,
+        freeCameraOffset.x + Math.cos(freeAzimuth) * horizontalRadius,
+        freeCameraOffset.y + 0.45 + Math.sin(freeElevation) * radius,
+        freeCameraOffset.z + Math.sin(freeAzimuth) * horizontalRadius,
       )
       targetCamera.up.set(0, 1, 0)
-      targetCamera.lookAt(0, 0.45, 0)
+      targetCamera.lookAt(freeCameraOffset.x, freeCameraOffset.y + 0.45, freeCameraOffset.z)
       if (targetCamera instanceof THREE.PerspectiveCamera) targetCamera.aspect = size.width / Math.max(size.height, 1)
     } else if (view === 'top') {
       const zoom = Math.min(size.width / (room.width + 2.2), size.height / (room.depth + 2.2))
@@ -96,14 +112,14 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
         south: [0, 0, 1],
         west: [-1, 0, 0],
       }
-      targetCamera.position.set(0, 12, 0.001)
+      targetCamera.position.set(roomX + topCameraX, roomY + 12, roomZ + topCameraZ + 0.001)
       targetCamera.up.set(...topViewUp[topViewWallForOrientation(orientation)])
-      targetCamera.lookAt(0, 0, 0)
+      targetCamera.lookAt(roomX + topCameraX, roomY, roomZ + topCameraZ)
       targetZoom = Math.max(36, zoom)
     } else if (view === 'front') {
       const targetWall = wallView ?? 'north'
       const distance = Math.max(room.width, room.depth) * 3 + 10
-      const elevation = frontCameraHeight
+      const elevation = roomY + frontCameraHeight
       const positions: Record<WallSide, [number, number, number]> = {
         north: [0, elevation, distance],
         east: [-distance, elevation, 0],
@@ -111,19 +127,21 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
         west: [distance, elevation, 0],
       }
       const across = targetWall === 'north' || targetWall === 'south' ? room.width : room.depth
-      const projectedHeight = room.height + Math.abs(frontCameraHeight - frontLookHeight) * 0.35
+      const projectedHeight = room.height * (hasFloors ? 3 : 1) + Math.abs(elevation - frontLookHeight) * 0.35
       targetCamera.position.set(...positions[targetWall])
+      targetCamera.position.x += roomX
+      targetCamera.position.z += roomZ
       targetCamera.up.set(0, 1, 0)
-      targetCamera.lookAt(0, frontLookHeight, 0)
+      targetCamera.lookAt(roomX, frontLookHeight, roomZ)
       targetZoom = Math.max(38, Math.min(
         size.width / (across + 1.2),
         size.height / (projectedHeight + 2.5),
       ))
     } else {
       const radius = Math.sqrt(8 ** 2 + 8 ** 2)
-      targetCamera.position.set(Math.cos(isoAngle) * radius, 7, Math.sin(isoAngle) * radius)
+      targetCamera.position.set(roomX + Math.cos(isoAngle) * radius, 7 + isoCameraHeight, roomZ + Math.sin(isoAngle) * radius)
       targetCamera.up.set(0, 1, 0)
-      targetCamera.lookAt(0, ISOMETRIC_CAMERA_TARGET_HEIGHT, 0)
+      targetCamera.lookAt(roomX, ISOMETRIC_CAMERA_TARGET_HEIGHT + isoCameraHeight, roomZ)
       targetZoom = Math.max(38, Math.min(size.width / (room.width + room.depth + 1) * 1.15, size.height / (room.height + room.depth + 1.8) * 1.25))
     }
 
@@ -132,7 +150,7 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
     targetCamera.updateProjectionMatrix()
     const currentZoom = 'zoom' in camera ? camera.zoom : 1
 
-    if (!initialized.current || reduceMotion || (view === 'isometric' && isIsoOrbitDragging) || (view === 'free' && isFreeOrbitDragging)) {
+    if (!initialized.current || reduceMotion || (view === 'top' && previous.view === 'top') || (view === 'isometric' && isIsoOrbitDragging) || (view === 'free' && (isFreeOrbitDragging || freeMoved))) {
       camera.position.copy(targetCamera.position)
       camera.quaternion.copy(targetCamera.quaternion)
       if (camera instanceof THREE.OrthographicCamera || camera instanceof THREE.PerspectiveCamera) camera.zoom = targetZoom
@@ -148,22 +166,21 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
       && wallView === null
       && previous.view === 'isometric'
       && previous.wallView === null
+      && previous.activeRoomId === activeRoomId
+      && previous.roomX === roomX && previous.roomZ === roomZ && previous.isoCameraHeight === isoCameraHeight
     ) || (
       view === 'free'
       && previous.view === 'free'
-    ) || (
-      view === 'front'
-      && previous.view === 'front'
-    )
-    const orbitCenter = new THREE.Vector3(0, view === 'front' ? frontLookHeight : view === 'isometric' ? ISOMETRIC_CAMERA_TARGET_HEIGHT : 0.45, 0)
-    const fromAngle = Math.atan2(camera.position.z, camera.position.x)
-    const targetAngle = Math.atan2(targetCamera.position.z, targetCamera.position.x)
+    ) || shouldOrbitFront(previous, { view, wallView, activeRoomId, roomX, roomY, roomZ })
+    const orbitCenter = new THREE.Vector3(view === 'free' ? freeCameraOffset.x : view === 'front' || view === 'isometric' ? roomX : 0, view === 'front' ? frontLookHeight : view === 'isometric' ? ISOMETRIC_CAMERA_TARGET_HEIGHT + isoCameraHeight : 0.45 + freeCameraOffset.y, view === 'free' ? freeCameraOffset.z : view === 'front' || view === 'isometric' ? roomZ : 0)
+    const fromAngle = Math.atan2(camera.position.z - orbitCenter.z, camera.position.x - orbitCenter.x)
+    const targetAngle = Math.atan2(targetCamera.position.z - orbitCenter.z, targetCamera.position.x - orbitCenter.x)
     const orbit = shouldOrbitAroundRoom ? {
       center: orbitCenter,
       fromAngle,
       toAngle: fromAngle + shortestAngleDelta(fromAngle, targetAngle),
-      fromRadius: Math.hypot(camera.position.x, camera.position.z),
-      toRadius: Math.hypot(targetCamera.position.x, targetCamera.position.z),
+      fromRadius: Math.hypot(camera.position.x - orbitCenter.x, camera.position.z - orbitCenter.z),
+      toRadius: Math.hypot(targetCamera.position.x - orbitCenter.x, targetCamera.position.z - orbitCenter.z),
       fromHeight: camera.position.y,
       toHeight: targetCamera.position.y,
     } : null
@@ -206,7 +223,7 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
       camera.aspect = targetCamera.aspect
       camera.updateProjectionMatrix()
     }
-  }, [camera, cameraZoom, freeAzimuth, freeElevation, frontCameraHeight, isoAngle, isFreeOrbitDragging, isIsoOrbitDragging, orientation, povYaw, reduceMotion, room, size, view, wallView])
+  }, [camera, cameraZoom, freeAzimuth, freeElevation, frontCameraHeight, isoAngle, isFreeOrbitDragging, isIsoOrbitDragging, orientation, povYaw, reduceMotion, room, size, view, wallView, topCameraX, topCameraZ, isoCameraHeight, freeCameraOffset, activeRoom, hasFloors])
 
   useFrame((_, delta) => {
     const transition = animation.current
@@ -228,7 +245,7 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
       const angle = THREE.MathUtils.lerp(transition.orbit.fromAngle, transition.orbit.toAngle, eased)
       const radius = THREE.MathUtils.lerp(transition.orbit.fromRadius, transition.orbit.toRadius, eased)
       const height = THREE.MathUtils.lerp(transition.orbit.fromHeight, transition.orbit.toHeight, eased)
-      camera.position.set(Math.cos(angle) * radius, height, Math.sin(angle) * radius)
+      camera.position.set(transition.orbit.center.x + Math.cos(angle) * radius, height, transition.orbit.center.z + Math.sin(angle) * radius)
       camera.up.set(0, 1, 0)
       camera.lookAt(transition.orbit.center)
     } else {

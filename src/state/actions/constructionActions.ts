@@ -1,11 +1,13 @@
 import { finishHistoryTransaction } from '../historyTransactions'
 import { clampRoomDimension, roomForDoorUpdate, roomForWindowUpdate, safeRoomUpdate } from '../../domain/editingRules'
-import { createStructureSurface } from '../../domain/structureRules'
-import { makeId, structureSurfaceElementId } from '../../domain/elementIds'
+import { createStructureSurface, structureDimensionMinimum } from '../../domain/structureRules'
+import { makeId, structureGridElementId, structureSurfaceElementId } from '../../domain/elementIds'
+import { withoutFolderAssignments } from '../../domain/elementFolders'
+import { folderSelectionId } from '../../domain/elementFolders'
 import { elementName } from '../../domain/selection'
 import { FRONT_CAMERA_MAX_HEIGHT, FRONT_CAMERA_MIN_HEIGHT, WALL_SIDES } from '../../domain/constants'
 import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, OPENING_CATALOG, openingKindForShape } from '../../domain/objectCatalog'
-import { validateOpenings } from '../../domain/geometry'
+import { snapToPlacementGrid, validateOpenings } from '../../domain/geometry'
 import type { StructurePack, StructureSurfaceKey, WallSide, WindowConfig } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
 import type { RoomActionContext, RoomState } from '../types'
@@ -91,18 +93,23 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       })
       return { room: { ...state.room, floorColor }, notice: '' }
     }),
-    addStructurePack: () => set((state) => {
+    addStructurePack: (direction) => set((state) => {
       const id = makeId('floor-pack')
+      const folderId = makeId('folder')
       const nextY = Math.max(state.room.height, ...state.structurePacks.map((pack) => pack.y + state.room.height))
+      const selectedFolder = state.selectedId?.startsWith('folder:') ? state.selectedId.slice('folder:'.length) : null
+      const reference = state.structurePacks.find((pack) => pack.id.startsWith('floor-pack-') && (pack.id === state.selectedId || pack.surfaces.some((surface) => structureSurfaceElementId(pack.id, surface.id) === state.selectedId) || (selectedFolder !== null && state.elementFolderAssignments[pack.id] === selectedFolder)))
+        ?? state.structurePacks.find((pack) => pack.id === state.activeRoomId && pack.id.startsWith('floor-pack-'))
+      const origin = reference ?? { x: 0, y: 0, z: 0 }
       let floorNumber = 2
       while (state.structurePacks.some((pack) => pack.name === `Piso ${floorNumber}`)) floorNumber += 1
       const surfaceIds: StructureSurfaceKey[] = ['floor', 'ceiling', 'wall-north', 'wall-east', 'wall-south', 'wall-west']
       const pack: StructurePack = {
         id,
         name: `Piso ${floorNumber}`,
-        x: 0,
-        y: nextY,
-        z: 0,
+        x: origin.x + (direction === 'east' ? state.room.width : direction === 'west' ? -state.room.width : 0),
+        y: direction ? origin.y + (direction === 'up' ? state.room.height : direction === 'down' ? -state.room.height : 0) : nextY,
+        z: origin.z + (direction === 'south' ? state.room.depth : direction === 'north' ? -state.room.depth : 0),
         surfaces: surfaceIds.map((surfaceId) => createStructureSurface(state.room, surfaceId)),
       }
       recordInteraction('state.structure-pack.added', {
@@ -112,8 +119,12 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       })
       return {
         structurePacks: [...state.structurePacks, pack],
+        elementFolders: [...state.elementFolders, { id: folderId, name: pack.name }],
+        elementFolderAssignments: { ...state.elementFolderAssignments, [pack.id]: folderId, ...Object.fromEntries(pack.surfaces.map((surface) => [structureSurfaceElementId(pack.id, surface.id), folderId])) },
         hiddenElementIds: [...state.hiddenElementIds, structureSurfaceElementId(id, 'ceiling')],
-        selectedId: id,
+        selectedId: folderSelectionId(folderId),
+        activeRoomId: id,
+        ...(state.view === 'isometric' ? { isoCameraHeight: pack.y } : {}),
         notice: `${pack.name} añadido.`,
       }
     }),
@@ -123,6 +134,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       const surface = createStructureSurface(state.room, surfaceId)
       surface.name = kind === 'floor' ? 'Suelo independiente' : 'Pared independiente'
       if (kind === 'floor') surface.y = state.room.height / 2
+      else surface.z = state.room.depth / 2
       const ordinal = state.structurePacks.filter((pack) => pack.surfaces.some((item) => item.kind === kind)).length + 1
       const pack: StructurePack = {
         id,
@@ -144,56 +156,67 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       }
     }),
     moveStructurePack: (id, axis, value) => set((state) => {
+      if (state.lockedElementIds.includes(id)) return {}
       const pack = state.structurePacks.find((candidate) => candidate.id === id)
       if (!pack || !Number.isFinite(value)) return {}
+      const next = state.gridSnap ? snapToPlacementGrid(value) : value
+      if (pack[axis] === next) return {}
       recordInteraction('state.structure-pack.moved', {
         view: state.view,
         selectedId: state.selectedId,
         coalesceKey: `structure-pack-${id}-${axis}`,
-        details: { id, name: pack.name, axis, value },
+        details: { id, name: pack.name, axis, value: next },
       })
       return {
-        structurePacks: state.structurePacks.map((candidate) => candidate.id === id ? { ...candidate, [axis]: value } : candidate),
+        structurePacks: state.structurePacks.map((candidate) => candidate.id === id ? { ...candidate, [axis]: next } : candidate),
         notice: '',
       }
     }),
     moveStructureSurface: (packId, surfaceId, axis, value) => set((state) => {
+      if (state.lockedElementIds.includes(structureSurfaceElementId(packId, surfaceId))) return {}
       const pack = state.structurePacks.find((candidate) => candidate.id === packId)
-      if (!pack || !Number.isFinite(value) || !pack.surfaces.some((surface) => surface.id === surfaceId)) return {}
+      const surface = pack?.surfaces.find((item) => item.id === surfaceId)
+      if (!pack || !surface || !Number.isFinite(value)) return {}
+      const next = state.gridSnap ? snapToPlacementGrid(value) : value
+      if (surface[axis] === next) return {}
       recordInteraction('state.structure-surface.moved', {
         view: state.view,
         selectedId: state.selectedId,
         coalesceKey: `structure-surface-${packId}-${surfaceId}-${axis}`,
-        details: { packId, surfaceId, name: pack.name, axis, value },
+        details: { packId, surfaceId, name: pack.name, axis, value: next },
       })
       return {
         structurePacks: state.structurePacks.map((candidate) => candidate.id !== packId ? candidate : {
           ...candidate,
-          surfaces: candidate.surfaces.map((surface) => surface.id === surfaceId ? { ...surface, [axis]: value } : surface),
+          surfaces: candidate.surfaces.map((item) => item.id === surfaceId ? { ...item, [axis]: next } : item),
         }),
         notice: '',
       }
     }),
     resizeStructureSurface: (packId, surfaceId, dimension, value) => set((state) => {
-      if (!Number.isFinite(value) || value < 0.25 || value > 20) return {}
+      if (state.lockedElementIds.includes(structureSurfaceElementId(packId, surfaceId))) return {}
       const pack = state.structurePacks.find((candidate) => candidate.id === packId)
       const surface = pack?.surfaces.find((item) => item.id === surfaceId)
-      if (!pack || !surface || surface[dimension] === value) return {}
+      if (!pack || !surface || !Number.isFinite(value)) return {}
+      const minimum = structureDimensionMinimum(surface.kind, dimension)
+      const next = Math.max(minimum, Math.min(20, state.gridSnap ? snapToPlacementGrid(value) : value))
+      if (surface[dimension] === next) return {}
       recordInteraction('state.structure-surface.resized', {
         view: state.view,
         selectedId: state.selectedId,
         coalesceKey: `structure-surface-${packId}-${surfaceId}-${dimension}`,
-        details: { packId, surfaceId, name: pack.name, dimension, value },
+        details: { packId, surfaceId, name: pack.name, dimension, value: next },
       })
       return {
         structurePacks: state.structurePacks.map((pack) => pack.id !== packId ? pack : {
           ...pack,
-          surfaces: pack.surfaces.map((item) => item.id === surfaceId ? { ...item, [dimension]: value } : item),
+          surfaces: pack.surfaces.map((item) => item.id === surfaceId ? { ...item, [dimension]: next } : item),
         }),
         notice: '',
       }
     }),
     setStructureSurfaceRotation: (packId, surfaceId, rotation) => set((state) => {
+      if (state.lockedElementIds.includes(structureSurfaceElementId(packId, surfaceId))) return {}
       const pack = state.structurePacks.find((candidate) => candidate.id === packId)
       const surface = pack?.surfaces.find((item) => item.id === surfaceId)
       if (!pack || !surface || surface.kind !== 'wall' || !Number.isFinite(rotation)) return {}
@@ -242,6 +265,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       })
       return {
         structurePacks: state.structurePacks.map((candidate) => candidate.id === packId ? { ...candidate, surfaces: [...candidate.surfaces, surface] } : candidate),
+        elementFolderAssignments: state.elementFolderAssignments[packId] ? { ...state.elementFolderAssignments, [structureSurfaceElementId(packId, surfaceId)]: state.elementFolderAssignments[packId] } : state.elementFolderAssignments,
         hiddenElementIds: state.hiddenElementIds.filter((id) => id !== structureSurfaceElementId(packId, surfaceId)),
         selectedId: structureSurfaceElementId(packId, surfaceId),
         notice: `${surface.name} añadido a ${pack.name}.`,
@@ -251,6 +275,10 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       const pack = state.structurePacks.find((candidate) => candidate.id === id)
       if (!pack) return {}
       const surfaceIds = pack.surfaces.map((surface) => structureSurfaceElementId(pack.id, surface.id))
+      const gridIds = pack.surfaces.map((surface) => structureGridElementId(pack.id, surface.id))
+      const folderId = state.elementFolderAssignments[id]
+      const removed = new Set([id, ...surfaceIds])
+      const removeFolder = !!folderId && !state.elementFolders.some((folder) => folder.parentId === folderId) && !Object.entries(state.elementFolderAssignments).some(([elementId, assigned]) => assigned === folderId && !removed.has(elementId))
       recordInteraction('state.structure-pack.removed', {
         view: state.view,
         selectedId: state.selectedId,
@@ -258,8 +286,11 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       })
       return {
         structurePacks: state.structurePacks.filter((candidate) => candidate.id !== id),
-        hiddenElementIds: state.hiddenElementIds.filter((hiddenId) => hiddenId !== id && !surfaceIds.includes(hiddenId)),
-        selectedId: state.selectedId === id || surfaceIds.includes(state.selectedId ?? '') ? null : state.selectedId,
+        hiddenElementIds: state.hiddenElementIds.filter((hiddenId) => hiddenId !== id && !surfaceIds.includes(hiddenId) && !gridIds.includes(hiddenId)),
+        lockedElementIds: state.lockedElementIds.filter((lockedId) => lockedId !== id && !surfaceIds.includes(lockedId)),
+        elementFolderAssignments: withoutFolderAssignments(state.elementFolderAssignments, [id, ...surfaceIds]),
+        ...(removeFolder ? { elementFolders: state.elementFolders.filter((folder) => folder.id !== folderId) } : {}),
+        selectedId: state.selectedId === id || (removeFolder && state.selectedId === folderSelectionId(folderId)) || surfaceIds.includes(state.selectedId ?? '') ? null : state.selectedId,
         notice: `${pack.name} eliminado.`,
       }
     }),
@@ -277,7 +308,9 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
           ...candidate,
           surfaces: candidate.surfaces.filter((surface) => surface.id !== surfaceId),
         }),
-        hiddenElementIds: state.hiddenElementIds.filter((id) => id !== selectedSurfaceId),
+        hiddenElementIds: state.hiddenElementIds.filter((id) => id !== selectedSurfaceId && id !== structureGridElementId(packId, surfaceId)),
+        lockedElementIds: state.lockedElementIds.filter((id) => id !== selectedSurfaceId),
+        elementFolderAssignments: withoutFolderAssignments(state.elementFolderAssignments, [selectedSurfaceId]),
         selectedId: state.selectedId === selectedSurfaceId ? null : state.selectedId,
         notice: 'Superficie eliminada.',
       }
@@ -286,9 +319,12 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       get().beginHistoryGesture()
     },
     endStructureMove: () => {
-      finishHistoryTransaction(runtime)
+      const token = runtime.activeGesture?.token
+      if (token) get().commitHistoryGesture(token)
+      else finishHistoryTransaction(runtime)
     },
     setDoor: (partial) => set((state) => {
+      if (state.lockedElementIds.includes('door') && (partial.wall !== undefined || partial.offset !== undefined)) return {}
       const candidate = roomForDoorUpdate(state.room, partial)
       const update = safeRoomUpdate(state, candidate)
       if (update.room) {
@@ -338,6 +374,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       return { notice: `No queda espacio válido para colocar ${definition.name.toLowerCase()}.` }
     }),
     updateWindow: (id, partial) => set((state) => {
+      if (state.lockedElementIds.includes(id) && (partial.wall !== undefined || partial.offset !== undefined || partial.sill !== undefined || partial.rotation !== undefined)) return {}
       const currentWindow = state.room.windows.find((window) => window.id === id)
       if (!currentWindow) return {}
       const candidate = roomForWindowUpdate(state.room, currentWindow, partial)
@@ -362,6 +399,8 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       return {
         room: { ...state.room, windows: state.room.windows.filter((window) => window.id !== id) },
         hiddenElementIds: state.hiddenElementIds.filter((elementId) => elementId !== id),
+        lockedElementIds: state.lockedElementIds.filter((elementId) => elementId !== id),
+        elementFolderAssignments: withoutFolderAssignments(state.elementFolderAssignments, [id]),
         selectedId: state.selectedId === id ? null : state.selectedId,
         notice: '',
       }

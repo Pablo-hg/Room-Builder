@@ -2,12 +2,13 @@ import { type ThreeEvent, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { snapFurnitureRotation } from '../domain/geometry'
-import { isCeilingMountedFurniture, isFloorBoundFurniture } from '../domain/objectCatalog'
 import type { FurnitureItem, WallSide } from '../domain/types'
 import { useHistoryGesture } from '../state/useHistoryGesture'
 import { useRoomStore } from '../state/useRoomStore'
 import { recordSceneInteraction } from './sceneInteraction'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
+import { AXIS_COLORS } from './axisColors'
+import { AxisAnchor } from './AxisAnchor'
 
 type FloorMoveAxis = 'x' | 'y' | 'z'
 
@@ -21,7 +22,7 @@ export function RotationHandle({ item }: { item: FurnitureItem }) {
   const lastPointerAngle = useRef(0)
   const targetRotation = useRef(item.rotation)
   const radius = Math.hypot(item.width, item.depth) / 2 + 0.12
-  const halfStroke = 0.042
+  const halfStroke = 0.015
 
   const pointerAngle = (event: ThreeEvent<PointerEvent>) => {
     if (!event.ray.intersectPlane(floorPlane, point)) return null
@@ -93,7 +94,7 @@ export function RotationHandle({ item }: { item: FurnitureItem }) {
   const indicatorAngle = Math.atan2(indicatorX, indicatorY)
 
   return (
-    <group {...events} position={[0, 0.065, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    <group {...events} userData={{ selectionGizmo: true }} position={[0, 0.065, 0]} rotation={[-Math.PI / 2, 0, 0]}>
       <mesh renderOrder={4}>
         <ringGeometry args={[radius - halfStroke, radius + halfStroke, 64]} />
         <meshBasicMaterial color={color} side={THREE.DoubleSide} depthTest depthWrite={false} toneMapped={false} />
@@ -109,7 +110,7 @@ export function RotationHandle({ item }: { item: FurnitureItem }) {
         <meshBasicMaterial transparent opacity={0} side={THREE.DoubleSide} depthTest={false} depthWrite={false} />
       </mesh>
       <mesh position={[indicatorX, indicatorY, 0.018]} rotation={[0, 0, -indicatorAngle]} renderOrder={6}>
-        <boxGeometry args={[0.045, 0.2, 0.04]} />
+        <boxGeometry args={[0.055, 0.12, 0.04]} />
         <meshBasicMaterial color="#9f3f31" depthTest={false} depthWrite={false} toneMapped={false} />
       </mesh>
     </group>
@@ -134,7 +135,7 @@ export function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall:
   const targetRotation = useRef(item.rotation)
   const radius = 0.46
   const wheelScaleY = 0.38
-  const halfStroke = 0.042
+  const halfStroke = 0.015
   const ringRotation: [number, number, number] = wall === 'east' || wall === 'west' ? [0, Math.PI / 2, 0] : [0, 0, 0]
   const indicatorRadius = radius - 0.025
   const indicatorX = Math.sin(item.rotation) * indicatorRadius
@@ -213,7 +214,7 @@ export function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall:
   const color = dragging ? '#c63d2c' : hovered ? '#ff8a63' : '#ea6f4c'
 
   return (
-    <group {...events} position={[0, wheelHeight, 0]} rotation={ringRotation}>
+    <group {...events} userData={{ selectionGizmo: true }} position={[0, wheelHeight, 0]} rotation={ringRotation}>
       <mesh renderOrder={9} scale={[1, wheelScaleY, 1]}>
         <ringGeometry args={[radius - halfStroke, radius + halfStroke, 64]} />
         <meshBasicMaterial color={color} side={THREE.DoubleSide} depthTest={false} depthWrite={false} toneMapped={false} />
@@ -251,9 +252,8 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
   const point = useMemo(() => new THREE.Vector3(), [])
   const dragOffset = useRef(0)
   const screenDrag = useRef<{ axis: FloorMoveAxis; clientX: number; clientY: number; x: number; y: number; z: number } | null>(null)
-  const ringRadius = Math.hypot(item.width, item.depth) / 2 + 0.12
-  const coneHeight = 0.24
-  const tipDistance = ringRadius - 0.055
+  const coneHeight = 0.15
+  const tipDistance = 0.5
   const coneCenter = tipDistance - coneHeight / 2
   const shaftLength = Math.max(0.08, tipDistance - coneHeight)
 
@@ -352,22 +352,23 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
   })
 
   return (
-    <group position={[0, groundLevel ? 0.085 : item.height + 0.2, 0]}>
+    <AxisAnchor center={[0, item.height / 2, 0]} dimensions={[item.width, item.height, item.depth]}>
       {hideAxis !== 'x' && <group {...axisEvents('x')}>
         {([-1, 1] as const).map((direction) => (
           <group key={direction}>
             <mesh position={[direction * shaftLength / 2, 0, 0]} renderOrder={8}>
-              <boxGeometry args={[shaftLength, 0.055, 0.055]} />
-              {axisMaterial('x', '#d85243', '#ff6a54')}
+              <boxGeometry args={[shaftLength, 0.025, 0.025]} />
+              {axisMaterial('x', AXIS_COLORS.x.normal, AXIS_COLORS.x.active)}
             </mesh>
             <mesh
               position={[direction * coneCenter, 0, 0]}
               rotation={[0, 0, direction * -Math.PI / 2]}
               renderOrder={8}
             >
-              <coneGeometry args={[0.115, coneHeight, 20]} />
-              {axisMaterial('x', '#d85243', '#ff6a54')}
+              <coneGeometry args={[0.065, coneHeight, 20]} />
+              {axisMaterial('x', AXIS_COLORS.x.normal, AXIS_COLORS.x.active)}
             </mesh>
+            <mesh position={[direction * tipDistance / 2, 0, 0]}><boxGeometry args={[tipDistance, 0.18, 0.18]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
           </group>
         ))}
       </group>}
@@ -375,17 +376,18 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
         {([-1, 1] as const).map((direction) => (
           <group key={direction}>
             <mesh position={[0, 0, direction * shaftLength / 2]} renderOrder={8}>
-              <boxGeometry args={[0.055, 0.055, shaftLength]} />
-              {axisMaterial('z', '#34876f', '#46b98f')}
+              <boxGeometry args={[0.025, 0.025, shaftLength]} />
+              {axisMaterial('z', AXIS_COLORS.z.normal, AXIS_COLORS.z.active)}
             </mesh>
             <mesh
               position={[0, 0, direction * coneCenter]}
               rotation={[direction * Math.PI / 2, 0, 0]}
               renderOrder={8}
             >
-              <coneGeometry args={[0.115, coneHeight, 20]} />
-              {axisMaterial('z', '#34876f', '#46b98f')}
+              <coneGeometry args={[0.065, coneHeight, 20]} />
+              {axisMaterial('z', AXIS_COLORS.z.normal, AXIS_COLORS.z.active)}
             </mesh>
+            <mesh position={[0, 0, direction * tipDistance / 2]}><boxGeometry args={[0.18, 0.18, tipDistance]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
           </group>
         ))}
       </group>}
@@ -393,21 +395,22 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
         {([-1, 1] as const).map((direction) => (
           <group key={direction}>
             <mesh position={[0, direction * shaftLength / 2, 0]} renderOrder={8}>
-              <boxGeometry args={[0.055, shaftLength, 0.055]} />
-              {axisMaterial('y', '#4d75d8', '#7197ff')}
+              <boxGeometry args={[0.025, shaftLength, 0.025]} />
+              {axisMaterial('y', AXIS_COLORS.y.normal, AXIS_COLORS.y.active)}
             </mesh>
             <mesh
               position={[0, direction * coneCenter, 0]}
               rotation={[direction < 0 ? Math.PI : 0, 0, 0]}
               renderOrder={8}
             >
-              <coneGeometry args={[0.115, coneHeight, 20]} />
-              {axisMaterial('y', '#4d75d8', '#7197ff')}
+              <coneGeometry args={[0.065, coneHeight, 20]} />
+              {axisMaterial('y', AXIS_COLORS.y.normal, AXIS_COLORS.y.active)}
             </mesh>
+            <mesh position={[0, direction * tipDistance / 2, 0]}><boxGeometry args={[0.18, tipDistance, 0.18]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
           </group>
         ))}
       </group>}
-    </group>
+    </AxisAnchor>
   )
 }
 
@@ -418,7 +421,7 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
   const { camera, size } = useThree()
   const [draggingAxis, setDraggingAxis] = useState<'horizontal' | 'vertical' | null>(null)
   const [hoveredAxis, setHoveredAxis] = useState<'horizontal' | 'vertical' | null>(null)
-  const canMoveVertically = !isFloorBoundFurniture(item.kind) && !isCeilingMountedFurniture(item.kind)
+  const canMoveVertically = true
   const dragStart = useRef({ clientX: 0, clientY: 0, x: item.x, y: item.y, z: item.z })
   const horizontalAxis = wall === 'north' || wall === 'south' ? 'x' : 'z'
   const horizontalSign = wall === 'south' || wall === 'west' ? -1 : 1
@@ -429,8 +432,8 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
       : wall === 'east'
         ? [0, -Math.PI / 2, 0]
         : [0, Math.PI / 2, 0]
-  const coneHeight = 0.3
-  const axisLength = Math.max(0.72, Math.min(1.05, Math.hypot(item.width, item.depth) / 2 + 0.22))
+  const coneHeight = 0.16
+  const axisLength = 0.5
   const shaftLength = Math.max(0.28, axisLength - coneHeight)
   const coneCenter = axisLength - coneHeight / 2
 
@@ -521,9 +524,8 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
 
   const renderAxis = (axis: 'horizontal' | 'vertical') => {
     const active = hoveredAxis === axis || draggingAxis === axis
-    const color = axis === 'horizontal'
-      ? active ? '#ff694f' : '#dd4f3f'
-      : active ? '#7197ff' : '#4d75d8'
+    const colors = AXIS_COLORS[axis === 'horizontal' ? horizontalAxis : 'y']
+    const color = active ? colors.active : colors.normal
     return (
       <group {...eventsForAxis(axis)}>
         {([-1, 1] as const).map((direction) => (
@@ -532,7 +534,7 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
               position={axis === 'horizontal' ? [direction * shaftLength / 2, 0, 0] : [0, direction * shaftLength / 2, 0]}
               renderOrder={11}
             >
-              <boxGeometry args={axis === 'horizontal' ? [shaftLength, 0.075, 0.075] : [0.075, shaftLength, 0.075]} />
+              <boxGeometry args={axis === 'horizontal' ? [shaftLength, 0.025, 0.025] : [0.025, shaftLength, 0.025]} />
               <meshBasicMaterial color={color} depthTest={false} depthWrite={false} toneMapped={false} />
             </mesh>
             <mesh
@@ -540,9 +542,10 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
               rotation={axis === 'horizontal' ? [0, 0, direction * -Math.PI / 2] : [direction < 0 ? Math.PI : 0, 0, 0]}
               renderOrder={11}
             >
-              <coneGeometry args={[0.15, coneHeight, 24]} />
+              <coneGeometry args={[0.065, coneHeight, 24]} />
               <meshBasicMaterial color={color} depthTest={false} depthWrite={false} toneMapped={false} />
             </mesh>
+            <mesh position={axis === 'horizontal' ? [direction * axisLength / 2, 0, 0] : [0, direction * axisLength / 2, 0]}><boxGeometry args={axis === 'horizontal' ? [axisLength, 0.2, 0.2] : [0.2, axisLength, 0.2]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
           </group>
         ))}
       </group>
@@ -550,9 +553,11 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
   }
 
   return (
-    <group position={[item.x, item.y + item.height / 2, item.z]} rotation={planeRotation}>
+    <group position={[0, item.height / 2, 0]} rotation={planeRotation}>
+      <AxisAnchor center={[0, 0, 0]} dimensions={[item.width, item.height, item.depth]}>
       {renderAxis('horizontal')}
       {canMoveVertically && renderAxis('vertical')}
+      </AxisAnchor>
     </group>
   )
 }

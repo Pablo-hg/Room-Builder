@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "retry_on_errors": [429, 500, 502, 503, 504],
+  "retryable_error_patterns": [
+    "you.ve used today.s free messages",
+    "free limit reached",
+    "daily free.*limit",
+    "current quota",
+    "tokens per minute limit exceeded"
+  ],
+  "max_fallback_attempts": 5,
+  "cooldown_seconds": 60,
+  "timeout_seconds": 90,
+  "notify_on_fallback": true,
+  "fallback_models": []
+}

@@ -9,6 +9,7 @@ import { useRoomStore } from '../state/useRoomStore'
 import { OpeningDetail } from './Openings'
 import { WallGrid } from './WallGrid'
 import { recordSceneInteraction } from './sceneInteraction'
+import { SelectionBounds } from './SelectionBounds'
 
 export const wallPlacement: Record<WallSide, (room: RoomConfig) => { position: [number, number, number]; rotation: [number, number, number] }> = {
   north: (room) => ({ position: [0, 0, -room.depth / 2], rotation: [0, 0, 0] }),
@@ -50,9 +51,11 @@ export function WallBody({ length, height, openings, color, onPointerDown }: { l
   )
 }
 
-export function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exportMode }: { room: RoomConfig; wall: WallSide; hidden: boolean; showOpeningDetails: boolean; showGrid: boolean; exportMode: boolean }) {
+export function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exportMode, groupSelected }: { room: RoomConfig; wall: WallSide; hidden: boolean; showOpeningDetails: boolean; showGrid: boolean; exportMode: boolean; groupSelected: boolean }) {
   const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
+  const lockedElementIds = useRoomStore((state) => state.lockedElementIds)
   const selectedId = useRoomStore((state) => state.selectedId)
+  const selectedIds = useRoomStore((state) => state.selectedIds)
   const selectElement = useRoomStore((state) => state.selectElement)
   const length = wallLength(room, wall)
   const openings = useMemo(() => openingsForWall(room, wall), [room.door, room.windows, wall])
@@ -78,7 +81,10 @@ export function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exp
       </group>}
       {openings.map((opening) => (
         <group key={opening.id} visible={showOpeningDetails && !hiddenElementIds.includes(opening.id)}>
-          <OpeningDetail room={room} wall={wall} opening={opening} selected={!exportMode && selectedId === opening.id} />
+          <OpeningDetail room={room} wall={wall} opening={opening} selected={!exportMode && selectedId === opening.id} locked={lockedElementIds.includes(opening.id)} />
+          {!exportMode && !groupSelected && selectedIds.includes(opening.id) && <group position={[opening.offset, opening.bottom + opening.height / 2, opening.shape === 'wallShelf' ? 0.2 : 0.05]} rotation={[0, 0, opening.rotation]}>
+            <SelectionBounds width={opening.width} height={opening.height} depth={opening.shape === 'wallShelf' ? 0.3 : 0.18} />
+          </group>}
         </group>
       ))}
     </group>

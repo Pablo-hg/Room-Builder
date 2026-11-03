@@ -5,15 +5,82 @@ import { ColorControl, DimensionControl } from './Controls'
 import { SelectionInspector } from './SelectionInspector'
 
 export function SettingsPanel() {
+  const [roomSectionCollapsed, setRoomSectionCollapsed] = useState(false)
   const [wallColorsCollapsed, setWallColorsCollapsed] = useState(false)
   const [shortcutGuideCollapsed, setShortcutGuideCollapsed] = useState(false)
   const room = useRoomStore((state) => state.room)
   const setWallColor = useRoomStore((state) => state.setWallColor)
   const setWallSideColor = useRoomStore((state) => state.setWallSideColor)
   const setFloorColor = useRoomStore((state) => state.setFloorColor)
+  const showSelectionBounds = useRoomStore((state) => state.showSelectionBounds)
+  const toggleSelectionBounds = useRoomStore((state) => state.toggleSelectionBounds)
   return (
     <aside id="settings-panel" className="side-panel settings-panel" aria-label="Inspector y configuración detallada">
       <div className="side-panel__content settings-panel__content">
+        <SelectionInspector />
+        <section className="panel-section" aria-label="Opciones de selección">
+          <div className="grid-visibility-row">
+            <span>Borde de selección</span>
+            <button type="button" className={`switch ${showSelectionBounds ? 'on' : ''}`} role="switch" aria-label="Mostrar borde de selección" aria-checked={showSelectionBounds} onClick={toggleSelectionBounds}><span /></button>
+          </div>
+        </section>
+        <section className="panel-section room-section">
+          <span className="eyebrow">Espacio</span>
+          <h2 className="room-section__heading">
+            <button
+              type="button"
+              className="room-section__toggle"
+              aria-expanded={!roomSectionCollapsed}
+              aria-controls="room-section-content"
+              onClick={() => setRoomSectionCollapsed((collapsed) => !collapsed)}
+            >
+              <span>Tu habitación</span>
+              <span className="room-section__chevron" aria-hidden="true" />
+            </button>
+          </h2>
+          <div id="room-section-content" hidden={roomSectionCollapsed}>
+            <p className="section-copy">Ajusta el tamaño, los colores y las aperturas.</p>
+            <div className="dimension-visual" aria-hidden="true">
+              <span>{room.depth.toFixed(1)} m</span><div><b>{room.width.toFixed(1)} m</b><i>⌂</i></div>
+            </div>
+            <DimensionControl field="width" label="Anchura" />
+            <DimensionControl field="depth" label="Profundidad" />
+            <DimensionControl field="height" label="Altura" />
+            <ColorControl
+              label="Suelo"
+              value={room.floorColor ?? DEFAULT_FLOOR_COLOR}
+              onChange={setFloorColor}
+            />
+            <ColorControl
+              label="Todas las paredes"
+              value={room.wallColor ?? DEFAULT_WALL_COLOR}
+              onChange={setWallColor}
+            />
+            <h3 className={`wall-colors-heading${wallColorsCollapsed ? ' wall-colors-heading--collapsed' : ''}`}>
+              <button
+                type="button"
+                className="catalog-family__toggle"
+                aria-expanded={!wallColorsCollapsed}
+                aria-controls="wall-color-controls"
+                aria-label={`${wallColorsCollapsed ? 'Mostrar' : 'Minimizar'} controles de color de las paredes`}
+                onClick={() => setWallColorsCollapsed((collapsed) => !collapsed)}
+              >
+                <i aria-hidden="true" />
+                Paredes por separado
+              </button>
+            </h3>
+            <div id="wall-color-controls" hidden={wallColorsCollapsed}>
+              {WALL_SIDES.map((wall) => (
+                <ColorControl
+                  key={wall}
+                  label={`Pared ${WALL_LABELS[wall]}`}
+                  value={room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR}
+                  onChange={(color) => setWallSideColor(wall, color)}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
         <section className="panel-section shortcut-guide">
           <h3 className="shortcut-guide__heading">
             <button
@@ -34,55 +101,15 @@ export function SettingsPanel() {
               <div><dt>Copiar elemento</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>C</kbd></dd></div>
               <div><dt>Pegar elemento</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>V</kbd></dd></div>
               <div><dt>Duplicar elemento</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>D</kbd></dd></div>
+              <div><dt>Agrupar</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>G</kbd></dd></div>
+              <div><dt>Desagrupar</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Mayús</kbd> + <kbd>G</kbd></dd></div>
+              <div><dt>Renombrar</dt><dd><kbd>F2</kbd></dd></div>
+              <div><dt>Ordenar en la lista</dt><dd><kbd>Alt</kbd> + <kbd>Mayús</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd></dd></div>
+              <div><dt>Crear subcarpeta</dt><dd><kbd>Alt</kbd> + <kbd>Mayús</kbd> + <kbd>N</kbd></dd></div>
               <div><dt>Girar elemento</dt><dd><kbd>R</kbd></dd></div>
               <div><dt>Eliminar elemento</dt><dd><kbd>Supr</kbd> / <kbd>Retroceso</kbd></dd></div>
             </dl>
             <p className="shortcut-guide__hint">Copia, pega y duplica con un elemento seleccionado.</p>
-          </div>
-        </section>
-        <SelectionInspector />
-        <section className="panel-section room-section">
-          <span className="eyebrow">Espacio</span>
-          <h2>Tu habitación</h2>
-          <p className="section-copy">Ajusta el tamaño, los colores y las aperturas.</p>
-          <div className="dimension-visual" aria-hidden="true">
-            <span>{room.depth.toFixed(1)} m</span><div><b>{room.width.toFixed(1)} m</b><i>⌂</i></div>
-          </div>
-          <DimensionControl field="width" label="Anchura" />
-          <DimensionControl field="depth" label="Profundidad" />
-          <DimensionControl field="height" label="Altura" />
-          <ColorControl
-            label="Suelo"
-            value={room.floorColor ?? DEFAULT_FLOOR_COLOR}
-            onChange={setFloorColor}
-          />
-          <ColorControl
-            label="Todas las paredes"
-            value={room.wallColor ?? DEFAULT_WALL_COLOR}
-            onChange={setWallColor}
-          />
-          <h3 className={`wall-colors-heading${wallColorsCollapsed ? ' wall-colors-heading--collapsed' : ''}`}>
-            <button
-              type="button"
-              className="catalog-family__toggle"
-              aria-expanded={!wallColorsCollapsed}
-              aria-controls="wall-color-controls"
-              aria-label={`${wallColorsCollapsed ? 'Mostrar' : 'Minimizar'} controles de color de las paredes`}
-              onClick={() => setWallColorsCollapsed((collapsed) => !collapsed)}
-            >
-              <i aria-hidden="true" />
-              Paredes por separado
-            </button>
-          </h3>
-          <div id="wall-color-controls" hidden={wallColorsCollapsed}>
-            {WALL_SIDES.map((wall) => (
-              <ColorControl
-                key={wall}
-                label={`Pared ${WALL_LABELS[wall]}`}
-                value={room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR}
-                onChange={(color) => setWallSideColor(wall, color)}
-              />
-            ))}
           </div>
         </section>
       </div>

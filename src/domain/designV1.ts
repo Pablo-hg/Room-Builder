@@ -1,13 +1,17 @@
-import type { FurnitureItem, GridSurface, RoomConfig, StructurePack } from './types'
+import type { ElementFolder, FurnitureItem, GridSurface, RoomConfig, StructurePack } from './types'
 
 export interface PersistedDesign {
-  version: 1
+  version: 1 | 2 | 3 | 4
   room: RoomConfig
   furniture: FurnitureItem[]
   structurePacks?: StructurePack[]
   gridSnap: boolean
   gridVisibility?: Record<GridSurface, boolean>
   hiddenElementIds?: string[]
+  lockedElementIds?: string[]
+  elementFolders?: ElementFolder[]
+  elementFolderAssignments?: Record<string, string>
+  sceneElementOrder?: string[]
 }
 
 export interface SavedDesign {
@@ -29,13 +33,17 @@ export type DesignState = Required<Omit<PersistedDesign, 'version'>>
 
 export function persistedDesign(state: DesignState): PersistedDesign {
   return {
-    version: 1,
+    version: state.sceneElementOrder.length ? 4 : state.elementFolders.some((folder) => folder.parentId) ? 3 : state.room.door.name || state.room.windows.some((window) => window.name) ? 2 : 1,
     room: state.room,
     furniture: state.furniture,
     structurePacks: state.structurePacks,
     gridSnap: state.gridSnap,
     gridVisibility: state.gridVisibility,
     hiddenElementIds: state.hiddenElementIds,
+    lockedElementIds: state.lockedElementIds,
+    elementFolders: state.elementFolders,
+    elementFolderAssignments: state.elementFolderAssignments,
+    sceneElementOrder: state.sceneElementOrder,
   }
 }
 
@@ -48,6 +56,10 @@ export function persistedDesignSignature(design: PersistedDesign) {
     gridSnap: design.gridSnap,
     gridVisibility: design.gridVisibility ?? DEFAULT_GRID_VISIBILITY,
     hiddenElementIds: design.hiddenElementIds ?? [],
+    lockedElementIds: design.lockedElementIds ?? [],
+    elementFolders: design.elementFolders ?? [],
+    elementFolderAssignments: design.elementFolderAssignments ?? {},
+    sceneElementOrder: design.sceneElementOrder ?? [],
   })
 }
 
@@ -56,7 +68,7 @@ export function persistedDesignSignature(design: PersistedDesign) {
 export function isPersistedDesign(value: unknown): value is PersistedDesign {
   if (!value || typeof value !== 'object') return false
   const design = value as Partial<PersistedDesign>
-  return design.version === 1
+  return (design.version === 1 || design.version === 2 || design.version === 3 || design.version === 4)
     && !!design.room
     && typeof design.room === 'object'
     && Array.isArray(design.furniture)

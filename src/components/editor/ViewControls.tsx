@@ -1,6 +1,7 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { FRONT_CAMERA_MAX_HEIGHT, FRONT_CAMERA_MIN_HEIGHT } from '../../domain/constants'
 import { useRoomStore } from '../../state/useRoomStore'
+import { topViewWallForOrientation } from '../../domain/geometry'
 
 const ORBIT_DRAG_SENSITIVITY = 0.009
 
@@ -23,6 +24,10 @@ export function ViewControls() {
   const selectElement = useRoomStore((state) => state.selectElement)
   const setFreeOrbit = useRoomStore((state) => state.setFreeOrbit)
   const setFreeOrbitDragging = useRoomStore((state) => state.setFreeOrbitDragging)
+  const resetTopCamera = useRoomStore((state) => state.resetTopCamera)
+  const isoCameraHeight = useRoomStore((state) => state.isoCameraHeight)
+  const setIsoCameraHeight = useRoomStore((state) => state.setIsoCameraHeight)
+  const packs = useRoomStore((state) => state.structurePacks)
   const orbitDrag = useRef<{ pointerId: number; startX: number; startAngle: number } | null>(null)
   const freeOrbitDrag = useRef<{ pointerId: number; startX: number; startY: number; startAzimuth: number; startElevation: number } | null>(null)
 
@@ -74,7 +79,15 @@ export function ViewControls() {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
     setFreeOrbitDragging(false)
   }
-  if (view === 'top') return <div className="scene-hint"><span>↕</span> Arrastra para organizar</div>
+  if (view === 'top') return <div className="camera-controls camera-controls--plan"><span className="plan-camera-hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M8 6l4-4 4 4M8 18l4 4 4-4M6 8l-4 4 4 4M18 8l4 4-4 4" /></svg>Arrastra el suelo para desplazar</span><button type="button" className="plan-camera-reset" onClick={resetTopCamera} aria-label="Restablecer posición y zoom del plano" title="Restablecer posición y zoom; usa las flechas para desplazar" onKeyDown={(event) => {
+    const direction = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[event.key]
+    if (!direction) return
+    event.preventDefault()
+    const state = useRoomStore.getState()
+    const wall = topViewWallForOrientation(state.topOrientation)
+    const vectors = { north: [1, 0, 0, -1], east: [0, 1, 1, 0], south: [-1, 0, 0, 1], west: [0, -1, -1, 0] }[wall]
+    state.setTopCameraPosition(state.topCameraX + (vectors[0] * direction[0] + vectors[2] * direction[1]) * 0.25, state.topCameraZ + (vectors[1] * direction[0] + vectors[3] * direction[1]) * 0.25)
+  }}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 10.5V20h13v-9.5M10 20v-6h4v6" /></svg><span>Restablecer vista</span></button></div>
   if (view === 'front') return (
     <div className="front-camera-control">
       <div className="front-camera-control__header">
@@ -130,11 +143,12 @@ export function ViewControls() {
         <span>{isFreeOrbitDragging ? 'Orbitando…' : 'Mantén y arrastra'}</span>
         <i aria-hidden="true">↙</i>
       </button>
+      <span>WASD · Desplazar<br />Mayús · Más rápido</span>
     </div>
   )
   const rotate = view === 'isometric' ? rotateIso : rotatePov
   return (
-    <div className={`camera-controls ${view === 'isometric' ? 'camera-controls--orbit' : ''}`} aria-label={view === 'isometric' ? 'Girar habitación' : 'Mirar alrededor'}>
+    <><div className={`camera-controls ${view === 'isometric' ? 'camera-controls--orbit' : ''}`} aria-label={view === 'isometric' ? 'Girar habitación' : 'Mirar alrededor'}>
       <button type="button" onClick={() => { selectElement(null); rotate(1) }} aria-label="Girar a la izquierda">↶</button>
       {view === 'isometric' ? (
         <button
@@ -168,7 +182,7 @@ export function ViewControls() {
         </button>
       ) : <span>{`${povYaw > 0 ? '+' : ''}${povYaw}°`}</span>}
       <button type="button" onClick={() => { selectElement(null); rotate(-1) }} aria-label="Girar a la derecha">↷</button>
-    </div>
+    </div>{view === 'isometric' && <label className="iso-height-control">Centro de cámara <output>{isoCameraHeight.toFixed(1)} m</output><input type="range" aria-label="Altura del centro de cámara isométrica" min={Math.min(0, ...packs.map((pack) => pack.y))} max={Math.max(roomHeight, ...packs.map((pack) => pack.y + roomHeight))} step="0.125" value={isoCameraHeight} onChange={(event) => setIsoCameraHeight(Number(event.target.value))} /></label>}</>
   )
 }
 

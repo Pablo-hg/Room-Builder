@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { DEFAULT_ROOM, WALL_LABELS } from './domain/constants'
 import { sideWallsForFrontView, visibleWallsForOrientation } from './domain/geometry'
 import type { ViewMode, WallSide } from './domain/types'
@@ -10,6 +10,7 @@ import { selectActiveDesignName, selectEditorScene } from './state/selectors'
 import { SettingsPanel } from './components/editor/SettingsPanel'
 import { ObjectsPanel } from './components/editor/ObjectsPanel'
 import { ViewControls } from './components/editor/ViewControls'
+import { RoomViewSelector } from './components/editor/RoomViewSelector'
 import { visibleWallsForView } from './components/editor/viewHelpers'
 import { EditorHeader } from './components/editor/EditorHeader'
 import { VIEW_OPTIONS } from './components/editor/viewOptions'
@@ -40,11 +41,15 @@ function isOrbitCanvasTarget(target: EventTarget | null): target is HTMLCanvasEl
   return target instanceof HTMLCanvasElement && target.closest('.room-scene-canvas--orbit') !== null
 }
 
-function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, onToggleObjects, exportMode, exportRequest, onExportComplete }: {
+function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, onToggleObjects, settingsWidth, objectsWidth, setSettingsWidth, setObjectsWidth, exportMode, exportRequest, onExportComplete }: {
   settingsCollapsed: boolean
   objectsCollapsed: boolean
   onToggleSettings: () => void
   onToggleObjects: () => void
+  settingsWidth: number
+  objectsWidth: number
+  setSettingsWidth: (width: number) => void
+  setObjectsWidth: (width: number) => void
   exportMode: boolean
   exportRequest: number
   onExportComplete: (error?: Error) => void
@@ -58,15 +63,35 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
     startAngle: number
     startElevation: number
   } | null>(null)
+  const resizeDrag = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(null)
+  const resizeHandle = (side: 'objects' | 'settings', width: number, setWidth: (width: number) => void, collapsed: boolean) => {
+    const min = side === 'objects' ? 264 : 286
+    const max = min * 2
+    const direction = side === 'objects' ? 1 : -1
+    const apply = (value: number) => setWidth(Math.max(min, Math.min(max, value)))
+    if (collapsed) return null
+    return <div className={`sidebar-resize sidebar-resize--${side}`} role="separator" tabIndex={0}
+      aria-label={`Cambiar anchura del panel ${side === 'objects' ? 'izquierdo' : 'derecho'}`}
+      aria-orientation="vertical" aria-valuemin={min} aria-valuemax={max} aria-valuenow={width}
+      aria-controls={side === 'objects' ? 'objects-panel' : 'settings-panel'}
+      onPointerDown={(event) => { if (event.button !== 0) return; event.preventDefault(); resizeDrag.current = { pointerId: event.pointerId, startX: event.clientX, startWidth: width }; event.currentTarget.setPointerCapture(event.pointerId) }}
+      onPointerMove={(event) => { const drag = resizeDrag.current; if (drag?.pointerId === event.pointerId) apply(drag.startWidth + direction * (event.clientX - drag.startX)) }}
+      onPointerUp={(event) => { if (resizeDrag.current?.pointerId === event.pointerId) resizeDrag.current = null }}
+      onPointerCancel={() => { resizeDrag.current = null }}
+      onLostPointerCapture={() => { resizeDrag.current = null }}
+      onKeyDown={(event) => { const delta = event.key === 'ArrowRight' ? 16 : event.key === 'ArrowLeft' ? -16 : 0; if (delta) { event.preventDefault(); apply(width + direction * delta) } else if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); apply(event.key === 'Home' ? min : max) } }}
+    />
+  }
   const currentView = VIEW_OPTIONS.find((option) => option.id === state.view)!
   const visibleWalls = visibleWallsForView(state.view, state.isoOrientation, state.wallView, state.freeAzimuth)
   const visibleWallsText = wallsDescription(state.view, visibleWalls)
-  const hasPlacedSceneContent = state.furniture.length > 0
+  const hasPlacedSceneContent = state.furniture.length > 0 || state.structurePacks.length > 0
     || state.structurePacks.length > 0
     || state.room.windows.some((window) => !DEFAULT_ROOM.windows.some((defaultWindow) => defaultWindow.id === window.id))
   const viewLabel = state.view === 'front' && state.wallView
     ? `Frontal · ${WALL_LABELS[state.wallView]}`
     : currentView.label
+  const activeCameraZoom = state.view === 'pov' ? state.povCameraZoom : state.view === 'free' ? state.freeCameraZoom : state.cameraZoom
   const activeDesignName = useRoomStore(selectActiveDesignName)
   const startSceneOrbitDrag = (event: ReactPointerEvent<HTMLElement>) => {
     if ((state.view !== 'isometric' && state.view !== 'free') || event.button !== 1 || !isOrbitCanvasTarget(event.target)) return
@@ -142,27 +167,29 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
             state.adjustCameraZoom(delta)
           }}
         >
+          {resizeHandle('objects', objectsWidth, setObjectsWidth, objectsCollapsed)}
+          {resizeHandle('settings', settingsWidth, setSettingsWidth, settingsCollapsed)}
           <button
             type="button"
             className="sidebar-toggle sidebar-toggle--settings"
             aria-controls="settings-panel"
             aria-expanded={!settingsCollapsed}
-            aria-label={settingsCollapsed ? 'Mostrar panel izquierdo' : 'Minimizar panel izquierdo'}
-            title={settingsCollapsed ? 'Mostrar panel izquierdo' : 'Minimizar panel izquierdo'}
+            aria-label={settingsCollapsed ? 'Mostrar panel derecho' : 'Minimizar panel derecho'}
+            title={settingsCollapsed ? 'Mostrar panel derecho' : 'Minimizar panel derecho'}
             onClick={onToggleSettings}
           >
-            <span aria-hidden="true">{settingsCollapsed ? '›' : '‹'}</span>
+            <span aria-hidden="true">{settingsCollapsed ? '‹' : '›'}</span>
           </button>
           <button
             type="button"
             className="sidebar-toggle sidebar-toggle--objects"
             aria-controls="objects-panel"
             aria-expanded={!objectsCollapsed}
-            aria-label={objectsCollapsed ? 'Mostrar panel derecho' : 'Minimizar panel derecho'}
-            title={objectsCollapsed ? 'Mostrar panel derecho' : 'Minimizar panel derecho'}
+            aria-label={objectsCollapsed ? 'Mostrar panel izquierdo' : 'Minimizar panel izquierdo'}
+            title={objectsCollapsed ? 'Mostrar panel izquierdo' : 'Minimizar panel izquierdo'}
             onClick={onToggleObjects}
           >
-            <span aria-hidden="true">{objectsCollapsed ? '‹' : '›'}</span>
+            <span aria-hidden="true">{objectsCollapsed ? '›' : '‹'}</span>
           </button>
           <div className="scene-topline">
             <div className="scene-topline__labels">
@@ -181,7 +208,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
             freeAzimuth={state.freeAzimuth}
             freeElevation={state.freeElevation}
             isFreeOrbitDragging={state.isFreeOrbitDragging}
-            cameraZoom={state.cameraZoom}
+            cameraZoom={activeCameraZoom}
             wallView={state.wallView}
             frontCameraHeight={state.frontCameraHeight}
             povYaw={state.povYaw}
@@ -198,10 +225,11 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
             <div className="empty-scene"><span>✦</span><strong>La habitación está lista</strong><small>Añade tu primera pieza desde el catálogo</small></div>
           )}
           <ViewControls />
+          <RoomViewSelector />
           <div className={`zoom-indicator ${state.view === 'front' ? 'zoom-indicator--front' : ''}`} aria-live="polite">
             <b aria-hidden="true">↕</b>
             <span>Rueda · Zoom</span>
-            <output>{Math.round(state.cameraZoom * 100)}%</output>
+            <output>{Math.round(activeCameraZoom * 100)}%</output>
           </div>
           <div className="compass" role="group" aria-label={compassLabel(state.view, state.isoOrientation, state.freeAzimuth, state.freeElevation)}>
             {state.view === 'free' ? (
@@ -263,6 +291,8 @@ function App() {
   const initializeSavedDesigns = useRoomStore((state) => state.initializeSavedDesigns)
   const [settingsCollapsed, setSettingsCollapsed] = useState(false)
   const [objectsCollapsed, setObjectsCollapsed] = useState(false)
+  const [objectsWidth, setObjectsWidth] = useState(264)
+  const [settingsWidth, setSettingsWidth] = useState(286)
   const [exportMode, setExportMode] = useState(false)
   const [exportRequest, setExportRequest] = useState(0)
   const [exportNotice, setExportNotice] = useState('')
@@ -287,18 +317,23 @@ function App() {
       <main
         id="main"
         className={`workspace${settingsCollapsed ? ' workspace--settings-collapsed' : ''}${objectsCollapsed ? ' workspace--objects-collapsed' : ''}`}
+        style={{ '--objects-expanded-width': `${objectsWidth}px`, '--settings-expanded-width': `${settingsWidth}px` } as CSSProperties}
       >
-        <SettingsPanel />
+        <ObjectsPanel />
         <EditorScene
           settingsCollapsed={settingsCollapsed}
           objectsCollapsed={objectsCollapsed}
           onToggleSettings={() => setSettingsCollapsed((collapsed) => !collapsed)}
           onToggleObjects={() => setObjectsCollapsed((collapsed) => !collapsed)}
+          objectsWidth={objectsWidth}
+          settingsWidth={settingsWidth}
+          setObjectsWidth={setObjectsWidth}
+          setSettingsWidth={setSettingsWidth}
           exportMode={exportMode}
           exportRequest={exportRequest}
           onExportComplete={handleExportComplete}
         />
-        <ObjectsPanel />
+        <SettingsPanel />
       </main>
       <footer className="statusbar">
         <span><i className="status-dot" /> Guardado local en tu navegador</span>

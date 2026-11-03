@@ -21,6 +21,8 @@ export function selectEditorScene(state: RoomState) {
     adjustCameraZoom: state.adjustCameraZoom,
     topOrientation: state.topOrientation,
     cameraZoom: state.cameraZoom,
+    freeCameraZoom: state.freeCameraZoom,
+    povCameraZoom: state.povCameraZoom,
     frontCameraHeight: state.frontCameraHeight,
     povYaw: state.povYaw,
     gridSnap: state.gridSnap,
