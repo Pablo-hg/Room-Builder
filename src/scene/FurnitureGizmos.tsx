@@ -9,6 +9,7 @@ import { recordSceneInteraction } from './sceneInteraction'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
 import { AXIS_COLORS } from './axisColors'
 import { AxisAnchor } from './AxisAnchor'
+import { canElevateFurniture } from '../domain/objectCatalog'
 
 type FloorMoveAxis = 'x' | 'y' | 'z'
 
@@ -421,7 +422,7 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
   const { camera, size } = useThree()
   const [draggingAxis, setDraggingAxis] = useState<'horizontal' | 'vertical' | null>(null)
   const [hoveredAxis, setHoveredAxis] = useState<'horizontal' | 'vertical' | null>(null)
-  const canMoveVertically = true
+  const canMoveVertically = canElevateFurniture(item)
   const dragStart = useRef({ clientX: 0, clientY: 0, x: item.x, y: item.y, z: item.z })
   const horizontalAxis = wall === 'north' || wall === 'south' ? 'x' : 'z'
   const horizontalSign = wall === 'south' || wall === 'west' ? -1 : 1

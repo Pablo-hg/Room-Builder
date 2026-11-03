@@ -59,7 +59,7 @@ export function EditorHeader({ exportMode, onExport }: {
             ⇩ <span>{exportMode ? 'Exportando…' : 'Descargar 3D'}</span>
           </button>
           <SavedDesignsMenu state={state} />
-          <button type="button" className="primary-button" onClick={state.saveDesign}>
+          <button type="button" className="primary-button" aria-label={state.selectedSavedDesignId ? 'Guardar cambios' : 'Guardar como'} onClick={state.saveDesign}>
             ✓ <span>{state.selectedSavedDesignId ? 'Guardar cambios' : 'Guardar como'}</span>
           </button>
         </div>

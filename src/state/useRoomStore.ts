@@ -13,6 +13,10 @@ import { createHistoryActions } from './actions/historyActions'
 import { createDesignActions } from './actions/designActions'
 import { createFolderActions } from './actions/folderActions'
 import { initialRoomFolder } from '../domain/elementFolders'
+import { ensureOriginalLayout } from '../domain/designLayouts'
+import { normalizeDesignLayouts } from '../persistence/designMigrations'
+import { safeRoomUpdate } from '../domain/editingRules'
+import { createLayoutActions } from './actions/layoutActions'
 
 export { structureSurfaceElementId } from '../domain/elementIds'
 
@@ -38,19 +42,60 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
         current = get()
       }
     }
-    const nextUpdate = Object.prototype.hasOwnProperty.call(rawUpdate, 'selectedId') && !Object.prototype.hasOwnProperty.call(rawUpdate, 'selectedIds')
+    let nextUpdate: Partial<RoomState> = Object.prototype.hasOwnProperty.call(rawUpdate, 'selectedId') && !Object.prototype.hasOwnProperty.call(rawUpdate, 'selectedIds')
       ? { ...rawUpdate, selectedIds: rawUpdate.selectedId ? [rawUpdate.selectedId] : [], selectionAnchor: rawUpdate.selectedId ?? null }
       : rawUpdate
+    if (!runtime.isUndoing && !nextUpdate.layouts) {
+      if (nextUpdate.room && nextUpdate.room !== current.room) {
+        let structureNotice = ''
+        const layouts = current.layouts.map((layout) => {
+          if (layout.id === current.activeLayoutId) return layout
+          const update = safeRoomUpdate({ room: current.room, furniture: layout.furniture, gridSnap: current.gridSnap }, nextUpdate.room!)
+          if (!update.room || !update.furniture) {
+            structureNotice = `«${layout.name}»: ${update.notice}`
+            return layout
+          }
+          return { ...layout, furniture: update.furniture }
+        })
+        if (structureNotice) return storeSet({ notice: structureNotice })
+        nextUpdate = { ...nextUpdate, layouts }
+      }
+      // Borrar un mueble de la activa no borra preferencias de su copia lógica inactiva.
+      if (nextUpdate.furniture) {
+        const inactiveIds = new Set(current.layouts.filter((layout) => layout.id !== current.activeLayoutId).flatMap((layout) => layout.furniture.map((item) => item.id)))
+        for (const key of ['hiddenElementIds', 'lockedElementIds'] as const) {
+          if (nextUpdate[key]) nextUpdate[key] = [...new Set([...nextUpdate[key]!, ...current[key].filter((id) => inactiveIds.has(id))])]
+        }
+        if (nextUpdate.elementFolderAssignments) {
+          const folders = new Set((nextUpdate.elementFolders ?? current.elementFolders).map((folder) => folder.id))
+          const retained = Object.entries(current.elementFolderAssignments).filter(([id, folder]) => inactiveIds.has(id) && folders.has(folder))
+          nextUpdate.elementFolderAssignments = { ...Object.fromEntries(retained), ...nextUpdate.elementFolderAssignments }
+        }
+      }
+      if (nextUpdate.sceneElementOrder) {
+        const inactiveIds = new Set(current.layouts.filter((layout) => layout.id !== current.activeLayoutId).flatMap((layout) => layout.furniture.map((item) => item.id)))
+        const order = [...nextUpdate.sceneElementOrder]
+        current.sceneElementOrder.forEach((id, index) => {
+          if (inactiveIds.has(id) && !order.includes(id)) order.splice(Math.min(index, order.length), 0, id)
+        })
+        nextUpdate.sceneElementOrder = order
+      }
+    }
     const nextState = { ...current, ...nextUpdate }
     const designChanged = persistedDesignSignature(persistedDesign(current)) !== persistedDesignSignature(persistedDesign(nextState))
     if (designChanged) {
       recordHistoryChange(runtime, persistedDesign(current))
       const activeDesign = nextState.savedDesigns.find((design) => design.id === nextState.selectedSavedDesignId)
+      let savedSignature = ''
+      if (activeDesign) {
+        try { savedSignature = persistedDesignSignature(normalizeDesignLayouts(activeDesign.data)) }
+        catch { /* Una entrada inválida no impide editar el diseño actual. */ }
+      }
       storeSet({
         ...nextUpdate,
         undoCount: runtime.undoHistory.length,
         redoCount: runtime.redoHistory.length,
-        hasUnsavedChanges: !activeDesign || persistedDesignSignature(persistedDesign(nextState)) !== persistedDesignSignature(activeDesign.data),
+        hasUnsavedChanges: !activeDesign || persistedDesignSignature(persistedDesign(nextState)) !== savedSignature,
       })
       return
     }
@@ -61,7 +106,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
 
   return {
     room: cloneRoom(),
-    furniture: [],
+    ...ensureOriginalLayout([]),
     structurePacks: [],
     selectedId: null,
     selectedIds: [],
@@ -110,6 +155,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     ...createFolderActions(context),
     ...createHistoryActions(context),
     ...createDesignActions(context),
+    ...createLayoutActions(context),
   }
 })
 

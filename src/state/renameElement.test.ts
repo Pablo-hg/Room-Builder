@@ -23,16 +23,16 @@ test('los nombres de muebles, packs y superficies se guardan y se deshacen', () 
   assert.equal(persistedDesign(store.getState()).structurePacks![0].surfaces[0].name, 'Cara')
 })
 
-test('los nombres de aperturas se guardan en v2 y los diseños v1 conservan sus valores predeterminados', () => {
+test('los nombres de aperturas se guardan en v5 y admiten deshacer/rehacer', () => {
   const store = createRoomStore()
   const legacy = persistedDesign(store.getState())
-  assert.equal(legacy.version, 1)
+  assert.equal(legacy.version, 5)
   store.getState().renameElement('door', 'Entrada')
   store.getState().addWindow('rectangular')
   const id = store.getState().selectedId!
   store.getState().renameElement(id, 'Ventanal')
   const saved = persistedDesign(store.getState())
-  assert.equal(saved.version, 2)
+  assert.equal(saved.version, 5)
   assert.equal(saved.room.door.name, 'Entrada')
   assert.equal(saved.room.windows.find((window) => window.id === id)?.name, 'Ventanal')
   store.getState().undo()
@@ -47,7 +47,9 @@ test('recupera nombres de aperturas desde un diseño guardado v2', () => {
   original.getState().addWindow('rectangular')
   const windowId = original.getState().selectedId!
   original.getState().renameElement(windowId, 'Ventanal')
-  const data = JSON.parse(JSON.stringify(persistedDesign(original.getState())))
+  const data = { ...JSON.parse(JSON.stringify(persistedDesign(original.getState()))), version: 2 }
+  delete data.layouts
+  delete data.activeLayoutId
   const repository = { read: () => [{ id: 'guardado', name: 'Casa', savedAt: '', data }], write: () => {} }
   const restored = createRoomStore(repository)
   restored.getState().initializeSavedDesigns()

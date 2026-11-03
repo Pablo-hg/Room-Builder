@@ -1,5 +1,5 @@
 import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, WALL_SIDES } from './constants'
-import { DEFAULT_GRID_VISIBILITY, type PersistedDesign } from './designV1'
+import { DEFAULT_GRID_VISIBILITY, type PersistedDesign, type PersistedDesignV5 } from './designV1'
 import { snapToVisibleGrid } from './geometry'
 import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, isWindowShape, OPENING_CATALOG, openingKindForShape } from './objectCatalog'
 import { createStructureSurface } from './structureRules'
@@ -55,7 +55,7 @@ export function normalizeStructurePacks(value: unknown, room: RoomConfig): Struc
   })
 }
 
-export function normalizeDesignRoom(data: PersistedDesign): RoomConfig {
+export function normalizeDesignRoom(data: PersistedDesign | PersistedDesignV5): RoomConfig {
   const validName = (name: unknown) => typeof name === 'string' && name.trim() && name.trim().length <= 80 ? name.trim() : undefined
   const { name: doorName, ...door } = data.room.door
   return {
@@ -103,7 +103,7 @@ export function normalizeDesignRoom(data: PersistedDesign): RoomConfig {
   }
 }
 
-export function normalizeDesignPreferences(data: PersistedDesign) {
+export function normalizeDesignPreferences(data: PersistedDesign | PersistedDesignV5) {
   const elementFolders: import('./types').ElementFolder[] = Array.isArray(data.elementFolders)
     ? data.elementFolders.flatMap((folder) => (
       folder && typeof folder === 'object'

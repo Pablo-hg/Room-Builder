@@ -1,10 +1,16 @@
 import type { ElementFolder, FurnitureItem, FurnitureKind, GridSurface, PersistedDesign, RoomConfig, StructurePack, StructureSurfaceKey, ViewMode, WallSide, WindowConfig, WindowShape } from '../domain/types'
-import type { SavedDesign } from '../domain/designV1'
+import type { PersistedLayout, SavedDesign } from '../domain/designV1'
 import type { DesignRepository } from '../persistence/localDesignRepository'
 
 export interface RoomState {
   room: RoomConfig
   furniture: FurnitureItem[]
+  layouts: PersistedLayout[]
+  activeLayoutId: string
+  duplicateActiveLayout: () => void
+  activateLayout: (id: string) => void
+  renameLayout: (id: string, name: string) => void
+  deleteAlternativeLayout: (id: string) => void
   structurePacks: StructurePack[]
   selectedId: string | null
   selectedIds: string[]

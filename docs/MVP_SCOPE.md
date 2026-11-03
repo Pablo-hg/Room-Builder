@@ -41,5 +41,5 @@ El usuario debe poder **recrear su dormitorio, diseñar al menos una distribuci�
 ## Regla de prioridades
 P0 = funcionamiento de creación y redistribución; P1 = calidad de la experiencia visual e interacción; P2 = mejoras creativas. Un nuevo objeto o una vista avanzada no desplaza un error P0.
 
-## Situación actual (revisión 26/10/2026, commit 88bd565)
-Hay cinco vistas implementadas, catálogo, movimientos, construcciones simples, cinco diseños en localStorage y exportación GLB; **no** se ha validado aquí en navegador la calidad de todos los recorridos. Faltan como mínimo el redimensionado general de muebles, comparación de variantes con estructura común y JSON editable. El «pack» de cuatro paredes no constituye aún una vivienda multihabitación.
+## Situación actual (revisión 03/11/2026, tras R4)
+Hay cinco vistas implementadas, catálogo, movimientos, construcciones simples, cinco diseños en localStorage, exportación GLB y comparación Original/Alternativa A con estructura común y guardado v5. La verificación de R5.1 se registra en [su informe](progress/R5_PROGRESS.md); no certifica todos los recorridos del producto. Faltan como mínimo el redimensionado general de muebles y JSON editable. R4 dejó el contrato multiproyecto como prototipo puro; R5 sigue en curso según [R5_PLAN.md](R5_PLAN.md). El «pack» de cuatro paredes no constituye aún una vivienda multihabitación.

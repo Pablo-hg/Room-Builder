@@ -93,6 +93,8 @@ export function SavedDesignsMenu({ state }: { state: EditorHeaderState }) {
                         <button
                           type="button"
                           className={`saved-design-choice${state.selectedSavedDesignId === design.id ? ' active' : ''}`}
+                          aria-label={design.name}
+                          aria-describedby={`design-variants-${design.id}`}
                           onClick={() => {
                             state.loadDesign(design.id)
                             setSavedDesignsOpen(false)
@@ -100,6 +102,7 @@ export function SavedDesignsMenu({ state }: { state: EditorHeaderState }) {
                           }}
                         >
                           <span className="saved-design-name">{design.name}</span>
+                          <span id={`design-variants-${design.id}`} className="saved-design-variants">{design.data.version === 5 ? `${design.data.layouts.length} variantes` : '1 variante'}</span>
                           {state.selectedSavedDesignId === design.id && <span className="saved-design-current">Actual</span>}
                         </button>
                         <button

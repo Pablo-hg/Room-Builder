@@ -101,10 +101,10 @@ test('perder captura cierra el gesto de superficie y separa la siguiente edició
   const y = bounds.y + bounds.height / 2
   const position = page.locator('.selection-section--inspector').getByLabel('Desplazamiento X')
   const initial = await position.inputValue()
-  await page.mouse.move(x + 60, y)
+  await page.mouse.move(x + 26, y)
   await page.mouse.down()
   await page.waitForTimeout(150)
-  await page.mouse.move(x + 120, y, { steps: 8 })
+  await page.mouse.move(x + 86, y, { steps: 8 })
   await expect(position).not.toHaveValue(initial)
   const moved = await position.inputValue()
   await page.evaluate(() => {

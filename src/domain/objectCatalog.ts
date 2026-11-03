@@ -6,6 +6,7 @@ export type TranslationCapability = 'floor-x' | 'floor-z' | 'wall-horizontal' | 
 export type RotationAxis = 'floor-y' | 'wall-normal'
 
 export interface ObjectCapabilities {
+  attachment: 'free' | 'floor' | 'wall' | 'ceiling'
   translation: readonly TranslationCapability[]
   rotation: {
     enabled: boolean
@@ -18,6 +19,7 @@ export interface ObjectCapabilities {
 }
 
 const FLOOR_CAPABILITIES: ObjectCapabilities = {
+  attachment: 'free',
   translation: ['floor-x', 'floor-z'],
   rotation: { enabled: true, axis: 'floor-y', step: DEFAULT_ROTATION_STEP, freeWithShift: true },
   canChangeWall: false,
@@ -25,11 +27,15 @@ const FLOOR_CAPABILITIES: ObjectCapabilities = {
 }
 
 const WALL_OPENING_CAPABILITIES: ObjectCapabilities = {
+  attachment: 'wall',
   translation: ['wall-horizontal', 'wall-vertical'],
   rotation: { enabled: true, axis: 'wall-normal', step: DEFAULT_ROTATION_STEP, freeWithShift: true },
   canChangeWall: true,
   removable: true,
 }
+
+const FLOOR_BOUND_CAPABILITIES: ObjectCapabilities = { ...FLOOR_CAPABILITIES, attachment: 'floor' }
+const CEILING_CAPABILITIES: ObjectCapabilities = { ...FLOOR_CAPABILITIES, attachment: 'ceiling' }
 
 export interface FurnitureDefinition {
   base: Omit<FurnitureItem, 'id' | 'x' | 'y' | 'z' | 'rotation'>
@@ -64,14 +70,14 @@ export const FURNITURE_CATALOG: Record<FurnitureKind, FurnitureDefinition> = {
   wastebasket: { base: { kind: 'wastebasket', name: 'Papelera', width: 0.5, depth: 0.5, height: 0.5, color: '#738980' }, family: 'accessories', capabilities: FLOOR_CAPABILITIES },
   vase: { base: { kind: 'vase', name: 'Jarrón', width: 0.5, depth: 0.5, height: 0.5, color: '#b97862' }, family: 'accessories', capabilities: FLOOR_CAPABILITIES },
   tableLamp: { base: { kind: 'tableLamp', name: 'Lámpara de mesa', width: 0.5, depth: 0.5, height: 0.6, color: '#d3a755' }, family: 'lighting', capabilities: FLOOR_CAPABILITIES },
-  ceilingLamp: { base: { kind: 'ceilingLamp', name: 'Lámpara de techo', width: 0.75, depth: 0.75, height: 0.6, color: '#d3a755' }, family: 'lighting', capabilities: FLOOR_CAPABILITIES },
+  ceilingLamp: { base: { kind: 'ceilingLamp', name: 'Lámpara de techo', width: 0.75, depth: 0.75, height: 0.6, color: '#d3a755' }, family: 'lighting', capabilities: CEILING_CAPABILITIES },
   coffeeTable: { base: { kind: 'coffeeTable', name: 'Mesa de centro', width: 1, depth: 0.75, height: 0.4, color: '#bd9164' }, family: 'tables', capabilities: FLOOR_CAPABILITIES },
   desk: { base: { kind: 'desk', name: 'Escritorio', width: 1.25, depth: 0.75, height: 0.75, color: '#a77b58' }, family: 'tables', capabilities: FLOOR_CAPABILITIES },
   deskChair: { base: { kind: 'deskChair', name: 'Silla de escritorio', width: 0.5, depth: 0.5, height: 0.85, color: '#758a80' }, family: 'seating', capabilities: FLOOR_CAPABILITIES },
   tvStand: { base: { kind: 'tvStand', name: 'Mueble de TV', width: 1.5, depth: 0.5, height: 0.5, color: '#8b7059' }, family: 'storage', capabilities: FLOOR_CAPABILITIES },
   television: { base: { kind: 'television', name: 'Televisor', width: 1.25, depth: 0.25, height: 0.75, color: '#52645f' }, family: 'accessories', capabilities: FLOOR_CAPABILITIES },
-  rug: { base: { kind: 'rug', name: 'Alfombra', width: 2, depth: 1.5, height: 0.05, color: '#b97862' }, family: 'accessories', capabilities: FLOOR_CAPABILITIES },
-  circularRug: { base: { kind: 'circularRug', name: 'Alfombra circular', width: 1.5, depth: 1.5, height: 0.05, color: '#b97862' }, family: 'accessories', capabilities: FLOOR_CAPABILITIES },
+  rug: { base: { kind: 'rug', name: 'Alfombra', width: 2, depth: 1.5, height: 0.05, color: '#b97862' }, family: 'accessories', capabilities: FLOOR_BOUND_CAPABILITIES },
+  circularRug: { base: { kind: 'circularRug', name: 'Alfombra circular', width: 1.5, depth: 1.5, height: 0.05, color: '#b97862' }, family: 'accessories', capabilities: FLOOR_BOUND_CAPABILITIES },
   plant: { base: { kind: 'plant', name: 'Planta', width: 0.5, depth: 0.5, height: 1.25, color: '#71886d' }, family: 'accessories', capabilities: FLOOR_CAPABILITIES },
   pictureSmall: { base: { kind: 'pictureSmall', name: 'Cuadro pequeño', width: 0.5, depth: 0.25, height: 0.5, color: '#d49a72' }, family: 'wallDecor', capabilities: WALL_OPENING_CAPABILITIES },
   pictureMedium: { base: { kind: 'pictureMedium', name: 'Cuadro mediano', width: 1, depth: 0.25, height: 0.75, color: '#7c9d91' }, family: 'wallDecor', capabilities: WALL_OPENING_CAPABILITIES },
@@ -84,6 +90,15 @@ export function isFloorBoundFurniture(kind: FurnitureKind): kind is 'rug' | 'cir
 
 export function isCeilingMountedFurniture(kind: FurnitureKind): kind is 'ceilingLamp' {
   return kind === 'ceilingLamp'
+}
+
+export function furnitureAttachment(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy'>): ObjectCapabilities['attachment'] {
+  if (item.attachmentPolicy === 'by-type' || isWallPictureKind(item.kind)) return FURNITURE_CATALOG[item.kind].capabilities.attachment
+  return 'free'
+}
+
+export function canElevateFurniture(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy'>): boolean {
+  return furnitureAttachment(item) === 'free'
 }
 
 export type OpeningKind = 'door' | 'window' | 'circularWindow' | 'wallShelf' | 'pictureSmall' | 'pictureMedium' | 'pictureLarge' | 'mirrorRectangular' | 'mirrorCircular' | 'wallSconce'
@@ -103,6 +118,7 @@ export const OPENING_CATALOG: Record<OpeningKind, OpeningDefinition> = {
     height: 2.1,
     defaultBottom: 0,
     capabilities: {
+      attachment: 'wall',
       translation: ['wall-horizontal'],
       rotation: { enabled: false, axis: null, step: null, freeWithShift: false },
       canChangeWall: true,

@@ -205,8 +205,9 @@ describe('clampFurniture', () => {
     assert.equal(clampFurnitureElevation({ ...item, y: 0.63 }, DEFAULT_ROOM, true), 0.625)
     assert.equal(clampFurnitureElevation({ ...item, y: 20 }, DEFAULT_ROOM, false), DEFAULT_ROOM.height - item.height)
     assert.equal(clampFurnitureElevation({ ...item, y: -1 }, DEFAULT_ROOM, false), 0)
-    assert.equal(clampFurnitureElevation({ ...item, kind: 'rug', y: 1 }, DEFAULT_ROOM, false), 0)
-    assert.equal(clampFurnitureElevation({ ...item, kind: 'circularRug', y: 1 }, DEFAULT_ROOM, false), 0)
+    assert.equal(clampFurnitureElevation({ ...item, kind: 'rug', attachmentPolicy: 'by-type', y: 1 }, DEFAULT_ROOM, false), 0)
+    assert.equal(clampFurnitureElevation({ ...item, kind: 'circularRug', attachmentPolicy: 'by-type', y: 1 }, DEFAULT_ROOM, false), 0)
+    assert.equal(clampFurnitureElevation({ ...item, kind: 'rug', y: 1 }, DEFAULT_ROOM, false), 1)
   })
 })
 

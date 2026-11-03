@@ -1,7 +1,7 @@
 import { useInspectorGesture } from './useInspectorGesture'
 import { ROOM_LIMITS } from '../../domain/constants'
 import { FurnitureIcon } from '../iconCatalog'
-import { isCeilingMountedFurniture } from '../../domain/objectCatalog'
+import { canElevateFurniture, isCeilingMountedFurniture } from '../../domain/objectCatalog'
 import { useRoomStore } from '../../state/useRoomStore'
 import { ColorControl, PositionControl, RotationControl } from './Controls'
 
@@ -16,7 +16,7 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
   const rotateFurniture = useRoomStore((state) => state.rotateFurniture)
   const removeFurniture = useRoomStore((state) => state.removeFurniture)
   const locked = useRoomStore((state) => state.lockedElementIds.includes(selectedFurniture.id))
-  const canChangeElevation = true
+  const canChangeElevation = canElevateFurniture(selectedFurniture)
   const canRotate = !isCeilingMountedFurniture(selectedFurniture.kind)
   const xLimit = Math.max(10, Math.abs(selectedFurniture.x))
   const zLimit = Math.max(10, Math.abs(selectedFurniture.z))
@@ -48,7 +48,7 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
       </div>
       {locked
         ? <p className="lock-hint">Elemento bloqueado: desbloquea el candado de la lista para moverlo o girarlo.</p>
-        : <p className="rotation-hint">En la vista también puedes arrastrar los ejes X, Y y Z y el aro de giro.</p>}
+        : <p className="rotation-hint">{canChangeElevation ? 'En la vista también puedes arrastrar los ejes X, Y y Z y el aro de giro.' : isCeilingMountedFurniture(selectedFurniture.kind) ? 'Fijada al techo. Puedes moverla horizontalmente con los ejes X y Z.' : 'Fijada al suelo. Puedes moverla con los ejes X y Z y girarla.'}</p>}
     </section>
   )
 

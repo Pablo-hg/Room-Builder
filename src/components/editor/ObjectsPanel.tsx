@@ -12,6 +12,7 @@ import { WALL_SIDES } from '../../domain/constants'
 import { OpeningSwatch } from './Controls'
 import { EyeIcon, FolderIcon, LockIcon, RoomPackIcon } from './ElementIcons'
 import { SceneContextMenu } from './SceneContextMenu'
+import { VariantSwitcher } from './VariantSwitcher'
 
 export function ObjectsPanel() {
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
@@ -393,6 +394,7 @@ export function ObjectsPanel() {
   return (
     <aside id="objects-panel" className="side-panel objects-panel" aria-label="Catálogo de objetos">
       <div className="side-panel__content objects-panel__content">
+        <VariantSwitcher />
         <section className="panel-section">
         <span className="eyebrow">Objetos</span>
         <div className="catalog-heading">

@@ -1,12 +1,10 @@
 import { MAX_SAVED_DESIGNS } from '../../persistence/localDesignRepository'
-import { migrateWallPictures } from '../../persistence/designMigrations'
-import { arrangeFurniture } from '../../domain/editingRules'
+import { migrateDesignLayouts, normalizeDesignLayouts } from '../../persistence/designMigrations'
 import { initialRoomFolder } from '../../domain/elementFolders'
 import { DEFAULT_ROOM } from '../../domain/constants'
-import { DEFAULT_GRID_VISIBILITY, isPersistedDesign, persistedDesign, type SavedDesign } from '../../domain/designV1'
-import { normalizeDesignPreferences, normalizeDesignRoom, normalizeStructurePacks } from '../../domain/normalizeDesignV1'
+import { DEFAULT_GRID_VISIBILITY, persistedDesign, type SavedDesign } from '../../domain/designV1'
+import { normalizeDesignPreferences } from '../../domain/normalizeDesignV1'
 import { makeId } from '../../domain/elementIds'
-import { validateOpenings } from '../../domain/geometry'
 import type { PersistedDesign } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
 import { cloneRoom } from '../defaults'
@@ -30,8 +28,9 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
       try {
         const savedDesigns = repository.read()
         set({ savedDesigns, selectedSavedDesignId: '' })
-      } catch {
-        set({ notice: 'No se pudieron leer los diseños guardados.' })
+      } catch (error) {
+        const detail = error instanceof Error && error.message.includes('no coincide') ? ` ${error.message}` : ''
+        set({ notice: `No se pudieron leer los diseños guardados.${detail}` })
       }
     },
     selectSavedDesign: (selectedSavedDesignId) => set({ selectedSavedDesignId }),
@@ -66,7 +65,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
       }
       const data: PersistedDesign = mode === 'copy'
         ? persistedDesign(state)
-        : {
+        : migrateDesignLayouts({
           version: 1,
           room: cloneRoom(),
           furniture: [],
@@ -77,7 +76,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           lockedElementIds: [],
           ...initialRoomFolder(DEFAULT_ROOM),
           sceneElementOrder: [],
-        }
+        })
       const savedAt = new Date().toISOString()
       const design: SavedDesign = {
         id: makeId('design'),
@@ -94,6 +93,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           details: { id: design.id, mode },
         })
         set({
+          ...migrateDesignLayouts(data),
           savedDesigns,
           selectedSavedDesignId: design.id,
           room: data.room,
@@ -172,31 +172,24 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
         const current = get()
         const saved = current.savedDesigns.find((design) => design.id === (id ?? current.selectedSavedDesignId))
         if (!saved) return set({ notice: 'Selecciona un diseño guardado para recuperarlo.' })
-        const data = saved.data
-        if (!isPersistedDesign(data)) throw new Error('invalid')
-        const normalizedRoom = normalizeDesignRoom(data)
-        const structurePacks = normalizeStructurePacks(data.structurePacks, normalizedRoom)
-        if (validateOpenings(normalizedRoom)) throw new Error('invalid')
-        const migrated = migrateWallPictures(normalizedRoom, data.furniture)
-        const furniture = arrangeFurniture(migrated.remainingFurniture, migrated.room, true)
-        if (!furniture) throw new Error('invalid')
+        const data = normalizeDesignLayouts(saved.data)
         recordInteraction('state.design.loaded', {
           view: current.view,
           selectedId: current.selectedId,
           details: { id: saved.id },
         })
         set({
-          room: migrated.room,
-          furniture,
-          structurePacks,
+          ...data,
+          structurePacks: data.structurePacks ?? [],
           selectedSavedDesignId: saved.id,
           ...normalizeDesignPreferences(data),
           selectedId: null,
           hasUnsavedChanges: false,
           notice: 'Diseño recuperado.',
         })
-      } catch {
-        set({ notice: 'El diseño guardado no es válido.' })
+      } catch (error) {
+        const detail = error instanceof Error && error.message.includes('no coincide') ? ` ${error.message}` : ''
+        set({ notice: `El diseño guardado no es válido.${detail}` })
       }
     },
   }

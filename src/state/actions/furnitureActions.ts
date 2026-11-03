@@ -77,6 +77,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
         const id = makeId(kind)
         const item: FurnitureItem = {
           ...preset,
+          attachmentPolicy: 'by-type',
           id,
           x: 0,
           y: isCeilingMountedFurniture(kind) ? Math.max(0, state.room.height - preset.height) : 0,

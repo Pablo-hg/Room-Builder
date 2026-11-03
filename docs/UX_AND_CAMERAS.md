@@ -32,7 +32,7 @@ El código actual incluye **Frontal** y **Libre**. Mantenerlas funcionales duran
 - Borrar, duplicar y cambios estructurales deben poder deshacerse, salvo límites documentados.
 
 ## Comparación A/B
-«Original» es una variante normal protegida de ediciones involuntarias cuando se compara; duplicar crea «Propuesta A». Comparten la configuración base cuando solo se reorganizan muebles. Cambiar paredes/puertas implica distinguir edición del espacio de edición de una variante, sin mutaciones ocultas. Mostrar claramente cuál está activa y si hay cambios no guardados.
+Según el plan R5.1 aprobado, Original y Alternativa A permiten editar su propio mobiliario de forma independiente; Original no se puede eliminar. El selector identifica la activa y el aviso permanente explica que habitación y aperturas son comunes. Eliminar la alternativa pide confirmación; alternar y editar admiten deshacer/rehacer. Esto concreta la protección frente a ediciones involuntarias que proponía esta guía, sin bloquear la edición de Original. La configuración base y las preferencias son compartidas. Mostrar claramente cuál está activa y si hay cambios no guardados.
 
 ## Principio de sencillez
 Un control solo debe aparecer si aporta valor inmediato en el contexto de la tarea. La accesibilidad y la corrección del modelo tienen prioridad sobre animaciones espectaculares.

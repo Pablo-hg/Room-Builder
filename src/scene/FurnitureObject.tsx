@@ -1,7 +1,7 @@
 import { type ThreeEvent, useThree } from '@react-three/fiber'
 import { useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { isWallPictureKind } from '../domain/objectCatalog'
+import { canElevateFurniture, isWallPictureKind } from '../domain/objectCatalog'
 import type { FurnitureItem, WallSide } from '../domain/types'
 import { useHistoryGesture } from '../state/useHistoryGesture'
 import { useRoomStore } from '../state/useRoomStore'
@@ -20,7 +20,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
   const collision = useRoomStore((state) => showCollision && furnitureHasSpatialWarning(state, item))
   const { camera, size } = useThree()
   const [dragging, setDragging] = useState(false)
-  const canMoveVertically = true
+  const canMoveVertically = canElevateFurniture(item)
   const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
   const point = useMemo(() => new THREE.Vector3(), [])
   const dragOffset = useRef({ x: 0, z: 0 })

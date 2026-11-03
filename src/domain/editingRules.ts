@@ -1,6 +1,6 @@
 import { ROOM_LIMITS } from './constants'
 import { canPlaceFurniture, clampFurniture, clampFurnitureElevation, findFreeFurniturePosition, hasFurnitureCollisions, snapToPlacementGrid, snapToVisibleGrid, validateOpenings, withDoor, withWindow } from './geometry'
-import { FURNITURE_PRESETS, isCeilingMountedFurniture, isWallPictureKind } from './objectCatalog'
+import { canElevateFurniture, furnitureAttachment, FURNITURE_PRESETS, isCeilingMountedFurniture, isFloorBoundFurniture } from './objectCatalog'
 import type { FurnitureItem, RoomConfig, WindowConfig } from './types'
 
 export interface RoomEditingData {
@@ -21,10 +21,14 @@ export function safeRoomUpdate(current: RoomEditingData, candidate: RoomConfig):
     return outside ? { ...item } : { ...item, ...clampFurniture(item, candidate, current.gridSnap) }
   })
   furniture.forEach((item) => {
+    const attachment = furnitureAttachment(item)
+    if (attachment === 'floor' || attachment === 'ceiling') {
+      item.y = clampFurnitureElevation(item, candidate, false)
+      return
+    }
+    if (!item.attachmentPolicy && (isFloorBoundFurniture(item.kind) || isCeilingMountedFurniture(item.kind))) return
     if (clampFurnitureElevation(item, current.room, false) !== item.y) return
-    item.y = isCeilingMountedFurniture(item.kind)
-      ? Math.max(0, candidate.height - item.height)
-      : clampFurnitureElevation(item, candidate, current.gridSnap)
+    item.y = clampFurnitureElevation(item, candidate, current.gridSnap)
   })
   if (hasFurnitureCollisions(furniture)) {
     return { notice: 'No se puede reducir la habitación porque los muebles quedarían solapados.' }
@@ -46,11 +50,10 @@ export function arrangeFurniture(items: FurnitureItem[], room: RoomConfig, snap:
       width: preset.width,
       depth: preset.depth,
       height: preset.height,
-      y: isCeilingMountedFurniture(item.kind)
-        ? Math.max(0, room.height - preset.height)
-        : typeof item.y === 'number' && Number.isFinite(item.y) ? item.y : 0,
+      y: typeof item.y === 'number' && Number.isFinite(item.y) ? item.y : 0,
     }
-    const clamped = { ...normalized, x: Number.isFinite(item.x) ? item.x : 0, y: typeof item.y === 'number' && Number.isFinite(item.y) ? item.y : normalized.y, z: Number.isFinite(item.z) ? item.z : 0 }
+    const attachment = furnitureAttachment(normalized)
+    const clamped = { ...normalized, x: Number.isFinite(item.x) ? item.x : 0, y: attachment === 'floor' || attachment === 'ceiling' ? clampFurnitureElevation(normalized, room, false) : normalized.y, z: Number.isFinite(item.z) ? item.z : 0 }
     if (canPlaceFurniture(clamped, arranged)) {
       arranged.push(clamped)
       continue
@@ -108,7 +111,7 @@ export function movedFurniture(state: RoomEditingData, item: FurnitureItem, x: n
 }
 
 export function elevatedFurniture(state: RoomEditingData, item: FurnitureItem, y: number) {
-  if (isWallPictureKind(item.kind)) return null
+  if (!canElevateFurniture(item)) return null
   if (!Number.isFinite(y)) return null
   const movedY = state.gridSnap ? snapToPlacementGrid(y) : y
   if (movedY === item.y) return null

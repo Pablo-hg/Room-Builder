@@ -2,7 +2,8 @@ import { makeId, structureGridElementId, structureSurfaceElementId } from '../..
 import { elementName } from '../../domain/selection'
 import { ROOM_LIMITS } from '../../domain/constants'
 import { isFolderSelectionId, withoutFolderAssignments } from '../../domain/elementFolders'
-import { canPlaceFurniture, findFreeFurniturePosition, snapToPlacementGrid, validateOpenings, wallLength } from '../../domain/geometry'
+import { canPlaceFurniture, clampFurnitureElevation, findFreeFurniturePosition, snapToPlacementGrid, validateOpenings, wallLength } from '../../domain/geometry'
+import { canElevateFurniture } from '../../domain/objectCatalog'
 import { BASE_ROOM_SURFACE_IDS } from '../../domain/elementFolders'
 import type { FurnitureItem } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
@@ -162,7 +163,8 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
           const pastedIds: string[] = []
           for (const copy of copies) {
             if ('kind' in copy) {
-              const item: FurnitureItem = { ...copy, id: makeId(copy.kind) }
+              const item: FurnitureItem = { ...copy, id: makeId(copy.kind), attachmentPolicy: 'by-type' }
+              if (!canElevateFurniture(item)) item.y = clampFurnitureElevation(item, state.room, false)
               const offsets = [[0.5, 0.5], [0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5], [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5]] as const
               const room = { ...state.room, windows }
               const position = offsets.map(([x, z]) => ({ x: state.gridSnap ? snapToPlacementGrid(copy.x + x) : copy.x + x, z: state.gridSnap ? snapToPlacementGrid(copy.z + z) : copy.z + z }))
@@ -191,7 +193,8 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
       const copy = runtime.copiedElement
       set((state) => {
         if ('kind' in copy) {
-          const item: FurnitureItem = { ...copy, id: makeId(copy.kind) }
+          const item: FurnitureItem = { ...copy, id: makeId(copy.kind), attachmentPolicy: 'by-type' }
+          if (!canElevateFurniture(item)) item.y = clampFurnitureElevation(item, state.room, false)
           const offsets = [
             [0.5, 0.5], [0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5],
             [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5],
