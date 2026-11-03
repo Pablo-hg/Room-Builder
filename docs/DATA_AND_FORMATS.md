@@ -1,6 +1,6 @@
 # Datos, unidades, guardado e interoperabilidad
 
-**Estado:** principios CONFIRMADOS; esquema multiproyecto PROPUESTO y pendiente de implementación.
+**Estado:** principios CONFIRMADOS; contrato multiproyecto con prototipo puro en R4, no persistido ni declarado estable.
 
 ## Fuente espacial única
 - Convención: sistema XYZ del mundo; X y Z corresponden al plano del suelo, Y a la altura. Las vistas **solo proyectan** la misma escena; no modifican coordenadas del mobiliario.
@@ -26,20 +26,37 @@ Si no existe la lista actual y la cabecera legacy es válida, se crea una entrad
 
 El contrato v1 y sus límites de validación se conservan. Ver [informe de R3.4/R3.5](progress/R3_PROGRESS.md#r3-4-5) para pruebas de migración, errores de almacenamiento y conservación de cinco diseños.
 
-## Formato futuro propuesto
-Separa **proyecto** (una vivienda), **planta**, **habitaciones**, **paredes/aberturas estructurales**, **definiciones de objetos** e **instancias**, y **variantes de distribución**. Ejemplo conceptual, NO esquema implementado:
+## Contrato candidato Project/Room/Layout (R4)
 
-- Project: schemaVersion, id, name, units, floors[], roomDefinitions[], walls/openings[], furnitureDefinitions[], layouts[], metadata.
-- Floor: id, elevation, rooms[].
-- Room: id, name, boundary y enlaces explícitos a paredes compartidas.
-- Wall: id, extremos/altura y habitaciones adyacentes; aberturas con wallId.
-- Layout: id, name, furnitureInstances[], quizá overrides explicitados si procede.
+R4 añade un contrato tipado y pruebas puras, sin usarlo todavía en la aplicación:
+
+- `src/domain/projectV2.ts`: tipos y validación de `ProjectV2`, `FloorV2`, `RoomV2`, `WallV2`, `OpeningV2`, `LayoutV2` y preferencias.
+- `src/persistence/projectMigration.ts`: prototipo de migración v1–v4 y round-trip de prueba a v1.
+- `src/domain/projectVariants.ts`: aislamiento Original/Alternativa y revisión estructural.
+- `src/domain/productCapabilities.ts`: capacidades separadas para modalidad completa y Mini.
+- Informe: [progress/R4_PROGRESS.md](progress/R4_PROGRESS.md).
+
+El esquema sigue **PROPUESTO** (RB-013). No se escribe en `localStorage`, no se modifica `PersistedDesign` v1–v4 y no se declara estable para importación pública. Los packs constructivos actuales se conservan como legado explícito (`legacyStructurePacks`) para no perder datos; su conversión a paredes canónicas queda pendiente. Las variantes comparten IDs de mueble lógico para conservar selección, candados, carpetas y orden.
+
+## Formato futuro propuesto
+Separa **proyecto** (una vivienda), **planta**, **habitaciones**, **paredes/aberturas estructurales**, **definiciones de objetos** e **instancias**, y **variantes de distribución**. Ejemplo conceptual, alineado con el prototipo R4 pero NO esquema público estable:
+
+- Project: schemaVersion, id, name, units, structureRevision, floors[], rooms[], walls[], openings[], furnitureDefinitions[], layouts[], activeLayoutId, preferences, legacyStructurePacks?, metadata.
+- Floor: id, name, elevation, roomIds[].
+- Room: id, name, floorId, boundary (centro, anchura y profundidad), height y colores.
+- Wall: id, extremos, altura, grosor, color y una o dos habitaciones adyacentes; aberturas con wallId.
+- Opening: id, wallId, tipo, forma, offset, medidas, alféizar y color.
+- Layout: id, nombre, tipo original/alternativa, `structureRevision`, mobiliario propio y variante base opcional.
 - CameraState/UI selection: temporal; no parte de la distribución salvo función de vistas guardadas aprobada.
 
-**Regla futura:** una medianera debe existir de forma coherente para las dos habitaciones. No duplicar dos paredes superpuestas con huecos independientes.
+**Regla confirmada:** una medianera es una única entidad `Wall` con dos `roomIds`; la abertura existe en ambas habitaciones sin duplicar paredes con huecos independientes (RB-027, decisión del 03/11/2026). Falta por definir, para la fase multihabitación, el mapa de conexiones (qué lado local de cada habitación corresponde a la medianera y en qué eje). R4 valida la unicidad y coherencia solo en pruebas de contrato.
+
+La puerta pasa de `door` al ID determinista de su habitación; la migración traduce también sus referencias en visibilidad, candados, asignaciones a carpetas y orden de escena. La proyección al formato anterior restaura esas referencias a `door`. Las ventanas y los muebles conservan sus IDs.
+
+El contrato actual solo representa habitaciones rectangulares. Las formas no rectangulares y paredes interiores de RB-025 requieren un rediseño posterior; no están representadas ni validadas por este prototipo.
 
 ## Comparación de distribuciones
-Mantener espacio/estructura común para las variantes de mobiliario cuando se comparan «Original» y «Alternativa A». Si el usuario modifica puertas o forma de estancia, informar que afecta al proyecto espacial o crear una nueva versión estructural con acción explícita. Evitar que cambiar de alternativa mueva la puerta sin aviso.
+Mantener espacio/estructura común para las variantes de mobiliario cuando se comparan «Original» y «Alternativa A». Si el usuario modifica puertas o forma de estancia, informar que afecta al proyecto espacial o crear una nueva versión estructural con acción explícita. Evitar que cambiar de alternativa mueva la puerta sin aviso. El prototipo R4 modela esta separación con `structureRevision` y una confirmación explícita, sin UI.
 
 ## Exportación y seguridad
 - **JSON editable (PROPUESTO para MVP):** versión de esquema, validación estricta y tamaño máximo razonable; importación con previsualización y confirmación. Nunca ejecutar contenido importado, ni confiar en rutas o scripts externos.
@@ -49,4 +66,4 @@ Mantener espacio/estructura común para las variantes de mobiliario cuando se co
 - No servicios externos, analítica invasiva ni subida de planos reales en el MVP. El registro local de interacciones de desarrollo debe permanecer limitado a desarrollo, no almacenar información personal innecesaria y no enviarse a terceros.
 
 ## Estado de formato
-JSON editable y multihabitación son objetivos de diseño; no declarar que el esquema de ejemplo ya es estable hasta validarlo en una prueba de migración.
+El contrato R4 está probado como prototipo puro, pero JSON editable y multihabitación siguen siendo objetivos de diseño. No declarar estable el esquema ni exponerlo como formato público hasta validar migración, importación y UI.

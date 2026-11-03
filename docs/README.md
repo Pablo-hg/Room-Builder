@@ -32,7 +32,7 @@ Las guías no suponen aprobación de la V1 pública de Pablo Web 2.0. El proyect
 
 ## Informes de progreso
 
-Se conserva un único informe Markdown por fase R en `docs/progress/`: [informe de R3](progress/R3_PROGRESS.md). Sus subpartes y continuaciones amplían ese mismo archivo, manteniendo contexto, resultados y límites históricos. No se borra al cerrar la fase. Las mediciones JSON se conservan como evidencias enlazadas desde el informe.
+Se conserva un único informe Markdown por fase R en `docs/progress/`: [informe de R3](progress/R3_PROGRESS.md) e [informe de R4](progress/R4_PROGRESS.md). Sus subpartes y continuaciones amplían ese mismo archivo, manteniendo contexto, resultados y límites históricos. No se borra al cerrar la fase. Las mediciones JSON se conservan como evidencias enlazadas desde el informe.
 
 ## Mantenimiento documental
 - Cambiar una decisión implica actualizar DECISION_LOG y los documentos afectados en la misma propuesta.

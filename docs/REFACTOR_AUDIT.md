@@ -414,6 +414,8 @@ Decisiones de esta propuesta:
 | R4.3 | Modelar estructura compartida y variante de mobiliario | aprobación de R4.1 | mutaciones cruzadas entre A/B | Original/Alternativa aisladas en tests |
 | R4.4 | Validar dos habitaciones y una pared compartida solo como prueba de contrato | R4.2–R4.3 | convertir prototipo en función entregada | test de identidad/adyacencia; sin controles públicos |
 
+**Estado 03/11/2026:** R4.1–R4.4 ejecutadas como contrato y pruebas puras en la rama `refactor/r4-preparar-evolucion`. No hay UI multihabitación, persistencia nueva ni cambio de formato v1–v4. Detalle y límites en [progress/R4_PROGRESS.md](progress/R4_PROGRESS.md).
+
 R5 queda fuera de esta auditoría: redimensionado general, JSON público editable, comparación A/B visible y cualquier función multihabitación.
 
 ## 12. Orden de integración recomendado
