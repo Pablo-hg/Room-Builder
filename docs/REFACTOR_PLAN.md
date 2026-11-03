@@ -1,8 +1,8 @@
 # Plan de reorganización del código — fase siguiente
 
-**Estado de referencia (documentación de `main` en GitHub, comprobada el 28/10/2026):** R0 completada, R1 implementada y R2.1–R2.9 completadas, con incidencia E2E previa documentada. Se conserva el detalle de R2 de esa versión.
+**Estado de referencia (referencia local `origin/main`, `9472bd5`, 03/11/2026):** R0, R1, R2.1–R2.9 y R3.1–R3.7 integrados, junto con las correcciones posteriores de superficies, vistas y navegación. R4 no está integrada en esta referencia; sus cambios están en la rama de trabajo. R5 sigue PENDIENTE.
 
-**Estado de esta rama:** `refactor/r3-dominio-estado` parte del `main` actualizado (`77a502e`), con R1/R2. R3.1–R3.7 están completadas como refactor, con 101/101 unitarias, build aprobado y perfiles de render antes/después registrados. Los 41/41 E2E corresponden a la revisión previa; la corrección posterior del foco del inspector pasa su regresión específica (1/1), sin terminar la nueva suite completa por petición del usuario. Las incidencias previas y límites de validación se conservan en los informes. R4 y R5 siguen PENDIENTES. Los informes se conservan en [progress/](progress/R3_PROGRESS.md), incluido el [informe de R3.6/R3.7](progress/R3_PROGRESS.md#r3-6-7). Las decisiones de arquitectura futura no quedan aprobadas por esta actualización.
+**Estado de esta rama:** `refactor/r4-preparar-evolucion`, creada desde `origin/main` (`9472bd5`). R4.1–R4.4 están completadas como **contrato y pruebas puras**, con revisión posterior: 189/189 pruebas unitarias y build aprobado. Los cambios siguen locales, sin commit ni integración. No hay UI multihabitación, ni migración ejecutada sobre datos reales, ni cambio del formato persistido v1–v4. R5 sigue **PENDIENTE**. El detalle está en [progress/R4_PROGRESS.md](progress/R4_PROGRESS.md); el histórico de R3 se conserva en [progress/R3_PROGRESS.md](progress/R3_PROGRESS.md). Las decisiones de arquitectura futura no quedan aprobadas por esta actualización.
 
 ## Antes de tocar código
 
@@ -107,13 +107,72 @@ Detalle de implementación, historial, pruebas y límites en el [informe único 
 
 ### R4 — Preparar evolución del producto (sin entregar casa)
 
-- Diseñar contrato Project/Room/Layout para una habitación y variantes A/B.
-- Ejecutar migración explícita y tests antes de exponer interfaz multihabitación.
-- Separar toggles/capacidades para modalidad completa versus Mini.
+**Estado: COMPLETADA como contrato y pruebas puras (R4.1–R4.4).** No entrega multihabitación, no añade controles públicos y no modifica `PersistedDesign` v1–v4 ni las claves de `localStorage`.
+
+**Decisiones tomadas para el prototipo (03/11/2026):**
+
+- **Alcance:** contrato y pruebas puras; sin UI de variantes ni lectura/escritura del proyecto nuevo en el repositorio.
+- **Packs constructivos:** se conservan como legado explícito para no perder datos; no se convierten aún en paredes canónicas ni se mezclan con `Wall`.
+- **IDs de mobiliario:** los muebles copiados entre variantes comparten ID como «mismo mueble lógico», para conservar selección, candados, carpetas y orden; los muebles nuevos reciben un ID único en el proyecto.
+- **Modalidad Mini:** una habitación, sin variantes, sin JSON editable, sin GLB, catálogo reducido y navegación contextual.
+
+Estas decisiones describen el prototipo R4. El esquema final sigue **PROPUESTO** (RB-013) y requiere validación antes de integrarse.
+
+**Entregables:**
+
+- `src/domain/projectV2.ts`: tipos `ProjectV2`, `FloorV2`, `RoomV2`, `WallV2`, `OpeningV2`, `LayoutV2`, preferencias, huella estructural y validación.
+- `src/persistence/projectMigration.ts`: migración pura v1–v4 → candidato v2 y round-trip de prueba a v1.
+- `src/domain/projectVariants.ts`: variantes Original/Alternativa, aislamiento de mobiliario y revisión estructural.
+- `src/domain/productCapabilities.ts`: capacidades separadas para modalidad completa y Mini.
+- Pruebas puras en `src/domain/projectV2.test.ts`, `src/domain/projectVariants.test.ts`, `src/domain/productCapabilities.test.ts` y `src/persistence/projectMigration.test.ts`.
+- Informe único de fase en [progress/R4_PROGRESS.md](progress/R4_PROGRESS.md).
+
+#### Decisiones e invariantes del contrato
+
+1. **Coordenadas:** habitación como rectángulo con centro `x/z`, anchura, profundidad y altura en metros; paredes con extremos `start/end`; aberturas referenciadas por `wallId` y `offset` respecto al centro de la pared.
+2. **Paredes compartidas:** una sola entidad `Wall` con dos `roomIds`. La validación rechaza más de una medianera para la misma pareja, extremos fuera del borde de sus habitaciones, paredes que no discurren enteras por un único lado de cada habitación (diagonales o segmentos que atraviesen la habitación), la repetición de la misma habitación en `roomIds` y habitaciones de plantas distintas en una misma pared. Los tramos alineados con un lado, aunque no lo cubran entero, se aceptan; esa decisión completa queda abierta para el esquema final.
+3. **Aberturas:** deben pertenecer a una pared existente, caber en su longitud y no superar su altura. En la misma pared no pueden solaparse entre sí (RB-026): el solape se mide en tramos a lo largo de la pared y franja de altura.
+4. **Variantes:** comparten la misma estructura; debe existir exactamente una variante Original y la variante activa debe existir. Cada `Layout` guarda su mobiliario y su `structureRevision`. Un cambio estructural incrementa la revisión y deja las variantes obsoletas hasta una confirmación explícita.
+5. **Preferencias:** cuadrícula, visibilidad, candados, carpetas y orden se conservan en el proyecto migrado; no se mezclan con la geometría. Las referencias a `door` se traducen al ID de puerta del proyecto y se restauran al proyectar al formato anterior.
+6. **Legado:** los packs constructivos viajan en `legacyStructurePacks`, separados de las paredes canónicas.
+
+#### R4.1 — Propuesta/ADR del contrato `Project`/`Floor`/`Room`/`Wall`/`Opening`/`Layout`
+
+(COMPLETADA; depende de R3): contrato tipado, invariantes y límites documentados en el código y en el informe de fase. No se declara estable el esquema ni se modifica el formato persistido.
+
+Aceptación cumplida: revisión documental previa, sin cambios de UI ni de `localStorage`; las decisiones abiertas del esquema final quedan visibles.
+
+#### R4.2 — Prototipo de migración v1–v4 → candidato v2
+
+(COMPLETADA; depende de R4.1): `migrateDesignToProject` convierte un `SavedDesign` en un proyecto de una habitación conservando habitación, cuatro paredes canónicas, puerta, ventanas, mobiliario, nombres, colores, preferencias, carpetas, candados, orden de escena y packs constructivos. `projectToPersistedDesignV1` permite comprobar el round-trip sin exponer importación pública.
+
+Aceptación cumplida: fixtures válidos, antiguos y de límite; migración determinista; round-trip semántico; rechazo de datos malformados; entrada sin mutaciones; los cinco diseños actuales siguen leyéndose con el repositorio existente.
+
+#### R4.3 — Estructura compartida y variantes de mobiliario
+
+(COMPLETADA; depende de R4.1): `duplicateLayoutAsAlternative`, `replaceLayoutFurniture`, `addFurnitureToLayout`, `removeFurnitureFromLayout`, `reviseStructure` y `rebaseLayoutsOnStructure` modelan Original/Alternativa A sin mutaciones cruzadas. Los muebles copiados conservan ID lógico; los nuevos usan un ID único.
+
+Aceptación cumplida: aislamiento Original/Alternativa, identidad de estructura, revisión estructural, confirmación explícita y conservación de preferencias. Duplicar una variante obsoleta conserva su revisión y no confirma implícitamente la estructura nueva. Sin controles públicos de comparación A/B.
+
+#### R4.4 — Prueba de contrato: dos habitaciones y una pared compartida
+
+(COMPLETADA; depende de R4.2–R4.3): prueba pura con dos habitaciones rectangulares contiguas, una única medianera con dos `roomIds` y una apertura compartida. Comprueba identidad, adyacencia, lados de pared por habitación y ausencia de duplicados.
+
+Aceptación cumplida: sin interfaz pública, sin creación de vivienda y sin declarar entregada la función multihabitación. La validación rechaza paredes fuera de borde, referencias inexistentes y más de una medianera para la misma pareja.
+
+#### Criterios de salida de R4
+
+- Contrato documentado y decisiones abiertas visibles; ninguna decisión PENDIENTE cerrada por conveniencia. **Cumplido en el prototipo.**
+- Migración de prototipo probada con fixtures v1–v4 y round-trip semántico. **Cumplido.**
+- Variantes aisladas y estructura compartida verificadas en pruebas puras. **Cumplido.**
+- Prueba de dos habitaciones con pared compartida sin UI ni persistencia nueva. **Cumplido.**
+- Sin regresiones en la lectura de los diseños actuales; `npm test` y build en verde. **189/189 unitarias y build aprobado.**
+- Ningún cambio de claves, esquema persistido o comportamiento visible sin autorización expresa. **Cumplido.**
 
 ### R5 — Funcionalidad y diseño
 
-- Solo después, implementar redimensionado, comparación A/B, JSON editable y simplificación de UX. Las casas conectadas son posterior.
+- Orden acordado: comparación Original/Alternativa A en una sola habitación antes de redimensionado o JSON editable (registro de decisiones, 03/11/2026). R5 sigue PENDIENTE; antes de implementar se debe concretar selección, preferencias e historial por variante, guardado compatible y aceptación de cambios estructurales.
+- Las formas no rectangulares y paredes interiores de RB-025 requieren rediseñar el contrato rectangular actual; ese trabajo queda después de la comparación. Las casas conectadas son posteriores.
 
 ## Criterios de salida para cada lote
 

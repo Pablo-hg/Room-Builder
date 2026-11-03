@@ -15,8 +15,8 @@
 | RB-009 | Reutilizar React/TypeScript/Three.js/R3F/Zustand mientras encajen | PROPUESTO | No cambiar stack por moda |
 | RB-010 | MVP inicial: recreación y comparación A/B de una habitación, JSON editable | PROPUESTO | Recomendada como definición de «producto útil» |
 | RB-011 | Primera fase multihabitación: dos rectángulos adyacentes con pared compartida | PROPUESTO | Después de validar habitación individual |
-| RB-012 | Mini del Laboratorio: misma base técnica, experiencia reducida a una habitación | PROPUESTO | Integración y alcance oficial aún pendientes |
-| RB-013 | Modelo de datos multiproyecto, paredes compartidas, variantes aisladas | PROPUESTO | Contrato sin implementar, requiere validación |
+| RB-012 | Mini del Laboratorio: misma base técnica, experiencia reducida a una habitación | PROPUESTO | Integración y alcance oficial aún pendientes; capacidades Mini definidas en R4 |
+| RB-013 | Modelo de datos multiproyecto, paredes compartidas, variantes aisladas | PROPUESTO | Prototipo R4 en pruebas puras; contrato aún no estable ni persistido |
 | RB-014 | Generador de muebles a partir de texto | EXPERIMENTAL | Existe GENERADOR_OBJETOS.md, no implementado |
 | RB-015 | Soporte pleno de casas, plantas, escaleras y geometría irregular | PENDIENTE | Visión futura; límites por definir |
 | RB-016 | Paleta cromática exacta, tokens, ejemplos/asset pack de referencia | PENDIENTE | La dirección visual sí está acordada |
@@ -24,6 +24,13 @@
 | RB-018 | Publicación pública, licencias del código/assets, modalidades de distribución | PENDIENTE | Repositorio privado actual |
 | RB-019 | Refactor por fases sin nuevas funciones ni alteración visual | PROPUESTO | Ver REFACTOR_PLAN |
 | RB-020 | No simular exactitud arquitectónica/estructural ni usar datos privados externos | CONFIRMADO como principio | Visualización orientativa |
+| RB-021 | R4 se entrega como contrato y pruebas puras, sin UI multihabitación ni persistencia nueva | CONFIRMADO | Decisión del 03/11/2026; no cambia el formato guardado |
+| RB-022 | Los packs constructivos v1 se conservan como legado explícito en la migración | CONFIRMADO | Evita pérdida; no se convierten aún en paredes canónicas |
+| RB-023 | Las variantes comparten ID de mueble lógico; los muebles nuevos usan ID único | CONFIRMADO | Conserva selección, candados, carpetas y orden |
+| RB-024 | Mini: una habitación, sin variantes, JSON ni GLB; catálogo reducido y navegación contextual | CONFIRMADO | Recorte de capacidades, no un segundo modelo de datos |
+| RB-025 | Formas de habitación: 1 pared (circular), 2 (semicírculo y recta), 3 (triángulo con ángulos ajustables), 4 (rectangular por defecto), 5 y 6 lados; además paredes simples interiores que no cubren el lado completo | CONFIRMADO como dirección (decisión del 03/11/2026) | Requiere rediseñar `RoomV2`/`WallV2` y el render actual de rectángulos; afecta al esquema RB-013 y alimenta RB-015; se necesita plan de fases, no cambio inmediato del prototipo R4 |
+| RB-026 | Los objetos de tipo pared (decoración y aberturas) no pueden solaparse en la misma pared; el solape se mide en 2D (tramo a lo largo de la pared × franja de altura) | CONFIRMADO (03/11/2026) | Implementado en `validateProject` como `opening-overlap`: permite decoración sobre la puerta, rechaza aberturas/decoración que se pisen en tramo y altura |
+| RB-027 | Cada habitación mantiene sus propias paredes y techo/suelo; una puerta o ventana entre habitaciones debe existir en ambas | CONFIRMADO como dirección (03/11/2026) | Mecanismo elegido: **medianera única** (`WallV2` con dos `roomIds`), que ya hace existir la abertura en ambas habitaciones sin duplicar paredes con huecos independientes. Queda por definir el mapa de conexiones (qué lado local de cada habitación corresponde a la medianera y en qué eje) para la fase multihabitación |
 
 ## Aclaraciones
 - **CONFIRMADO** aquí alude a decisiones expresas de esta conversación, no a entregas realizadas o a documentación global del portfolio.
@@ -35,4 +42,5 @@
 1. Validar por prototipo la simplificación visual de los controles.
 2. Acordar MVP de una habitación frente a alcance posterior multihabitación.
 3. Establecer paleta/ejemplos concretos solo tras una comparación visual en producto.
-4. Definir esquema de proyecto/variantes después de la auditoría del refactor.
+4. Validar y decidir el esquema final de proyecto/variantes a partir del prototipo R4, antes de integrarlo.
+5. Siguiente fase validada en la planificación (03/11/2026): comparación Original/Alternativa A en una sola habitación, antes que redimensionar o JSON editable; las formas de habitación RB-025 quedan después de eso.
