@@ -20,7 +20,6 @@ import { MultiFurnitureGizmo } from '../scene/MultiFurnitureGizmo'
 import { multiSelectionItems } from '../domain/multiSelection'
 import { prioritizeTransformControls } from '../scene/interactionPriority'
 import { FreeCameraKeyboard } from '../scene/FreeCameraKeyboard'
-import { selectedBaseWallIndicators, showGroupedWallIndicators } from '../scene/groupWallIndicators'
 import { baseWallId, folderSelectionId, ROOT_ROOM_FOLDER } from '../domain/elementFolders'
 
 function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null> }) {
@@ -38,8 +37,6 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
   const showBase = !focusedView || Math.abs(level) < 0.01
   const multiItems = multiSelectionItems({ room: props.room, furniture: props.furniture, structurePacks: props.structurePacks, elementFolders: folders, elementFolderAssignments: assignments, selectedIds }).filter((item) => !focusedView || (item.min.y >= level - 0.15 && item.min.y < level + props.room.height))
   const groupSelected = !(selectedIds.length === 1 && selectedIds[0] === folderSelectionId(ROOT_ROOM_FOLDER)) && multiItems.length > 1 && (selectedIds.length > 1 || selectedIds.some((id) => id.startsWith('folder:')))
-  const groupedStructureSelected = showGroupedWallIndicators(selectedIds, multiItems)
-  const selectedBaseWalls = selectedBaseWallIndicators(selectedIds, folders, assignments)
   const cameraRoom = {
     ...props.room,
     height: focusedView || props.view === 'front' ? props.room.height : Math.max(props.room.height, ...props.structurePacks.filter((pack) => pack.id.startsWith('floor-pack-')).map((pack) => pack.y + props.room.height)),
@@ -67,7 +64,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
             groupSelected={groupSelected}
           />
         ))}
-        {showBase && !props.exportMode && labeledWalls.filter((wall) => selectedBaseWalls.includes(wall) && !hiddenElementIds.includes(baseWallId(wall))).map((wall) => <WallIdentityLabel key={`base-label-${wall}`} room={props.room} wall={wall} view={props.view} wallView={props.wallView} />)}
+        {showBase && !activeRoom && !props.exportMode && labeledWalls.filter((wall) => !hiddenElementIds.includes(baseWallId(wall))).map((wall) => <WallIdentityLabel key={`base-label-${wall}`} room={props.room} wall={wall} view={props.view} wallView={props.wallView} />)}
         {props.structurePacks.filter((pack) => !focusedView || (pack.id.startsWith('floor-pack-') ? Math.abs(pack.y - level) < 0.01 : pack.surfaces.some((surface) => { const y = pack.y + surface.y + (surface.kind === 'wall' ? props.room.height / 2 : surface.kind === 'ceiling' ? props.room.height : 0); return y >= level - 0.01 && y < level + props.room.height }))).map((pack) => (
           <group key={pack.id} position={[pack.x, pack.y, pack.z]} visible={!hiddenElementIds.includes(pack.id)}>
             {pack.surfaces.map((surface) => {
@@ -84,11 +81,11 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
                   selected={!props.exportMode && selectedId === surfaceId}
                   outlined={!props.exportMode && !groupSelected && selectedIds.includes(surfaceId)}
                   locked={lockedElementIds.includes(surfaceId)}
-                  showGrid={!props.exportMode && independentSurface}
+                  showGrid={!props.exportMode && (independentSurface || pack.id.startsWith('floor-pack-'))}
                   showCollision={!props.exportMode}
                   onSelect={() => selectElement(surfaceId)}
                 />
-                {groupedStructureSelected && !props.exportMode && surface.kind === 'wall' && surface.wall && labeledWalls.includes(surface.wall) && !hiddenElementIds.includes(surfaceId) && multiItems.some((item) => item.id === surfaceId) && <group position={[surface.x, surface.y, surface.z]}><WallIdentityLabel room={props.room} wall={surface.wall} view={props.view} wallView={props.wallView} /></group>}
+                {pack.id === activeRoom?.id && !props.exportMode && surface.kind === 'wall' && surface.wall && labeledWalls.includes(surface.wall) && !hiddenElementIds.includes(surfaceId) && <group position={[surface.x, surface.y, surface.z]}><WallIdentityLabel room={props.room} wall={surface.wall} view={props.view} wallView={props.wallView} /></group>}
                 </group>
               )
             })}

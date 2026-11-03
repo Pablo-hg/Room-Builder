@@ -34,6 +34,7 @@ export function ObjectsPanel() {
   const room = useRoomStore((state) => state.room)
   const furniture = useRoomStore((state) => state.furniture)
   const structurePacks = useRoomStore((state) => state.structurePacks)
+  const activeRoomId = useRoomStore((state) => state.activeRoomId)
   const selectedId = useRoomStore((state) => state.selectedId)
   const selectedIds = useRoomStore((state) => state.selectedIds)
   const view = useRoomStore((state) => state.view)
@@ -92,10 +93,11 @@ export function ObjectsPanel() {
   const orderIndex = new Map(order.map((id, index) => [id, index]))
   sceneElements.sort((a, b) => (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0))
   const visibleGridWalls = visibleWallsForView(view, isoOrientation, wallView, freeAzimuth)
+  const activeRoom = structurePacks.find((pack) => pack.id === activeRoomId && pack.id.startsWith('floor-pack-'))
   const gridControls = [
     { id: 'floor' as const, label: 'Suelo' },
     ...visibleGridWalls.map((wall) => ({ id: wall, label: `Pared ${WALL_LABELS[wall]}` })),
-  ]
+  ].filter((control) => !activeRoom || activeRoom.surfaces.some((surface) => control.id === 'floor' ? surface.kind === 'floor' : surface.kind === 'wall' && surface.wall === control.id))
   const toggleCategory = (category: string) => {
     setCollapsedCategories((current) => ({ ...current, [category]: !current[category] }))
   }
@@ -548,22 +550,26 @@ export function ObjectsPanel() {
         <section className="panel-section grid-section" aria-labelledby="grid-heading">
         <div className="grid-section__heading">
           <span className="grid-icon" aria-hidden="true">▦</span>
-          <span><strong id="grid-heading">Cuadrículas visibles</strong><small>Cuadrados de 25 cm</small></span>
+          <span><strong id="grid-heading">Cuadrículas visibles</strong><small>{activeRoom?.name ?? elementFolders.find((folder) => folder.id === ROOT_ROOM_FOLDER)?.name ?? 'Habitación principal'} · cuadrados de 25 cm</small></span>
         </div>
         <div className="grid-visibility-list">
-          {gridControls.map((surface) => (
+          {gridControls.map((surface) => {
+            const roomSurface = activeRoom?.surfaces.find((item) => surface.id === 'floor' ? item.kind === 'floor' : item.kind === 'wall' && item.wall === surface.id)
+            const gridId = activeRoom && roomSurface ? structureGridElementId(activeRoom.id, roomSurface.id) : null
+            const visible = gridId ? !hiddenElementIds.includes(gridId) : gridVisibility[surface.id]
+            return (
             <div className="grid-visibility-row" key={surface.id}>
               <span>{surface.label}</span>
               <button
                 type="button"
-                className={`switch ${gridVisibility[surface.id] ? 'on' : ''}`}
+                className={`switch ${visible ? 'on' : ''}`}
                 role="switch"
-                aria-checked={gridVisibility[surface.id]}
+                aria-checked={visible}
                 aria-label={`Mostrar cuadrícula de ${surface.label.toLowerCase()}`}
-                onClick={() => toggleGridVisibility(surface.id)}
+                onClick={() => gridId ? toggleElementVisibility(gridId) : toggleGridVisibility(surface.id)}
               ><span /></button>
             </div>
-          ))}
+          )})}
           {structurePacks.filter((pack) => pack.id.startsWith('floor-object-') || pack.id.startsWith('wall-object-')).flatMap((pack) => pack.surfaces.map((surface) => {
             const id = structureGridElementId(pack.id, surface.id)
             const visible = !hiddenElementIds.includes(id)
