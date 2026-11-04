@@ -2,7 +2,7 @@
 
 **Objetivo:** eliminar contradicciones de alcance sin borrar documentación útil ni historiales. Esta auditoría es de **documentos y planificación**, no implica que se hayan ejecutado tests nuevos ni implementado las funciones aprobadas.
 
-**Reorganización posterior del mismo día:** las issues #55–#61, creadas solo como contenedores, quedaron cerradas por redundantes; las 24 tareas reales siguen abiertas y ordenadas con etiquetas de fase. **Los siete hitos F0–F6 ya están creados por el propietario y las 24 issues están asignadas y verificadas.** Ver el mapa real en [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md). La auditoría es documental y no sustituye pruebas.
+**Reorganización posterior del mismo día:** las issues #55–#61, creadas solo como contenedores, quedaron cerradas por redundantes; las 24 tareas reales siguen abiertas y ordenadas con **Milestones nativos F0–F6**. Las etiquetas redundantes `fase:*` y `hito:*` se eliminaron; no se ha añadido ninguna cabecera artificial a las tareas. **Los siete hitos están creados por el propietario y las 24 issues están asignadas y verificadas.** Ver el mapa real en [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md). La auditoría es documental y no sustituye pruebas.
 
 ## Jerarquía de fuentes (si hay discrepancias)
 1. Issue [épica #23](https://github.com/Pablo-hg/Room-Builder/issues/23) + [MVP_MASTER_PLAN](MVP_MASTER_PLAN.md): alcance comprometido, etiquetas y secuencia; [MVP_SCOPE](MVP_SCOPE.md) define criterios de aceptación.

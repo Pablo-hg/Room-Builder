@@ -1,6 +1,6 @@
 # Plan maestro — MVP local completo de Room Builder
 
-**Aprobado para planificación: 04/11/2026.** Épica: [#23](https://github.com/Pablo-hg/Room-Builder/issues/23). Este es el **único backlog canónico de todo el MVP**. Las fases se organizan con etiquetas y los **siete hitos nativos de GitHub creados y asignados** (no con issues contenedoras). `LOCAL_MVP_BACKLOG.md` queda como índice de la fase inicial v0.2.
+**Aprobado para planificación: 04/11/2026.** Épica: [#23](https://github.com/Pablo-hg/Room-Builder/issues/23). Este es el **único backlog canónico de todo el MVP**. Las fases se organizan por los **siete Milestones nativos de GitHub**, asignados a las 24 tareas y visibles en la barra lateral de cada issue (sin etiquetas redundantes de fase ni contenedores). `LOCAL_MVP_BACKLOG.md` queda como índice de la fase inicial v0.2.
 
 ## Definición de producto terminado
 Desde una habitación rectangular, el usuario puede construir una **vivienda por plantas** con estancias conectadas y paredes reales, contornos editables, cotas, importación de plano calibrado, herramientas precisas, materiales, plantillas personales, editor manual de muebles, vistas 2D/3D y recorrido WASD; guardar/abrir/importar/exportar la vivienda completa sin cuenta ni backend. Solo se valorará publicar tras **#54** y aprobación humana.
@@ -11,7 +11,7 @@ Desde una habitación rectangular, el usuario puede construir una **vivienda por
 
 Hay **24 tareas reales de ejecución + la épica #23**. Las siete issues contenedoras creadas anteriormente **#55–#61 se han cerrado como archivo organizativo**, porque duplicaban la clasificación por fases. **No se han cerrado tareas de desarrollo.**
 
-- Cada tarea conserva `mvp`, `tipo:ejecucion`, `prioridad:P0/P1`, `fase:F0..F6`, `orden:01..24` y la etiqueta de checkpoint.
+- Cada tarea conserva `mvp`, `tipo:ejecucion`, `prioridad:P0/P1` y `orden:01..24`. La fase se expresa **exclusivamente** mediante el campo Milestone nativo de GitHub; las etiquetas `fase:*` y `hito:*` se han eliminado.
 - **Hitos nativos (*Milestones*) activos y verificados:** el propietario creó F0–F6 y se asignaron las **24 tareas** a sus hitos reales (números 1–7). La épica #23 queda sin hito. No volver a crear issues «carpeta» para sustituirlos.
 - Distribución real verificada en la [pantalla de hitos](https://github.com/Pablo-hg/Room-Builder/milestones), sin duplicar las issues:
 
@@ -25,7 +25,7 @@ Hay **24 tareas reales de ejecución + la épica #23**. Las siete issues contene
 | F5 — Modelos de muebles | 47 |
 | F6 — Validación final | 54 |
 
-Mientras se crean los hitos, las **etiquetas de fase ya son utilizables como filtros**. La épica #23 conserva el resumen global y este documento conserva las dependencias, por lo que no hay pérdida de información.
+**Los siete Milestones ya están creados y las 24 tareas asignadas.** Se pueden filtrar desde la interfaz de GitHub por Milestone; no añadir una cabecera de hito dentro de la descripción de cada issue. La épica #23 mantiene el resumen global y este documento, las dependencias.
 
 ## Orden recomendado y prioridades
 
@@ -56,11 +56,12 @@ Mientras se crean los hitos, las **etiquetas de fase ya son utilizables como fil
 | 23 | [#47](https://github.com/Pablo-hg/Room-Builder/issues/47) | F5 | P1 | #25, #28, #30, #39 | Editor de muebles por primitivas, grupos y materiales | B |
 | 24 | [#54](https://github.com/Pablo-hg/Room-Builder/issues/54) | F6 | P0 | **Todas las anteriores** | Validación integral + decisión de publicar | **ÚNICA GATE FINAL** |
 
-### Semántica de etiquetas nativas
-- `mvp`: cuenta para la release candidata local.
-- `prioridad:P0`: **bloqueante** por datos, arquitectura, accesibilidad o cierre; trabajar al llegar su fase. `prioridad:P1`: función comprometida para el mismo MVP, pero se puede planificar después de P0 de la fase. **P1 no significa opcional.**
-- `fase:F0-estabilizacion`, `F1-editor`, `F2-precision`, `F3-presentacion`, `F4-vivienda`, `F5-modelos`, `F6-release`: grupos de ejecución.
-- `orden:01`…`orden:24`: secuencia **recomendada de inicio**, no garantiza cadena rígida; pueden existir PR paralelas si no comparten contrato. `hito:v0.2` / `hito:mvp-final` separan checkpoint y release candidata completa.
+### Semántica de etiquetas y Milestones
+- El **Milestone** del panel derecho de GitHub identifica la fase F0–F6 y determina el seguimiento del progreso, sin etiquetas `fase:*` ni `hito:*`.
+- `mvp`: cuenta para la release candidata local; `tipo:ejecucion`: tarea funcional, no contenedor.
+- `prioridad:P0`: bloqueante por datos, arquitectura, accesibilidad o cierre; `prioridad:P1`: comprometida para el mismo MVP, pero menos urgente. **P1 no es opcional.**
+- `orden:01`…`orden:24`: secuencia recomendada **dentro del conjunto de hitos**, no cadena rígida; los PR independientes pueden desarrollarse en paralelo si sus dependencias lo permiten.
+- F1/#33 es checkpoint v0.2; F6/#54, cierre del MVP final.
 - [#23](https://github.com/Pablo-hg/Room-Builder/issues/23) es la épica `orden:00`, **no** una tarea de ejecución adicional. Las antiguas issues contenedoras #55–#61 están archivadas/cerradas, **no son tareas pendientes**.
 
 ### Camino crítico de arquitectura
