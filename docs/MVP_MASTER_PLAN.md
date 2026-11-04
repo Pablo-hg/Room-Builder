@@ -1,6 +1,6 @@
 # Plan maestro — MVP local completo de Room Builder
 
-**Aprobado para planificación: 04/11/2026.** Épica: [#23](https://github.com/Pablo-hg/Room-Builder/issues/23). Este es el **único backlog canónico de todo el MVP**. Las fases se organizan por etiquetas y, cuando se creen, por hitos de GitHub (no por issues contenedoras). `LOCAL_MVP_BACKLOG.md` queda como índice de la fase inicial v0.2.
+**Aprobado para planificación: 04/11/2026.** Épica: [#23](https://github.com/Pablo-hg/Room-Builder/issues/23). Este es el **único backlog canónico de todo el MVP**. Las fases se organizan con etiquetas y los **siete hitos nativos de GitHub creados y asignados** (no con issues contenedoras). `LOCAL_MVP_BACKLOG.md` queda como índice de la fase inicial v0.2.
 
 ## Definición de producto terminado
 Desde una habitación rectangular, el usuario puede construir una **vivienda por plantas** con estancias conectadas y paredes reales, contornos editables, cotas, importación de plano calibrado, herramientas precisas, materiales, plantillas personales, editor manual de muebles, vistas 2D/3D y recorrido WASD; guardar/abrir/importar/exportar la vivienda completa sin cuenta ni backend. Solo se valorará publicar tras **#54** y aprobación humana.
@@ -12,10 +12,10 @@ Desde una habitación rectangular, el usuario puede construir una **vivienda por
 Hay **24 tareas reales de ejecución + la épica #23**. Las siete issues contenedoras creadas anteriormente **#55–#61 se han cerrado como archivo organizativo**, porque duplicaban la clasificación por fases. **No se han cerrado tareas de desarrollo.**
 
 - Cada tarea conserva `mvp`, `tipo:ejecucion`, `prioridad:P0/P1`, `fase:F0..F6`, `orden:01..24` y la etiqueta de checkpoint.
-- **Hitos nativos (*Milestones*) previstos:** la herramienta conectada puede asignar un hito ya existente, **pero no crearlo**. Por eso su creación está **pendiente** y no se afirma aquí que existan. No volver a crear issues «carpeta» para sustituirlos.
-- Una vez creados los siete hitos desde la [pantalla de hitos](https://github.com/Pablo-hg/Room-Builder/milestones), asignar exactamente estos números, sin duplicar las issues:
+- **Hitos nativos (*Milestones*) activos y verificados:** el propietario creó F0–F6 y se asignaron las **24 tareas** a sus hitos reales (números 1–7). La épica #23 queda sin hito. No volver a crear issues «carpeta» para sustituirlos.
+- Distribución real verificada en la [pantalla de hitos](https://github.com/Pablo-hg/Room-Builder/milestones), sin duplicar las issues:
 
-| Milestone propuesto | Issues que contiene |
+| Milestone de GitHub | Issues asignadas |
 | --- | --- |
 | F0 — Estabilización | 24, 34 |
 | F1 — Editor base (v0.2) | 25, 26, 27, 28, 29, 30, 31, 32, 33 |
