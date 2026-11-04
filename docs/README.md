@@ -5,7 +5,7 @@
 ## Entrada obligatoria para ejecutar tareas
 | Orden | Documento | Para qué sirve |
 | --- | --- | --- |
-| 1 | [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md) | **Fuente única de orden, dependencias, etiquetas y gate final** (#23–#54, excluyendo propuestas cerradas) |
+| 1 | [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md) | **Fuente única de orden, dependencias, fases/etiquetas y gate final** (24 tareas de ejecución + épica #23; contenedores #55–#61 archivados; hitos nativos por crear) |
 | 2 | [MVP_SCOPE.md](MVP_SCOPE.md) | Alcance y criterios de publicación del **MVP completo**, con v0.2 como checkpoint |
 | 3 | [DECISION_LOG.md](DECISION_LOG.md) | Registro de decisiones y precedencias |
 | 4 | [HOUSE_VISION.md](HOUSE_VISION.md) | Meta comprometida: vivienda conectada por plantas, plano global y POV |

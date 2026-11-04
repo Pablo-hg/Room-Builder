@@ -2,6 +2,8 @@
 
 **Objetivo:** eliminar contradicciones de alcance sin borrar documentación útil ni historiales. Esta auditoría es de **documentos y planificación**, no implica que se hayan ejecutado tests nuevos ni implementado las funciones aprobadas.
 
+**Reorganización posterior del mismo día:** las issues #55–#61, creadas solo como contenedores, quedaron cerradas por redundantes; las 24 tareas reales siguen abiertas y ordenadas con etiquetas de fase. No hay hitos nativos creados desde esta conexión; ver las instrucciones y mapa en [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md). La auditoría es documental y no sustituye pruebas.
+
 ## Jerarquía de fuentes (si hay discrepancias)
 1. Issue [épica #23](https://github.com/Pablo-hg/Room-Builder/issues/23) + [MVP_MASTER_PLAN](MVP_MASTER_PLAN.md): alcance comprometido, etiquetas y secuencia; [MVP_SCOPE](MVP_SCOPE.md) define criterios de aceptación.
 2. [DECISION_LOG](DECISION_LOG.md): decisiones del propietario y alcance aprobado.

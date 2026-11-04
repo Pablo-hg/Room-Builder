@@ -1,11 +1,31 @@
 # Plan maestro — MVP local completo de Room Builder
 
-**Aprobado para planificación: 04/11/2026.** Épica: [#23](https://github.com/Pablo-hg/Room-Builder/issues/23). Este es el **único backlog canónico de todo el MVP**. `LOCAL_MVP_BACKLOG.md` queda como índice de la fase inicial v0.2.
+**Aprobado para planificación: 04/11/2026.** Épica: [#23](https://github.com/Pablo-hg/Room-Builder/issues/23). Este es el **único backlog canónico de todo el MVP**. Las fases se organizan por etiquetas y, cuando se creen, por hitos de GitHub (no por issues contenedoras). `LOCAL_MVP_BACKLOG.md` queda como índice de la fase inicial v0.2.
 
 ## Definición de producto terminado
 Desde una habitación rectangular, el usuario puede construir una **vivienda por plantas** con estancias conectadas y paredes reales, contornos editables, cotas, importación de plano calibrado, herramientas precisas, materiales, plantillas personales, editor manual de muebles, vistas 2D/3D y recorrido WASD; guardar/abrir/importar/exportar la vivienda completa sin cuenta ni backend. Solo se valorará publicar tras **#54** y aprobación humana.
 
 **Dos hitos dentro del mismo MVP:** v0.2 = checkpoint de habitación única (#33); **MVP local completo** = todas las fases F0–F6 y gate #54. No confundir una demo funcional con un producto certificado.
+
+## Organización del backlog en GitHub (04/11/2026)
+
+Hay **24 tareas reales de ejecución + la épica #23**. Las siete issues contenedoras creadas anteriormente **#55–#61 se han cerrado como archivo organizativo**, porque duplicaban la clasificación por fases. **No se han cerrado tareas de desarrollo.**
+
+- Cada tarea conserva `mvp`, `tipo:ejecucion`, `prioridad:P0/P1`, `fase:F0..F6`, `orden:01..24` y la etiqueta de checkpoint.
+- **Hitos nativos (*Milestones*) previstos:** la herramienta conectada puede asignar un hito ya existente, **pero no crearlo**. Por eso su creación está **pendiente** y no se afirma aquí que existan. No volver a crear issues «carpeta» para sustituirlos.
+- Una vez creados los siete hitos desde la [pantalla de hitos](https://github.com/Pablo-hg/Room-Builder/milestones), asignar exactamente estos números, sin duplicar las issues:
+
+| Milestone propuesto | Issues que contiene |
+| --- | --- |
+| F0 — Estabilización | 24, 34 |
+| F1 — Editor base (v0.2) | 25, 26, 27, 28, 29, 30, 31, 32, 33 |
+| F2 — Precisión y plantillas | 37, 38, 41 |
+| F3 — Materiales y fotografía | 39, 40 |
+| F4 — Vivienda completa | 51, 35, 52, 53, 45, 36 |
+| F5 — Modelos de muebles | 47 |
+| F6 — Validación final | 54 |
+
+Mientras se crean los hitos, las **etiquetas de fase ya son utilizables como filtros**. La épica #23 conserva el resumen global y este documento conserva las dependencias, por lo que no hay pérdida de información.
 
 ## Orden recomendado y prioridades
 
@@ -41,7 +61,7 @@ Desde una habitación rectangular, el usuario puede construir una **vivienda por
 - `prioridad:P0`: **bloqueante** por datos, arquitectura, accesibilidad o cierre; trabajar al llegar su fase. `prioridad:P1`: función comprometida para el mismo MVP, pero se puede planificar después de P0 de la fase. **P1 no significa opcional.**
 - `fase:F0-estabilizacion`, `F1-editor`, `F2-precision`, `F3-presentacion`, `F4-vivienda`, `F5-modelos`, `F6-release`: grupos de ejecución.
 - `orden:01`…`orden:24`: secuencia **recomendada de inicio**, no garantiza cadena rígida; pueden existir PR paralelas si no comparten contrato. `hito:v0.2` / `hito:mvp-final` separan checkpoint y release candidata completa.
-- [#23](https://github.com/Pablo-hg/Room-Builder/issues/23) es la épica `orden:00`, **no** una tarea de ejecución adicional.
+- [#23](https://github.com/Pablo-hg/Room-Builder/issues/23) es la épica `orden:00`, **no** una tarea de ejecución adicional. Las antiguas issues contenedoras #55–#61 están archivadas/cerradas, **no son tareas pendientes**.
 
 ### Camino crítico de arquitectura
 `#24 → #25/#26 → #51 → #35 → #52 → #53 → #36 (casa) → #54`. El trazado asistido #45 exige también #35/#38; el editor modular #47 depende de materiales #39. #41 ofrece plantillas de habitación individual antes; **#52** incorpora las plantillas como habitación conectada. #40 permite cámaras guardadas simples antes; **#53** las hace conscientes de la planta.
