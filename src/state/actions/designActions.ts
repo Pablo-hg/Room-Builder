@@ -1,5 +1,5 @@
 import { MAX_SAVED_DESIGNS } from '../../persistence/localDesignRepository'
-import { migrateDesignLayouts, normalizeDesignLayouts } from '../../persistence/designMigrations'
+import { normalizeDesign } from '../../persistence/designMigrations'
 import { initialRoomFolder } from '../../domain/elementFolders'
 import { DEFAULT_ROOM } from '../../domain/constants'
 import { DEFAULT_GRID_VISIBILITY, persistedDesign, type SavedDesign } from '../../domain/designV1'
@@ -18,8 +18,28 @@ type DesignActions = Pick<
   | 'createDesign'
   | 'renameSavedDesign'
   | 'saveDesign'
+  | 'importDesign'
   | 'loadDesign'
 >
+
+const blankDesignData = (): PersistedDesign => persistedDesign({
+  room: cloneRoom(),
+  furniture: [],
+  structurePacks: [],
+  gridSnap: true,
+  gridVisibility: { ...DEFAULT_GRID_VISIBILITY },
+  hiddenElementIds: [],
+  lockedElementIds: [],
+  ...initialRoomFolder(DEFAULT_ROOM),
+  sceneElementOrder: [],
+})
+
+const sceneFromDesign = (data: PersistedDesign) => ({
+  ...data,
+  structurePacks: data.structurePacks ?? [],
+  ...normalizeDesignPreferences(data),
+  selectedId: null,
+})
 
 export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'get' | 'repository'>): DesignActions {
   const { set, get, repository } = context
@@ -39,6 +59,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
       const designId = id ?? state.selectedSavedDesignId
       if (!designId) return
       const savedDesigns = state.savedDesigns.filter((design) => design.id !== designId)
+      const deletingActive = state.selectedSavedDesignId === designId
       try {
         repository.write(savedDesigns)
         recordInteraction('state.design.deleted', {
@@ -46,12 +67,36 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           selectedId: state.selectedId,
           details: { id: designId },
         })
+        if (!deletingActive) {
+          set({ savedDesigns, notice: 'Diseño guardado eliminado.' })
+          return
+        }
+        const nextDesign = savedDesigns[0]
+        if (nextDesign) {
+          try {
+            const data = normalizeDesign(nextDesign.data)
+            set({
+              ...sceneFromDesign(data),
+              selectedSavedDesignId: nextDesign.id,
+              hasUnsavedChanges: false,
+              savedDesigns,
+              notice: 'Diseño guardado eliminado. Se ha abierto el primero de la lista.',
+            })
+            return
+          } catch { /* Si el primero no es válido, se muestra un lienzo en blanco. */ }
+        }
+        const data = blankDesignData()
         set({
+          ...sceneFromDesign(data),
+          selectedSavedDesignId: '',
+          hasUnsavedChanges: false,
           savedDesigns,
-          selectedSavedDesignId: state.selectedSavedDesignId === designId ? '' : state.selectedSavedDesignId,
-          hasUnsavedChanges: state.selectedSavedDesignId === designId || state.hasUnsavedChanges,
-          notice: 'Diseño guardado eliminado.',
+          notice: nextDesign
+            ? 'Diseño eliminado. El primero de la lista no es válido; se muestra un lienzo en blanco.'
+            : 'Diseño guardado eliminado. Se muestra un lienzo en blanco.',
         })
+        // El envoltorio de set marca como no guardado un lienzo sin diseño activo; se corrige aquí.
+        set({ hasUnsavedChanges: false })
       } catch {
         set({ notice: 'No se pudo eliminar el diseño guardado.' })
       }
@@ -65,18 +110,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
       }
       const data: PersistedDesign = mode === 'copy'
         ? persistedDesign(state)
-        : migrateDesignLayouts({
-          version: 1,
-          room: cloneRoom(),
-          furniture: [],
-          structurePacks: [],
-          gridSnap: true,
-          gridVisibility: { ...DEFAULT_GRID_VISIBILITY },
-          hiddenElementIds: [],
-          lockedElementIds: [],
-          ...initialRoomFolder(DEFAULT_ROOM),
-          sceneElementOrder: [],
-        })
+        : blankDesignData()
       const savedAt = new Date().toISOString()
       const design: SavedDesign = {
         id: makeId('design'),
@@ -93,7 +127,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           details: { id: design.id, mode },
         })
         set({
-          ...migrateDesignLayouts(data),
+          ...data,
           savedDesigns,
           selectedSavedDesignId: design.id,
           room: data.room,
@@ -167,12 +201,29 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
         set({ notice: 'No se pudo acceder al almacenamiento local.' })
       }
     },
+    importDesign: (design) => {
+      const state = get()
+      if (state.savedDesigns.length >= MAX_SAVED_DESIGNS) return 'Ya hay 5 diseños guardados. Elimina uno antes de importar otro.'
+      const ids = new Set(state.savedDesigns.map((entry) => entry.id))
+      let id = design.id
+      while (ids.has(id)) id = makeId('design')
+      const imported = { ...structuredClone(design), id }
+      const savedDesigns = [...state.savedDesigns, imported]
+      try {
+        repository.write(savedDesigns)
+        set({ savedDesigns, notice: `Diseño «${imported.name}» importado.` })
+        recordInteraction('state.design.imported', { view: state.view, selectedId: state.selectedId, details: { id } })
+        return null
+      } catch {
+        return 'No se pudo guardar el diseño importado en este navegador.'
+      }
+    },
     loadDesign: (id) => {
       try {
         const current = get()
         const saved = current.savedDesigns.find((design) => design.id === (id ?? current.selectedSavedDesignId))
         if (!saved) return set({ notice: 'Selecciona un diseño guardado para recuperarlo.' })
-        const data = normalizeDesignLayouts(saved.data)
+        const data = normalizeDesign(saved.data)
         recordInteraction('state.design.loaded', {
           view: current.view,
           selectedId: current.selectedId,

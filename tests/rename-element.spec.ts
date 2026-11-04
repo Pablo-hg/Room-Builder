@@ -37,7 +37,7 @@ test('permite nombrar puerta y ventana en la lista y guarda sus nombres', async 
   await expect(page.locator('.element-select').filter({ hasText: 'Ventanal' })).toBeVisible()
   await page.getByRole('button', { name: 'Guardar como' }).click()
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs') || '[]'))
-  expect(stored[0].data.version).toBe(5)
+  expect(stored[0].data.version).toBe(2)
   expect(stored[0].data.room.door.name).toBe('Entrada')
   expect(stored[0].data.room.windows.some((window: { name?: string }) => window.name === 'Ventanal')).toBe(true)
 })

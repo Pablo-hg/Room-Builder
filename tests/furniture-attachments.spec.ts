@@ -19,18 +19,18 @@ test('los nuevos anclajes ocultan Y y las lámparas libres mantienen la edición
     await expect(y).toBeVisible()
     await y.focus()
     await y.press('ArrowRight')
-    await expect(y).toHaveValue('0.125')
+    await expect(y).toHaveValue('0.01')
   }
   await page.getByRole('button', { name: 'Guardar como', exact: true }).click()
   const data = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs')!)[0].data)
   expect(data.furniture.every((item: { attachmentPolicy?: string }) => item.attachmentPolicy === 'by-type')).toBe(true)
   for (const item of data.furniture) {
-    expect(item.y).toBe(item.kind === 'ceilingLamp' ? data.room.height - item.height : item.kind === 'rug' || item.kind === 'circularRug' ? 0 : 0.125)
+    expect(item.y).toBe(item.kind === 'ceilingLamp' ? data.room.height - item.height : item.kind === 'rug' || item.kind === 'circularRug' ? 0 : 0.01)
   }
 })
 
 test('objetos antiguos conservan su altura y libertad al mezclar nuevos y recargar', async ({ page }) => {
-  const data = JSON.parse(readFileSync(new URL('./fixtures/layout-variants/valid-v5.json', import.meta.url), 'utf8'))
+  const data = JSON.parse(readFileSync(new URL('./fixtures/persisted-designs/valid-v5.json', import.meta.url), 'utf8'))
   data.furniture = [
     { id: 'old-rug', kind: 'rug', name: 'Alfombra antigua', x: -1.5, y: 0.75, z: 0, width: 2, depth: 1.5, height: 0.05, rotation: 0, color: '#b97862' },
     { id: 'old-ceiling', kind: 'ceilingLamp', name: 'Lámpara antigua', x: 1.5, y: 1, z: 0, width: 0.75, depth: 0.75, height: 0.6, rotation: 0, color: '#d3a755' },
@@ -54,7 +54,7 @@ test('objetos antiguos conservan su altura y libertad al mezclar nuevos y recarg
   await expect(y).toHaveValue('0.75')
   await y.focus()
   await y.press('ArrowRight')
-  await expect(y).toHaveValue('0.875')
+  await expect(y).toHaveValue('0.76')
   await page.getByRole('button', { name: 'Alfombra ＋ Añadir', exact: true }).click()
   await expect(y).toHaveCount(0)
   await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
@@ -64,7 +64,7 @@ test('objetos antiguos conservan su altura y libertad al mezclar nuevos y recarg
   await newRug.click()
   await expect(y).toHaveCount(0)
   await oldRug.click()
-  await expect(y).toHaveValue('0.875')
+  await expect(y).toHaveValue('0.76')
 })
 
 test('la selección mixta bloquea el eje Y y conserva el movimiento horizontal', async ({ page }) => {

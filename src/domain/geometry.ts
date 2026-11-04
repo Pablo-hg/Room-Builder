@@ -230,7 +230,7 @@ export function clampFurniture(item: FurnitureItem, room: RoomConfig, snap: bool
 export function clampFurnitureElevation(item: FurnitureItem, room: RoomConfig, snap: boolean) {
   const attachment = furnitureAttachment(item)
   if (attachment === 'floor') return 0
-  if (attachment === 'ceiling') return Math.max(0, room.height - item.height)
+  if (attachment === 'ceiling') return room.height - item.height
   const limit = Math.max(0, room.height - item.height)
   const elevation = Number.isFinite(item.y) ? item.y : 0
   const positioned = snap ? snapToPlacementGrid(elevation) : elevation

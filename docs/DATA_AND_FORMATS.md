@@ -1,5 +1,7 @@
 # Datos, unidades, guardado e interoperabilidad
 
+> **Actualización 04/11/2026:** El propietario retiró las variantes del MVP el 04/11/2026. El código local ya no escribe v5: al leer v5 toma el mobiliario activo y guarda una sola distribución con el formato previo. La conversión y la conservación de medidas editadas están pendientes de pruebas de compatibilidad. El apartado v5 inferior se conserva como histórico.
+
 **Estado:** principios CONFIRMADOS; contrato multiproyecto con prototipo puro en R4, no persistido ni declarado estable. R5.1 integra variantes de una habitación en `PersistedDesign` v5; ver [R5_PLAN.md](R5_PLAN.md) e [informe](progress/R5_PROGRESS.md). El JSON público sigue pendiente de R5.3.
 
 ## Fuente espacial única
@@ -83,3 +85,8 @@ Mantener espacio/estructura común para las variantes de mobiliario cuando se co
 
 ## Estado de formato
 El contrato R4 está probado como prototipo puro, pero JSON editable y multihabitación siguen siendo objetivos de diseño. No declarar estable el esquema ni exponerlo como formato público hasta validar migración, importación y UI.
+
+
+## Archivo JSON de intercambio R5.3 (implementación pendiente de verificación)
+
+El archivo usa `format: "room-builder-design"`, `schemaVersion: 5`, `exportedAt` y un objeto `design` con `id`, `name`, `savedAt` y `data`. Esta versión corresponde al archivo de intercambio; `data` conserva el formato persistido de una distribución. Límite: 2 MiB; como protección ante geometrías extremas, cotas positivas de hasta 100 m y coordenadas/ángulos con valor absoluto de hasta 10 000. La lectura comprueba estructura, medidas, referencias y anclajes antes de mostrar vista previa; nunca escribe hasta confirmar. Un ID duplicado recibe uno nuevo. En archivos v5 antiguos se importa solo la variante activa y se avisa antes de confirmar. La biblioteca llena bloquea la importación. No se ha validado aún con tests ni E2E.

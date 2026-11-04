@@ -1,6 +1,7 @@
 import React, { type ReactElement } from 'react'
 import * as THREE from 'three'
 import type { FurnitureItem, FurnitureKind } from '../domain/types'
+import { furnitureAttachment, FURNITURE_PRESETS } from '../domain/objectCatalog'
 import { colorTone } from './colorTone'
 
 type ModelContext = {
@@ -166,10 +167,11 @@ function renderCircularRug({ item, material, paleColor }: ModelContext) {
   const radius = Math.min(item.width, item.depth) / 2
   return (
     <group>
-      <mesh position={[0, 0.031, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[radius, 64]} />
-        {material}
-      </mesh>
+      {furnitureAttachment(item) === 'floor' ? (
+        <mesh position={[0, 0.0155, 0]} receiveShadow><cylinderGeometry args={[radius, radius, 0.031, 64]} />{material}</mesh>
+      ) : (
+        <mesh position={[0, 0.031, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow><circleGeometry args={[radius, 64]} />{material}</mesh>
+      )}
       <mesh position={[0, 0.033, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[radius * 0.68, radius * 0.72, 64]} />
         <meshStandardMaterial color={paleColor} roughness={0.95} />
@@ -348,5 +350,10 @@ export function FurnitureModel({ item }: { item: FurnitureItem }) {
   const renderModel = typeof item.kind === 'string' && Object.prototype.hasOwnProperty.call(FURNITURE_MODELS, item.kind)
     ? FURNITURE_MODELS[item.kind]
     : renderCabinet
-  return renderModel({ item, material, darkColor, deeperColor, lightColor, paleColor })
+  const preset = Object.hasOwn(FURNITURE_PRESETS, item.kind) ? FURNITURE_PRESETS[item.kind] : undefined
+  if (!preset) return renderModel({ item, material, darkColor, deeperColor, lightColor, paleColor })
+  const base = { ...item, width: preset.width, height: preset.height, depth: preset.depth }
+  const model = renderModel({ item: base, material, darkColor, deeperColor, lightColor, paleColor })
+  if (item.width === preset.width && item.height === preset.height && item.depth === preset.depth) return model
+  return <group scale={[item.width / preset.width, item.height / preset.height, item.depth / preset.depth]}>{model}</group>
 }

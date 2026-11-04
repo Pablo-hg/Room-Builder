@@ -14,7 +14,7 @@ export function useInspectorGesture(targetId: string) {
     events: {
       onPointerDownCapture: (event: PointerEvent<HTMLElement>) => {
         const target = event.target
-        if ((target instanceof HTMLInputElement && target.type === 'range')
+        if ((target instanceof HTMLInputElement && target.type === 'range' && !target.closest('.measurement-control'))
           || (target instanceof Element && target.closest('.rotation-dial'))) gesture.begin()
       },
       onPointerUpCapture: gesture.commit,

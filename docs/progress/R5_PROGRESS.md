@@ -1,6 +1,6 @@
 # R5 — Funcionalidad y diseño
 
-**Estado:** R5.1 COMPLETADA Y VERIFICADA · 03/11/2026. R5.2/R5.3 no iniciadas; R5.4 aplazada. R5 completa sigue pendiente. Las entradas anteriores al inicio y cierre de R5.1 se conservan como histórico.
+**Estado:** R5.1 fue completada históricamente en `518a990`; el propietario retiró después las variantes del MVP. R5.2 validada manualmente por el propietario, con tests pendientes; R5.3 en implementación, sin tests, y R5.4 aplazada. Las entradas anteriores se conservan como histórico; la última entrada recoge el estado vigente.
 **Rama:** `refractor/r5-funcionalidad-diseño`.
 **Base:** `main` con R0–R4 integradas (PR #19 y #20) y el commit documental `ee455b3`.
 **Plan detallado:** [R5_PLAN.md](../R5_PLAN.md).
@@ -245,3 +245,177 @@ El propietario corrigió expresamente la instrucción anterior: ejecutar tests, 
 También solicitó un commit de los cambios acumulados y continuar con la siguiente fase, interpretada por contexto como R5.2. La autorización de continuación sustituye la pausa anterior de R5.2, pero no aprueba automáticamente sus rangos, redondeo ni proporciones pendientes. La autorización de commit corresponde al acumulado de R5.1 y su documentación; no autoriza merges ni push, ni commits adicionales por iniciativa del agente.
 
 Se comprobó la rama `refractor/r5-funcionalidad-diseño`; HEAD estaba en `eea2d2c` (documentación de visión futura), posterior a la base histórica `ee455b3`. No había cambios staged. Se conservan ese historial y los cambios locales. Las verificaciones válidas de R5.1 siguen siendo las registradas en su cierre: 213 unitarias, 121 E2E y build aprobado; no se han repetido para esta corrección documental.
+
+## Commit de R5.1 y comienzo de R5.2a (03/11/2026)
+
+- Commit solicitado creado: `518a990` — `feat(r5.1): comparar distribuciones y persistir variantes compatibles`. Incluye el acumulado de R5.1 y su documentación, con la cadencia corregida de pruebas por fase completa. El árbol quedó limpio inmediatamente después del commit. No se hizo merge ni push.
+- Se inicia R5.2a con inventario del catálogo, revisión de modelos 3D, inspectores, reglas de edición y persistencia. La matriz concreta de ejes/rangos/proporciones está **PROPUESTA** en R5_PLAN, pendiente de D11.
+- D12 precisa cómo interpretar el centro al cambiar altura sin romper anclajes. D13 resuelve la diferencia entre el movimiento actual con avisos y un posible rechazo estructural del redimensionado. Se consultan antes de implementar las superficies afectadas.
+- Hallazgos: algunos detalles de modelos tienen tamaños fijos; la decoración mural está en `room.windows` y es compartida; los inspectores de aperturas muestran medidas pero no implementan edición general de ancho/alto. El guardado v5 ya conserva cotas, por lo que no se propone cambiar formato ni claves.
+- En esta continuación solo se modifica planificación/seguimiento. No hay código de redimensionado implementado ni validación funcional nueva. No se ejecutan tests/E2E/build: corresponden al cierre de toda R5.2, no a R5.2a.
+
+## Continuación de R5.2a — precisión de 5 cm y respuestas D11–D13 (03/11/2026)
+
+- El propietario estableció unidad mínima de 5 cm para tamaños y posiciones y equivalencia visible entre metros y centímetros. Se descarta la precisión manual de 1 mm propuesta anteriormente. Los datos antiguos se mantienen al cargar, conforme a la política previa.
+- Confirmó centro XYZ para muebles libres y atravesamientos con borde rojo. Se consultaron dos conflictos concretos: prioridad del centro frente al paso de posición (0,80 → 0,85 m de alto requiere mover la base 0,025 m), y alcance del aviso respecto de otros muebles frente al rechazo de solapes previamente aprobado.
+- Base independiente preparada: `measurements.ts` centraliza el paso de 5 cm, lectura de coma/punto y unidades explícitas m/cm, conversión visible y avance desde un valor antiguo sin migrarlo. `MeasurementControl` permite entradas exactas válidas, conserva el valor ante entrada inválida y muestra su equivalencia en cm.
+- Se prepararon pruebas de estas reglas numéricas. **No se han ejecutado**; la verificación corresponde al cierre de toda R5.2. Tampoco se ha ejecutado E2E ni build. Los nuevos helpers y el control todavía no están conectados al editor; no se presenta la precisión global como entregada.
+- Las reglas dependientes de la prioridad del centro y del alcance de los solapes esperan respuesta. No se ha hecho ningún commit adicional al `518a990` solicitado anteriormente.
+
+## Punto de parada solicitado — R5.2 parcial y aclaraciones definitivas (03/11/2026)
+
+**Petición vigente:** «documenta lo que llevamos hecho y para». Se detiene el desarrollo tras actualizar este informe, el plan y el registro de decisiones. Esta entrada sustituye los estados anteriores contradictorios, sin borrar su historial. No continuar hasta nueva petición del propietario.
+
+### Estado Git comprobado al parar
+
+- Rama: `refractor/r5-funcionalidad-diseño`. HEAD: `518a990` — `feat(r5.1): comparar distribuciones y persistir variantes compatibles`.
+- El commit anterior `eea2d2c` de visión futura se conserva. No se ha creado ningún commit adicional, merge ni push.
+- Modificados sin commit: `docs/DECISION_LOG.md`, `docs/R5_PLAN.md`, este informe, `src/domain/objectCatalog.ts`, `src/state/types.ts` y `src/state/useRoomStore.ts`.
+- Nuevos sin seguimiento: `src/components/editor/MeasurementControl.tsx`, `src/domain/measurements.ts`, `src/domain/measurements.test.ts`, `src/domain/resizeCapabilities.ts`, `src/domain/furnitureResize.ts` y `src/state/actions/resizeActions.ts`. Son parte del avance local y deben conservarse al retomar.
+
+### Decisiones vigentes del propietario
+
+1. **Precisión:** centímetros enteros para dimensiones y posiciones introducidas. Válidos: 0,13 m / 13 cm, 0,24 m / 24 cm y 1,17 m; inválidos: 15,5 cm y 1,154 m. Esto sustituye el paso mínimo absoluto de 5 cm, manteniendo metros internamente y equivalencia visible m/cm.
+2. **Movimiento:** saltos de 5 cm para facilitar la interacción; cuadrícula visible de 25 cm. La base preparada calcula el salto relativo al origen exacto introducido: de 24 a 29 cm. Aún falta integrarlo en los gestos del editor.
+3. **Origen y redimensionado:** las dimensiones parten del centro de la base local (0,0,0). Interpretación aplicada en la regla pura: conservar X/Z y base Y para muebles libres, creciendo desde la base. Sustituye conservar el centro geométrico XYZ. Alfombras nuevas siguen en el suelo y lámparas nuevas fijadas al techo conservan el apoyo superior; objetos antiguos sin marca conservan la política D9/D10.
+4. **Atravesamientos:** permitir cualquier atravesamiento al redimensionar mobiliario, también con otro mueble, mostrando borde rojo. Sustituye rechazar los solapes de esta operación. Seguir rechazando entradas inválidas o fuera de límites. No autoriza cambiar implícitamente el movimiento ni las restricciones constructivas murales.
+5. **Rangos:** se delegó elegir límites amplios para aproximar objetos reales. La preparación actual usa 0,01–10 m por eje editable. Los diámetros vinculados y la TV sin proporción fija son criterios provisionales del código; no se atribuye al propietario una aprobación expresa de cada detalle de la matriz.
+6. **Verificación:** tests, E2E y build al completar cada fase entera, comenzando por R5.2. La petición de parar no cierra la fase ni elimina sus verificaciones pendientes.
+
+### Código realmente preparado, no entrega completa
+
+| Archivo o área | Estado comprobado |
+| --- | --- |
+| `measurements.ts` | Helpers de precisión 0,01 m, movimiento 0,05 m, lectura de coma/punto y m/cm, formateo y movimiento relativo al origen |
+| `MeasurementControl.tsx` | Campo y rango reutilizables, equivalencia en cm, rechazo de entradas inválidas y pasos incrementales; todavía sin integración en los inspectores |
+| `resizeCapabilities.ts` + `objectCatalog.ts` | Capacidad `resize` por tipo, límites provisionales, vínculos de diámetros; alfombras sin edición de grosor, decoración mural ancho/alto; puertas/ventanas y cuadros legacy en `furniture` excluidos |
+| `furnitureResize.ts` | Cálculos puros con origen de base, anclajes, validación numérica y mural; no bloquea intersecciones del mobiliario |
+| `resizeActions.ts`, `state/types.ts`, `useRoomStore.ts` | Acciones declaradas y compuestas en el store, comprobación de candado y avisos mediante `furnitureHasSpatialWarning`; no disponibles aún en la UI de tamaño |
+| `measurements.test.ts` | Casos preparados, pero **desactualizados**: aún esperan la unidad mínima anterior de 5 cm y contradicen el helper de 1 cm; deben corregirse antes de ejecutar la suite |
+
+No se cambiaron en esta preparación `PersistedDesign`, versión, claves de almacenamiento ni el papel candidato de `ProjectV2`. La parada documental no añade cambios de implementación. El código parcial no se considera compilado, probado ni validado visualmente.
+
+### Pendientes y riesgos concretos para reanudar
+
+- Corregir las expectativas numéricas antiguas y añadir pruebas pertinentes de redimensionado, candados, historial, variantes, anclajes y compatibilidad.
+- Integrar los controles en inspectores de mobiliario y decoración mural y adaptar los modelos 3D: sus detalles fijos todavía no garantizan representar las nuevas cotas.
+- Aplicar precisión de 1 cm y movimiento relativo de 5 cm a entradas, arrastres, ejes y selección múltiple. **El editor actual aún usa `placementStep: 0.125`; la cuadrícula permanece `gridSize: 0.25`.** La nueva política no está aplicada globalmente.
+- Revisar compatibilidad de guardado: **`normalizeDesignLayouts` todavía rechaza muebles solapados en v5**, mientras la nueva acción de redimensionado permite esos solapes. Resolver y probar el guardado/recarga antes de ofrecer la función; revisar también `safeRoomUpdate` y variantes inactivas para no bloquear ediciones por solapes ya permitidos.
+- Evitar que cambiar pasos globales altere normalización legacy, posiciones antiguas, grosores de estructura o las pruebas del contrato R4. No migrar datos antiguos por mera carga.
+- La regla provisional rechaza redimensionar una lámpara fijada si el techo antiguo no está en centímetros enteros. Revisar este caso de compatibilidad y su mensaje antes del cierre, sin normalizar datos por iniciativa propia.
+- Completar historial por gesto, accesibilidad, equivalencia m/cm y verificación de las vistas afectadas. Asas de R5.2d opcionales, todavía sin implementar.
+- R5.3 no iniciada: resolver D7 sobre IDs duplicados antes de su importación. R5.4 sigue aplazada.
+
+### Verificación y siguiente paso
+
+- Las últimas pruebas válidas de **R5.1** son históricas: **213/213 unitarias**, **121/121 E2E Chromium**, build aprobado con aviso de bundle. No se han repetido ni validan los cambios locales de R5.2.
+- **R5.2:** no se han ejecutado tests, E2E, comprobación TypeScript ni build; fase incompleta y detenida. En esta parada solo se comprueban estado/diff y documentación mediante `git diff --check`.
+- Al recibir una nueva petición de continuación: volver a comprobar rama, estado y archivos nuevos; usar estas decisiones vigentes; completar la integración y compatibilidad anteriores; ejecutar y registrar las verificaciones reales al terminar toda R5.2. No iniciar R5.3 ni crear otro commit por iniciativa propia.
+
+
+## R5.2 — implementación preparada para validación manual (04/11/2026)
+
+El propietario indicó continuar R5.2, no ejecutar tests y avisar para validar en la web. Confirmó además que elimina las variantes del MVP. Se respetaron los cambios locales preexistentes que retiran la interfaz y aplanan v5 a su distribución activa; esa decisión sustituye el alcance anterior de R5.1. El código de R4 `ProjectV2` sigue siendo candidato.
+
+- Controles de dimensiones para muebles y decoración mural compatibles, con centímetros enteros, entrada en m/cm, errores visibles y bloqueo de edición en objetos bloqueados. Alfombras mantienen grosor; formas circulares vinculan diámetro; las aberturas conservan restricciones constructivas.
+- El modelo 3D de mobiliario se escala con las dimensiones; se adaptaron detalles de estantería y aplique mural. El origen de los muebles libres sigue en el centro de la base; alfombras y lámparas de techo conservan su anclaje según tipo.
+- Movimiento en saltos de 5 cm respecto de la posición inicial en gestos de mobiliario, aberturas y superficies; entrada manual con precisión de 1 cm y cuadrícula visible de 25 cm. Las medidas antiguas no se redondean por cargar.
+- Se permiten atravesamientos al redimensionar mobiliario con aviso y borde rojo, incluso entre muebles; se ajustó la lectura para conservar cotas y posiciones existentes y aceptar mobiliario solapado. Se mantienen claves de almacenamiento y formato de una distribución. La conversión local v5 a v4 elimina las variantes al guardar: solo se conserva el mobiliario activo.
+- `npm run build`: **aprobado** (TypeScript y Vite, 141 módulos); aviso habitual por bundle superior a 500 kB, aproximadamente 1,43 MB sin comprimir. `git diff --check`: sin errores. Estas comprobaciones no validan funcionalidad, interfaz ni migraciones.
+- **No se ejecutaron tests unitarios ni E2E**, por indicación expresa. Los resultados históricos de R5.1 no verifican el árbol actual. `src/domain/measurements.test.ts` sigue desactualizado respecto al cambio posterior de 1 cm y deberá actualizarse antes de ejecutar la batería. No se ha validado visualmente la interfaz.
+- Pendiente: validación manual del propietario en la web y pruebas automatizadas de medidas, anclajes, historial, solapes, guardado/recarga y compatibilidad v1–v5 cuando se autoricen. R5.2 no se declara verificada ni cerrada. No se inició R5.3; D7 de IDs duplicados sigue pendiente. No se hicieron commits, merges ni push.
+
+- En la comprobación final aparecieron además modificaciones locales en archivos de pruebas y un fixture que no figuraban en el estado inicial de esta continuación. Se han conservado; no se atribuyen a esta implementación ni se han ejecutado.
+
+
+## R5.2 — teclado, historial y registro de medidas (04/11/2026)
+
+El propietario pidió que las flechas de teclado funcionen como los botones, que deshacer/rehacer vuelva al estado anterior al ajuste completo y que el registro no guarde cada centímetro intermedio. También pidió no hacer pruebas.
+
+- Los botones y las flechas comparten el mismo paso y la misma repetición acelerada, tanto en el campo como en el deslizador; los botones enfocados también responden a las flechas verticales.
+- Cada edición de una medida agrupa sus cambios en una transacción desde el primer cambio hasta confirmar con Enter, salir del control, perder la ventana o cambiar de elemento. Así Ctrl+Z recupera el valor previo al ajuste, y rehacer recupera su resultado. Los atajos también se gestionan con el campo de medida enfocado.
+- El registro de desarrollo agrupa los cambios intermedios y anota una sola entrada con medida, valor inicial y final al cerrar la edición. El gesto del inspector ya no inicia una transacción paralela para el deslizador de medidas.
+- No se ejecutaron tests, E2E ni build para estos cambios, por petición expresa. Quedan pendientes la validación manual del propietario y las comprobaciones automatizadas de R5.2, incluido historial, teclado y registro. No se hicieron commits, merges ni push.
+
+
+## Atajo de guardado e inspector plegable (04/11/2026)
+
+- Ctrl/⌘+G ejecuta el mismo guardado que el botón de la cabecera, también con un campo editable enfocado; primero se pierde el foco para confirmar la edición en curso. Si no hay diseño activo se usa el comportamiento existente de guardado inicial.
+- El atajo anterior de agrupación pasa a Ctrl/⌘+Alt+G para evitar el conflicto; se actualizaron la guía y el menú contextual. Ctrl/⌘+Mayús+G sigue desagrupando.
+- El inspector puede minimizarse y volver a mostrarse mediante un botón con estado accesible; se mantiene la selección.
+- No se ejecutaron pruebas ni build, conforme a la indicación vigente del propietario. La validación manual sigue pendiente.
+
+
+## Continuación de R5.2 — precisión al duplicar y anclaje visual (04/11/2026)
+
+- Al pegar mobiliario o elementos murales, la posición nueva se expresa en centímetros sin forzarla a la cuadrícula de movimiento de 5 cm; las alturas libres nuevas se ajustan a centímetros y los objetos fijados conservan su anclaje. No se modifican los objetos de origen ni las cotas antiguas por el mero hecho de cargarlos.
+- Se eliminó el desplazamiento visual heredado de 2 cm para los objetos nuevos fijados al suelo o al techo, manteniéndolo para los antiguos sin marca. La geometría de aviso y los límites de selección usan el mismo desplazamiento; la alfombra circular fijada dispone de grosor visual hasta el suelo.
+- Una lámpara nueva en una habitación de altura antigua inferior a su tamaño conserva su extremo superior fijado al techo. El render de tipos desconocidos evita usar propiedades heredadas como si fueran una definición del catálogo.
+- Los gestos que no alcanzan el primer desplazamiento ya no redondean involuntariamente una posición antigua; un valor manual inválido no se utiliza como base del botón de incremento.
+- No se ejecutaron tests, E2E ni build por la instrucción vigente. Estas correcciones y la integración de R5.2 siguen pendientes de validación manual y automatizada. No se inició R5.3 ni se hizo commit.
+
+## Retirada del inspector plegable (04/11/2026)
+
+El propietario pidió eliminar la opción de minimizar el inspector del elemento. Se retiraron el control y su estado; la entrada anterior se conserva como histórico. El atajo Ctrl/⌘+G para guardar sigue disponible. Sin tests ni build por la instrucción vigente.
+
+
+## R5.2 — medidas de ventanas y decisión de IDs de R5.3 (04/11/2026)
+
+- El propietario pidió editar dimensiones de ventanas y continuar después con R5.3. El catálogo habilita ancho y alto para ventanas rectangulares y un diámetro común para circulares. Los controles existentes aplican centímetros enteros, candados e historial; el hueco se reconstruye a partir de las medidas y la lectura conserva las cotas guardadas.
+- El redimensionado conserva el centro horizontal y la altura de base y comprueba límites de pared y separación. Para ventanas giradas se comprueba además su caja envolvente frente a la pared y otras aperturas: es una validación conservadora que puede rechazar algunas posiciones que visualmente cabrían. El marco se adapta a ventanas pequeñas.
+- El propietario confirmó para D7 que un diseño importado con ID ya existente se añadirá como copia con ID nuevo (RB-042). Reemplazar un diseño existente sigue pendiente; se mantiene el límite de biblioteca.
+- No se ejecutaron tests, E2E ni build por la instrucción vigente; tampoco se ha realizado la validación visual. La funcionalidad de ventanas y el conjunto de R5.2 quedan pendientes de validación manual y pruebas, incluyendo geometría de huecos y compatibilidad de guardado. R5.3 no se inicia antes de cerrar y verificar R5.2 conforme a la condición expresamente indicada para las fases.
+
+
+## R5.2 validada manualmente y avance R5.3 (04/11/2026)
+
+El propietario confirmó que había validado R5.2 en la web, incluidas ventanas, guardar/recargar y deshacer, y pidió continuar. Esta confirmación es una validación manual comunicada por el propietario; no sustituye los tests automatizados pendientes.
+
+- R5.3a–d: preparado archivo JSON `room-builder-design`, `schemaVersion: 5`, límite de 2 MiB y datos de un diseño con el formato de almacenamiento existente. Se exporta la escena actual, incluidos cambios sin guardar, con nombre y fecha. El archivo se valida antes de descargarlo.
+- Importación con lectura limitada, análisis de JSON, comprobación de valores, IDs, referencias, geometría, anclajes y jerarquías; se rechazan propiedades peligrosas, contenidos excesivamente complejos y discrepancias de espejo en v5. Por seguridad, las cotas positivas importadas se limitan a 100 m y las coordenadas/ángulos a valores absolutos de 10 000; son límites del archivo, no nuevos controles del editor. No se escribe durante la lectura ni en la vista previa.
+- La vista previa muestra nombre, habitación, cantidad de muebles y versión; advierte de variantes antiguas que se descartan y de IDs duplicados. La confirmación añade el diseño a la biblioteca; si el ID ya existe, se genera otro. Biblioteca llena y errores de almacenamiento se comunican sin sustitución de diseños. La escena activa no cambia al importar.
+- Se mantiene `ProjectV2` como candidato y no cambian las claves ni el contrato de almacenamiento. La retirada de variantes del MVP se respeta; los archivos v5 importan la distribución activa con aviso. R5.3e y la validación de seguridad, compatibilidad, interfaz, exportación e importación siguen pendientes; no se declara la fase verificada.
+- No se ejecutaron tests unitarios ni E2E, conforme a la instrucción vigente. Se ejecutó únicamente la comprobación de tipos TypeScript; el primer intento detectó dos errores de tipos que se corrigieron antes del segundo intento aprobado. Sin commit, merge ni push.
+
+- La validación estricta rechaza referencias huérfanas. Al exportar se omiten únicamente referencias obsoletas o duplicadas de la copia del archivo, sin modificar el diseño abierto, y se avisa de cuántas se omitieron. Su compatibilidad y la importación siguen pendientes de verificación.
+
+
+## R5.3 — menú de diseños y confirmaciones centrales (04/11/2026)
+
+El propietario comunicó que al confirmar el borrado también se activaba la importación y solicitó un menú contextual y confirmaciones modales centrales.
+
+- Las confirmaciones de borrar e importar se muestran en una capa modal centrada e independiente del desplegable. La capa bloquea los clics del fondo; Escape cancela y Tab mantiene el foco dentro del diálogo. El texto de la importación sigue avisando de variantes descartadas e IDs duplicados.
+- El menú de opciones se abre con clic derecho sobre el selector o un diseño de la lista, y con el botón de más opciones. Contiene descargar 3D, exportar/importar JSON, copiar, crear en blanco, renombrar y borrar. Las acciones de una fila se refieren a ese diseño; descargar 3D requiere que sea el diseño abierto, porque utiliza la escena actual.
+- No se ejecutaron tests ni E2E por indicación del propietario; la corrección del conflicto, el menú, el foco y los diálogos siguen pendientes de validación manual y automatizada. No se modificaron claves de almacenamiento ni se hicieron commits.
+
+
+## Corrección de descarga repetida al borrar un diseño (04/11/2026)
+
+El propietario indicó que, tras borrar un diseño, seguía abriéndose el diálogo para guardar una descarga. La revisión encontró una causa concreta distinta de la hipótesis anterior de clic a través del modal: después de una descarga GLB, `SceneExportController` volvía a procesar la misma solicitud al cambiar el nombre del diseño activo. Borrar el diseño activo puede cambiar ese nombre.
+
+- El controlador procesa cada número de solicitud solo una vez y solo mientras la descarga está activa. El número procesado se conserva fuera del Canvas, que puede volver a montarse al cambiar de cámara. Así un cambio de nombre, una nueva renderización o un cambio de cámara no reutilizan una descarga anterior.
+- Esta corrección no cambia el borrado ni la importación. No se ejecutaron tests ni E2E por la instrucción vigente; queda pendiente que el propietario compruebe la secuencia en la web.
+
+## Ajuste del menú de diseños (04/11/2026)
+
+El propietario pidió retirar «Crear diseño nuevo» del menú contextual. La opción de crear un diseño desde la lista de diseños guardados sigue disponible. Sin tests ni build por la instrucción vigente.
+
+## Ubicación de la importación (04/11/2026)
+
+El propietario pidió mover «Importar diseño» del menú contextual al selector de diseños, junto a «Crear diseño». Se conserva la vista previa con confirmación y el bloqueo cuando la biblioteca está llena. Sin tests ni build por la instrucción vigente.
+
+Posteriormente pidió mostrar ambas opciones en la misma fila; el formulario de creación se abre debajo. Sin tests ni build.
+
+## Verificación y cierre pendiente de R5 (04/11/2026)
+
+El propietario autorizó completar los pendientes y las pruebas antes de subir los cambios. Se conservan las entradas anteriores como historial.
+
+- La lectura de v5 comprueba que exista la distribución activa y que su mobiliario coincida semánticamente con el espejo superior; rechaza discrepancias sin reescribir el original. Se validan también las dimensiones positivas y finitas de la habitación. Se mantiene la conversión de la distribución activa y las claves existentes.
+- Se corrigió la marca de cambios pendientes al crear un diseño: se respeta un `false` explícito. Se actualizaron dos textos del editor para indicar el desplazamiento de 5 cm.
+- Se añadieron pruebas de importación/exportación JSON, fixtures v1–v5, validación de entradas, copia por ID duplicado, capacidad, errores de escritura, medidas, anclajes y ventanas. Se adaptaron pruebas antiguas a las decisiones actuales y se mantienen los hashes de modelos por defecto.
+- `npm test`: **213 pruebas aprobadas**. La primera ejecución de diagnóstico tuvo fallos por expectativas anteriores y un error real de cambios pendientes, corregidos antes de la ejecución aprobada.
+- `npm run build`: aprobado tras la última corrección, 143 módulos; Vite avisa de un paquete JavaScript mayor de 500 kB (1.447,19 kB antes de gzip).
+- E2E dirigidos: medidas y guardado/recarga, JSON con importación como copia, descarga GLB y regresión de descarga repetida tras borrar y cambiar de cámara aprobados. Una primera ejecución no pudo conectar con el servidor y otra usó un nombre de cámara incorrecto en la prueba; ambas se repitieron con los resultados indicados.
+- La primera pasada E2E completa terminó con **84 aprobados y 35 fallidos**. Se actualizaron casos históricos por selectores, precisión al centímetro, formato guardado y menú actuales; la repetición conjunta obtuvo **33 aprobados y 2 fallidos**, y esos dos pasaron en ejecuciones individuales después de ajustar sus pruebas. No se ha repetido la suite completa en una sola ejecución tras estos ajustes. La validación manual de R5.2 fue comunicada previamente por el propietario, no se atribuye a esta ejecución.
+- La regresión detectó que la zona de arrastre de una selección múltiple quedaba por debajo del modelo visual. Se amplió ligeramente su volumen interactivo; las pruebas E2E de selección y arrastre con ratón y pantalla táctil pasaron después del cambio. `npm test` y `npm run build` se repitieron tras corregirlo.
+- El reemplazo de un diseño importado sigue pendiente de decisión; la biblioteca llena bloquea la importación. R5.4 se mantiene aplazada y `ProjectV2` como contrato candidato. Sin commits, merges ni push durante esta continuación.

@@ -29,7 +29,7 @@ for (const target of ['cuerpo', 'eje X'] as const) {
       await page.goto('/')
       await page.getByRole('button', { name: 'Plano', exact: true }).click()
       await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
-      const position = page.locator('.selection-section--inspector').getByLabel(/Posición X/)
+      const position = page.locator('.selection-section--inspector').getByLabel('Posición X', { exact: true })
       const initial = await position.inputValue()
       const bounds = await page.locator('.scene-panel canvas').first().boundingBox()
       if (!bounds) throw new Error('No se pudo localizar el canvas')

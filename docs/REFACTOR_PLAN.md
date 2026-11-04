@@ -1,10 +1,12 @@
 # Plan de reorganización del código — fase siguiente
 
+> **Actualización 04/11/2026:** El propietario retiró las variantes del MVP. Los apartados anteriores sobre R5.1 describen el histórico; el estado de validación figura en el informe de progreso.
+
 **Estado de referencia (03/11/2026):** R0, R1, R2.1–R2.9, R3.1–R3.7 y R4.1–R4.4 integradas en `main` mediante los PR #19 y #20, junto con las correcciones posteriores de superficies, vistas y navegación y el commit documental `ee455b3`. El estado anterior de este encabezado citaba `origin/main` en `9472bd5` y daba R4 por no integrada; se conserva aquí como histórico: esa referencia dejó de ser válida al fusionarse R4. R5 está en curso, con su plan detallado en [R5_PLAN.md](R5_PLAN.md).
 
 **Estado de R4:** completada como **contrato y pruebas puras** y ya integrada. No hay UI multihabitación, ni migración ejecutada sobre datos reales, ni cambio del formato persistido v1–v4; `ProjectV2` sigue siendo un prototipo no estable (RB-013). El detalle está en [progress/R4_PROGRESS.md](progress/R4_PROGRESS.md); el histórico de R3 se conserva en [progress/R3_PROGRESS.md](progress/R3_PROGRESS.md).
 
-**Estado de R5:** en curso en [R5_PLAN.md](R5_PLAN.md) y [progress/R5_PROGRESS.md](progress/R5_PROGRESS.md). R5.1 completada y verificada con D9/D10 aprobadas: variantes, historial, guardado v5 y anclaje por tipo para objetos nuevos; los antiguos conservan su movilidad. R5.2/R5.3 pendientes. `ProjectV2` sigue siendo candidato. D7 conserva pendiente la política de IDs duplicados y R5.2 requiere decisiones de redimensionado.
+**Estado de R5:** en curso en [R5_PLAN.md](R5_PLAN.md) y [progress/R5_PROGRESS.md](progress/R5_PROGRESS.md). Las variantes de R5.1 se retiraron del MVP; se conserva el anclaje por tipo de objetos nuevos y la compatibilidad de los antiguos. R5.2 fue validada manualmente por el propietario y R5.3 está implementada y en verificación. Los IDs duplicados se importan como copia; el reemplazo y R5.4 siguen aplazados. `ProjectV2` sigue siendo candidato.
 
 ## Antes de tocar código
 
@@ -181,7 +183,7 @@ Aceptación cumplida: sin interfaz pública, sin creación de vivienda y sin dec
 - **R5.3:** exportación/importación de un diseño con validación estricta, previsualización, límite de tamaño y compatibilidad v1–v5; GLB sigue siendo independiente.
 - **R5.4:** aplazable a E2/E4 de v0.2; no se ejecuta dentro de R5 sin orden expresa.
 - **No incluye:** multihabitación, formas RB-025, comparación lado a lado, backend, cuentas, Workshop ni adopción implícita de `ProjectV2` como formato persistido.
-- **Decisiones:** D1–D8 confirmadas con las excepciones registradas en el plan; la política de IDs duplicados de D7 y los detalles de R5.2 siguen pendientes antes de esas fases.
+- **Decisiones:** D1–D8 y las aclaraciones posteriores figuran en el plan; las variantes se retiraron y un ID duplicado se importa como copia. El reemplazo de diseños sigue pendiente.
 
 ## Criterios de salida para cada lote
 

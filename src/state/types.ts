@@ -1,16 +1,10 @@
 import type { ElementFolder, FurnitureItem, FurnitureKind, GridSurface, PersistedDesign, RoomConfig, StructurePack, StructureSurfaceKey, ViewMode, WallSide, WindowConfig, WindowShape } from '../domain/types'
-import type { PersistedLayout, SavedDesign } from '../domain/designV1'
+import type { SavedDesign } from '../domain/designV1'
 import type { DesignRepository } from '../persistence/localDesignRepository'
 
 export interface RoomState {
   room: RoomConfig
   furniture: FurnitureItem[]
-  layouts: PersistedLayout[]
-  activeLayoutId: string
-  duplicateActiveLayout: () => void
-  activateLayout: (id: string) => void
-  renameLayout: (id: string, name: string) => void
-  deleteAlternativeLayout: (id: string) => void
   structurePacks: StructurePack[]
   selectedId: string | null
   selectedIds: string[]
@@ -40,8 +34,6 @@ export interface RoomState {
   povYaw: number
   gridSnap: boolean
   gridVisibility: Record<GridSurface, boolean>
-  showSelectionBounds: boolean
-  toggleSelectionBounds: () => void
   hiddenElementIds: string[]
   lockedElementIds: string[]
   elementFolders: ElementFolder[]
@@ -104,6 +96,8 @@ export interface RoomState {
   rotateSelectedFurnitureGroup: () => void
   colorSelectedFurnitureGroup: (color: string) => void
   moveFurnitureVertically: (id: string, y: number) => void
+  resizeFurniture: (id: string, dimension: 'width' | 'depth' | 'height', value: number) => void
+  resizeWallObject: (id: string, dimension: 'width' | 'height', value: number) => void
   setFurnitureColor: (id: string, color: string) => void
   setFurnitureRotation: (id: string, rotation: number) => void
   rotateFurniture: () => void
@@ -136,6 +130,7 @@ export interface RoomState {
   createDesign: (mode: 'blank' | 'copy', name: string) => void
   renameSavedDesign: (id: string, name: string) => void
   saveDesign: () => void
+  importDesign: (design: SavedDesign) => string | null
   loadDesign: (id?: string) => void
   clearNotice: () => void
 }

@@ -24,7 +24,7 @@ export const ROOM_LIMITS = {
   edgeMargin: 0.25,
   openingGap: 0.15,
   gridSize: 0.25,
-  placementStep: 0.125,
+  placementStep: 0.05,
 } as const
 
 export const DEFAULT_ROOM: RoomConfig = {

@@ -34,7 +34,7 @@ test('v1 conserva fixtures completos, antiguos y de límite sin mutaciones ni ca
 })
 
 test('v1 mantiene el control de cabecera y diferencia validación de lista y carga anidada', () => {
-  for (const value of [null, [], 1, '', {}, { version: 1 }, { version: 5, room: {}, furniture: [] }, { version: 1, room: {}, furniture: {} }]) {
+  for (const value of [null, [], 1, '', {}, { version: 1 }, { version: 6, room: {}, furniture: [] }, { version: 1, room: {}, furniture: {} }]) {
     assert.equal(isPersistedDesign(value), false)
   }
   assert.equal(isPersistedDesign(fixture('invalid-unsupported-version')), false)
@@ -76,7 +76,7 @@ test('v1 conserva defaults de todas las aperturas y no endurece formas antiguas 
   assert.equal(room.door.rotation, 0)
   room.windows.forEach((window, index) => {
     assert.equal(window.id, `old:${index}`)
-    assert.equal(window.offset, 0.5)
+    assert.equal(window.offset, 0.38)
     assert.equal(window.rotation, 0)
     assert.equal(typeof window.color, 'string')
     assert.equal(Number.isFinite(window.sill), true)

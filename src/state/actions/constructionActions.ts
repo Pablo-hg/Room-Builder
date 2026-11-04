@@ -7,7 +7,8 @@ import { folderSelectionId } from '../../domain/elementFolders'
 import { elementName } from '../../domain/selection'
 import { FRONT_CAMERA_MAX_HEIGHT, FRONT_CAMERA_MIN_HEIGHT, WALL_SIDES } from '../../domain/constants'
 import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, OPENING_CATALOG, openingKindForShape } from '../../domain/objectCatalog'
-import { snapToPlacementGrid, validateOpenings } from '../../domain/geometry'
+import { validateOpenings } from '../../domain/geometry'
+import { snapMeasurement } from '../../domain/measurements'
 import type { StructurePack, StructureSurfaceKey, WallSide, WindowConfig } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
 import type { RoomActionContext, RoomState } from '../types'
@@ -159,7 +160,8 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       if (state.lockedElementIds.includes(id)) return {}
       const pack = state.structurePacks.find((candidate) => candidate.id === id)
       if (!pack || !Number.isFinite(value)) return {}
-      const next = state.gridSnap ? snapToPlacementGrid(value) : value
+      if (pack[axis] === value) return {}
+      const next = snapMeasurement(value)
       if (pack[axis] === next) return {}
       recordInteraction('state.structure-pack.moved', {
         view: state.view,
@@ -177,7 +179,8 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       const pack = state.structurePacks.find((candidate) => candidate.id === packId)
       const surface = pack?.surfaces.find((item) => item.id === surfaceId)
       if (!pack || !surface || !Number.isFinite(value)) return {}
-      const next = state.gridSnap ? snapToPlacementGrid(value) : value
+      if (surface[axis] === value) return {}
+      const next = snapMeasurement(value)
       if (surface[axis] === next) return {}
       recordInteraction('state.structure-surface.moved', {
         view: state.view,
@@ -199,7 +202,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       const surface = pack?.surfaces.find((item) => item.id === surfaceId)
       if (!pack || !surface || !Number.isFinite(value)) return {}
       const minimum = structureDimensionMinimum(surface.kind, dimension)
-      const next = Math.max(minimum, Math.min(20, state.gridSnap ? snapToPlacementGrid(value) : value))
+      const next = Math.max(minimum, Math.min(20, snapMeasurement(value)))
       if (surface[dimension] === next) return {}
       recordInteraction('state.structure-surface.resized', {
         view: state.view,

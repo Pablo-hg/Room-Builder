@@ -1,6 +1,7 @@
 import { type ThreeEvent, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { moveFromOrigin, snapMovement } from '../domain/measurements'
 import { snapFurnitureRotation } from '../domain/geometry'
 import type { FurnitureItem, WallSide } from '../domain/types'
 import { useHistoryGesture } from '../state/useHistoryGesture'
@@ -252,6 +253,7 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
   const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
   const point = useMemo(() => new THREE.Vector3(), [])
   const dragOffset = useRef(0)
+  const dragOrigin = useRef({ x: item.x, z: item.z })
   const screenDrag = useRef<{ axis: FloorMoveAxis; clientX: number; clientY: number; x: number; y: number; z: number } | null>(null)
   const coneHeight = 0.15
   const tipDistance = 0.5
@@ -260,6 +262,7 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
 
   const startDrag = (axis: FloorMoveAxis, event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation()
+    dragOrigin.current = { x: item.x, z: item.z }
     if (axis === 'y') {
       screenDrag.current = {
         axis,
@@ -301,15 +304,15 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
       const pixels = fallback.axis === 'x'
         ? event.nativeEvent.clientX - fallback.clientX
         : fallback.clientY - event.nativeEvent.clientY
-      const delta = pixels * worldPerPixel
+      const delta = snapMovement(pixels * worldPerPixel)
       if (fallback.axis === 'x') moveFurniture(item.id, fallback.x + delta, fallback.z)
       else if (fallback.axis === 'y') moveFurnitureVertically(item.id, fallback.y + delta)
       else moveFurniture(item.id, fallback.x, fallback.z + delta)
       return
     }
     if (!event.ray.intersectPlane(floorPlane, point)) return
-    if (draggingAxis === 'x') moveFurniture(item.id, point.x - dragOffset.current, item.z)
-    else if (draggingAxis === 'z') moveFurniture(item.id, item.x, point.z - dragOffset.current)
+    if (draggingAxis === 'x') moveFurniture(item.id, moveFromOrigin(point.x - dragOffset.current, dragOrigin.current.x), item.z)
+    else if (draggingAxis === 'z') moveFurniture(item.id, item.x, moveFromOrigin(point.z - dragOffset.current, dragOrigin.current.z))
   }
 
   const stopDrag = (event: ThreeEvent<PointerEvent>) => {
@@ -473,14 +476,14 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
     const deltaX = event.nativeEvent.clientX - dragStart.current.clientX
     const deltaY = event.nativeEvent.clientY - dragStart.current.clientY
     if (draggingAxis === 'horizontal') {
-      const delta = deltaX * worldPerPixel() * horizontalSign
+      const delta = snapMovement(deltaX * worldPerPixel() * horizontalSign)
       moveFurniture(
         item.id,
         horizontalAxis === 'x' ? dragStart.current.x + delta : dragStart.current.x,
         horizontalAxis === 'z' ? dragStart.current.z + delta : dragStart.current.z,
       )
     } else {
-      moveFurnitureVertically(item.id, dragStart.current.y - deltaY * worldPerPixel())
+      moveFurnitureVertically(item.id, dragStart.current.y + snapMovement(-deltaY * worldPerPixel()))
     }
   }
 

@@ -4,7 +4,8 @@ import { makeId } from '../../domain/elementIds'
 import { withoutFolderAssignments } from '../../domain/elementFolders'
 import { elementName } from '../../domain/selection'
 import { FURNITURE_PRESETS, isCeilingMountedFurniture, isWallPictureKind } from '../../domain/objectCatalog'
-import { findFreeFurniturePosition, hasFurnitureCollisions, snapToPlacementGrid, validateOpenings } from '../../domain/geometry'
+import { findFreeFurniturePosition, validateOpenings } from '../../domain/geometry'
+import { snapMeasurement } from '../../domain/measurements'
 import { furnitureSelectionBounds } from '../../domain/multiFurniture'
 import { multiSelectionItems } from '../../domain/multiSelection'
 import type { FurnitureItem } from '../../domain/types'
@@ -36,7 +37,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       const items = multiSelectionItems(state)
       const ids = new Set(items.map((item) => item.id))
       if (items.length < 2 || items.some((item) => state.lockedElementIds.includes(item.id)) || state.selectedIds.some((id) => state.lockedElementIds.includes(id))) return {}
-      const amount = { x: state.gridSnap ? snapToPlacementGrid(delta.x) : delta.x, y: state.gridSnap ? snapToPlacementGrid(delta.y) : delta.y, z: state.gridSnap ? snapToPlacementGrid(delta.z) : delta.z }
+      const amount = { x: snapMeasurement(delta.x), y: snapMeasurement(delta.y), z: snapMeasurement(delta.z) }
       if (!Object.values(amount).every(Number.isFinite) || Object.values(amount).every((value) => Math.abs(value) < 1e-9)) return {}
       if ((['x', 'y', 'z'] as const).some((axis) => Math.abs(amount[axis]) > 1e-9 && items.some((item) => !item.axes.includes(axis)))) return { notice: 'Todos los elementos deben poder moverse en este eje.' }
       const furniture = state.furniture.map((item) => ids.has(item.id) ? { ...item, x: item.x + amount.x, y: item.y + amount.y, z: item.z + amount.z } : item)
@@ -50,7 +51,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
         if (wholePack) return { ...pack, x: pack.x + amount.x, y: pack.y + amount.y, z: pack.z + amount.z }
         return { ...pack, surfaces: pack.surfaces.map((surface) => ids.has(`structure-surface:${pack.id}:${surface.id}`) ? { ...surface, x: surface.x + amount.x, y: surface.y + amount.y, z: surface.z + amount.z } : surface) }
       })
-      if (hasFurnitureCollisions(furniture) || validateOpenings(room)) return { notice: 'No hay espacio suficiente para mover toda la selección.' }
+      if (validateOpenings(room)) return { notice: 'No hay espacio suficiente para mover toda la selección.' }
       return { furniture, room, structurePacks, notice: '' }
     }),
     rotateSelectedFurnitureGroup: () => set((state) => {
@@ -61,7 +62,6 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       if (!bounds || items.length < 2 || items.length !== ids.size || state.selectedIds.some((id) => state.lockedElementIds.includes(id)) || items.some((item) => state.lockedElementIds.includes(item.id) || isCeilingMountedFurniture(item.kind))) return {}
       const { x, z } = bounds.center
       const furniture = state.furniture.map((item) => ids.has(item.id) ? { ...item, x: x + item.z - z, z: z - item.x + x, rotation: (item.rotation + Math.PI / 2) % (2 * Math.PI) } : item)
-      if (hasFurnitureCollisions(furniture)) return { notice: 'No hay espacio suficiente para girar toda la selección.' }
       return { furniture, notice: '' }
     }),
     colorSelectedFurnitureGroup: (color) => set((state) => {
@@ -80,7 +80,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
           attachmentPolicy: 'by-type',
           id,
           x: 0,
-          y: isCeilingMountedFurniture(kind) ? Math.max(0, state.room.height - preset.height) : 0,
+          y: isCeilingMountedFurniture(kind) ? state.room.height - preset.height : 0,
           z: 0,
           rotation: 0,
         }
@@ -157,7 +157,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       if (state.lockedElementIds.includes(id)) return {}
       const item = state.furniture.find((candidate) => candidate.id === id)
       if (!item) return {}
-      const update = applyFurnitureRotation(state, item, rotation, false)
+      const update = applyFurnitureRotation(state, item, rotation)
       if (update.furniture) {
         const rotated = update.furniture.find((candidate) => candidate.id === id)
         recordInteraction('state.furniture.rotated', {
@@ -173,7 +173,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       if (state.selectedId && state.lockedElementIds.includes(state.selectedId)) return {}
       const item = state.furniture.find((candidate) => candidate.id === state.selectedId)
       if (!item) return {}
-      const update = applyFurnitureRotation(state, item, item.rotation + Math.PI / 2, true)
+      const update = applyFurnitureRotation(state, item, item.rotation + Math.PI / 2)
       if (update.furniture) {
         const rotated = update.furniture.find((candidate) => candidate.id === item.id)
         recordInteraction('state.furniture.rotated', {

@@ -1,10 +1,10 @@
 import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, ROOM_LIMITS } from './constants'
 import type { RoomConfig, StructureSurface, StructureSurfaceKey, WallSide } from './types'
 
-const DEFAULT_SURFACE_THICKNESS = ROOM_LIMITS.placementStep
+const DEFAULT_SURFACE_THICKNESS = 0.13
 
 export function structureDimensionMinimum(kind: StructureSurface['kind'], dimension: 'width' | 'height' | 'depth') {
-  return (kind === 'wall' && dimension === 'depth') || (kind !== 'wall' && dimension === 'height') ? DEFAULT_SURFACE_THICKNESS : ROOM_LIMITS.gridSize
+  return (kind === 'wall' && dimension === 'depth') || (kind !== 'wall' && dimension === 'height') ? 0.01 : ROOM_LIMITS.gridSize
 }
 
 export function createStructureSurface(room: RoomConfig, id: StructureSurfaceKey): StructureSurface {

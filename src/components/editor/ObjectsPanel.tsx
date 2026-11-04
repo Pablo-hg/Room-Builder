@@ -12,7 +12,6 @@ import { WALL_SIDES } from '../../domain/constants'
 import { OpeningSwatch } from './Controls'
 import { EyeIcon, FolderIcon, LockIcon, RoomPackIcon } from './ElementIcons'
 import { SceneContextMenu } from './SceneContextMenu'
-import { VariantSwitcher } from './VariantSwitcher'
 
 export function ObjectsPanel() {
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
@@ -394,7 +393,6 @@ export function ObjectsPanel() {
   return (
     <aside id="objects-panel" className="side-panel objects-panel" aria-label="Catálogo de objetos">
       <div className="side-panel__content objects-panel__content">
-        <VariantSwitcher />
         <section className="panel-section">
         <span className="eyebrow">Objetos</span>
         <div className="catalog-heading">
@@ -581,7 +579,7 @@ export function ObjectsPanel() {
             </div>
           }))}
         </div>
-        <small className="grid-snap-note">El ajuste de movimiento a 12,5 cm se mantiene activo.</small>
+        <small className="grid-snap-note">El ajuste de movimiento a 5 cm se mantiene activo.</small>
         </section>
       </div>
       {contextMenu && <SceneContextMenu key={contextMenu.id} {...contextMenu} siblings={siblingsFor(sceneEntryParent(contextMenu.id, elementFolders, elementFolderAssignments))} onClose={closeContextMenu}

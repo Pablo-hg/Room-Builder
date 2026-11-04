@@ -110,6 +110,31 @@ test('un fallo de almacenamiento no confirma acciones ni altera diseños, mundo 
   assert.equal(repository.read()[0].data.room.wallColor, '#123456')
 })
 
+test('eliminar el diseño activo abre el primero de la lista y, si no queda ninguno, un lienzo en blanco', () => {
+  const { store, repository } = setup()
+  store.getState().createDesign('blank', 'Primero')
+  const firstId = store.getState().selectedSavedDesignId
+  store.getState().setWallColor('#111111')
+  store.getState().saveDesign()
+  store.getState().createDesign('blank', 'Segundo')
+  const secondId = store.getState().selectedSavedDesignId
+  store.getState().setWallColor('#222222')
+  store.getState().saveDesign()
+
+  store.getState().deleteSavedDesign(secondId)
+  assert.equal(store.getState().selectedSavedDesignId, firstId)
+  assert.equal(store.getState().room.wallColor, '#111111')
+  assert.equal(store.getState().hasUnsavedChanges, false)
+  assert.deepEqual(repository.read().map((design) => design.id), [firstId])
+
+  store.getState().deleteSavedDesign(firstId)
+  assert.equal(store.getState().selectedSavedDesignId, '')
+  assert.equal(store.getState().savedDesigns.length, 0)
+  assert.equal(store.getState().furniture.length, 0)
+  assert.equal(store.getState().hasUnsavedChanges, false)
+  assert.deepEqual(repository.read(), [])
+})
+
 test('el contexto mutable y el repositorio quedan aislados entre instancias del store', () => {
   const first = setup().store
   const second = setup().store
@@ -132,4 +157,26 @@ test('el contexto mutable y el repositorio quedan aislados entre instancias del 
   first.getState().undo()
   assert.equal(first.getState().furniture[0].x, chair.x)
   assert.equal(second.getState().furniture.length, 1)
+})
+
+test('importar un ID duplicado crea copia independiente y respeta el límite y errores de almacenamiento', () => {
+  const { store, storage, values } = setup()
+  store.getState().createDesign('blank', 'Original')
+  const existing = store.getState().savedDesigns[0]
+  const selected = store.getState().selectedSavedDesignId
+  assert.equal(store.getState().importDesign(existing), null)
+  const imported = store.getState().savedDesigns[1]
+  assert.notEqual(imported.id, existing.id)
+  assert.deepEqual(imported.data, existing.data)
+  assert.notEqual(imported.data, existing.data)
+  assert.equal(store.getState().selectedSavedDesignId, selected)
+  storage.blocked = true
+  const before = values.get(SAVED_DESIGNS_KEY)
+  assert.match(store.getState().importDesign(existing) ?? '', /no se pudo/i)
+  assert.equal(values.get(SAVED_DESIGNS_KEY), before)
+  assert.equal(store.getState().savedDesigns.length, 2)
+  storage.blocked = false
+  for (let i = 0; i < 3; i++) assert.equal(store.getState().importDesign(existing), null)
+  assert.match(store.getState().importDesign(existing) ?? '', /5 diseños/)
+  assert.equal(store.getState().savedDesigns.length, 5)
 })

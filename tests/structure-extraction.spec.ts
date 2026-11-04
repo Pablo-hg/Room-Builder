@@ -5,7 +5,7 @@ test('mueve un pack, redimensiona una superficie y deshace la edición', async (
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
   const inspector = page.locator('.selection-section--inspector')
-  const packX = inspector.getByLabel('Mover pack X')
+  const packX = inspector.getByLabel('Mover pack X', { exact: true })
   const initialX = await packX.inputValue()
   await packX.focus()
   await packX.press('ArrowRight')
@@ -35,7 +35,7 @@ test('arrastra el gizmo de una superficie y deshace el gesto', async ({ page }) 
   if (!bounds) throw new Error('No se pudo localizar el canvas')
   const x = bounds.x + bounds.width * 0.5
   const y = bounds.y + bounds.height * 0.5
-  const position = page.locator('.selection-section--inspector').getByLabel('Desplazamiento X')
+  const position = page.locator('.selection-section--inspector').getByLabel('Desplazamiento X', { exact: true })
   const initial = await position.inputValue()
   await page.mouse.move(x + 26, y)
   await page.mouse.down()

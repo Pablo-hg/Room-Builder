@@ -14,8 +14,9 @@ test('descarga la escena real en GLB con el nombre y la fecha actuales', async (
   await page.goto('/')
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const date = await page.evaluate(() => new Date().toISOString().slice(0, 10))
+  await page.getByRole('button', { name: 'Seleccionar diseño guardado' }).click({ button: 'right' })
   const pending = page.waitForEvent('download')
-  await page.getByRole('button', { name: /Descargar 3D/ }).click()
+  await page.getByRole('menuitem', { name: /Descargar 3D/ }).click()
   const download = await pending
   expect(download.suggestedFilename()).toBe(`room-builder-${date}.glb`)
   const path = await download.path()

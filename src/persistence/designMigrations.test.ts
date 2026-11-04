@@ -4,67 +4,71 @@ import { readFileSync } from 'node:fs'
 import { DEFAULT_ROOM } from '../domain/constants'
 import { FURNITURE_PRESETS } from '../domain/objectCatalog'
 import type { FurnitureItem } from '../domain/types'
-import { migrateDesignLayouts, migrateLegacyDesign, migrateWallPictures, normalizeDesignLayouts } from './designMigrations'
-import { validateLayouts } from '../domain/designLayouts'
+import { migrateLegacyDesign, migrateWallPictures, normalizeDesign } from './designMigrations'
 import { persistedDesignSignature } from '../domain/designV1'
 
-test('normaliza fixtures v1–v5 de forma determinista sin perder preferencias ni modificar la fuente', () => {
-  for (const path of ['persistence-v1/valid-complete', 'persistence-v1/valid-legacy-optional-fields', 'persistence-v1/valid-boundary', 'layout-variants/valid-v2', 'layout-variants/valid-v3', 'layout-variants/valid-v4', 'layout-variants/valid-v5']) {
+test('normaliza fixtures v1–v4 de forma determinista sin perder preferencias ni modificar la fuente', () => {
+  for (const path of ['persistence-v1/valid-complete', 'persistence-v1/valid-legacy-optional-fields', 'persistence-v1/valid-boundary', 'persisted-designs/valid-v2', 'persisted-designs/valid-v3', 'persisted-designs/valid-v4']) {
     const data = JSON.parse(readFileSync(new URL(`../../tests/fixtures/${path}.json`, import.meta.url), 'utf8'))
     const before = structuredClone(data)
-    const normalized = normalizeDesignLayouts(data)
+    const normalized = normalizeDesign(data)
     assert.deepEqual(data, before)
-    assert.deepEqual(normalizeDesignLayouts(data), normalized)
-    assert.deepEqual(normalizeDesignLayouts(normalized), normalized)
+    assert.deepEqual(normalizeDesign(data), normalized)
+    assert.deepEqual(normalizeDesign(normalized), normalized)
     assert.deepEqual(normalized.furniture.map((item) => item.id), data.furniture.map((item: FurnitureItem) => item.id))
     if (data.version >= 3) assert.deepEqual(normalized.elementFolders, data.elementFolders)
     if (data.version >= 4) assert.deepEqual(normalized.sceneElementOrder, data.sceneElementOrder)
-    if (data.version === 5) assert.equal(normalized.activeLayoutId, 'alternative-a')
-    else assert.equal(normalized.layouts.length, 1)
   }
 })
 
-test('valida también mobiliario inactivo y la firma incluye ambas variantes y la activa', () => {
-  const data = JSON.parse(readFileSync(new URL('../../tests/fixtures/layout-variants/valid-v5.json', import.meta.url), 'utf8'))
+test('aplana un v5 antiguo de variantes a su variante activa y lo guarda como v4', () => {
+  const legacy = JSON.parse(readFileSync(new URL('../../tests/fixtures/persisted-designs/valid-v5.json', import.meta.url), 'utf8'))
+  const before = structuredClone(legacy)
+  const normalized = normalizeDesign(legacy)
+  assert.equal(normalized.version, 4)
+  assert.equal('layouts' in normalized, false)
+  assert.equal('activeLayoutId' in normalized, false)
+  assert.deepEqual(normalized.furniture.map((item) => item.id), legacy.furniture.map((item: FurnitureItem) => item.id))
+  assert.deepEqual(normalized.sceneElementOrder, legacy.sceneElementOrder)
+  assert.deepEqual(legacy, before)
+})
+
+test('rechaza un v5 cuyo espejo no coincide y no modifica los datos guardados', () => {
+  const legacy = JSON.parse(readFileSync(new URL('../../tests/fixtures/persisted-designs/valid-v5.json', import.meta.url), 'utf8'))
+  legacy.furniture[0].x += 0.25
+  const before = structuredClone(legacy)
+  assert.throws(() => normalizeDesign(legacy), /no coincide/)
+  assert.deepEqual(legacy, before)
+  legacy.activeLayoutId = 'inexistente'
+  assert.throws(() => normalizeDesign(legacy), /variante activa/)
+})
+
+test('valida el mobiliario y la firma sigue el contenido del diseño', () => {
+  const data = {
+    version: 4 as const,
+    room: structuredClone(DEFAULT_ROOM),
+    furniture: [{ ...FURNITURE_PRESETS.chair, id: 'chair', x: 0, y: 0, z: 0, rotation: 0 }],
+    gridSnap: true,
+  }
   const originalSignature = persistedDesignSignature(data)
   const changed = structuredClone(data)
-  changed.layouts[0].furniture[0].color = '#111111'
+  changed.furniture[0].color = '#111111'
   assert.notEqual(persistedDesignSignature(changed), originalSignature)
-  assert.notEqual(persistedDesignSignature({ ...data, activeLayoutId: 'original' }), originalSignature)
-  for (const change of [(item: FurnitureItem) => { item.x = Infinity }, (item: FurnitureItem) => { item.width = 0 }, (item: FurnitureItem) => { item.id = 'door' }]) {
+  for (const change of [(item: FurnitureItem) => { item.id = 'door' }, (item: FurnitureItem) => { item.kind = 'unknown' as FurnitureItem['kind'] }]) {
     const invalid = structuredClone(data)
-    change(invalid.layouts[0].furniture[0])
-    assert.throws(() => normalizeDesignLayouts(invalid))
+    change(invalid.furniture[0])
+    assert.throws(() => normalizeDesign(invalid))
   }
   const duplicate = structuredClone(data)
-  duplicate.layouts[0].furniture.push({ ...duplicate.layouts[0].furniture[0] })
-  assert.throws(() => normalizeDesignLayouts(duplicate))
-  assert.throws(() => normalizeDesignLayouts({ ...data, room: { ...data.room, height: NaN } }))
-})
-
-test('convierte v1–v4 en Original en memoria sin mutar datos ni compartir muebles', () => {
-  for (const version of [1, 2, 3, 4] as const) {
-    const data = { version, room: structuredClone(DEFAULT_ROOM), furniture: [{ ...FURNITURE_PRESETS.chair, id: 'chair', x: 0, y: 0, z: 0, rotation: 0 }], gridSnap: true }
-    const before = structuredClone(data)
-    const result = migrateDesignLayouts(data)
-    assert.equal(result.version, 5)
-    assert.equal(result.activeLayoutId, 'original')
-    assert.deepEqual(result.layouts[0].furniture, data.furniture)
-    assert.notEqual(result.layouts[0].furniture, result.furniture)
-    assert.deepEqual(validateLayouts(result), [])
-    assert.deepEqual(migrateDesignLayouts(data), result)
-    assert.deepEqual(data, before)
-    result.layouts[0].furniture[0].x = 10
-    assert.equal(data.furniture[0].x, 0)
-    assert.equal(result.furniture[0].x, 0)
-  }
-})
-
-test('valida v5 antes de clonarlo y rechaza un espejo discrepante', () => {
-  const v5 = migrateDesignLayouts({ version: 1, room: structuredClone(DEFAULT_ROOM), furniture: [], gridSnap: true })
-  assert.deepEqual(migrateDesignLayouts(v5), v5)
-  assert.notEqual(migrateDesignLayouts(v5).layouts, v5.layouts)
-  assert.throws(() => migrateDesignLayouts({ ...v5, furniture: [{ ...FURNITURE_PRESETS.chair, id: 'c', x: 0, y: 0, z: 0, rotation: 0 }] }), /no coincide/)
+  duplicate.furniture.push({ ...duplicate.furniture[0] })
+  assert.throws(() => normalizeDesign(duplicate))
+  assert.throws(() => normalizeDesign({ ...data, room: { ...data.room, height: NaN } }))
+  const unknownPolicy = structuredClone(data) as unknown as { furniture: Array<Record<string, unknown>> }
+  unknownPolicy.furniture[0].attachmentPolicy = 'unknown'
+  assert.throws(() => normalizeDesign(unknownPolicy))
+  const mismatchedAttachment = structuredClone(data) as unknown as { furniture: Array<Record<string, unknown>> }
+  mismatchedAttachment.furniture[0] = { ...FURNITURE_PRESETS.rug, id: 'rug', x: 0, y: 1, z: 0, rotation: 0, attachmentPolicy: 'by-type' }
+  assert.throws(() => normalizeDesign(mismatchedAttachment), /anclaje/)
 })
 
 test('la migración legacy es pura y conserva los datos y metadatos recibidos', () => {

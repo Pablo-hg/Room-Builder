@@ -75,15 +75,15 @@ for (const kind of ['Suelo', 'Pared']) {
   test(`${kind}: permite escribir dimensiones y restaura valores fuera de rango`, async ({ page }) => {
     await page.goto('/')
     await page.getByRole('button', { name: new RegExp(`${kind}.*Objeto independiente`) }).click()
-    const width = page.getByRole('textbox', { name: 'Introducir Anchura en metros' })
+    const width = page.getByRole('textbox', { name: 'Introducir Anchura en metros', exact: true })
     const thickness = page.getByRole('textbox', { name: 'Introducir Grosor en metros' })
-    await expect(thickness).toHaveValue('0.125')
+    await expect(thickness).toHaveValue('0.13')
     await thickness.fill('0,25')
     await thickness.press('Enter')
     await expect(thickness).toHaveValue('0.25')
     await thickness.fill('0,126')
     await thickness.press('Enter')
-    await expect(thickness).toHaveValue('0.125')
+    await expect(thickness).toHaveValue('0.25')
     await width.fill('2.75')
     await width.press('Enter')
     await expect(width).toHaveValue('2.75')
@@ -93,7 +93,7 @@ for (const kind of ['Suelo', 'Pared']) {
     await page.getByRole('button', { name: /Deshacer el último cambio/ }).click()
     await page.getByRole('button', { name: new RegExp(`${kind} 1 · ${kind} independiente Superficie de construcción`) }).click()
     await expect(width).not.toHaveValue('2.75')
-    await expect(thickness).toHaveValue('0.125')
+    await expect(thickness).toHaveValue('0.25')
   })
 }
 
@@ -107,7 +107,7 @@ for (const view of ['Isométrica', 'Libre', 'Plano', 'Frontal']) {
       const inspector = page.locator('.selection-section--inspector')
       const heading = inspector.getByRole('heading', { name: `${kind} independiente` })
       await expect(heading).toBeVisible()
-      const x = inspector.getByLabel('Desplazamiento X')
+      const x = inspector.getByLabel('Desplazamiento X', { exact: true })
       const initial = await x.inputValue()
       await x.focus()
       await x.press('ArrowRight')
@@ -132,7 +132,7 @@ for (const kind of ['Suelo', 'Pared']) {
     if (!box) throw new Error('Canvas no disponible')
     const x = box.x + box.width * 0.5
     const y = box.y + box.height * 0.5
-    const position = page.locator('.selection-section--inspector').getByLabel('Desplazamiento X')
+    const position = page.locator('.selection-section--inspector').getByLabel('Desplazamiento X', { exact: true })
     const initial = await position.inputValue()
     await page.mouse.move(x + 26, y)
     await page.mouse.down()
@@ -153,7 +153,7 @@ for (const kind of ['Suelo', 'Pared']) {
     if (!box) throw new Error('Canvas no disponible')
     const x = box.x + box.width / 2
     const y = box.y + box.height / 2
-    const position = page.locator('.selection-section--inspector').getByLabel('Desplazamiento Z')
+    const position = page.locator('.selection-section--inspector').getByLabel('Desplazamiento Z', { exact: true })
     const initial = await position.inputValue()
     await page.mouse.move(x, y + 26)
     await page.mouse.down()

@@ -1,6 +1,5 @@
 import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, WALL_SIDES } from './constants'
-import { DEFAULT_GRID_VISIBILITY, type PersistedDesign, type PersistedDesignV5 } from './designV1'
-import { snapToVisibleGrid } from './geometry'
+import { DEFAULT_GRID_VISIBILITY, type PersistedDesign } from './designV1'
 import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, isWindowShape, OPENING_CATALOG, openingKindForShape } from './objectCatalog'
 import { createStructureSurface } from './structureRules'
 import type { GridSurface, RoomConfig, StructurePack, StructureSurface, StructureSurfaceKey } from './types'
@@ -46,8 +45,8 @@ export function normalizeStructurePacks(value: unknown, room: RoomConfig): Struc
         ...defaultSurface,
         ...surface,
         width: surface.width ?? defaultSurface!.width,
-        height: surface.height ?? defaultSurface!.height,
-        depth: surface.depth ?? defaultSurface!.depth,
+        height: surface.height ?? (surface.kind === 'floor' || surface.kind === 'ceiling' ? 0.125 : defaultSurface!.height),
+        depth: surface.depth ?? (surface.kind === 'wall' ? 0.125 : defaultSurface!.depth),
         rotation: surface.rotation ?? 0,
       } as StructureSurface
     })
@@ -55,7 +54,7 @@ export function normalizeStructurePacks(value: unknown, room: RoomConfig): Struc
   })
 }
 
-export function normalizeDesignRoom(data: PersistedDesign | PersistedDesignV5): RoomConfig {
+export function normalizeDesignRoom(data: PersistedDesign): RoomConfig {
   const validName = (name: unknown) => typeof name === 'string' && name.trim() && name.trim().length <= 80 ? name.trim() : undefined
   const { name: doorName, ...door } = data.room.door
   return {
@@ -82,11 +81,11 @@ export function normalizeDesignRoom(data: PersistedDesign | PersistedDesignV5): 
         ...windowData,
         ...(data.version >= 2 && validName(windowName) ? { name: validName(windowName) } : {}),
         shape,
-        width: definition.width,
-        height: definition.height,
-        offset: snapToVisibleGrid(window.offset),
+        width: Number.isFinite(window.width) && window.width > 0 ? window.width : definition.width,
+        height: Number.isFinite(window.height) && window.height > 0 ? window.height : definition.height,
+        offset: Number.isFinite(window.offset) ? window.offset : 0,
         sill: typeof window.sill === 'number'
-          ? snapToVisibleGrid(window.sill)
+          ? window.sill
           : definition.defaultBottom,
         rotation: typeof window.rotation === 'number' ? window.rotation : 0,
         color: typeof window.color === 'string'
@@ -103,7 +102,7 @@ export function normalizeDesignRoom(data: PersistedDesign | PersistedDesignV5): 
   }
 }
 
-export function normalizeDesignPreferences(data: PersistedDesign | PersistedDesignV5) {
+export function normalizeDesignPreferences(data: PersistedDesign) {
   const elementFolders: import('./types').ElementFolder[] = Array.isArray(data.elementFolders)
     ? data.elementFolders.flatMap((folder) => (
       folder && typeof folder === 'object'

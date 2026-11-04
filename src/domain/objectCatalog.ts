@@ -1,4 +1,5 @@
 import type { FurnitureItem, FurnitureKind, WindowShape } from './types'
+import { furnitureResizeCapability, openingResizeCapability, type ResizeCapability } from './resizeCapabilities'
 
 export const DEFAULT_ROTATION_STEP = Math.PI / 12
 
@@ -6,6 +7,7 @@ export type TranslationCapability = 'floor-x' | 'floor-z' | 'wall-horizontal' | 
 export type RotationAxis = 'floor-y' | 'wall-normal'
 
 export interface ObjectCapabilities {
+  resize?: ResizeCapability
   attachment: 'free' | 'floor' | 'wall' | 'ceiling'
   translation: readonly TranslationCapability[]
   rotation: {
@@ -55,7 +57,7 @@ export const FURNITURE_FAMILIES: { id: FurnitureFamily; label: string }[] = [
   { id: 'wallDecor', label: 'Pared y decoración' },
 ]
 
-export const FURNITURE_CATALOG: Record<FurnitureKind, FurnitureDefinition> = {
+const FURNITURE_DEFINITIONS: Record<FurnitureKind, FurnitureDefinition> = {
   armchair: { base: { kind: 'armchair', name: 'Sillón', width: 1, depth: 1, height: 0.85, color: '#d07a63' }, family: 'seating', capabilities: FLOOR_CAPABILITIES },
   sofa: { base: { kind: 'sofa', name: 'Sofá', width: 2, depth: 0.75, height: 0.85, color: '#b86f5e' }, family: 'seating', capabilities: FLOOR_CAPABILITIES },
   chair: { base: { kind: 'chair', name: 'Silla', width: 0.5, depth: 0.5, height: 0.85, color: '#bd8b5f' }, family: 'seating', capabilities: FLOOR_CAPABILITIES },
@@ -84,6 +86,10 @@ export const FURNITURE_CATALOG: Record<FurnitureKind, FurnitureDefinition> = {
   pictureLarge: { base: { kind: 'pictureLarge', name: 'Cuadro grande', width: 1.5, depth: 0.25, height: 1, color: '#bd8067' }, family: 'wallDecor', capabilities: WALL_OPENING_CAPABILITIES },
 }
 
+export const FURNITURE_CATALOG = Object.fromEntries(Object.entries(FURNITURE_DEFINITIONS).map(([kind, definition]) => [kind, {
+  ...definition, capabilities: { ...definition.capabilities, resize: furnitureResizeCapability(kind as FurnitureKind) },
+}])) as Record<FurnitureKind, FurnitureDefinition>
+
 export function isFloorBoundFurniture(kind: FurnitureKind): kind is 'rug' | 'circularRug' {
   return kind === 'rug' || kind === 'circularRug'
 }
@@ -101,6 +107,12 @@ export function canElevateFurniture(item: Pick<FurnitureItem, 'kind' | 'attachme
   return furnitureAttachment(item) === 'free'
 }
 
+/** Desplazamiento visual heredado solo para objetos sin fijación al suelo o techo. */
+export function furnitureVisualYOffset(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy'>): number {
+  const attachment = furnitureAttachment(item)
+  return attachment === 'floor' || attachment === 'ceiling' ? 0 : 0.02
+}
+
 export type OpeningKind = 'door' | 'window' | 'circularWindow' | 'wallShelf' | 'pictureSmall' | 'pictureMedium' | 'pictureLarge' | 'mirrorRectangular' | 'mirrorCircular' | 'wallSconce'
 
 export interface OpeningDefinition {
@@ -111,7 +123,7 @@ export interface OpeningDefinition {
   capabilities: ObjectCapabilities
 }
 
-export const OPENING_CATALOG: Record<OpeningKind, OpeningDefinition> = {
+const OPENING_DEFINITIONS: Record<OpeningKind, OpeningDefinition> = {
   door: {
     name: 'Puerta',
     width: 1,
@@ -189,6 +201,10 @@ export const OPENING_CATALOG: Record<OpeningKind, OpeningDefinition> = {
     capabilities: WALL_OPENING_CAPABILITIES,
   },
 }
+
+export const OPENING_CATALOG = Object.fromEntries(Object.entries(OPENING_DEFINITIONS).map(([kind, definition]) => [kind, {
+  ...definition, capabilities: { ...definition.capabilities, resize: kind === 'door' ? undefined : openingResizeCapability(kind === 'window' ? 'rectangular' : kind === 'circularWindow' ? 'circular' : kind as WindowShape) },
+}])) as Record<OpeningKind, OpeningDefinition>
 
 export function openingKindForShape(shape: WindowShape): Exclude<OpeningKind, 'door'> {
   if (shape === 'rectangular') return 'window'

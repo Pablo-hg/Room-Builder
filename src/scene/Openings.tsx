@@ -1,6 +1,7 @@
 import type { ThreeEvent } from '@react-three/fiber'
 import { useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { moveFromOrigin } from '../domain/measurements'
 import { snapFurnitureRotation } from '../domain/geometry'
 import { isWallMirrorShape, openingCapabilities, OPENING_CATALOG, openingKindForShape } from '../domain/objectCatalog'
 import type { RoomConfig, WallOpening, WallSide } from '../domain/types'
@@ -30,6 +31,7 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
   const dragAxis = useRef<'free' | 'horizontal' | 'vertical'>('free')
   const dragOffset = useRef(0)
   const dragSill = useRef(0)
+  const dragOrigin = useRef({ offset: opening.offset, sill: opening.bottom })
   const point = useMemo(() => new THREE.Vector3(), [])
   const plane = useMemo(() => {
     if (planView) return new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.035)
@@ -68,6 +70,7 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
     } else useRoomStore.getState().selectElement(opening.id)
     if (locked) return
     if (!event.ray.intersectPlane(plane, point)) return
+    dragOrigin.current = { offset: opening.offset, sill: opening.bottom }
     dragAxis.current = axis
     dragOffset.current = offsetAtPoint(point) - opening.offset
     dragSill.current = point.y - opening.bottom
@@ -82,9 +85,9 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
     if (event.ray.intersectPlane(plane, point)) {
       const axis = dragAxis.current
       move(
-        axis === 'vertical' || !canMoveHorizontal ? opening.offset : offsetAtPoint(point) - dragOffset.current,
+        axis === 'vertical' || !canMoveHorizontal ? opening.offset : moveFromOrigin(offsetAtPoint(point) - dragOffset.current, dragOrigin.current.offset),
         opening.kind === 'window' && canMoveVertical && !planView && axis !== 'horizontal'
-          ? point.y - dragSill.current
+          ? moveFromOrigin(point.y - dragSill.current, dragOrigin.current.sill)
           : undefined,
       )
     }
@@ -407,7 +410,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked }: { room:
     )
   }
 
-  const frameWidth = 0.07
+  const frameWidth = Math.min(0.07, opening.width * 0.12, opening.height * 0.12)
   if (opening.shape === 'wallShelf') {
     const shelfDepth = 0.25
     const shelfColor = baseColor
@@ -427,10 +430,10 @@ export function OpeningDetail({ room, opening, wall, selected, locked }: { room:
         <group rotation={[0, 0, opening.rotation]}>
           <mesh position={[0, 0, 0.015]} castShadow><boxGeometry args={[opening.width, opening.height, 0.05]} /><meshStandardMaterial color={darkColor} roughness={0.88} /></mesh>
           {[-opening.height * 0.28, opening.height * 0.28].map((height) => (
-            <mesh key={height} position={[0, height, shelfDepth / 2]} castShadow><boxGeometry args={[opening.width, 0.075, shelfDepth]} /><meshStandardMaterial color={shelfColor} roughness={0.78} /></mesh>
+            <mesh key={height} position={[0, height, shelfDepth / 2]} castShadow><boxGeometry args={[opening.width, Math.min(0.075, opening.height * 0.15), shelfDepth]} /><meshStandardMaterial color={shelfColor} roughness={0.78} /></mesh>
           ))}
-          {[-1, 1].map((side) => <mesh key={side} position={[side * opening.width * 0.46, 0, shelfDepth / 2]} castShadow><boxGeometry args={[0.065, opening.height, shelfDepth]} /><meshStandardMaterial color={shelfColor} roughness={0.78} /></mesh>)}
-          {[-0.3, 0, 0.3].map((x, index) => <mesh key={x} position={[x * opening.width, opening.height * 0.42, shelfDepth * 0.5]} castShadow><boxGeometry args={[0.11, 0.2 + index * 0.035, shelfDepth * 0.55]} /><meshStandardMaterial color={colorTone(baseColor, [-0.12, 0.22, -0.28][index])} /></mesh>)}
+          {[-1, 1].map((side) => <mesh key={side} position={[side * opening.width * 0.46, 0, shelfDepth / 2]} castShadow><boxGeometry args={[Math.min(0.065, opening.width * 0.08), opening.height, shelfDepth]} /><meshStandardMaterial color={shelfColor} roughness={0.78} /></mesh>)}
+          {[-0.3, 0, 0.3].map((x, index) => <mesh key={x} position={[x * opening.width, opening.height * 0.25, shelfDepth * 0.5]} castShadow><boxGeometry args={[Math.min(0.11, opening.width * 0.15), Math.min(0.2 + index * 0.035, opening.height * 0.4), shelfDepth * 0.55]} /><meshStandardMaterial color={colorTone(baseColor, [-0.12, 0.22, -0.28][index])} /></mesh>)}
         </group>
       </group>
     )
@@ -485,7 +488,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked }: { room:
             />
           </>
         )}
-        <group rotation={[0, 0, opening.rotation]}>
+        <group rotation={[0, 0, opening.rotation]} scale={[opening.width / OPENING_CATALOG.wallSconce.width, opening.height / OPENING_CATALOG.wallSconce.height, 1]}>
           <mesh position={[0, 0, 0.015]} castShadow><boxGeometry args={[0.16, 0.26, 0.055]} /><meshStandardMaterial color={darkColor} roughness={0.8} /></mesh>
           <mesh position={[0, 0, 0.07]} rotation={[Math.PI / 2, 0, 0]} castShadow><cylinderGeometry args={[0.025, 0.025, 0.12, 12]} /><meshStandardMaterial color={darkColor} metalness={0.2} roughness={0.55} /></mesh>
           <mesh position={[0, -0.035, 0.16]} rotation={[Math.PI / 2, 0, 0]} castShadow><coneGeometry args={[0.16, 0.22, 24, 1, true]} /><meshStandardMaterial color={baseColor} side={THREE.DoubleSide} roughness={0.72} /></mesh>
@@ -591,7 +594,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked }: { room:
           <meshStandardMaterial color={lightColor} transparent opacity={0.62} roughness={0.15} />
         </mesh>
         <mesh position={[0, 0, 0.026]}>
-          <boxGeometry args={[0.055, opening.height, 0.07]} />
+          <boxGeometry args={[Math.min(0.055, opening.width * 0.12), opening.height, 0.07]} />
           <meshStandardMaterial color={lightColor} />
         </mesh>
         {[-1, 1].map((side) => (

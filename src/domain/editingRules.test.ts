@@ -14,12 +14,12 @@ test('las reglas de edición no mutan el mundo y conservan los IDs y elementos n
   const state = { room: structuredClone(DEFAULT_ROOM), furniture: [table, other], gridSnap: true }
   const before = structuredClone(state)
   const moved = movedFurniture(state, table, -0.19, -0.19)
-  assert.equal(moved?.x, -0.25)
-  assert.equal(moved?.z, -0.25)
+  assert.equal(moved?.x, -0.19)
+  assert.equal(moved?.z, -0.19)
   assert.equal(moved?.id, table.id)
   assert.equal(elevatedFurniture(state, table, 0), null)
-  assert.equal(elevatedFurniture(state, table, 0.63)?.y, 0.625)
-  const rotated = applyFurnitureRotation(state, table, -Math.PI / 2, false)
+  assert.equal(elevatedFurniture(state, table, 0.63)?.y, 0.63)
+  const rotated = applyFurnitureRotation(state, table, -Math.PI / 2)
   assert.equal(rotated.furniture?.[1], other)
   assert.equal(rotated.furniture?.[0].rotation, Math.PI * 1.5)
   assert.equal(safeRoomUpdate(state, { ...state.room, height: 3 }).room?.height, 3)
@@ -28,16 +28,16 @@ test('las reglas de edición no mutan el mundo y conservan los IDs y elementos n
   assert.deepEqual(state, before)
 })
 
-test('la validación de aperturas precede a los ajustes y colisiones de muebles', () => {
+test('la validación de aperturas precede a las ediciones y los solapes de mobiliario ya no se rechazan', () => {
   const state = { room: structuredClone(DEFAULT_ROOM), furniture: [table, { ...table, id: 'collision' }], gridSnap: true }
   const invalidRoom = { ...state.room, door: { ...state.room.door, offset: 100 } }
   const update = safeRoomUpdate(state, invalidRoom)
   assert.equal(update.room, undefined)
   assert.equal(update.furniture, undefined)
   assert.ok(update.notice)
-  assert.notEqual(update.notice, 'No se puede reducir la habitación porque los muebles quedarían solapados.')
-  assert.deepEqual(applyFurnitureRotation(state, table, Math.PI / 2, false), {})
-  assert.equal(movedFurniture(state, table, 0, 0), null)
+  assert.ok(applyFurnitureRotation(state, table, Math.PI / 2).furniture)
+  assert.deepEqual(movedFurniture(state, table, 0, 0), { ...table, x: 0, z: 0 })
+  assert.deepEqual(elevatedFurniture(state, { ...table, y: 0 }, 1), { ...table, y: 1 })
 })
 
 test('recoloca muebles en orden conservando dimensiones del catálogo y sin mutar los originales', () => {

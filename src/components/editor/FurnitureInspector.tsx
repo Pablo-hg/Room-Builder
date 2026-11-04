@@ -1,7 +1,8 @@
 import { useInspectorGesture } from './useInspectorGesture'
 import { ROOM_LIMITS } from '../../domain/constants'
 import { FurnitureIcon } from '../iconCatalog'
-import { canElevateFurniture, isCeilingMountedFurniture } from '../../domain/objectCatalog'
+import { canElevateFurniture, FURNITURE_CATALOG, isCeilingMountedFurniture } from '../../domain/objectCatalog'
+import { ResizeControls } from './ResizeControls'
 import { useRoomStore } from '../../state/useRoomStore'
 import { ColorControl, PositionControl, RotationControl } from './Controls'
 
@@ -15,6 +16,7 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
   const setFurnitureColor = useRoomStore((state) => state.setFurnitureColor)
   const rotateFurniture = useRoomStore((state) => state.rotateFurniture)
   const removeFurniture = useRoomStore((state) => state.removeFurniture)
+  const resizeFurniture = useRoomStore((state) => state.resizeFurniture)
   const locked = useRoomStore((state) => state.lockedElementIds.includes(selectedFurniture.id))
   const canChangeElevation = canElevateFurniture(selectedFurniture)
   const canRotate = !isCeilingMountedFurniture(selectedFurniture.kind)
@@ -29,6 +31,7 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
         <span><small>Fondo</small><strong>{selectedFurniture.depth.toFixed(2)} m</strong></span>
         <span><small>Altura</small><strong>{selectedFurniture.height.toFixed(2)} m</strong></span>
       </div>
+      <ResizeControls capability={FURNITURE_CATALOG[selectedFurniture.kind]?.capabilities.resize} value={selectedFurniture} disabled={locked} onChange={(dimension, value) => resizeFurniture(selectedFurniture.id, dimension, value)} />
       <PositionControl label="Posición X" min={-xLimit} max={xLimit} step={ROOM_LIMITS.placementStep} value={selectedFurniture.x} disabled={locked} onChange={(value) => moveFurniture(selectedFurniture.id, value, selectedFurniture.z)} />
       <PositionControl label="Posición Z" min={-zLimit} max={zLimit} step={ROOM_LIMITS.placementStep} value={selectedFurniture.z} disabled={locked} onChange={(value) => moveFurniture(selectedFurniture.id, selectedFurniture.x, value)} />
       {canChangeElevation && <PositionControl label="Posición Y" min={Math.min(-10, selectedFurniture.y)} max={Math.max(10, selectedFurniture.y)} step={ROOM_LIMITS.placementStep} value={selectedFurniture.y} disabled={locked} onChange={(value) => moveFurnitureVertically(selectedFurniture.id, value)} />}

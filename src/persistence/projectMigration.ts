@@ -16,11 +16,11 @@ import {
   type WallV2,
 } from '../domain/projectV2'
 import type { DoorConfig, FurnitureItem, RoomConfig, WallSide, WindowConfig } from '../domain/types'
-import { normalizeDesignLayouts } from './designMigrations'
+import { flattenLegacyV5 } from './designMigrations'
 
 const DEFAULT_DOOR_COLOR = '#ac704b'
 const DEFAULT_WINDOW_COLOR = '#c88f58'
-const DEFAULT_WALL_THICKNESS = ROOM_LIMITS.placementStep
+const DEFAULT_WALL_THICKNESS = 0.125
 
 const isFiniteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
 const isPositive = (value: unknown): value is number => isFiniteNumber(value) && value > 0
@@ -172,8 +172,7 @@ function remapPreferenceElementId(preferences: EditorPreferencesV2, sourceId: st
  */
 export function migrateDesignToProject(saved: SavedDesign, options: ProjectMigrationOptions = {}): ProjectV2 {
   assertMigratableDesign(saved.data)
-  const data = saved.data
-  if (data.version === 5) normalizeDesignLayouts(data)
+  const data = flattenLegacyV5(saved.data)
   const projectId = options.projectId ?? saved.id
   if (!projectId) throw new Error('project id required')
   const roomId = `${projectId}:room-0`
@@ -203,21 +202,15 @@ export function migrateDesignToProject(saved: SavedDesign, options: ProjectMigra
       doorOpening(projectId, roomId, data.room.door),
       ...data.room.windows.map((window) => windowOpening(projectId, window)),
     ],
-    furnitureDefinitions: furnitureDefinitions(data.version === 5 ? data.layouts.flatMap((layout) => layout.furniture) : data.furniture),
-    layouts: data.version === 5 ? data.layouts.map((layout) => ({
-      id: layout.id,
-      name: layout.name,
-      kind: layout.kind,
-      structureRevision: 0,
-      furniture: furnitureInstances(layout.furniture, roomId),
-    })) : [{
+    furnitureDefinitions: furnitureDefinitions(data.furniture),
+    layouts: [{
       id: layoutId,
       name: 'Original',
       kind: 'original',
       structureRevision: 0,
       furniture: furnitureInstances(data.furniture, roomId),
     }],
-    activeLayoutId: data.version === 5 ? data.activeLayoutId : layoutId,
+    activeLayoutId: layoutId,
     preferences,
     ...(data.structurePacks !== undefined ? { legacyStructurePacks: structuredClone(data.structurePacks) } : {}),
     metadata: {

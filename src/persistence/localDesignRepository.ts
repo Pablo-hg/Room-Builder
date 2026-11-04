@@ -1,15 +1,6 @@
 import { isPersistedDesign, type SavedDesign } from '../domain/designV1'
 import { makeId } from '../domain/elementIds'
 import { migrateLegacyDesign } from './designMigrations'
-import { validateLayouts } from '../domain/designLayouts'
-
-function assertLayoutMirror(value: unknown) {
-  if (value && typeof value === 'object' && (value as { version?: unknown }).version === 5) {
-    const errors = validateLayouts(value)
-    const mirrorError = errors.find((error) => error.includes('no coincide'))
-    if (mirrorError) throw new Error(mirrorError)
-  }
-}
 
 export const STORAGE_KEY = 'room-builder:v0.1:design'
 export const SAVED_DESIGNS_KEY = 'room-builder:v0.1:designs'
@@ -33,7 +24,6 @@ export function createLocalDesignRepository(getStorage: () => DesignStorage = ()
       return parsed.slice(0, MAX_SAVED_DESIGNS).map((entry: unknown) => {
         if (!entry || typeof entry !== 'object') throw new Error('invalid saved design')
         const saved = entry as Partial<SavedDesign>
-        assertLayoutMirror(saved.data)
         if (
           typeof saved.id !== 'string'
           || typeof saved.name !== 'string'
@@ -47,7 +37,6 @@ export function createLocalDesignRepository(getStorage: () => DesignStorage = ()
     const legacyDesign = storage.getItem(STORAGE_KEY)
     if (!legacyDesign) return []
     const data: unknown = JSON.parse(legacyDesign)
-    assertLayoutMirror(data)
     if (!isPersistedDesign(data)) throw new Error('invalid saved design')
     const migrated = migrateLegacyDesign(data, makeId('design'), new Date().toISOString())
     write(migrated)
