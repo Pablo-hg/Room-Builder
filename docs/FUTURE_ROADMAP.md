@@ -1,34 +1,17 @@
-# Room Builder — funcionalidades futuras (NO integrarlas en el MVP local)
+# Roadmap de mejoras posteriores al MVP local completo
 
-**Fecha:** 04/11/2026 · **Regla de prioridad:** primero terminar [MVP de una habitación](MVP_SCOPE.md) e issues [#23–#34](https://github.com/Pablo-hg/Room-Builder/issues/23). Esta hoja es un inventario de intención, no autoriza implementación ni reapertura de Workshop.
+**Actualización: 04/11/2026.** El MVP comprometido **ya incluye** vivienda con varias habitaciones y plantas, POV WASD y las siete funciones seleccionadas. No clasificarlos como «futuro opcional». El backlog en ejecución es [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md) / [#23](https://github.com/Pablo-hg/Room-Builder/issues/23).
 
-## 1. Mini para Pablo Web 2.0 — primera evolución propuesta
-Reutilizar el renderer, catálogo, estado y geometría de Room Builder en la zona Laboratorio del portfolio. Experiencia guiada y limitada a una habitación con objetos elegidos; ocultar editor avanzado, sistema de variantes, exportaciones JSON/GLB y construcción multihabitación. Definir integración de navegación/aislamiento al empezar esta etapa; evitar duplicar motor o contaminar el HUB real. Solo tras estabilizar el editor principal.
+El inventario detallado de propuestas **después de la release** está en **[FUTURE_IMPROVEMENTS.md](FUTURE_IMPROVEMENTS.md)**. No reabrir tareas por el simple hecho de figurar allí.
 
-## 2. Editor local multihabitación y vivienda completa — objetivo de producto posterior al MVP v0.2
-**Referencia funcional definitiva de producto:** la imagen compartida el 04/11/2026 muestra una planta residencial entera acotada con dormitorios, baños, pasillo, salón, cocina y balcones. La intención es poder empezar con una habitación, ampliar a varias conectadas y seleccionar plantas de una casa, viendo la planta elegida completa en 2D y su correspondiente escena 3D/POV. El propietario llama a esta meta el «MVP final» de vivienda; se diferencia del **MVP inicial v0.2 de una sola estancia**. La especificación está en [HOUSE_VISION.md](HOUSE_VISION.md).
+## Fases posteriores candidatas (todavía no aprobadas)
+1. **Room Builder Mini para Pablo Web 2.0**: recorte del mismo editor/motor para la habitación del portfolio; decidir alcance y aislamiento al iniciar su fase, no interfiere en la publicación de Room Builder.
+2. **Pulido de construcción y representación**: rayos X, paredes cortadas manuales, puertas animadas, objetos apoyados con dependencias, presupuesto, exportación SVG y circulación, si el uso lo justifica.
+3. **Importación avanzada**: GLB externos, imágenes personales para cuadros y texturas, paquetes de recursos, formatos externos. Requiere validación de seguridad y licencias.
+4. **Ambientes y contenido interactivo**: iluminación día/noche, clima, lámparas/cajones/pantallas accionables, tours cinematográficos y retos opcionales.
+5. **IA generativa**: objetos desde texto con formato del editor modular, y reconocimiento automático de planos solo si se aprueba explícitamente (el MVP eligió trazado asistido B). Ver [GENERADOR_OBJETOS.md](../GENERADOR_OBJETOS.md).
+6. **Workshop, cuentas y nube**: publicación, biblioteca privada, comunidad, moderación, cuotas y versiones. Informes anteriores en [documento maestro de Workshop](../ROOM_BUILDER_WORKSHOP_INFORME_MAESTRO_2026-11-03.md), issues #9–#18 cerradas y no reabribles por inferencia.
+7. **Monetización**: idea provisional de suscripción/freemium; **no** bloquear JSON local ni imponer límites comerciales retroactivos.
 
-Evolución en fases: dos habitaciones contiguas primero, paredes medianeras únicas y aberturas coherentes, plano global, luego formas de 1–6 lados y paredes interiores (direcciones RB-025/RB-027). R4 propone `ProjectV2` mediante contratos y pruebas **no persistidos como formato público**; decidir migración y arquitectura tras pruebas de usuario, sin convertir el prototipo en promesa. Se prevé importar habitaciones seleccionadas y sus dependencias estructurales.
-
-### Recorrido en primera persona (POV) — [issue #36](https://github.com/Pablo-hg/Room-Builder/issues/36)
-La cámara actual parte de la puerta y permite mirar lateralmente, pero no caminar. Evolución deseada en **dos hitos**: (1) en una habitación, navegación mediante **WASD** y mirada libre horizontal/vertical con ratón o controles equivalentes, desde la puerta de acceso; (2) cuando haya varias habitaciones conectadas, **entrada principal o seleccionada** entre varias puertas candidatas, recorrido continuo por puertas interiores y colisiones con paredes/aberturas sin teletransporte. Mantener posición y orientación del visitante separadas del diseño guardado. Probar teclado, táctil, salida del modo y mareo por movimiento. La primera fase puede hacerse antes de la casa, pero no se añade automáticamente al MVP v0.2: [#29](https://github.com/Pablo-hg/Room-Builder/issues/29) sigue certificando el POV fijo actual.
-
-### Referencia técnica funcional: floorplan-3d
-El [README del repositorio](https://github.com/wy51ai/floorplan-3d) declara plano SVG 2D con cotas en mm, habitaciones poligonales, paredes editables, sincronización 2D/3D, recorrido WASD y guardado JSON/local. **Es inspiración funcional, no arquitectura a copiar**: su implementación está centralizada en un `index.html`; nuestro producto conserva React/Three/R3F/Zustand, módulos y estilo propios.
-
-## 3. Workshop y nube — proyecto futuro separado
-Se conserva el [informe maestro de Workshop del 03/11](../ROOM_BUILDER_WORKSHOP_INFORME_MAESTRO_2026-11-03.md): 22 decisiones sobre explorador, publicación, revisiones, versiones, derivados, estadísticas, permisos, moderación, cuentas Google/GitHub, sincronización y formatos JSON/GLB/imágenes. Las issues antiguas **#9–#18** se cerraron como *no planificadas* para no distraer al MVP. No reabrirlas por el mero hecho de que exista este documento.
-
-Fases candidatas cuando llegue el momento: consolidar modelo local multihabitación → almacenamiento privado y cuentas → importación parcial/versiones → publicación explícita → explorador → moderación/costes/privacidad. Tecnologías Cloudflare Workers/D1/R2 o alternativas serán evaluadas entonces, no contratadas ahora. La cuota inicial de 100 MB por usuario, por ejemplo, es una hipótesis futura, no una restricción local.
-
-## 4. Creación de objetos desde texto e IA — I+D
-El usuario podrá describir un objeto, obtener una **definición paramétrica compatible con nuestra guía de estilo**, inspeccionarla, editarla y guardarla como asset reutilizable. Posteriormente se evaluará subida de imagen. El diseño por etapas está en [GENERADOR_OBJETOS.md](../GENERADOR_OBJETOS.md) y en [PRODUCT_VISION.md](PRODUCT_VISION.md). Seguridad: validar tamaño, geometría y permisos; **nunca** ejecutar código arbitrario recibido de un modelo. Fuera de R5 y del MVP/v0.2 imprescindible.
-
-## 5. Monetización — hipótesis, no decisión
-Posible freemium por mensualidad: editor gratis hasta ciertos límites y funciones premium para varias habitaciones y quizás importar/descargar proyectos. **No está aprobado** cobrar ni bloquear el JSON local. Valorar costes, retención, demanda, almacenamiento y sentido de la suscripción después de demostrar utilidad del editor y sin quitar derechos a diseños existentes.
-
-## 6. Referencias y diferenciación
-Inspiración: [Rooms](https://rooms.xyz) por creatividad/remix, [MakeRoom](https://store.steampowered.com/app/2212670/MakeRoom/) por estética amena y objetos, [MyRoomPlanner](https://www.myroomplanner.io/) por flujo de medidas→muebles→visualización, y Figma por organización de objetos. **No clonar** diseños, modelos, catálogos ni condiciones comerciales. Ver [REFERENCE_BENCHMARK.md](REFERENCE_BENCHMARK.md).
-
-## Reglas para retomar el futuro
-Crear issues nuevas únicamente cuando se abra formalmente una fase. Definir contrato, coste, riesgos, migraciones, controles de privacidad y pruebas antes de implementar. Mantener el proyecto offline/local útil sin cuentas.
+## Regla
+Primero cerrar y comprobar [#54](https://github.com/Pablo-hg/Room-Builder/issues/54) y obtener aprobación de publicación. Solo entonces seleccionar mejoras nuevas en función de feedback, rendimiento, compatibilidad, privacidad y coste. Ningún elemento de esta página es una tarea abierta del MVP actual.

@@ -1,47 +1,38 @@
-# Visión objetivo — Room Builder como constructor de viviendas completas
+# Visión de vivienda completa — incluida en el MVP local comprometido
 
-**Registrada:** 04/11/2026 · **Estado:** objetivo de producto acordado; NO implementado ni parte del alcance ya congelado de v0.2. Referencia visual proporcionada por el propietario: planta residencial con habitaciones, baños, pasillo, cocina, salón, balcones, espesores de muro, cotas y superficies. Referencia técnica funcional: [floorplan-3d](https://github.com/wy51ai/floorplan-3d) (no reutilizar arquitectura o gráficos a ciegas).
+**Actualizado 04/11/2026:** la referencia visual de una planta de vivienda con varias habitaciones conectadas, cotas y superficies se ha convertido en un **requisito del MVP local completo**. No es parte del **checkpoint v0.2** inicial, pero sí de la gate final [#54](https://github.com/Pablo-hg/Room-Builder/issues/54). Véase [MVP_MASTER_PLAN](MVP_MASTER_PLAN.md).
 
-## Resultado final buscado
-El usuario **comienza creando una habitación**, como hoy, y puede ampliarla de forma gradual hasta construir una **vivienda con múltiples habitaciones y varias plantas**, editando tanto cada estancia como su conjunto. Mantener una única fuente de verdad: la vista aérea 2D, la isométrica 3D y el recorrido POV reflejan la misma geometría, mobiliario, huecos y conexiones.
+## Experiencia objetivo
+1. El usuario comienza con **una habitación** sin tener que configurar una «casa».
+2. Desde el mismo proyecto añade salas, dormitorios, baño, cocina, pasillo y otras estancias contiguas; las habitaciones comparten **paredes físicas únicas** con puertas/huecos coherentes.
+3. En **vista aérea/planta**, ve simultáneamente las estancias del nivel activo, con nombre y superficie orientativa, líneas de cota, herramientas para seleccionar una habitación o volver al conjunto.
+4. Puede **seleccionar la planta** que desea editar, incluso con una casa de dos o más niveles; vistas Plano/Isométrica/POV se basan en una sola escena.
+5. Puede modificar el contorno de una habitación **moviendo vértices**, añadiendo o eliminando vértices desde el menú de pared (#35), con geometría y datos consistentes.
+6. Puede **importar imagen de plano**, calibrar dos puntos con distancia real y trazar asistido mediante bordes/esquinas sugeridos, revisando cada segmento (#45); no se reconstruyen viviendas automáticamente por IA.
+7. Puede caminar por la vivienda con **WASD**, mover la mirada, comenzar desde la **puerta de entrada elegida** y atravesar aberturas conectadas sin reiniciar cámara (#36).
+8. Las habitaciones pueden tener materiales, mobiliario, modelos modulares, anotaciones, plantillas y cámaras guardadas (#37–#41, #47), conservados al guardar/recargar el proyecto completo.
 
-Una casa de ejemplo debería poder representar salón, cocina, dormitorios, baños, pasillos y espacios exteriores (p. ej., balcones) como áreas reconocibles y contiguas, pero **no se exige copiar la distribución ni estética** de la imagen de referencia.
+## Fuente de verdad y contratos
+- Jerarquía propuesta `Project → Floors → Rooms/SharedWalls → Openings → Furniture`; habitaciones, paredes, plantas y aperturas tienen IDs estables.
+- Contrato inicial real: habitación rectangular guardada con formatos v1–v5. El prototipo puro R4 `ProjectV2` **no** equivale todavía a casa funcional ni archivo público; la migración se ejecuta en #51.
+- **Pared medianera única** (RB-027) para dos habitaciones; no duplicar muros ni puertas físicas en mundos distintos.
+- Habitaciones irregulares: primera entrega sólida con contornos poligonales de lados rectos (RB-025/#35). Curvas de círculo/semicírculo y editor de mallas profesional quedan para investigación posterior.
+- Las superficies son orientativas. Las cotas proceden de geometría, nunca de píxeles de pantalla. Sin certificados CAD/BIM.
+- Soporte multipiso: se selecciona la planta y se representa su escena coherentemente. **Escaleras transitables entre plantas, ascensores y físicas realistas no son requisito inicial**; desplazarse entre plantas puede hacerse desde el selector.
 
-## Flujo del usuario
-1. **Crear proyecto**: comenzar con una única habitación por defecto; sin obligar a escoger inicialmente “casa” ni número de plantas.
-2. **Ampliar**: añadir habitaciones a una misma planta, conectarlas con paredes/aberturas compartidas, modificar tamaños, contornos y posición sin duplicar paredes físicas.
-3. **Editar una estancia**: seleccionarla desde el plano global para trabajar sus muebles, acabados, puertas y ventanas; volver a la planta completa sin abandonar el proyecto.
-4. **Seleccionar planta**: mostrar una sola planta activa y permitir cambiar entre pisos. Opcionalmente, vista global de casa/volumen 3D; el cambio no modifica datos.
-5. **Vista en planta general**: todas las estancias de ese nivel visibles, con **nombres, superficie orientativa y cotas arquitectónicas** (perímetro, segmentos, espesores o dimensiones de paso según controles); elegir qué capas mostrar. Los valores se derivan del mismo modelo que usa la escena.
-6. **Vista 3D**: alternar entre planta e isométrica sin inconsistencias, ocultando o recortando paredes/plantas según la cámara y dejando clara la planta seleccionada.
-7. **Recorrido interior**: POV con WASD y control de mirada, spawn desde puerta de entrada seleccionada si existe más de una, y continuidad entre habitaciones al cruzar puertas comunicantes (ver [#36](https://github.com/Pablo-hg/Room-Builder/issues/36)).
-8. **Persistencia local**: guardar/exportar/importar el **proyecto completo**, incluyendo plantas, estancias, paredes, huecos, acabados y muebles sin pérdida; el archivo de un solo diseño v1–v5 debe seguir importándose mediante migración segura.
+## Plan de desarrollo verificable
+1. [#51](https://github.com/Pablo-hg/Room-Builder/issues/51): contrato y migraciones, suelos, paredes compartidas, IDs.
+2. [#35](https://github.com/Pablo-hg/Room-Builder/issues/35): polígonos y edición por vértices.
+3. [#52](https://github.com/Pablo-hg/Room-Builder/issues/52): conectar habitaciones, ver toda una planta, importar plantillas como estancias.
+4. [#53](https://github.com/Pablo-hg/Room-Builder/issues/53): varias plantas y selector con cámaras/visibilidad.
+5. [#45](https://github.com/Pablo-hg/Room-Builder/issues/45): imagen calibrada y trazado asistido; puede prototiparse antes sobre una habitación.
+6. [#36](https://github.com/Pablo-hg/Room-Builder/issues/36): paseo POV con WASD, entrada/puertas e interacción con conexiones.
+7. [#54](https://github.com/Pablo-hg/Room-Builder/issues/54): escenario completo, round-trip, E2E y aceptación.
 
-## Arquitectura mínima necesaria
-- Jerarquía propuesta: `Project → Floors → Rooms / Walls → Openings → Furniture`. No añadir entidades duplicadas para la misma pared compartida.
-- IDs persistentes de habitaciones, plantas, paredes, conexiones y aberturas. La estructura de conexiones y el contorno son datos, no la proyección de cámara.
-- El prototipo `ProjectV2` de R4 permite razonar sobre entidades, pero **todavía no representa ni guarda públicamente el alcance final**. Revisar contratos, migradores y renderizadores antes de activar varias plantas.
-- El editor de vértices/paredes [#35](https://github.com/Pablo-hg/Room-Builder/issues/35) es un componente de evolución geométrica. Las cotas del plano empezarán con la ampliación de [#26](https://github.com/Pablo-hg/Room-Builder/issues/26).
-- Necesarias reglas consistentes para alturas/niveles, suelos, techos, huecos, paredes medianeras y entradas; cómo conectar plantas (escaleras, desniveles) requiere diseño adicional, **no está aprobado** como primera implementación.
-- Usabilidad: alternar entre editar una habitación y la planta completa sin cambiar de motor ni romper jerarquía, selección, historial o controles táctiles.
+## Demostración mínima antes de llamar «MVP completo»
+Construir una casa de **al menos cuatro estancias conectadas y dos plantas**; elegir una planta, inspeccionar habitaciones y cotas, modificar una pared, colocar muebles, elegir puerta de entrada, recorrer con WASD y atravesar puertas interiores. Guardar, exportar JSON, importar en un navegador limpio y recuperar **todas** las plantas, habitaciones, aperturas, anotaciones, modelos y materiales, sin datos perdidos.
 
-## Secuencia recomendada y definición de MVP
-**A. MVP inicial v0.2, una sola habitación (vigente):** cerrar [#23–#34](https://github.com/Pablo-hg/Room-Builder/issues/23) con validación de editor y sin Workshop. **No se modifica retroactivamente**.
-
-**B. Evolución local a proyecto habitable (meta funcional completa):**
-- **B1**: proyecto/planta y **dos habitaciones** contiguas, medianera única y paso entre ambas; vista global 2D con selección de estancia.
-- **B2**: varias habitaciones en una misma planta; habitaciones con nombre/superficie, paredes compartidas, contornos editables, distancias y cotas.
-- **B3**: varias plantas y selector de planta; cada nivel conserva sus habitaciones y se representa correctamente en 3D.
-- **B4**: recorrido POV WASD, puertas enlazadas, vistas de planta/casa coherentes y round-trip completo; pulido UX y pruebas con viviendas de ejemplo.
-
-**C. Workshop, colaboración, cuentas, nube, IA y monetización:** posteriores e independientes. No se necesitan para que el constructor de viviendas funcione localmente.
-
-El propietario ha descrito la vivienda de referencia como **«objetivo final del MVP»**. Para no confundirlo con la milestone ya abierta `MVP local v0.2`, la denominamos aquí **meta de producto / MVP completo de vivienda**, por fases. Decidir la versión/release exacta cuando se planifique B1.
-
-## Criterios de aceptación de la meta de vivienda
-- [ ] Desde un proyecto vacío se crea habitación y se amplía a una planta con varias estancias conectadas por aberturas y paredes reales, sin solapes estructurales silenciosos.
-- [ ] Plano general legible y acotado, cada estancia seleccionable, con nombre y superficie que corresponden a la geometría.
-- [ ] Añadir otra planta, cambiar nivel desde selector y conservar habitaciones/objetos por planta.
-- [ ] Plano, 3D y POV recorren una sola escena consistente; la cámara cruza puertas entre estancias válidas.
-- [ ] Guardar/recargar/exportar/importar proyecto local completo sin perder referencias; datos v1–v5 importables.
-- [ ] Interfaz usable por ratón y teclado, alternativas táctiles y pruebas de geometría, migraciones, rendimiento y E2E del proyecto completo.
+## Referencias
+- Referencia visual aportada por el propietario el 04/11 (no asset copiable).
+- [floorplan-3d](https://github.com/wy51ai/floorplan-3d): vista cenital, muros/medición, 2D/3D y WASD; arquitectura propia no clonada.
+- [Diorama](https://github.com/pwsh/diorama), [MyRoomPlanner](https://www.myroomplanner.io/), [Rooms.xyz](https://rooms.xyz) y [MakeRoom](https://store.steampowered.com/app/2212670/MakeRoom/): funciones y facilidad de uso, sin copiar código o arte.

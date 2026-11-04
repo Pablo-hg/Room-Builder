@@ -1,35 +1,28 @@
-# Backlog operativo — terminar el MVP local antes de Workshop
+# Checkpoint v0.2 — backlog de una habitación (históricamente G0–G9)
 
-**Fecha:** 04/11/2026 · **Épica:** [#23](https://github.com/Pablo-hg/Room-Builder/issues/23) · **Baseline:** `main` tras merge de R5 (#22).
+**Vigente como subconjunto del MVP completo, no como plan global.** La fuente canónica de **todas** las tareas, prioridades, orden y dependencias es [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md) y la épica [#23](https://github.com/Pablo-hg/Room-Builder/issues/23).
 
-## Ejecución incremental
-| Gate | Issue | Prioridad | Entregable y criterio |
-| --- | --- | --- | --- |
-| G0 | [#24](https://github.com/Pablo-hg/Room-Builder/issues/24) | P0 | Reejecutar R5, suite E2E **global**, CI y baseline reproducible |
-| G0bis | [#34](https://github.com/Pablo-hg/Room-Builder/issues/34) | P1 · transversal | Refactor conservador de módulos grandes **solo tras baseline G0**, opcional si no aporta riesgo; no reescribir R5 |
-| G1 | [#25](https://github.com/Pablo-hg/Room-Builder/issues/25) | P0 | Guardado y JSON v1–v5 robustos sin pérdidas ni overwrite |
-| G2 | [#26](https://github.com/Pablo-hg/Room-Builder/issues/26) | P0 | Medidas, redimensionado, huecos y advertencias de colisión coherentes |
-| G3 | [#27](https://github.com/Pablo-hg/Room-Builder/issues/27) | P1 | Simplificación de primer uso y jerarquía de controles |
-| G4 | [#28](https://github.com/Pablo-hg/Room-Builder/issues/28) | P1 | Selección múltiple, carpetas, visibilidad, gestos y undo |
-| G5 | [#29](https://github.com/Pablo-hg/Room-Builder/issues/29) | P1 | Cámaras esenciales, 4 diagonales, POV y controles |
-| G6 | [#30](https://github.com/Pablo-hg/Room-Builder/issues/30) | P1 | Catálogo mínimo e iconos/modelos con coherencia visual |
-| G7 | [#31](https://github.com/Pablo-hg/Room-Builder/issues/31) | P0 | Accesibilidad, teclado, táctil y responsive |
-| G8 | [#32](https://github.com/Pablo-hg/Room-Builder/issues/32) | P1 | Rendimiento, fiabilidad local y preparación build estático |
-| G9 | [#33](https://github.com/Pablo-hg/Room-Builder/issues/33) | P0 | Recorridos integrales, usuarios y propuesta de RC v0.2 |
+## Secuencia inicial del producto
+| Orden global | Gate histórico | Issue | Resultado |
+| ---: | --- | --- | --- |
+| 01 | G0 | [#24](https://github.com/Pablo-hg/Room-Builder/issues/24) | Certificar baseline R5, CI y E2E |
+| 02 | G0bis | [#34](https://github.com/Pablo-hg/Room-Builder/issues/34) | Auditar/refactorizar lo justificable con tests |
+| 03 | G1 | [#25](https://github.com/Pablo-hg/Room-Builder/issues/25) | Persistencia local/JSON robustos |
+| 04 | G2 | [#26](https://github.com/Pablo-hg/Room-Builder/issues/26) | Medidas, aperturas, solapes y cotas automáticas de pared |
+| 05 | G3 | [#27](https://github.com/Pablo-hg/Room-Builder/issues/27) | Primer uso y jerarquía de controles |
+| 06 | G4 | [#28](https://github.com/Pablo-hg/Room-Builder/issues/28) | Selección múltiple, carpetas y operaciones |
+| 07 | G5 | [#29](https://github.com/Pablo-hg/Room-Builder/issues/29) | Cámaras existentes, incluido POV fijo |
+| 08 | G6 | [#30](https://github.com/Pablo-hg/Room-Builder/issues/30) | Catálogo mínimo e identidad visual |
+| 09 | G7 | [#31](https://github.com/Pablo-hg/Room-Builder/issues/31) | Accesibilidad, teclado, táctil |
+| 10 | G8 | [#32](https://github.com/Pablo-hg/Room-Builder/issues/32) | Rendimiento, fiabilidad y despliegue estático |
+| 11 | G9 | [#33](https://github.com/Pablo-hg/Room-Builder/issues/33) | **Checkpoint E2E v0.2**, no release global |
 
-**Orden recomendado:** G0 primero; G0bis (#34) solo después de contar con tests en verde, puede realizarse por PRs pequeñas junto con UX o aplazarse. G0 antes de cualquier modificación significativa; G1–G2 antes de UX; G3–G6 pueden agruparse por interfaz sin solapar archivos en PR paralelas; G7 antes de G9; G8 puede investigarse en paralelo tras G0; G9 necesariamente la última.
+## Qué sigue después de este checkpoint
+F2 (#37, #38, #41): precisión, guías y plantillas. F3 (#39, #40): materiales y fotos. F4 (#51, #35, #52, #53, #45, #36): casa por plantas, trazado y recorrido. F5 (#47): objetos modulares. F6 (#54): **auditoría final y autorización de publicar**.
 
-## Contrato de cada PR
-- Identificar base SHA y si el problema ya está resuelto; no reimplementar R5.
-- Alcance acotado, tests dirigidos y un riesgo a la vez; preservar IDs, esquemas, migraciones y medidas.
-- Capturas antes/después en cambios visuales; verificación de ratón/teclado/táctil según alcance.
-- Actualizar docs y pruebas con el código; registrar comandos y resultados verdaderos.
-- No mezclar Workshop, IA, casas, cobros ni Mini en una issue del MVP local.
+El número de orden no prohíbe trabajos paralelos sin dependencias compartidas. No fusionar cambios de datos sin tests ni publicar una release definitiva únicamente porque termine #33.
 
-## Puertas de calidad
-- **G0 bloqueada hasta probar:** el informe R5 indica éxito unitario/build pero no nueva pasada E2E completa y única tras últimos arreglos. Ello no implica que la app no funcione; implica que **no hay certificación global**.
-- **Sin regresión de datos:** importar nunca pisa ni borra sin confirmar; conservar legacy v1–v5 y política de anclajes.
-- **Release:** no etiquetar ni desplegar como v0.2 terminada por cerrar solo pruebas unitarias; incluir experiencia del usuario y regresión E2E.
-
-## Después del MVP
-La siguiente prioridad de producto es una **versión Mini reutilizando el mismo motor** para Pablo Web 2.0. Multihabitación y Workshop quedan documentados, sin issues de implementación activas. Ver [FUTURE_ROADMAP](FUTURE_ROADMAP.md).
+## Convenciones heredadas
+- Cada issue se desarrolla en una rama/PR; mantener contratos, pruebas, fixtures y migraciones en el mismo cambio.
+- El resultado de E2E/CI debe ser reproducible, no deducido de un informe antiguo.
+- No confundir el modelo `ProjectV2` de R4 con casas funcionales; las tareas #51–#53 son necesarias.

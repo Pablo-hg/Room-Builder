@@ -1,35 +1,36 @@
-# Room Builder — documentación canónica
+# Guía de documentación de Room Builder
 
-**Actualización:** 04/11/2026 · **Base consultada:** `main` tras PR #22 (R5 integrada). **Estado del producto:** editor local funcional con trabajo pendiente; **NO** declarar v0.2 o MVP terminados.
+**Actualizado el 04/11/2026.** R5 está integrada en `main`, pero **ni el checkpoint v0.2 ni el MVP completo están certificados**. El objetivo actual de publicación incluye **casa con plantas + siete nuevas funcionalidades confirmadas**, no solo una habitación.
 
-Room Builder es una web independiente. Primero debe permitir diseñar y guardar una habitación útil; posteriormente se valora integrar una versión Mini en Pablo Web 2.0 y, más adelante, evolucionar a casas y Workshop.
-
-## Leer para ejecutar trabajo
-| Prioridad | Documento | Uso |
+## Entrada obligatoria para ejecutar tareas
+| Orden | Documento | Para qué sirve |
 | --- | --- | --- |
-| 1 | [MVP_SCOPE.md](MVP_SCOPE.md) | Contrato del MVP de una habitación, entregado vs pendiente y pruebas |
-| 2 | [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md) | Orden de issues #23–#34 y dependencias |
-| 3 | [DECISION_LOG.md](DECISION_LOG.md) | Decisiones y precedencia; **RB-040 reemplaza A/B en el MVP** |
-| 4 | [PRODUCT_VISION.md](PRODUCT_VISION.md) | Promesa y usuarios |
-| 5 | [REFERENCE_BENCHMARK.md](REFERENCE_BENCHMARK.md) | Qué aprender de Rooms, MakeRoom, MyRoomPlanner y Figma |
-| 6 | [../VISUAL_STYLE_GUIDE.md](../VISUAL_STYLE_GUIDE.md) | Identidad visual obligatoria |
-| 7 | [UX_AND_CAMERAS.md](UX_AND_CAMERAS.md) | Interacción, controles y vistas |
-| 8 | [OBJECTS_AND_ASSETS.md](OBJECTS_AND_ASSETS.md) | Catálogo, anclajes y consistencia |
-| 9 | [DATA_AND_FORMATS.md](DATA_AND_FORMATS.md) | Contratos, v1–v5, JSON, migraciones |
-| 10 | [ARCHITECTURE_AND_QUALITY.md](ARCHITECTURE_AND_QUALITY.md) | Arquitectura y calidad |
-| 11 | [CONFIGURATION_AUDIT.md](CONFIGURATION_AUDIT.md) | Carpeta `.agents`, `.codex`, `.opencode`, `.github` y residuos |
-| 12 | [HOUSE_VISION.md](HOUSE_VISION.md) | **Meta final del constructor de vivienda**: plantas, habitaciones conectadas y vista general 2D/3D |
-| 13 | [FUTURE_ROADMAP.md](FUTURE_ROADMAP.md) | Mini, casas, IA, Workshop, negocio: **futuro, no issues ahora** |
+| 1 | [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md) | **Fuente única de orden, dependencias, etiquetas y gate final** (#23–#54, excluyendo propuestas cerradas) |
+| 2 | [MVP_SCOPE.md](MVP_SCOPE.md) | Alcance y criterios de publicación del **MVP completo**, con v0.2 como checkpoint |
+| 3 | [DECISION_LOG.md](DECISION_LOG.md) | Registro de decisiones y precedencias |
+| 4 | [HOUSE_VISION.md](HOUSE_VISION.md) | Meta comprometida: vivienda conectada por plantas, plano global y POV |
+| 5 | [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md) | **Solo** checkpoint v0.2, issues #24–#34 |
+| 6 | [PRODUCT_VISION.md](PRODUCT_VISION.md) | Producto, personalidad y usuarios |
+| 7 | [UX_AND_CAMERAS.md](UX_AND_CAMERAS.md) | Interacciones, guías, plano, fotos y recorrido |
+| 8 | [OBJECTS_AND_ASSETS.md](OBJECTS_AND_ASSETS.md) | Mobiliario, capacidades, materiales y modelado |
+| 9 | [DATA_AND_FORMATS.md](DATA_AND_FORMATS.md) | Persistencia y migración v1–v5 / proyecto de vivienda |
+| 10 | [ARCHITECTURE_AND_QUALITY.md](ARCHITECTURE_AND_QUALITY.md) | Arquitectura, pruebas, compatibilidad y calidad |
+| 11 | [REFERENCE_BENCHMARK.md](REFERENCE_BENCHMARK.md) | Qué estudiar de MakeRoom, Rooms, MyRoomPlanner, floorplan-3d y otros |
+| 12 | [../VISUAL_STYLE_GUIDE.md](../VISUAL_STYLE_GUIDE.md) | Estilo cartoon/cozy, no fotorealismo |
+| 13 | [FUTURE_IMPROVEMENTS.md](FUTURE_IMPROVEMENTS.md) | **Ideas NO elegidas**, para después de #54 |
+| 14 | [FUTURE_ROADMAP.md](FUTURE_ROADMAP.md) | Resumen de fases posteriores, incluidas Mini/Workshop/IA |
+| 15 | [DOCS_AUDIT.md](DOCS_AUDIT.md) | Inventario y clasificación de los Markdown |
+| 16 | [CONFIGURATION_AUDIT.md](CONFIGURATION_AUDIT.md) | Carpeta `.agents`, `.codex`, `.opencode`, `.github` y configuración |
 
-## Histórico, no instrucciones para ejecutar a ciegas
-- [REFACTOR_PLAN.md](REFACTOR_PLAN.md), [R5_PLAN.md](R5_PLAN.md), [informe R5](progress/R5_PROGRESS.md), [informes R3/R4](progress/) y [auditoría original](REFACTOR_AUDIT.md): trazabilidad de R0–R5. Sus estados locales pueden ser anteriores al merge.
-- [Plan v0.2 con prompts E0–E12](roadmaps/v0.2/ROADMAP_Y_PROMPTS_V0_2.md): fotografía del 03/11 con requisitos superados por R5 o **descartados** (A/B). Aplicar el backlog vigente y rehacer E0 antes de usar prompts históricos.
-- [Propuestas de formatos ya integrados](archive/): documentos históricos de nombres, carpetas y orden de escena, movidos para reducir ruido.
-- [Modelos](MODELS.md), [ruteo](MODEL_ROUTING.md), [eficiencia](AGENT_EFFICIENCY.md), [AGENTS.md](../AGENTS.md): configuración y orientación del agente, independientes de las decisiones del producto.
-- [Informe original Workshop (22 decisiones)](../ROOM_BUILDER_WORKSHOP_INFORME_MAESTRO_2026-11-03.md) y [generador de objetos por texto](../GENERADOR_OBJETOS.md): conservar, **no desarrollar** para el MVP.
+## Evidencias históricas — conservar, pero no ejecutar como roadmap vigente
+- [REFACTOR_PLAN.md](REFACTOR_PLAN.md), [REFACTOR_AUDIT.md](REFACTOR_AUDIT.md), [R5_PLAN.md](R5_PLAN.md), [progress/R5_PROGRESS.md](progress/R5_PROGRESS.md) y registros R3/R4: evidencias de fases y medidas, no plan para rehacer R5.
+- [roadmaps/v0.2/ROADMAP_Y_PROMPTS_V0_2.md](roadmaps/v0.2/ROADMAP_Y_PROMPTS_V0_2.md): prompts y etapas antiguas E0–E12; varias ya cambiaron (retirada A/B, amplitud del MVP final).
+- [archive/](archive/): propuestas antiguas de carpetas, nombres y orden de escena; preservadas.
+- [MODELS.md](MODELS.md), [MODEL_ROUTING.md](MODEL_ROUTING.md), [AGENT_EFFICIENCY.md](AGENT_EFFICIENCY.md) y [../AGENTS.md](../AGENTS.md): uso de agentes/arquitectura, no funcionalidades activas.
+- [../ROOM_BUILDER_WORKSHOP_INFORME_MAESTRO_2026-11-03.md](../ROOM_BUILDER_WORKSHOP_INFORME_MAESTRO_2026-11-03.md) y [../GENERADOR_OBJETOS.md](../GENERADOR_OBJETOS.md): proyectos futuros sin issues de ejecución abiertas.
 
-## Estados y reglas
-- **CONFIRMADO** = decisión de producto; **IMPLEMENTADO** = presente en código; **VALIDADO** = existe prueba con resultado; **PENDIENTE** = falta desarrollo, prueba o decisión. Son conceptos distintos.
-- La última decisión expresa prevalece sobre propuestas antiguas; documentar fecha y fuente. No ocultar fallos E2E con afirmaciones de «MVP listo».
-- Al alterar un contrato: cambiar tests, fixtures, migraciones, documentación y guía de uso en el mismo PR.
-- Consultar solo archivos pertinentes para evitar gasto innecesario de tokens. No borrar reportes históricos que expliquen migraciones o pruebas.
+## Reglas de lectura y actualización
+- **Aprobado ≠ implementado ≠ validado.** Una issue abierta representa compromiso, no entrega.
+- El código determina lo que está implementado; el log y decisiones más recientes prevalecen sobre planes anteriores; no declarar pruebas nuevas si no se ejecutaron.
+- Cada PR modifica tests, migraciones y la documentación pertinente. No reescribir logs históricos ni borrar fixtures legacy.
+- La **única gate de publicación final** es [#54](https://github.com/Pablo-hg/Room-Builder/issues/54), y necesita autorización humana posterior.

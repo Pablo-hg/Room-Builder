@@ -1,9 +1,9 @@
-# Room Builder — editor local (v0.1, camino a v0.2)
+# Room Builder — editor local de habitaciones, camino a viviendas completas
 
-> **Documentación de producto:** antes de ampliar o reorganizar el editor, consultar [docs/README.md](docs/README.md), [AGENTS.md](AGENTS.md) y [VISUAL_STYLE_GUIDE.md](VISUAL_STYLE_GUIDE.md). La visión es un constructor de habitaciones amigable tipo diorama, útil para recrear espacios reales y comparar distribuciones. La construcción multihabitación es evolución posterior. La documentación distingue decisiones acordadas de propuestas aún no implementadas.
+> **Plan actual:** el código disponible parte de una habitación rectangular. La [épica MVP completo #23](https://github.com/Pablo-hg/Room-Builder/issues/23) y [docs/MVP_MASTER_PLAN.md](docs/MVP_MASTER_PLAN.md) incluyen **vivienda por plantas, siete funciones confirmadas y POV WASD**, que todavía están pendientes de desarrollo. El checkpoint v0.2 es intermedio; la publicación final requiere superar #54 y autorización del propietario. Consultar [docs/README.md](docs/README.md) y [AGENTS.md](AGENTS.md) antes de cambiar el alcance.
 
 
-Aplicación web independiente para crear y amueblar una habitación rectangular con medidas editables. El código actual ofrece cinco vistas (Plano, Isométrica, Interior/POV, Frontal y Libre), guardado local, exportación GLB e importación/exportación de un diseño editable en JSON. La v0.2 y su MVP local siguen pendientes de certificación integral.
+Aplicación web independiente para crear y amueblar una habitación rectangular con medidas editables. El código actual ofrece cinco vistas (Plano, Isométrica, Interior/POV, Frontal y Libre), guardado local, exportación GLB e importación/exportación de un diseño editable en JSON. El **checkpoint v0.2** y el **MVP completo** siguen pendientes de certificación; no confundir las funciones existentes con las planificadas.
 
 ## Requisitos
 
@@ -86,13 +86,13 @@ Las posiciones de muebles y aperturas pertenecen siempre al mundo. Cambiar de c�
 
 ## Estado y límites actuales
 
-- La habitación editable del MVP es rectangular y única; el motor contiene prototipos de contrato multihabitación R4, **no una interfaz de viviendas**.
+- **Hoy el editor implementado** trabaja con una habitación rectangular; R4 contiene prototipos de contrato multihabitación, **no una interfaz de viviendas operativa**. El MVP final aprobado incluye casa por plantas en #51–#53.
 - El catálogo y las aperturas incluyen controles de dimensiones conforme a R5.2. Los solapes de muebles pueden permitirse y se advierten con borde rojo; puertas y ventanas mantienen restricciones constructivas.
 - Guardado local hasta cinco diseños en `localStorage`, con importación/exportación JSON de un diseño y exportación de escena GLB. **No hay sincronización ni almacenamiento en servidor**.
-- Las vistas esenciales son Plano, Isométrica e Interior/POV desde la puerta; Interior no es un paseo libre. Frontal y Libre continúan disponibles como vistas extra.
+- Las vistas esenciales son Plano, Isométrica e Interior/POV desde la puerta; **El POV actualmente implementado no es un paseo libre**; el MVP final añadirá WASD en #36. Frontal y Libre continúan disponibles como vistas extra.
 - El formato persistido histórico v5 puede contener variantes. La comparación A/B está retirada de la interfaz MVP, pero no se debe destruir la compatibilidad de importación.
 - R5 está integrado en `main`; la release v0.2 **no está certificada** hasta completar la épica de estabilización, UX, accesibilidad y pruebas.
 
 ## Siguiente trabajo
 
-Consultar [alcance del MVP](docs/MVP_SCOPE.md), [backlog por puertas de calidad](docs/LOCAL_MVP_BACKLOG.md), [referencias de producto](docs/REFERENCE_BENCHMARK.md), [configuración de agentes](docs/CONFIGURATION_AUDIT.md) y [funciones futuras](docs/FUTURE_ROADMAP.md). La lista ejecutable está en la [épica #23](https://github.com/Pablo-hg/Room-Builder/issues/23); Workshop, IA, multihabitación y monetización **no** bloquean el MVP local.
+Consultar [alcance del MVP completo](docs/MVP_SCOPE.md), [plan maestro de las tareas](docs/MVP_MASTER_PLAN.md), [checkpoint v0.2](docs/LOCAL_MVP_BACKLOG.md), [referencias de producto](docs/REFERENCE_BENCHMARK.md), [configuración de agentes](docs/CONFIGURATION_AUDIT.md) y [mejoras futuras no comprometidas](docs/FUTURE_IMPROVEMENTS.md). La lista ejecutable está en la [épica #23](https://github.com/Pablo-hg/Room-Builder/issues/23); Workshop, IA, multihabitación y monetización **no** bloquean el MVP local.
