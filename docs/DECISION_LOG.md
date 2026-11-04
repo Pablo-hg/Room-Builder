@@ -48,6 +48,7 @@
 | RB-040 | Retirar la comparación de variantes del MVP | CONFIRMADO (04/11/2026); implementado | Sustituye RB-028–RB-031 como requisitos del MVP. Al leer v5 conserva el mobiliario activo para guardar sin variantes; ver compatibilidad en el informe de progreso |
 | RB-041 | Los solapes entre muebles ya no bloquean mover, elevar, girar, mover/girar la selección ni reducir la habitación; el borde rojo avisa | CONFIRMADO (04/11/2026); implementado | Se mantienen los límites de posición y las restricciones constructivas de puertas, ventanas y decoración mural. Añadir o pegar sigue buscando una posición libre como comodidad |
 | RB-042 | Al importar un diseño cuyo ID ya existe, crear una copia con un ID local nuevo | CONFIRMADO (04/11/2026); implementado, en verificación | Precisión de D7. No sustituye un diseño existente; el reemplazo sigue pendiente y la biblioteca llena se bloquea |
+| RB-043 | Evolucionar POV de cámara fija a recorrido libre con WASD y mirada de cámara; empezar desde una puerta de entrada, y al disponer de varias habitaciones permitir cruzar puertas interiores y escoger entrada cuando existan varias | CONFIRMADO como dirección futura (04/11/2026); no implementado | [#36](https://github.com/Pablo-hg/Room-Builder/issues/36): primero una habitación, después tránsito multiestancia basado en RB-027. No cambia MVP v0.2 ni reinterpreta la cámara Libre actual como paseo POV |
 
 ## Aclaraciones
 - **CONFIRMADO** aquí alude a decisiones expresas de esta conversación, no a entregas realizadas o a documentación global del portfolio.

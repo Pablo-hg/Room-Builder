@@ -23,6 +23,9 @@ Principal vista creativa. Girar habitación 90° con botones; también puede exi
 ## Interior / POV desde puerta
 Cámara ligada a posición y dirección de puerta, con paredes/resto de aberturas visibles. Mirada horizontal izquierda/derecha; sin caminar libremente en el MVP. Debe servir para comprobar perspectiva y obstrucciones. No es una sustitución de una medición real ni una simulación lumínica física.
 
+### Evolución futura: POV de recorrido WASD (#36)
+El POV fijo desde la puerta **no se elimina** al certificar v0.2. Está registrada la evolución a una vista de recorrido libre con **W/S** para avanzar/retroceder, **A/D** para desplazarse lateralmente y mirada de cámara con ratón/controles alternativos. Se inicia en la puerta de entrada. Si el proyecto contiene varias puertas, se identificará o seleccionará la **entrada al recorrido**; las puertas interiores servirán para transitar continuamente entre habitaciones conectadas sin resetear la cámara. Se requiere no atravesar paredes, gestión segura de aberturas, accesibilidad y estado de cámara independiente del diseño. El recorrido de una habitación puede implementarse antes de las casas; la transición multiestancia depende del modelo estructural futuro RB-027. Véase [issue #36](https://github.com/Pablo-hg/Room-Builder/issues/36).
+
 ## Vistas extra existentes
 El código actual incluye **Frontal** y **Libre**. Mantenerlas funcionales durante el refactor; mostrarlas como avanzadas o secundarias en el diseño renovado. No eliminarlas sin una decisión explícita y pruebas de no regresión.
 
