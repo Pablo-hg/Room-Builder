@@ -7,6 +7,7 @@
 | [Rooms.xyz](https://rooms.xyz) | Crear, decorar, personalizar y compartir habitaciones interactivas | Entrada divertida, catálogo identificable, creación accesible y estética no intimidante | Plataforma social/remix, mecánicas y assets ajenos en el MVP |
 | [MakeRoom (Steam)](https://store.steampowered.com/app/2212670/MakeRoom/) | Dioramas agradables, muebles personalizables y progresión amable | Coherencia cartoon/cozy, edición visual sencilla, aprendizaje contextual | Modelo de videojuego completo, enormes catálogos o desbloqueables |
 | [MyRoomPlanner](https://www.myroomplanner.io/) | Planta 2D con medidas, composición 3D, recorridos y plantillas | Flujo claro **medir → construir → amueblar → visualizar**, dimensiones comprensibles | Render fotorrealista/IA, precios, catálogo comercial ni dependencia en nube |
+| [floorplan-3d](https://github.com/wy51ai/floorplan-3d) | Planta completa SVG 2D, paredes y medidas, habitaciones, sincronización Three.js 3D y recorrido WASD, según su README | Referencia técnica funcional para el objetivo vivienda multihabitación, selector futuro de planta y datos unificados; ver [HOUSE_VISION](HOUSE_VISION.md) | Copiar su aplicación monolítica en `index.html`, su UI o dar por verificado su funcionamiento solo por el README |
 | [Figma](https://www.figma.com/) | Capas, selección, operaciones múltiples y organización | Modelo mental de inspector contextual, selección múltiple, carpetas y atajos | Interfaz CAD/profesional compleja, menús densos sin jerarquía |
 
 ## Principio de posicionamiento

@@ -2,6 +2,8 @@
 
 **Estado a 04/11/2026:** R5 fusionada en `main` por PR #21/#22. El código contiene muchas funciones del MVP, pero **la versión v0.2 no se ha validado como producto completo**. La lista ejecutable está en [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md) e [issues #23–#34](https://github.com/Pablo-hg/Room-Builder/issues/23).
 
+**Aclaración de visión 04/11/2026:** el propietario quiere que Room Builder crezca hasta una **casa completa por plantas** con visión aérea acotada, habitaciones conectadas y POV. Esta es la **meta de producto descrita como «MVP final de vivienda»** en [HOUSE_VISION.md](HOUSE_VISION.md); no se añade retroactivamente a los criterios de la épica v0.2, que sigue siendo el **MVP inicial de una habitación**.
+
 ## Objetivo y definición de terminado
 Un usuario no técnico puede recrear y reorganizar un dormitorio o salón **en una sola habitación rectangular**, con medidas orientativas, controles comprensibles y estética diorama agradable, guardarlo localmente y continuar editándolo en otro navegador tras exportar/importar JSON; sin cuenta ni servicio de pago.
 

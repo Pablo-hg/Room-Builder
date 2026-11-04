@@ -19,12 +19,19 @@ Una herramienta para construir habitaciones con la sencillez de un videojuego: e
 - **Room Builder completo (producto independiente):** primero una habitación; después viviendas con varias estancias conectadas. El código debe permitir evolucionar sin rehacerlo.
 - **Room Builder Mini (idea para el Laboratorio de Pablo Web 2.0):** edición simplificada de una sola habitación, catálogo acotado y navegación contextual. Integración y fecha aún PENDIENTES. No modificar el repositorio del portfolio desde aquí.
 
+## Imagen de destino: de una habitación a una casa completa (04/11/2026)
+
+**Decisión de visión:** el usuario debe poder empezar por una habitación sin comprometerse a crear una casa y, a partir de ella, **escalar a un proyecto residencial por plantas**, con habitaciones contiguas, paredes/puertas compartidas, vista aérea acotada de una planta, selector de planta y transición a 3D y POV. La imagen aportada por el propietario ilustra el resultado funcional objetivo, no un diseño que deba copiarse.
+
+La meta final de producto ha sido descrita como el **MVP completo de vivienda**. Para no introducir una ampliación masiva en un release en curso, **v0.2 mantiene el MVP inicial de una habitación**, mientras que el siguiente gran hito local es el constructor de casas por etapas. Ver [HOUSE_VISION.md](HOUSE_VISION.md). El Workshop continúa separado.
+
 ## Referencias, no objetivos de clonación
 - **Rooms.xyz:** principal referencia de tono, facilidad, espíritu juguetón, diorama, selección y personalización sencillas.
 - **Room Studio:** referencia secundaria para medidas reales, aberturas, datos de planta, comparación de distribuciones y exportación.
 - **MakeRoom:** referencia creativa de interacción accesible, personalización de muebles y estética de diorama; no adoptar sus misiones como requisito del editor.
 - **[MyRoomPlanner](https://www.myroomplanner.io/es):** referencia funcional para pasar de medidas y plano 2D a mobiliario en 3D, comprobar distribuciones y visualizar espacios antes de mover muebles reales; no es nuestra referencia estética.
 - **Los Sims / modo construcción:** inspiración por facilidad de colocar y mover mobiliario; no se busca simulación de personas.
+- **[floorplan-3d](https://github.com/wy51ai/floorplan-3d):** referencia funcional futura para plano SVG de vivienda completa, cotas, muros, vistas Three.js y paseo con WASD; no adoptar sin más su arquitectura monolítica.
 No copiar interfaz exacta, código ni arte de estas referencias.
 
 ## Diferenciador

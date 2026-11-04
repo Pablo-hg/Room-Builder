@@ -5,11 +5,16 @@
 ## 1. Mini para Pablo Web 2.0 — primera evolución propuesta
 Reutilizar el renderer, catálogo, estado y geometría de Room Builder en la zona Laboratorio del portfolio. Experiencia guiada y limitada a una habitación con objetos elegidos; ocultar editor avanzado, sistema de variantes, exportaciones JSON/GLB y construcción multihabitación. Definir integración de navegación/aislamiento al empezar esta etapa; evitar duplicar motor o contaminar el HUB real. Solo tras estabilizar el editor principal.
 
-## 2. Editor local multihabitación — proyecto propio, posterior
+## 2. Editor local multihabitación y vivienda completa — objetivo de producto posterior al MVP v0.2
+**Referencia funcional definitiva de producto:** la imagen compartida el 04/11/2026 muestra una planta residencial entera acotada con dormitorios, baños, pasillo, salón, cocina y balcones. La intención es poder empezar con una habitación, ampliar a varias conectadas y seleccionar plantas de una casa, viendo la planta elegida completa en 2D y su correspondiente escena 3D/POV. El propietario llama a esta meta el «MVP final» de vivienda; se diferencia del **MVP inicial v0.2 de una sola estancia**. La especificación está en [HOUSE_VISION.md](HOUSE_VISION.md).
+
 Evolución en fases: dos habitaciones contiguas primero, paredes medianeras únicas y aberturas coherentes, plano global, luego formas de 1–6 lados y paredes interiores (direcciones RB-025/RB-027). R4 propone `ProjectV2` mediante contratos y pruebas **no persistidos como formato público**; decidir migración y arquitectura tras pruebas de usuario, sin convertir el prototipo en promesa. Se prevé importar habitaciones seleccionadas y sus dependencias estructurales.
 
 ### Recorrido en primera persona (POV) — [issue #36](https://github.com/Pablo-hg/Room-Builder/issues/36)
 La cámara actual parte de la puerta y permite mirar lateralmente, pero no caminar. Evolución deseada en **dos hitos**: (1) en una habitación, navegación mediante **WASD** y mirada libre horizontal/vertical con ratón o controles equivalentes, desde la puerta de acceso; (2) cuando haya varias habitaciones conectadas, **entrada principal o seleccionada** entre varias puertas candidatas, recorrido continuo por puertas interiores y colisiones con paredes/aberturas sin teletransporte. Mantener posición y orientación del visitante separadas del diseño guardado. Probar teclado, táctil, salida del modo y mareo por movimiento. La primera fase puede hacerse antes de la casa, pero no se añade automáticamente al MVP v0.2: [#29](https://github.com/Pablo-hg/Room-Builder/issues/29) sigue certificando el POV fijo actual.
+
+### Referencia técnica funcional: floorplan-3d
+El [README del repositorio](https://github.com/wy51ai/floorplan-3d) declara plano SVG 2D con cotas en mm, habitaciones poligonales, paredes editables, sincronización 2D/3D, recorrido WASD y guardado JSON/local. **Es inspiración funcional, no arquitectura a copiar**: su implementación está centralizada en un `index.html`; nuestro producto conserva React/Three/R3F/Zustand, módulos y estilo propios.
 
 ## 3. Workshop y nube — proyecto futuro separado
 Se conserva el [informe maestro de Workshop del 03/11](../ROOM_BUILDER_WORKSHOP_INFORME_MAESTRO_2026-11-03.md): 22 decisiones sobre explorador, publicación, revisiones, versiones, derivados, estadísticas, permisos, moderación, cuentas Google/GitHub, sincronización y formatos JSON/GLB/imágenes. Las issues antiguas **#9–#18** se cerraron como *no planificadas* para no distraer al MVP. No reabrirlas por el mero hecho de que exista este documento.

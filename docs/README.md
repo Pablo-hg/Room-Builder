@@ -18,7 +18,8 @@ Room Builder es una web independiente. Primero debe permitir diseñar y guardar 
 | 9 | [DATA_AND_FORMATS.md](DATA_AND_FORMATS.md) | Contratos, v1–v5, JSON, migraciones |
 | 10 | [ARCHITECTURE_AND_QUALITY.md](ARCHITECTURE_AND_QUALITY.md) | Arquitectura y calidad |
 | 11 | [CONFIGURATION_AUDIT.md](CONFIGURATION_AUDIT.md) | Carpeta `.agents`, `.codex`, `.opencode`, `.github` y residuos |
-| 12 | [FUTURE_ROADMAP.md](FUTURE_ROADMAP.md) | Mini, casas, IA, Workshop, negocio: **futuro, no issues ahora** |
+| 12 | [HOUSE_VISION.md](HOUSE_VISION.md) | **Meta final del constructor de vivienda**: plantas, habitaciones conectadas y vista general 2D/3D |
+| 13 | [FUTURE_ROADMAP.md](FUTURE_ROADMAP.md) | Mini, casas, IA, Workshop, negocio: **futuro, no issues ahora** |
 
 ## Histórico, no instrucciones para ejecutar a ciegas
 - [REFACTOR_PLAN.md](REFACTOR_PLAN.md), [R5_PLAN.md](R5_PLAN.md), [informe R5](progress/R5_PROGRESS.md), [informes R3/R4](progress/) y [auditoría original](REFACTOR_AUDIT.md): trazabilidad de R0–R5. Sus estados locales pueden ser anteriores al merge.
