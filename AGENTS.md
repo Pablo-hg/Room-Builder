@@ -1,6 +1,6 @@
 # Instrucciones permanentes para Codex y agentes — Room Builder
 
-> **FUENTE ACTUAL 04/11/2026:** R5 integrada en `main`. El **MVP completo** aprobado es vivienda por plantas + las siete funciones confirmadas (#37, #38, #39, #40, #41, #45, #47) + #35/#36. **v0.2 es solo checkpoint** (#33). Antes de implementar, leer [docs/MVP_MASTER_PLAN.md](docs/MVP_MASTER_PLAN.md), [docs/MVP_SCOPE.md](docs/MVP_SCOPE.md) y la issue asignada. Gate final **#54**: no publicar sin validación y autorización humana. **Organización:** 24 issues de ejecución con Milestones nativos F0–F6, `prioridad:*` y `orden:*`; los contenedores #55–#61 están archivados. **No añadir etiquetas `fase:*` o `hito:*` ni cabeceras con el hito en las descripciones**: ya figura en la columna derecha de GitHub. No crear contenedores nuevos. Fuera de MVP: [FUTURE_IMPROVEMENTS.md](docs/FUTURE_IMPROVEMENTS.md). No modificar configuraciones de agentes sin autorización; ver [CONFIGURATION_AUDIT.md](docs/CONFIGURATION_AUDIT.md).
+> **FUENTE ACTUAL 04/11/2026:** R5 integrada en `main`. El **MVP completo** aprobado es vivienda por plantas + las siete funciones confirmadas (#37, #38, #39, #40, #41, #45, #47) + #35/#36. **v0.2 es solo checkpoint** (#33). Antes de implementar, leer [docs/MVP_MASTER_PLAN.md](docs/MVP_MASTER_PLAN.md), [docs/MVP_SCOPE.md](docs/MVP_SCOPE.md) y la issue asignada. Gate final **#54**: no publicar sin validación y autorización humana. **Organización:** 24 tareas bajo Milestones nativos F0–F6, orden recomendado en `docs/MVP_MASTER_PLAN.md` y **únicamente las etiquetas `prioridad:P0` y `prioridad:P1`**. Los contenedores #55–#61 están archivados. **No añadir etiquetas `mvp`, `tipo:*`, `orden:*`, `fase:*` o `hito:*` ni cabeceras con el hito en las descripciones**: el hito está en la columna derecha de GitHub. No crear contenedores nuevos. Fuera de MVP: [FUTURE_IMPROVEMENTS.md](docs/FUTURE_IMPROVEMENTS.md). No modificar configuraciones de agentes sin autorización; ver [CONFIGURATION_AUDIT.md](docs/CONFIGURATION_AUDIT.md).
 
 
 ## Selección de modelo y razonamiento
@@ -97,7 +97,7 @@ Acción: [Mantener / Cambiar].
 ## 6. Jerarquía documental
 
 - `docs/DECISION_LOG.md` registra estados y decisiones.
-- `docs/PRODUCT_VISION.md` delimita el propósito; `docs/MVP_SCOPE.md`, el alcance; `docs/MVP_MASTER_PLAN.md`, las fases/etiquetas/dependencias.
+- `docs/PRODUCT_VISION.md` delimita el propósito; `docs/MVP_SCOPE.md`, el alcance; `docs/MVP_MASTER_PLAN.md`, las fases, prioridades, orden y dependencias.
 - `VISUAL_STYLE_GUIDE.md` define el diseño visual; `docs/DATA_AND_FORMATS.md`, el contrato de datos propuesto.
 - `docs/MODELS.md` es la referencia central de modelos y casos de uso; `docs/MODEL_ROUTING.md` establece la política de selección y `docs/AGENT_EFFICIENCY.md`, las pautas de eficiencia. Estos documentos no prevalecen sobre seguridad, alcance ni reglas de producto de este archivo.
 - El código es la fuente del estado implementado, no de la validez de decisiones de producto.

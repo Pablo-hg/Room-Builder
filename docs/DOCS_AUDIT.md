@@ -2,10 +2,10 @@
 
 **Objetivo:** eliminar contradicciones de alcance sin borrar documentación útil ni historiales. Esta auditoría es de **documentos y planificación**, no implica que se hayan ejecutado tests nuevos ni implementado las funciones aprobadas.
 
-**Reorganización posterior del mismo día:** las issues #55–#61, creadas solo como contenedores, quedaron cerradas por redundantes; las 24 tareas reales siguen abiertas y ordenadas con **Milestones nativos F0–F6**. Las etiquetas redundantes `fase:*` y `hito:*` se eliminaron; no se ha añadido ninguna cabecera artificial a las tareas. **Los siete hitos están creados por el propietario y las 24 issues están asignadas y verificadas.** Ver el mapa real en [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md). La auditoría es documental y no sustituye pruebas.
+**Reorganización posterior del mismo día:** las issues #55–#61, creadas solo como contenedores, quedaron cerradas por redundantes; las 24 tareas reales siguen abiertas y ordenadas con **Milestones nativos F0–F6**. Se eliminaron las etiquetas redundantes `mvp`, `tipo:*`, `orden:*`, `fase:*` y `hito:*` **de las 25 issues abiertas**; permanecen solo `prioridad:P0/P1`. No se ha añadido ninguna cabecera artificial a las tareas. **Los siete hitos están creados por el propietario y las 24 issues están asignadas y verificadas.** Ver el mapa real en [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md). La auditoría es documental y no sustituye pruebas.
 
 ## Jerarquía de fuentes (si hay discrepancias)
-1. Issue [épica #23](https://github.com/Pablo-hg/Room-Builder/issues/23) + [MVP_MASTER_PLAN](MVP_MASTER_PLAN.md): alcance comprometido, etiquetas y secuencia; [MVP_SCOPE](MVP_SCOPE.md) define criterios de aceptación.
+1. Issue [épica #23](https://github.com/Pablo-hg/Room-Builder/issues/23) + [MVP_MASTER_PLAN](MVP_MASTER_PLAN.md): alcance comprometido, Milestones, prioridades y secuencia; [MVP_SCOPE](MVP_SCOPE.md) define criterios de aceptación.
 2. [DECISION_LOG](DECISION_LOG.md): decisiones del propietario y alcance aprobado.
 3. [HOUSE_VISION](HOUSE_VISION.md), [PRODUCT_VISION](PRODUCT_VISION.md), [UX_AND_CAMERAS](UX_AND_CAMERAS.md), [OBJECTS_AND_ASSETS](OBJECTS_AND_ASSETS.md), [DATA_AND_FORMATS](DATA_AND_FORMATS.md): contratos conceptuales y de producto.
 4. [ARCHITECTURE_AND_QUALITY](ARCHITECTURE_AND_QUALITY.md) y [REFERENCE_BENCHMARK](REFERENCE_BENCHMARK.md): pautas técnicas y referencias, no tareas por sí solas.
@@ -15,7 +15,7 @@
 | Documento(s) | Clasificación | Acción |
 | --- | --- | --- |
 | `README.md`, `AGENTS.md`, `docs/README.md` | Entrada operativa | Apuntar al nuevo MVP, gate #54 y docs vigentes |
-| `docs/MVP_MASTER_PLAN.md` | **Canónico: ejecución** | Tabla única F0–F6 con etiquetas `orden` y dependencias |
+| `docs/MVP_MASTER_PLAN.md` | **Canónico: ejecución** | Tabla única F0–F6 con orden recomendado y dependencias, sin etiquetas por orden |
 | `docs/MVP_SCOPE.md` | **Canónico: producto** | Distinguir v0.2 checkpoint de MVP final de vivienda |
 | `docs/LOCAL_MVP_BACKLOG.md` | Índice de checkpoint | Limitarlo a #24–#34, redirigir al plan maestro; no plan global duplicado |
 | `docs/HOUSE_VISION.md` | Visión **incluida en MVP** | Reflejar habitaciones, plantas, cotas y POV comprometidos |
