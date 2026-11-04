@@ -8,7 +8,7 @@ Room Builder es una web independiente. Primero debe permitir diseñar y guardar 
 | Prioridad | Documento | Uso |
 | --- | --- | --- |
 | 1 | [MVP_SCOPE.md](MVP_SCOPE.md) | Contrato del MVP de una habitación, entregado vs pendiente y pruebas |
-| 2 | [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md) | Orden de issues #23–#33 y dependencias |
+| 2 | [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md) | Orden de issues #23–#34 y dependencias |
 | 3 | [DECISION_LOG.md](DECISION_LOG.md) | Decisiones y precedencia; **RB-040 reemplaza A/B en el MVP** |
 | 4 | [PRODUCT_VISION.md](PRODUCT_VISION.md) | Promesa y usuarios |
 | 5 | [REFERENCE_BENCHMARK.md](REFERENCE_BENCHMARK.md) | Qué aprender de Rooms, MakeRoom, MyRoomPlanner y Figma |

@@ -1,6 +1,6 @@
 # Room Builder — funcionalidades futuras (NO integrarlas en el MVP local)
 
-**Fecha:** 04/11/2026 · **Regla de prioridad:** primero terminar [MVP de una habitación](MVP_SCOPE.md) e issues [#23–#33](https://github.com/Pablo-hg/Room-Builder/issues/23). Esta hoja es un inventario de intención, no autoriza implementación ni reapertura de Workshop.
+**Fecha:** 04/11/2026 · **Regla de prioridad:** primero terminar [MVP de una habitación](MVP_SCOPE.md) e issues [#23–#34](https://github.com/Pablo-hg/Room-Builder/issues/23). Esta hoja es un inventario de intención, no autoriza implementación ni reapertura de Workshop.
 
 ## 1. Mini para Pablo Web 2.0 — primera evolución propuesta
 Reutilizar el renderer, catálogo, estado y geometría de Room Builder en la zona Laboratorio del portfolio. Experiencia guiada y limitada a una habitación con objetos elegidos; ocultar editor avanzado, sistema de variantes, exportaciones JSON/GLB y construcción multihabitación. Definir integración de navegación/aislamiento al empezar esta etapa; evitar duplicar motor o contaminar el HUB real. Solo tras estabilizar el editor principal.

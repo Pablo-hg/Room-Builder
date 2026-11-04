@@ -1,6 +1,6 @@
 # Room Builder — alcance del MVP local de una habitación
 
-**Estado a 04/11/2026:** R5 fusionada en `main` por PR #21/#22. El código contiene muchas funciones del MVP, pero **la versión v0.2 no se ha validado como producto completo**. La lista ejecutable está en [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md) e [issues #23–#33](https://github.com/Pablo-hg/Room-Builder/issues/23).
+**Estado a 04/11/2026:** R5 fusionada en `main` por PR #21/#22. El código contiene muchas funciones del MVP, pero **la versión v0.2 no se ha validado como producto completo**. La lista ejecutable está en [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md) e [issues #23–#34](https://github.com/Pablo-hg/Room-Builder/issues/23).
 
 ## Objetivo y definición de terminado
 Un usuario no técnico puede recrear y reorganizar un dormitorio o salón **en una sola habitación rectangular**, con medidas orientativas, controles comprensibles y estética diorama agradable, guardarlo localmente y continuar editándolo en otro navegador tras exportar/importar JSON; sin cuenta ni servicio de pago.
@@ -27,6 +27,8 @@ Un usuario no técnico puede recrear y reorganizar un dormitorio o salón **en u
 | Estado local / JSON | v1–v5, cinco guardados, importación/exportación JSON de diseño, GLB | Round-trip, casos adversarios y E2E global; #24, #25 |
 | Selección/jerarquía | Carpetas, orden, selección múltiple y atajos disponibles | Comportamiento táctil, accesibilidad y pulido; #28, #31 |
 | Calidad | Informe R5: 213 unitarias y build OK; E2E dirigidas OK | Repetir suite E2E completa tras correcciones, CI y release; #24, #32, #33 |
+
+El refactor de mantenimiento de código [#34](https://github.com/Pablo-hg/Room-Builder/issues/34) es **transversal y no exige rehacer el motor para dar por terminado el MVP**: solo cambios justificados, con pruebas y sin alterar comportamiento.
 
 ## Deliberadamente fuera
 - **Variantes A/B**: se retiraron de la interfaz del MVP el 04/11 (RB-040), aunque se respeta compatibilidad de archivos históricos.
