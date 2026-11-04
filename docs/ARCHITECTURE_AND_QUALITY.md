@@ -90,7 +90,7 @@ No forzar exactamente estos directorios antes de una auditoría; la [reorganizac
 ## Seguridad y privacidad
 - Archivos JSON importados y cadenas de usuario son no fiables; validar tamaño, tipos y límites; no eval, ni código activo derivado de datos.
 - Logs de interacción: en el proyecto actual son diagnósticos locales de desarrollo; documentar y evitar habilitarlos accidentalmente en producción.
-- Las futuras fotos/planos importados requieren aclarar conservación y privacidad; no forman parte del MVP.
+- Las fotos y planos importados **forman parte del MVP final** por #40/#45, pero todavía no están implementados; exigir almacenamiento local, formatos acotados, consentimiento y exportación segura.
 
 ## Entregas
 Para cada PR: qué cambió, qué no, pruebas ejecutadas, capturas si hay cambios visuales, compatibilidad de formatos, archivos afectos, riesgos y pendientes. No hacer merges automáticos.

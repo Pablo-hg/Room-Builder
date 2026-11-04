@@ -1,3 +1,5 @@
+> **ESTADO 04/11/2026 — INVESTIGACIÓN FUTURA:** la generación de objetos mediante IA/texto NO está incluida en el MVP local final. **Sí está aprobada** la creación **manual modular con piezas, agrupaciones y materiales** en [#47](https://github.com/Pablo-hg/Room-Builder/issues/47), que debe servir como contrato reutilizable por la IA futura. Este documento es histórico/propositivo, no una tarea activa ni autorización para integrar servicios/modelos.
+
 # Generador de objetos a partir de texto
 
 Este documento describe cómo añadir al Room Builder una herramienta para que el usuario describa un mueble, revise una propuesta y la inserte en la habitación. La implementación se plantea en dos etapas: primero un generador determinista que funciona enteramente en el navegador y no usa modelos; después, como mejora opcional, un modelo de lenguaje local que traduzca descripciones más variadas al mismo formato de objeto.
