@@ -23,7 +23,7 @@
 | RB-015 | Soporte pleno de casas, plantas, escaleras y geometría irregular | PENDIENTE | Visión futura; límites por definir |
 | RB-016 | Paleta cromática exacta, tokens, ejemplos/asset pack de referencia | PENDIENTE | La dirección visual sí está acordada |
 | RB-017 | Cantidad de muebles, metas de rendimiento y dispositivos mínimos | PENDIENTE | Validar al medir |
-| RB-018 | Publicación pública, licencias del código/assets, modalidades de distribución | PENDIENTE | Repositorio privado actual |
+| RB-018 | Publicación pública, licencias del código/assets, modalidades de distribución | PENDIENTE | Repositorio público; distribución/licencias pendientes de formalizar |
 | RB-019 | Refactor por fases sin nuevas funciones ni alteración visual | PROPUESTO | Ver REFACTOR_PLAN |
 | RB-020 | No simular exactitud arquitectónica/estructural ni usar datos privados externos | CONFIRMADO como principio | Visualización orientativa |
 | RB-021 | R4 se entrega como contrato y pruebas puras, sin UI multihabitación ni persistencia nueva | CONFIRMADO | Decisión del 03/11/2026; no cambia el formato guardado |
@@ -60,7 +60,7 @@
 2. Acordar MVP de una habitación frente a alcance posterior multihabitación.
 3. Establecer paleta/ejemplos concretos solo tras una comparación visual en producto.
 4. Validar y decidir el esquema final de proyecto/variantes a partir del prototipo R4, antes de integrarlo.
-5. Siguiente fase validada en la planificación (03/11/2026): comparación Original/Alternativa A en una sola habitación, antes que redimensionar o JSON editable; las formas de habitación RB-025 quedan después de eso. El plan detallado de R5 está en [R5_PLAN.md](R5_PLAN.md) y no inicia la implementación.
+5. La planificación del 03/11 proponía A/B → redimensionado → JSON; es **histórica** y fue superada por R5 integrada y RB-040 (retirada de A/B del MVP). El siguiente trabajo vigente es certificar el producto local y completar UX/accesibilidad conforme a [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md). Las formas RB-025 siguen siendo posteriores.
 6. Las variantes se retiraron del MVP; D1 rechaza un espejo v5 discrepante. D7 importa IDs duplicados como copia y mantiene pendiente el reemplazo. Las aclaraciones de R5.2 están en RB-037–RB-039.
 
 ### Historial de aclaraciones de R5.2 (03/11/2026)

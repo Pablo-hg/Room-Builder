@@ -2,8 +2,6 @@
 name: "Tarea MVP local"
 about: "Mejoras verificables del editor de una sola habitación, sin Workshop"
 title: "[MVP local] "
-labels: []
-assignees: []
 ---
 
 **Gate / issue padre:** #23 — G...
