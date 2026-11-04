@@ -1,4 +1,7 @@
-# Plan de reorganización del código — fase siguiente
+# Plan de reorganización del código — histórico R0–R5
+
+> **Estado vigente (04/11/2026, `main` tras PR #22):** R0–R5 integradas en el repositorio. R5.4 se aplazó a v0.2 y el editor local **todavía no está certificado como MVP completo**: según el informe de R5 hubo 213 pruebas unitarias y build correctos, pero no una nueva ejecución única de toda la suite E2E después de los últimos ajustes. La comparación A/B fue retirada de la interfaz MVP (RB-040); la compatibilidad de datos históricos se conserva. La planificación operativa es [MVP_SCOPE](MVP_SCOPE.md) + [LOCAL_MVP_BACKLOG](LOCAL_MVP_BACKLOG.md) y las issues [#23–#33](https://github.com/Pablo-hg/Room-Builder/issues/23). Este aviso prevalece sobre fotografías históricas del documento.
+
 
 > **Actualización 04/11/2026:** El propietario retiró las variantes del MVP. Los apartados anteriores sobre R5.1 describen el histórico; el estado de validación figura en el informe de progreso.
 

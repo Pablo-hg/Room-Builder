@@ -419,3 +419,8 @@ El propietario autorizó completar los pendientes y las pruebas antes de subir l
 - La primera pasada E2E completa terminó con **84 aprobados y 35 fallidos**. Se actualizaron casos históricos por selectores, precisión al centímetro, formato guardado y menú actuales; la repetición conjunta obtuvo **33 aprobados y 2 fallidos**, y esos dos pasaron en ejecuciones individuales después de ajustar sus pruebas. No se ha repetido la suite completa en una sola ejecución tras estos ajustes. La validación manual de R5.2 fue comunicada previamente por el propietario, no se atribuye a esta ejecución.
 - La regresión detectó que la zona de arrastre de una selección múltiple quedaba por debajo del modelo visual. Se amplió ligeramente su volumen interactivo; las pruebas E2E de selección y arrastre con ratón y pantalla táctil pasaron después del cambio. `npm test` y `npm run build` se repitieron tras corregirlo.
 - El reemplazo de un diseño importado sigue pendiente de decisión; la biblioteca llena bloquea la importación. R5.4 se mantiene aplazada y `ProjectV2` como contrato candidato. Sin commits, merges ni push durante esta continuación.
+
+
+## Reconciliación de GitHub (04/11/2026)
+
+La rama `main` integra R5 mediante el merge de PR #21 (a `dev`) y PR #22 (a `main`), commit `d5ff7841b9b20a97fcc0d337ceb7f4c687588799`. Las frases anteriores «sin commit/merge» son testimonios del momento de escritura y **no describen el estado remoto posterior**. Esta reconciliación no constituye una nueva ejecución de pruebas: se conserva el dato del informe (213 unitarias y build aprobados, E2E dirigidas aprobadas y suite completa todavía sin repetición única final). La verificación final queda en la [issue #24](https://github.com/Pablo-hg/Room-Builder/issues/24).

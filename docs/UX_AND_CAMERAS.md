@@ -1,5 +1,8 @@
 # Experiencia de uso, interacción y cámaras
 
+> **Vigente 04/11/2026:** la comparación A/B se retiró del MVP por RB-040. El contenido antiguo de comparación está reemplazado por nota de compatibilidad. Según RB-039 y RB-041, los muebles se pueden atravesar y se muestra advertencia roja; no bloquear esos movimientos por colisión.
+
+
 **Estado:** CONFIRMADO en filosofía y vistas esenciales; los detalles específicos de control son PROPUESTOS y deben validarse con usuarios.
 
 ## Interfaz: Rooms antes que CAD
@@ -27,12 +30,12 @@ El código actual incluye **Frontal** y **Libre**. Mantenerlas funcionales duran
 - Colocar desde catálogo: vista previa de posición, confirmación comprensible, objeto seleccionado.
 - Arrastrar mueve en coordenadas del mundo; rotar conserva el pivote y huella coherentes; inspector acepta medidas editables.
 - Ajuste opcional a cuadrícula, sin exigir cuadrícula siempre. Las medidas deben ser visualmente manejables.
-- Colisiones: no permitir intersecciones volumétricas incompatibles; considerar excepciones intencionales como alfombras en suelo, objetos sobre superficies y apliques de pared.
+- Intersecciones: se permiten entre muebles y se señalan mediante borde rojo (RB-039/RB-041); las restricciones de aperturas y decoración mural siguen reglas constructivas distintas. No tratar un mueble atravesado como error que impida guardar.
 - Puertas y ventanas pertenecen a una pared y tienen sus propias cotas de alto/umbral/ancho; no se añaden como muebles libres.
 - Borrar, duplicar y cambios estructurales deben poder deshacerse, salvo límites documentados.
 
-## Comparación A/B
-Según el plan R5.1 aprobado, Original y Alternativa A permiten editar su propio mobiliario de forma independiente; Original no se puede eliminar. El selector identifica la activa y el aviso permanente explica que habitación y aperturas son comunes. Eliminar la alternativa pide confirmación; alternar y editar admiten deshacer/rehacer. Esto concreta la protección frente a ediciones involuntarias que proponía esta guía, sin bloquear la edición de Original. La configuración base y las preferencias son compartidas. Mostrar claramente cuál está activa y si hay cambios no guardados.
+## Variantes históricas (sin UI en el MVP)
+La comparación Original/Alternativa A se implementó durante R5.1, pero **el propietario la retiró del MVP** el 04/11/2026 (RB-040). El editor local muestra una distribución activa; leer diseños v5 históricos no debe provocar pérdida de mobiliario, por lo que la compatibilidad se conserva y se comprueba en pruebas de importación. No reintroducir selector ni edición de variantes por seguir este histórico.
 
 ## Principio de sencillez
 Un control solo debe aparecer si aporta valor inmediato en el contexto de la tarea. La accesibilidad y la corrección del modelo tienen prioridad sobre animaciones espectaculares.

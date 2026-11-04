@@ -1,3 +1,5 @@
+> **ADVERTENCIA DE VIGENCIA · 04/11/2026:** este documento agrupa planes/prompts elaborados el **03/11 cuando R5 aún estaba pendiente**. Desde el merge #22, R5 está integrada y la comparación A/B se **retiró del MVP**. Las frases antiguas que piden iniciar R5, mantener A/B como P0 o afirman que no hay JSON están **superadas**. No ejecutar sus prompts sin auditoría nueva; aplicar primero [MVP_SCOPE](../../MVP_SCOPE.md), [LOCAL_MVP_BACKLOG](../../LOCAL_MVP_BACKLOG.md) y issues [#23–#33](https://github.com/Pablo-hg/Room-Builder/issues/23). El texto bajo esta nota se conserva para trazabilidad, no como prioridad vigente.
+
 # Room Builder — Hoja de ruta v0.2 y guía de ejecución con Codex
 
 **Publicación documental:** 03/11/2026. **Base auditada:** `main` en `e56973f`.

@@ -1,5 +1,8 @@
 # Datos, unidades, guardado e interoperabilidad
 
+> **Vigente 04/11/2026:** la interfaz de variantes R5.1 fue retirada del MVP por RB-040. Los apartados de v5 con variantes explican **compatibilidad histórica y contratos**, no un selector disponible. R5.3 ya integra JSON editable de un diseño con límites/validación; ver [MVP_SCOPE.md](MVP_SCOPE.md) y [#25](https://github.com/Pablo-hg/Room-Builder/issues/25) para su certificación.
+
+
 > **Actualización 04/11/2026:** El propietario retiró las variantes del MVP el 04/11/2026. El código local ya no escribe v5: al leer v5 toma el mobiliario activo y guarda una sola distribución con el formato previo. La conversión y la conservación de medidas editadas están pendientes de pruebas de compatibilidad. El apartado v5 inferior se conserva como histórico.
 
 **Estado:** principios CONFIRMADOS; contrato multiproyecto con prototipo puro en R4, no persistido ni declarado estable. R5.1 integra variantes de una habitación en `PersistedDesign` v5; ver [R5_PLAN.md](R5_PLAN.md) e [informe](progress/R5_PROGRESS.md). El JSON público sigue pendiente de R5.3.

@@ -1,5 +1,7 @@
 # Registro de decisiones — Room Builder
 
+> **Nota vigente 04/11/2026:** RB-040 desplaza RB-010 y RB-028–RB-031 como **requisitos del MVP** (la comparación A/B ya no aparece en UI); RB-039/RB-041 permiten atravesamientos de mobiliario con aviso. R5 se fusionó en main y su certificación integral sigue pendiente (#24–#33). Workshop y monetización permanecen en [FUTURE_ROADMAP.md](FUTURE_ROADMAP.md).
+
 **Fecha base:** 26/10/2026. Este registro pertenece exclusivamente a Room Builder. NO modifica el registro global de Pablo Web 2.0.
 
 | ID | Decisión o hipótesis | Estado | Nota |

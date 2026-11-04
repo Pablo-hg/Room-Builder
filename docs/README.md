@@ -1,43 +1,34 @@
-# Documentación del producto Room Builder — índice
+# Room Builder — documentación canónica
 
-**Estado:** base documental de trabajo · 03/11/2026. Revisión conceptual; no certifica que las funciones estén implementadas ni probadas. R0–R4 están integradas; R5.1 está completada y verificada. R5.2/R5.3 no se han iniciado.
+**Actualización:** 04/11/2026 · **Base consultada:** `main` tras PR #22 (R5 integrada). **Estado del producto:** editor local funcional con trabajo pendiente; **NO** declarar v0.2 o MVP terminados.
 
-Room Builder es una aplicación web independiente, de aspecto de juego, para recrear una habitación real y probar otras distribuciones. A largo plazo podrá unir habitaciones hasta formar viviendas. La integración en el Laboratorio de Pablo Web 2.0 sería una modalidad reducida de una habitación, no la aplicación entera.
+Room Builder es una web independiente. Primero debe permitir diseñar y guardar una habitación útil; posteriormente se valora integrar una versión Mini en Pablo Web 2.0 y, más adelante, evolucionar a casas y Workshop.
 
-## Leer por orden
-| Documento | Propósito |
-| --- | --- |
-| [PRODUCT_VISION.md](PRODUCT_VISION.md) | Identidad, usuarios, visión, referencias y límites |
-| [MVP_SCOPE.md](MVP_SCOPE.md) | Qué significa MVP, prioridades, casos de aceptación |
-| [../VISUAL_STYLE_GUIDE.md](../VISUAL_STYLE_GUIDE.md) | Regla visual canónica, siluetas, paleta y coherencia 3D/iconos |
-| [UX_AND_CAMERAS.md](UX_AND_CAMERAS.md) | Interfaz, edición, tres vistas esenciales y accesibilidad |
-| [OBJECTS_AND_ASSETS.md](OBJECTS_AND_ASSETS.md) | Taxonomía, capacidades, tamaño, representación y assets |
-| [DATA_AND_FORMATS.md](DATA_AND_FORMATS.md) | Unidades, persistencia, exportación y futuro multihabitación |
-| [ARCHITECTURE_AND_QUALITY.md](ARCHITECTURE_AND_QUALITY.md) | Tecnologías presentes, principios y calidad |
-| [REFACTOR_PLAN.md](REFACTOR_PLAN.md) | Reorganización del código en una fase posterior |
-| [R5_PLAN.md](R5_PLAN.md) | Plan detallado de R5 y decisiones pendientes |
-| [DECISION_LOG.md](DECISION_LOG.md) | Confirmado frente a propuesta o pendiente |
-| [../GENERADOR_OBJETOS.md](../GENERADOR_OBJETOS.md) | Experimento separado: objetos parametrizados por texto |
-| [../AGENTS.md](../AGENTS.md) | Instrucciones que Codex debe revisar en cada tarea |
-| [AGENT_EFFICIENCY.md](AGENT_EFFICIENCY.md) | Uso mínimo de tokens, modelos gratuitos y continuidad de tareas |
-| [MODEL_ROUTING.md](MODEL_ROUTING.md) | Selección de Luna/Terra/Sol, aviso y automatización según cliente |
+## Leer para ejecutar trabajo
+| Prioridad | Documento | Uso |
+| --- | --- | --- |
+| 1 | [MVP_SCOPE.md](MVP_SCOPE.md) | Contrato del MVP de una habitación, entregado vs pendiente y pruebas |
+| 2 | [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md) | Orden de issues #23–#33 y dependencias |
+| 3 | [DECISION_LOG.md](DECISION_LOG.md) | Decisiones y precedencia; **RB-040 reemplaza A/B en el MVP** |
+| 4 | [PRODUCT_VISION.md](PRODUCT_VISION.md) | Promesa y usuarios |
+| 5 | [REFERENCE_BENCHMARK.md](REFERENCE_BENCHMARK.md) | Qué aprender de Rooms, MakeRoom, MyRoomPlanner y Figma |
+| 6 | [../VISUAL_STYLE_GUIDE.md](../VISUAL_STYLE_GUIDE.md) | Identidad visual obligatoria |
+| 7 | [UX_AND_CAMERAS.md](UX_AND_CAMERAS.md) | Interacción, controles y vistas |
+| 8 | [OBJECTS_AND_ASSETS.md](OBJECTS_AND_ASSETS.md) | Catálogo, anclajes y consistencia |
+| 9 | [DATA_AND_FORMATS.md](DATA_AND_FORMATS.md) | Contratos, v1–v5, JSON, migraciones |
+| 10 | [ARCHITECTURE_AND_QUALITY.md](ARCHITECTURE_AND_QUALITY.md) | Arquitectura y calidad |
+| 11 | [CONFIGURATION_AUDIT.md](CONFIGURATION_AUDIT.md) | Carpeta `.agents`, `.codex`, `.opencode`, `.github` y residuos |
+| 12 | [FUTURE_ROADMAP.md](FUTURE_ROADMAP.md) | Mini, casas, IA, Workshop, negocio: **futuro, no issues ahora** |
 
-## Significado de los estados
-- **CONFIRMADO:** preferencia o regla expresamente acordada para Room Builder.
-- **PROPUESTO:** solución recomendada, aún revisable y no autorizada para implementación automática.
-- **EXPERIMENTAL:** línea de investigación o prototipo sin compromiso de entrega.
-- **PENDIENTE:** falta una decisión concreta o una validación.
-- **DESCARTADO:** no se desarrollará salvo decisión posterior expresa.
+## Histórico, no instrucciones para ejecutar a ciegas
+- [REFACTOR_PLAN.md](REFACTOR_PLAN.md), [R5_PLAN.md](R5_PLAN.md), [informe R5](progress/R5_PROGRESS.md), [informes R3/R4](progress/) y [auditoría original](REFACTOR_AUDIT.md): trazabilidad de R0–R5. Sus estados locales pueden ser anteriores al merge.
+- [Plan v0.2 con prompts E0–E12](roadmaps/v0.2/ROADMAP_Y_PROMPTS_V0_2.md): fotografía del 03/11 con requisitos superados por R5 o **descartados** (A/B). Aplicar el backlog vigente y rehacer E0 antes de usar prompts históricos.
+- [Propuestas de formatos ya integrados](archive/): documentos históricos de nombres, carpetas y orden de escena, movidos para reducir ruido.
+- [Modelos](MODELS.md), [ruteo](MODEL_ROUTING.md), [eficiencia](AGENT_EFFICIENCY.md), [AGENTS.md](../AGENTS.md): configuración y orientación del agente, independientes de las decisiones del producto.
+- [Informe original Workshop (22 decisiones)](../ROOM_BUILDER_WORKSHOP_INFORME_MAESTRO_2026-11-03.md) y [generador de objetos por texto](../GENERADOR_OBJETOS.md): conservar, **no desarrollar** para el MVP.
 
-Las guías no suponen aprobación de la V1 pública de Pablo Web 2.0. El proyecto independiente y el portfolio tienen decisiones y calendarios distintos.
-
-## Informes de progreso
-
-Se conserva un único informe Markdown por fase R en `docs/progress/`: [informe de R3](progress/R3_PROGRESS.md), [informe de R4](progress/R4_PROGRESS.md) e [informe de R5](progress/R5_PROGRESS.md). Sus subpartes y continuaciones amplían ese mismo archivo, manteniendo contexto, resultados y límites históricos. No se borra al cerrar la fase. Las mediciones JSON se conservan como evidencias enlazadas desde el informe.
-
-## Mantenimiento documental
-- Cambiar una decisión implica actualizar DECISION_LOG y los documentos afectados en la misma propuesta.
-- Si una regla visual cambia, modificar VISUAL_STYLE_GUIDE y comprobar modelos e iconos existentes.
-- Si cambia el contrato persistido, actualizar DATA_AND_FORMATS, migración, fixtures/pruebas y README.
-- Documentar versión, alcance y estado real en PRs; no convertir una idea futura en requisito MVP.
-- Mantener la documentación en español de España y enlaces relativos válidos.
+## Estados y reglas
+- **CONFIRMADO** = decisión de producto; **IMPLEMENTADO** = presente en código; **VALIDADO** = existe prueba con resultado; **PENDIENTE** = falta desarrollo, prueba o decisión. Son conceptos distintos.
+- La última decisión expresa prevalece sobre propuestas antiguas; documentar fecha y fuente. No ocultar fallos E2E con afirmaciones de «MVP listo».
+- Al alterar un contrato: cambiar tests, fixtures, migraciones, documentación y guía de uso en el mismo PR.
+- Consultar solo archivos pertinentes para evitar gasto innecesario de tokens. No borrar reportes históricos que expliquen migraciones o pruebas.

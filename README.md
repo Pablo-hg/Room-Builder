@@ -1,9 +1,9 @@
-# Room Builder v0.1
+# Room Builder — editor local (v0.1, camino a v0.2)
 
 > **Documentación de producto:** antes de ampliar o reorganizar el editor, consultar [docs/README.md](docs/README.md), [AGENTS.md](AGENTS.md) y [VISUAL_STYLE_GUIDE.md](VISUAL_STYLE_GUIDE.md). La visión es un constructor de habitaciones amigable tipo diorama, útil para recrear espacios reales y comparar distribuciones. La construcción multihabitación es evolución posterior. La documentación distingue decisiones acordadas de propuestas aún no implementadas.
 
 
-Prototipo web para construir una habitación rectangular, configurar sus aperturas y probar distribuciones sencillas de mobiliario en tres vistas coherentes.
+Aplicación web independiente para crear y amueblar una habitación rectangular con medidas editables. El código actual ofrece cinco vistas (Plano, Isométrica, Interior/POV, Frontal y Libre), guardado local, exportación GLB e importación/exportación de un diseño editable en JSON. La v0.2 y su MVP local siguen pendientes de certificación integral.
 
 ## Requisitos
 
@@ -37,7 +37,7 @@ npm run preview
   En el indicador de la escena se muestran las paredes frontal, izquierda y derecha para la orientación seleccionada.
 - **Planta:** cámara ortográfica cenital con el mismo sistema de coordenadas.
 - **Interior:** cámara situada en la puerta a 1,65 m de altura. Las flechas permiten mirar hasta 55° a cada lado; no hay movimiento libre.
-- **Objetos:** pulsa un elemento del catálogo para añadirlo. Incluye mesa de centro, escritorio, silla de escritorio, mueble de TV, televisor, alfombras rectangulares y circulares, planta, jarrón, lámpara de mesa, lámpara de techo y apliques de pared, además de espejos rectangulares o circulares montados en pared. Las alfombras se mueven por el suelo y no se pueden elevar; ventanas, espejos, estanterías, cuadros y apliques se colocan sobre una pared. La lámpara de techo permanece junto al techo de la habitación.
+- **Objetos:** pulsa un elemento del catálogo para añadirlo. Incluye camas individual y doble, armario, estanterías, sofá, sillón, mesas, escritorio, sillas, mueble de TV, televisor, alfombras, plantas, jarrones y lámparas, así como decoración mural. Las alfombras se mueven por el suelo y no se pueden elevar; ventanas, espejos, estanterías, cuadros y apliques se colocan sobre una pared. La lámpara de techo permanece junto al techo de la habitación.
 - **Construcción:** en la categoría «Construcción» añade «Nuevo piso vacío», un pack apilado con suelo y cuatro paredes, más un techo inicialmente oculto, o añade un suelo o una pared independiente. Selecciona el pack para moverlo en conjunto; elige cada superficie en la escena o en la lista para cambiar su tamaño, color, visibilidad y posición. Las paredes también se pueden girar; los suelos no tienen giro.
 - **Colores:** cambia el color de todas las paredes desde «Color de las paredes» en la configuración de la habitación. Selecciona cualquier mueble, apertura o elemento mural para cambiar su color base; los detalles multicolor del objeto se ajustan automáticamente a tonos de ese color.
 - **Movimiento y giro:** los muebles se arrastran por el suelo y, una vez seleccionados, también se pueden mover verticalmente con la flecha Y o el control «Posición Y» del inspector; pueden apilarse siempre que sus volúmenes no se solapen. Las alfombras solo se desplazan por el suelo y no admiten movimiento vertical. Los elementos de pared se mueven horizontal y verticalmente con sus ejes, se pueden cambiar de pared desde el inspector y girar con el aro en pasos de 15° (mantén `Shift` para giro libre). Usa `R` para girar 90° y `Supr`/`Retroceso` para eliminar.
@@ -45,7 +45,8 @@ npm run preview
 - **Cuadrícula:** el suelo y cada pared visible tienen un control independiente para mostrar cuadrados de 25 cm; cada uno se divide en cuatro secciones lógicas de 12,5 × 12,5 cm. Los muebles se ajustan a la subcuadrícula y ventanas y elementos de pared encajan sus bordes en las líneas visibles de 25 cm.
 - **Elementos:** el panel de escena lista puerta, ventanas, cuadros, estanterías de pared y muebles; desmarca su check para ocultarlos sin eliminarlos.
 - **Guardado:** guarda hasta cinco diseños en `localStorage`; pulsa un diseño para abrirlo, «Guardar cambios» actualiza ese diseño y el indicador avisa si hay cambios pendientes. Desde el selector puedes crear un lienzo en blanco, duplicar el diseño actual o cambiarle el nombre; el icono de eliminar libera espacio. Los botones «Deshacer» y «Rehacer» permiten recorrer hasta 50 cambios del diseño. La vista y la orientación de cámara no se persisten.
-- **Exportar:** descarga la habitación y sus elementos como un modelo 3D `.glb`, nombrado con el nombre del diseño actual y la fecha.
+- **Exportar GLB:** descarga la habitación y sus elementos como un modelo 3D `.glb`, nombrado con el nombre del diseño actual y la fecha.
+- **Proyecto editable JSON:** desde el selector de diseños se puede exportar un diseño (incluidos cambios activos sin guardar) e importar otro mediante previsualización y confirmación. La importación valida el archivo (hasta 2 MiB), crea copia si el ID ya existe y no sustituye diseños al llegar al límite de cinco. Los formatos v1–v5 se procesan mediante migraciones y comprobaciones; la antigua comparación A/B no aparece en la interfaz del MVP.
 
 Todas las medidas de la interfaz están expresadas en **metros**. La habitación admite entre 3 y 10 m de anchura y profundidad, y entre 2,5 y 10 m de altura. Las aperturas se validan para mantener un margen al borde y evitar solapes.
 
@@ -58,7 +59,7 @@ npm run test:e2e
 
 La caracterización visual del catálogo se reproduce con `R2_CAPTURE_DIR=/tmp/room-builder-catalog npx playwright test --config=playwright.catalog.config.ts`; genera una captura por tipo en isométrica, planta y frontal. Los cuadros se cargan como elementos murales.
 
-Las pruebas unitarias verifican las cuatro parejas de paredes ocultas, la geometría alrededor de puertas/ventanas, la validación de aperturas y los límites de los objetos. Las pruebas de Playwright recorren las cuatro orientaciones e interacciones principales. La primera ejecución de Playwright puede requerir instalar Chromium con `npx playwright install chromium`.
+Las pruebas unitarias verifican las cuatro parejas de paredes ocultas, la geometría alrededor de puertas/ventanas, la validación de aperturas y los límites de los objetos. Las pruebas de Playwright recorren las cuatro orientaciones e interacciones principales. La primera ejecución de Playwright puede requerir instalar Chromium con `npx playwright install chromium`. **Pendiente:** repetir la suite E2E completa en una única pasada después de los ajustes finales R5; ver [issue #24](https://github.com/Pablo-hg/Room-Builder/issues/24).
 
 ## Registro de diagnóstico
 
@@ -75,7 +76,7 @@ Este registro es de diagnóstico y no es la fuente del historial de «Deshacer»
 - `src/components/iconCatalog.tsx`: registro SVG tipado y compartido por el catálogo y el inspector.
 - `src/domain/objectCatalog.ts`: catálogo local tipado con las propiedades base y capacidades de transformación de cada objeto.
 - `src/domain`: tipos, constantes y geometría pura.
-- `src/state`: estado de diseño, estado temporal de cámara y persistencia.
+- `src/state`: estado de diseño y estado temporal de cámara; el repositorio local y las importaciones están en `src/persistence`.
 - `src/components/RoomScene.tsx`: composición de escena y reexportación compatible de las brújulas.
 - `src/scene`: cámara, visibilidad, shell, aperturas, superficies, modelos, selección y gizmos de mobiliario, brújulas, órbita y adaptador GLB extraídos en R2.1–R2.9.
 - `src/App.tsx`: composición del editor, coordinación de la escena y exportación.
@@ -83,18 +84,15 @@ Este registro es de diagnóstico y no es la fuente del historial de «Deshacer»
 
 Las posiciones de muebles y aperturas pertenecen siempre al mundo. Cambiar de cámara solo modifica la proyección y visibilidad de paredes; no transforma los datos del diseño. La vista libre mantiene su orientación orbital como estado temporal de cámara, no como parte del diseño guardado.
 
-## Limitaciones actuales
+## Estado y límites actuales
 
-- Las colisiones se calculan con huellas rectangulares; no representan con precisión las formas circulares o irregulares.
-- Los muebles, la puerta, las ventanas y los elementos murales tienen dimensiones predefinidas y no se pueden redimensionar desde el editor.
-- Los diseños se guardan localmente en el navegador, hasta cinco por navegador. No hay importación ni exportación del proyecto editable en JSON; la descarga GLB sirve para exportar el modelo 3D.
-- La vista Interior permite mirar desde la puerta, pero no caminar por la habitación.
-- No hay selección múltiple ni herramientas de medición o alineación entre objetos.
+- La habitación editable del MVP es rectangular y única; el motor contiene prototipos de contrato multihabitación R4, **no una interfaz de viviendas**.
+- El catálogo y las aperturas incluyen controles de dimensiones conforme a R5.2. Los solapes de muebles pueden permitirse y se advierten con borde rojo; puertas y ventanas mantienen restricciones constructivas.
+- Guardado local hasta cinco diseños en `localStorage`, con importación/exportación JSON de un diseño y exportación de escena GLB. **No hay sincronización ni almacenamiento en servidor**.
+- Las vistas esenciales son Plano, Isométrica e Interior/POV desde la puerta; Interior no es un paseo libre. Frontal y Libre continúan disponibles como vistas extra.
+- El formato persistido histórico v5 puede contener variantes. La comparación A/B está retirada de la interfaz MVP, pero no se debe destruir la compatibilidad de importación.
+- R5 está integrado en `main`; la release v0.2 **no está certificada** hasta completar la épica de estabilización, UX, accesibilidad y pruebas.
 
-## Posibles mejoras
+## Siguiente trabajo
 
-- Importar y exportar proyectos en JSON para hacer copias de seguridad y continuar editándolos en otro navegador o equipo.
-- Añadir guías de alineación y distancias para colocar los elementos con más precisión.
-- Permitir redimensionar muebles y aperturas, con validación para que sigan cabiendo en la habitación.
-- Incorporar selección múltiple y movimiento conjunto de elementos.
-- Añadir navegación a pie por la habitación.
+Consultar [alcance del MVP](docs/MVP_SCOPE.md), [backlog por puertas de calidad](docs/LOCAL_MVP_BACKLOG.md), [referencias de producto](docs/REFERENCE_BENCHMARK.md), [configuración de agentes](docs/CONFIGURATION_AUDIT.md) y [funciones futuras](docs/FUTURE_ROADMAP.md). La lista ejecutable está en la [épica #23](https://github.com/Pablo-hg/Room-Builder/issues/23); Workshop, IA, multihabitación y monetización **no** bloquean el MVP local.

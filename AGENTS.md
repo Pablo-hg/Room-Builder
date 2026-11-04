@@ -1,5 +1,8 @@
 # Instrucciones permanentes para Codex y agentes — Room Builder
 
+> **FUENTE ACTUAL 04/11/2026:** R5 ya integrada en `main`; no repetirla por planes históricos. Las variantes A/B fueron retiradas del MVP local (RB-040). Antes de implementar, leer [docs/MVP_SCOPE.md](docs/MVP_SCOPE.md) y la gate correspondiente de [docs/LOCAL_MVP_BACKLOG.md](docs/LOCAL_MVP_BACKLOG.md); futuras funciones están separadas en [docs/FUTURE_ROADMAP.md](docs/FUTURE_ROADMAP.md). No declarar el MVP terminado sin E2E completa. Consulta [docs/CONFIGURATION_AUDIT.md](docs/CONFIGURATION_AUDIT.md) antes de tocar `.codex`, `.opencode` o `.agents`.
+
+
 ## Selección de modelo y razonamiento
 
 - Recomienda un modelo únicamente cuando el usuario solicite ayuda para elegirlo o compararlo.
