@@ -12,18 +12,10 @@ export function SettingsPanel() {
   const setWallColor = useRoomStore((state) => state.setWallColor)
   const setWallSideColor = useRoomStore((state) => state.setWallSideColor)
   const setFloorColor = useRoomStore((state) => state.setFloorColor)
-  const showSelectionBounds = useRoomStore((state) => state.showSelectionBounds)
-  const toggleSelectionBounds = useRoomStore((state) => state.toggleSelectionBounds)
   return (
     <aside id="settings-panel" className="side-panel settings-panel" aria-label="Inspector y configuración detallada">
       <div className="side-panel__content settings-panel__content">
         <SelectionInspector />
-        <section className="panel-section" aria-label="Opciones de selección">
-          <div className="grid-visibility-row">
-            <span>Borde de selección</span>
-            <button type="button" className={`switch ${showSelectionBounds ? 'on' : ''}`} role="switch" aria-label="Mostrar borde de selección" aria-checked={showSelectionBounds} onClick={toggleSelectionBounds}><span /></button>
-          </div>
-        </section>
         <section className="panel-section room-section">
           <span className="eyebrow">Espacio</span>
           <h2 className="room-section__heading">
@@ -98,10 +90,11 @@ export function SettingsPanel() {
             <dl className="shortcut-list">
               <div><dt>Deshacer</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Z</kbd></dd></div>
               <div><dt>Rehacer</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></dd></div>
+              <div><dt>Guardar cambios</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>G</kbd></dd></div>
               <div><dt>Copiar elemento</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>C</kbd></dd></div>
               <div><dt>Pegar elemento</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>V</kbd></dd></div>
               <div><dt>Duplicar elemento</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>D</kbd></dd></div>
-              <div><dt>Agrupar</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>G</kbd></dd></div>
+              <div><dt>Agrupar</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Alt</kbd> + <kbd>G</kbd></dd></div>
               <div><dt>Desagrupar</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Mayús</kbd> + <kbd>G</kbd></dd></div>
               <div><dt>Renombrar</dt><dd><kbd>F2</kbd></dd></div>
               <div><dt>Ordenar en la lista</dt><dd><kbd>Alt</kbd> + <kbd>Mayús</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd></dd></div>

@@ -23,7 +23,7 @@ test('los nombres de muebles, packs y superficies se guardan y se deshacen', () 
   assert.equal(persistedDesign(store.getState()).structurePacks![0].surfaces[0].name, 'Cara')
 })
 
-test('los nombres de aperturas se guardan en v2 y los diseños v1 conservan sus valores predeterminados', () => {
+test('los nombres de aperturas se guardan y admiten deshacer/rehacer', () => {
   const store = createRoomStore()
   const legacy = persistedDesign(store.getState())
   assert.equal(legacy.version, 1)
@@ -47,7 +47,7 @@ test('recupera nombres de aperturas desde un diseño guardado v2', () => {
   original.getState().addWindow('rectangular')
   const windowId = original.getState().selectedId!
   original.getState().renameElement(windowId, 'Ventanal')
-  const data = JSON.parse(JSON.stringify(persistedDesign(original.getState())))
+  const data = { ...JSON.parse(JSON.stringify(persistedDesign(original.getState()))), version: 2 }
   const repository = { read: () => [{ id: 'guardado', name: 'Casa', savedAt: '', data }], write: () => {} }
   const restored = createRoomStore(repository)
   restored.getState().initializeSavedDesigns()

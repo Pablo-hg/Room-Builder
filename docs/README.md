@@ -1,6 +1,6 @@
 # Documentación del producto Room Builder — índice
 
-**Estado:** base documental de trabajo · 26/10/2026. Revisión conceptual; no certifica que las funciones estén implementadas ni probadas.
+**Estado:** base documental de trabajo · 03/11/2026. Revisión conceptual; no certifica que las funciones estén implementadas ni probadas. R0–R4 están integradas; R5.1 está completada y verificada. R5.2/R5.3 no se han iniciado.
 
 Room Builder es una aplicación web independiente, de aspecto de juego, para recrear una habitación real y probar otras distribuciones. A largo plazo podrá unir habitaciones hasta formar viviendas. La integración en el Laboratorio de Pablo Web 2.0 sería una modalidad reducida de una habitación, no la aplicación entera.
 
@@ -15,6 +15,7 @@ Room Builder es una aplicación web independiente, de aspecto de juego, para rec
 | [DATA_AND_FORMATS.md](DATA_AND_FORMATS.md) | Unidades, persistencia, exportación y futuro multihabitación |
 | [ARCHITECTURE_AND_QUALITY.md](ARCHITECTURE_AND_QUALITY.md) | Tecnologías presentes, principios y calidad |
 | [REFACTOR_PLAN.md](REFACTOR_PLAN.md) | Reorganización del código en una fase posterior |
+| [R5_PLAN.md](R5_PLAN.md) | Plan detallado de R5 y decisiones pendientes |
 | [DECISION_LOG.md](DECISION_LOG.md) | Confirmado frente a propuesta o pendiente |
 | [../GENERADOR_OBJETOS.md](../GENERADOR_OBJETOS.md) | Experimento separado: objetos parametrizados por texto |
 | [../AGENTS.md](../AGENTS.md) | Instrucciones que Codex debe revisar en cada tarea |
@@ -32,7 +33,7 @@ Las guías no suponen aprobación de la V1 pública de Pablo Web 2.0. El proyect
 
 ## Informes de progreso
 
-Se conserva un único informe Markdown por fase R en `docs/progress/`: [informe de R3](progress/R3_PROGRESS.md) e [informe de R4](progress/R4_PROGRESS.md). Sus subpartes y continuaciones amplían ese mismo archivo, manteniendo contexto, resultados y límites históricos. No se borra al cerrar la fase. Las mediciones JSON se conservan como evidencias enlazadas desde el informe.
+Se conserva un único informe Markdown por fase R en `docs/progress/`: [informe de R3](progress/R3_PROGRESS.md), [informe de R4](progress/R4_PROGRESS.md) e [informe de R5](progress/R5_PROGRESS.md). Sus subpartes y continuaciones amplían ese mismo archivo, manteniendo contexto, resultados y límites históricos. No se borra al cerrar la fase. Las mediciones JSON se conservan como evidencias enlazadas desde el informe.
 
 ## Mantenimiento documental
 - Cambiar una decisión implica actualizar DECISION_LOG y los documentos afectados en la misma propuesta.

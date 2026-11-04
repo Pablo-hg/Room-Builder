@@ -10,16 +10,14 @@ const item = (kind: FurnitureKind, id: string, x = 0, z = 0): FurnitureItem => (
   ...FURNITURE_PRESETS[kind], id, x, y: 0, z, rotation: 0,
 })
 
-test('R3: rechaza reducir una habitación si el clamp solapa los muebles', () => {
+test('R3: reduce la habitación aunque el ajuste solape los muebles; el borde rojo avisa', () => {
   const store = createRoomStore()
   const furniture = [item('sofa', 'left', -1.5), item('sofa', 'right', 1.5)]
   store.setState({ furniture })
-  const room = store.getState().room
   store.getState().setDimension('width', 3)
-  assert.equal(store.getState().room, room)
-  assert.equal(store.getState().furniture, furniture)
-  assert.equal(store.getState().notice, 'No se puede reducir la habitación porque los muebles quedarían solapados.')
-  assert.equal(store.getState().undoCount, 0)
+  assert.equal(store.getState().room.width, 3)
+  assert.deepEqual(store.getState().furniture.map(({ x }) => x), [-0.5, 0.5])
+  assert.equal(store.getState().notice, '')
 })
 
 test('el cambio de altura conserva las posiciones ya fuera de los límites anteriores', () => {
@@ -37,16 +35,16 @@ test('el cambio de altura conserva las posiciones ya fuera de los límites anter
   assert.equal(store.getState().furniture[1].y, 2.3)
 })
 
-test('R3: rotación bloqueada, giro normalizado y movimiento conservan historial y avisos', () => {
+test('R3: rotación y movimiento permiten solapes, normalizan el giro y conservan historial', () => {
   const store = createRoomStore()
   const table = item('table', 'table')
   store.setState({ furniture: [table, item('chair', 'obstacle', 0, 0.75)], selectedId: table.id })
   store.getState().setFurnitureRotation(table.id, Math.PI / 2)
-  assert.equal(store.getState().furniture[0], table)
+  assert.equal(store.getState().furniture[0].rotation, Math.PI / 2)
   assert.equal(store.getState().notice, '')
   store.getState().rotateFurniture()
-  assert.equal(store.getState().notice, 'No hay espacio suficiente para girar el objeto.')
-  assert.equal(store.getState().undoCount, 0)
+  assert.equal(store.getState().furniture[0].rotation, Math.PI)
+  assert.equal(store.getState().notice, '')
   store.setState({ furniture: [table] })
   store.getState().setFurnitureRotation(table.id, -Math.PI / 2)
   assert.equal(store.getState().furniture[0].rotation, Math.PI * 1.5)
@@ -58,17 +56,18 @@ test('R3: rotación bloqueada, giro normalizado y movimiento conservan historial
   assert.equal(store.getState().furniture[0].x, 0)
 })
 
-test('R3: distingue la cuadrícula de puerta y ventana y bloquea elevaciones con colisión', () => {
+test('R5: acepta posiciones de puerta y ventana en centímetros y permite elevar con solape', () => {
   const store = createRoomStore()
   store.getState().setDoor({ offset: 0.38 })
-  assert.equal(store.getState().room.door.offset, 0.375)
+  assert.equal(store.getState().room.door.offset, 0.38)
   store.getState().updateWindow('window-1', { offset: 0.38, sill: 0.63 })
-  assert.equal(store.getState().room.windows[0].offset, 0.5)
-  assert.equal(store.getState().room.windows[0].sill, 0.75)
+  assert.equal(store.getState().room.windows[0].offset, 0.38)
+  assert.equal(store.getState().room.windows[0].sill, 0.63)
   const furniture = [item('table', 'low'), { ...item('chair', 'high'), y: 1 }]
   store.setState({ furniture })
   store.getState().moveFurnitureVertically('low', 0.5)
-  assert.equal(store.getState().furniture, furniture)
+  assert.equal(store.getState().furniture[0].y, 0.5)
+  assert.equal(store.getState().furniture[1].y, 1)
 })
 
 test('R3: carga v1 mantiene normalización, campos opcionales y fallos de superficies', () => {
@@ -96,7 +95,7 @@ test('R3: carga v1 mantiene normalización, campos opcionales y fallos de superf
     const loaded = load(fixture).getState()
     assert.equal(loaded.notice, 'Diseño recuperado.')
     assert.equal(loaded.room.windows[0].shape, 'rectangular')
-    assert.equal(loaded.room.windows[0].offset, 0.5)
+    assert.equal(loaded.room.windows[0].offset, 0.38)
     assert.equal(loaded.room.windows[0].color, '#c88f58')
     assert.equal(loaded.gridSnap, true)
     assert.deepEqual(loaded.gridVisibility, { floor: false, north: true, east: true, south: true, west: true })

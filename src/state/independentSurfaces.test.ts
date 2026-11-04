@@ -163,24 +163,24 @@ test('la visibilidad de cuadrícula se conserva en v1 y se limpia al eliminar la
   }
 })
 
-test('permite modificar el grosor de cada superficie en pasos de rejilla y con 3 decimales', () => {
+test('permite modificar el grosor de cada superficie en centímetros enteros', () => {
   for (const kind of ['floor', 'wall'] as const) {
     const store = createRoomStore()
     store.getState().addStructureObject(kind)
     const pack = store.getState().structurePacks[0]
     const surface = pack.surfaces[0]
     const dimension = kind === 'floor' ? 'height' : 'depth'
-    assert.equal(surface[dimension], 0.125)
+    assert.equal(surface[dimension], 0.13)
     store.getState().resizeStructureSurface(pack.id, surface.id, dimension, 0.25)
     assert.equal(store.getState().structurePacks[0].surfaces[0][dimension], 0.25)
     store.getState().resizeStructureSurface(pack.id, surface.id, dimension, 0.06)
-    assert.equal(store.getState().structurePacks[0].surfaces[0][dimension], 0.125)
+    assert.equal(store.getState().structurePacks[0].surfaces[0][dimension], 0.06)
     store.getState().undo()
     assert.equal(store.getState().structurePacks[0].surfaces[0][dimension], 0.25)
   }
 })
 
-test('las posiciones y dimensiones de las superficies se ajustan a la sección de 12,5 cm', () => {
+test('las posiciones y dimensiones de las superficies admiten centímetros enteros', () => {
   const store = createRoomStore()
   store.getState().addStructureObject('floor')
   const pack = store.getState().structurePacks[0]
@@ -190,10 +190,10 @@ test('las posiciones y dimensiones de las superficies se ajustan a la sección d
   store.getState().resizeStructureSurface(pack.id, surface.id, 'width', 2.8)
   store.getState().resizeStructureSurface(pack.id, surface.id, 'height', 0.19)
   const moved = store.getState().structurePacks[0].surfaces[0]
-  assert.equal(moved.x, 1.25)
-  assert.equal(moved.z, 0.25)
-  assert.equal(moved.width, 2.75)
-  assert.equal(moved.height, 0.25)
+  assert.equal(moved.x, 1.3)
+  assert.equal(moved.z, 0.31)
+  assert.equal(moved.width, 2.8)
+  assert.equal(moved.height, 0.19)
 })
 
 test('permite soltar una superficie atravesando un mueble y deshacer', () => {

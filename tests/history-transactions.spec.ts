@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test('perder el foco de la ventana cierra el arrastre del inspector antes de editar con teclado', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
-  const position = page.locator('.selection-section--inspector').getByLabel('Posición X')
+  const position = page.locator('.selection-section--inspector').getByLabel('Posición X', { exact: true })
   const initial = await position.inputValue()
   await position.scrollIntoViewIfNeeded()
   const bounds = await position.boundingBox()
@@ -45,7 +45,7 @@ for (const finish of ['ratón', 'cancelación táctil'] as const) {
     await page.getByRole('button', { name: 'Frontal', exact: true }).click()
     const select = page.getByRole('button', { name: /Ventana 1 Apertura/ })
     await select.click()
-    const offset = page.locator('.selection-section--inspector').getByLabel('Posición lateral')
+    const offset = page.locator('.selection-section--inspector').getByLabel('Posición lateral', { exact: true })
     const initial = await offset.inputValue()
     const bounds = await page.locator('.scene-panel canvas').first().boundingBox()
     if (!bounds) throw new Error('No se pudo localizar el canvas')
@@ -99,12 +99,12 @@ test('perder captura cierra el gesto de superficie y separa la siguiente edició
   if (!bounds) throw new Error('No se pudo localizar el canvas')
   const x = bounds.x + bounds.width / 2
   const y = bounds.y + bounds.height / 2
-  const position = page.locator('.selection-section--inspector').getByLabel('Desplazamiento X')
+  const position = page.locator('.selection-section--inspector').getByLabel('Desplazamiento X', { exact: true })
   const initial = await position.inputValue()
-  await page.mouse.move(x + 60, y)
+  await page.mouse.move(x + 26, y)
   await page.mouse.down()
   await page.waitForTimeout(150)
-  await page.mouse.move(x + 120, y, { steps: 8 })
+  await page.mouse.move(x + 86, y, { steps: 8 })
   await expect(position).not.toHaveValue(initial)
   const moved = await position.inputValue()
   await page.evaluate(() => {
@@ -156,7 +156,7 @@ test('borrar durante un arrastre desmonta el gesto y mantiene separados sus dos 
   await page.goto('/')
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
-  const position = page.locator('.selection-section--inspector').getByLabel('Posición X')
+  const position = page.locator('.selection-section--inspector').getByLabel('Posición X', { exact: true })
   const initial = await position.inputValue()
   const bounds = await page.locator('.scene-panel canvas').first().boundingBox()
   if (!bounds) throw new Error('No se pudo localizar el canvas')

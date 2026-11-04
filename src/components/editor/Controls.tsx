@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { MeasurementControl } from './MeasurementControl'
 import { ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from '../../domain/constants'
 import type { StructureSurface, WallSide } from '../../domain/types'
 import { structureDimensionMinimum } from '../../domain/structureRules'
@@ -8,19 +9,7 @@ import { useRoomStore } from '../../state/useRoomStore'
 export function DimensionControl({ field, label }: { field: 'width' | 'depth' | 'height'; label: string }) {
   const room = useRoomStore((state) => state.room)
   const setDimension = useRoomStore((state) => state.setDimension)
-  return (
-    <label className="range-control">
-      <span><span>{label}</span><strong>{room[field].toFixed(1)} m</strong></span>
-      <input
-        type="range"
-        min={field === 'width' ? ROOM_LIMITS.minWidth : field === 'depth' ? ROOM_LIMITS.minDepth : ROOM_LIMITS.minHeight}
-        max={field === 'width' ? ROOM_LIMITS.maxWidth : field === 'depth' ? ROOM_LIMITS.maxDepth : ROOM_LIMITS.maxHeight}
-        step="0.25"
-        value={room[field]}
-        onChange={(event) => setDimension(field, Number(event.target.value))}
-      />
-    </label>
-  )
+  return <MeasurementControl label={label} value={room[field]} min={field === 'width' ? ROOM_LIMITS.minWidth : field === 'depth' ? ROOM_LIMITS.minDepth : ROOM_LIMITS.minHeight} max={field === 'width' ? ROOM_LIMITS.maxWidth : field === 'depth' ? ROOM_LIMITS.maxDepth : ROOM_LIMITS.maxHeight} onChange={(value) => setDimension(field, value)} />
 }
 
 export function ColorControl({ label, value, onChange, disabled = false }: { label: string; value: string; onChange: (color: string) => void; disabled?: boolean }) {
@@ -35,27 +24,9 @@ export function ColorControl({ label, value, onChange, disabled = false }: { lab
   )
 }
 
-const formatPosition = (value: number) => {
-  const rounded = Math.round(value * 1000) / 1000
-  const decimals = rounded.toFixed(3).replace(/0+$/, '').split('.')[1]?.length ?? 0
-  return rounded.toFixed(Math.max(2, decimals))
-}
-
-export function PositionControl({ label, value, min, max, step, disabled = false, onChange }: { label: string; value: number; min: number; max: number; step: number; disabled?: boolean; onChange: (value: number) => void }) {
-  const [draft, setDraft] = useState(formatPosition(value))
-  const skipBlur = useRef(false)
+export function PositionControl({ label, value, min, max, disabled = false, onChange }: { label: string; value: number; min: number; max: number; step: number; disabled?: boolean; onChange: (value: number) => void }) {
   const inputLabel = `Introducir ${label.replace(/^Posición /, '').replace(/^Desplazamiento /, '').replace(/^Mover pack /, '')} en metros`
-  useEffect(() => setDraft(formatPosition(value)), [value])
-  const commit = () => {
-    const text = draft.trim().replace(',', '.')
-    const candidate = text === '' ? NaN : Number(text)
-    setDraft(formatPosition(value))
-    if (Number.isFinite(candidate) && candidate >= min && candidate <= max && candidate !== value) onChange(candidate)
-  }
-  return <div className="range-control compact">
-    <span><span>{label}</span><span className="position-number"><input type="text" inputMode="decimal" aria-label={inputLabel} value={draft} disabled={disabled} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commit() } else if (event.key === 'Escape') { event.preventDefault(); skipBlur.current = true; setDraft(formatPosition(value)); event.currentTarget.blur() } }} onBlur={() => { if (skipBlur.current) skipBlur.current = false; else commit() }} /><span aria-hidden="true">m</span></span></span>
-    <input type="range" aria-label={label} min={min} max={max} step={step} value={value} disabled={disabled} onChange={(event) => onChange(Number(event.target.value))} />
-  </div>
+  return <MeasurementControl label={label} inputLabel={inputLabel} value={value} min={min} max={max} disabled={disabled} onChange={onChange} />
 }
 
 export function StructurePositionControls({

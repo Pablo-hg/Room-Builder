@@ -1,5 +1,5 @@
 import { ROOM_LIMITS, WALL_SIDES } from './constants'
-import { DEFAULT_ROTATION_STEP, isCeilingMountedFurniture, isFloorBoundFurniture } from './objectCatalog'
+import { DEFAULT_ROTATION_STEP, furnitureAttachment } from './objectCatalog'
 import type { DoorConfig, FurnitureItem, RoomConfig, WallOpening, WallSegment, WallSide, WindowConfig } from './types'
 
 export const wallLength = (room: RoomConfig, wall: WallSide) =>
@@ -228,8 +228,9 @@ export function clampFurniture(item: FurnitureItem, room: RoomConfig, snap: bool
 }
 
 export function clampFurnitureElevation(item: FurnitureItem, room: RoomConfig, snap: boolean) {
-  if (isFloorBoundFurniture(item.kind)) return 0
-  if (isCeilingMountedFurniture(item.kind)) return Math.max(0, room.height - item.height)
+  const attachment = furnitureAttachment(item)
+  if (attachment === 'floor') return 0
+  if (attachment === 'ceiling') return room.height - item.height
   const limit = Math.max(0, room.height - item.height)
   const elevation = Number.isFinite(item.y) ? item.y : 0
   const positioned = snap ? snapToPlacementGrid(elevation) : elevation

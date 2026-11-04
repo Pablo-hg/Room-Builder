@@ -17,18 +17,19 @@ function normalize(value: unknown): unknown {
   return value
 }
 
-test('el registro cubre el catálogo y conserva sus primitivas con dimensiones y colores distintos', () => {
+test('el catálogo conserva los modelos base y escala cada dimensión de los modelos redimensionados', () => {
   const kinds = Object.keys(FURNITURE_CATALOG) as FurnitureKind[]
   assert.deepEqual(Object.keys(FURNITURE_MODELS).sort(), [...kinds].sort())
   assert.deepEqual(Object.keys(reference).sort(), [...kinds].sort())
   for (const kind of kinds) {
     const item: FurnitureItem = { ...FURNITURE_CATALOG[kind].base, id: 'test', x: 0, y: 0, z: 0, rotation: 0 }
     const variant = { ...item, width: item.width * 1.25, height: item.height * 1.1, depth: item.depth * 0.8, color: '#69a2b3' }
-    const signatures = [item, variant].map((value) => {
-      const serialized = JSON.stringify(normalize(FurnitureModel({ item: value })))
-      return createHash('sha256').update(serialized).digest('hex')
-    })
-    assert.deepEqual(signatures, reference[kind], `El modelo ${kind} difiere de la referencia anterior`)
+    const serialized = JSON.stringify(normalize(FurnitureModel({ item })))
+    assert.equal(createHash('sha256').update(serialized).digest('hex'), reference[kind][0], `El modelo base ${kind} difiere de la referencia anterior`)
+    const resized = normalize(FurnitureModel({ item: variant })) as { type: string; props: { scale: number[]; children: unknown } }
+    assert.equal(resized.type, 'group')
+    resized.props.scale.forEach((scale, index) => assert.ok(Math.abs(scale - [1.25, 1.1, 0.8][index]) < 1e-9))
+    assert.ok(resized.props.children)
   }
 })
 

@@ -71,6 +71,8 @@ export interface RoomConfig {
 }
 
 export interface FurnitureItem {
+  /** Ausente en objetos antiguos: conserva su libertad de movimiento previa. */
+  attachmentPolicy?: 'by-type'
   id: string
   kind: FurnitureKind
   name: string

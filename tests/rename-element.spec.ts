@@ -51,7 +51,7 @@ test('renombra superficies y carpetas en la escena sin campos de nombre en el in
   await rename(page, surface, 'Pared 1 · Pared independiente', 'Tabique')
   await expect(page.locator('.element-row').filter({ hasText: 'Pared 1 · Tabique' })).toBeVisible()
   await page.getByRole('button', { name: 'Crear carpeta de elementos' }).click()
-  const folder = page.locator('.element-folder').first()
+  const folder = page.locator('.element-folder').filter({ has: page.getByRole('button', { name: 'Carpeta Carpeta 1', exact: true }) }).last()
   await folder.getByRole('button', { name: 'Carpeta Carpeta 1', exact: true }).click()
   await expect(page.getByLabel('Nombre de la carpeta')).toHaveCount(0)
   await folder.locator('.element-folder__heading').click({ button: 'right' })

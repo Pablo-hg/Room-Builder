@@ -7,7 +7,7 @@ import { createRoomStore as createStore } from './useRoomStore'
 // Los casos de organización existentes cubren también diseños anteriores sin carpeta raíz.
 const createRoomStore = (...args: Parameters<typeof createStore>) => { const store = createStore(...args); store.setState({ elementFolders: [], elementFolderAssignments: {} }); return store }
 
-test('ordenar solo cambia el orden visual, admite historial y guarda v4', () => {
+test('ordenar solo cambia el orden visual y admite historial', () => {
   const store = createRoomStore()
   store.getState().addFurniture('chair')
   const id = store.getState().selectedId!

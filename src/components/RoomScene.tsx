@@ -118,6 +118,8 @@ export default function RoomScene(props: SceneProps) {
   const perspective = props.view === 'pov' || props.view === 'free'
   const selectElement = useRoomStore((state) => state.selectElement)
   const modelRootRef = useRef<THREE.Group>(null)
+  // Sobrevive al cambio de cámara, que vuelve a montar el Canvas.
+  const handledExportRequest = useRef(0)
   return (
     <Canvas
       key={perspective ? 'perspective' : 'orthographic'}
@@ -143,6 +145,8 @@ export default function RoomScene(props: SceneProps) {
       <SceneExportController
         modelRootRef={modelRootRef}
         exportRequest={props.exportRequest}
+        exportMode={props.exportMode}
+        handledRequest={handledExportRequest}
         exportDesignName={props.exportDesignName}
         onExportComplete={props.onExportComplete}
       />

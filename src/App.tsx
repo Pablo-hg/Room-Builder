@@ -195,7 +195,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
             <div className="scene-topline__labels">
               <span className="view-badge"><i /> Vista {viewLabel}</span>
               <span className="visible-walls-badge"><b aria-hidden="true">◫</b> {visibleWallsText}</span>
-              <span className="grid-scale"><b aria-hidden="true">▦</b> Cuadrado: 25 cm · movimiento: 12,5 cm</span>
+              <span className="grid-scale"><b aria-hidden="true">▦</b> Cuadrado: 25 cm · movimiento: 5 cm</span>
             </div>
             <span className="room-size">{state.room.width.toFixed(1)} × {state.room.depth.toFixed(1)} m</span>
           </div>
@@ -337,7 +337,7 @@ function App() {
       </main>
       <footer className="statusbar">
         <span><i className="status-dot" /> Guardado local en tu navegador</span>
-        <span>Cuadrado visible: 25 cm · ajuste: 12,5 cm</span>
+        <span>Cuadrado visible: 25 cm · ajuste: 5 cm</span>
       </footer>
       <EditorNotice exportNotice={exportNotice} />
     </div>

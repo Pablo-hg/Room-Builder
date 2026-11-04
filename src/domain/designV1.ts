@@ -1,7 +1,13 @@
 import type { ElementFolder, FurnitureItem, GridSurface, RoomConfig, StructurePack } from './types'
 
+/**
+ * Diseño persistido de un único mobiliario.
+ *
+ * La versión 5 solo aparece en datos locales de la etapa de variantes (R5.1):
+ * al leer se aplana a su variante activa y se guarda de nuevo como v4.
+ */
 export interface PersistedDesign {
-  version: 1 | 2 | 3 | 4
+  version: 1 | 2 | 3 | 4 | 5
   room: RoomConfig
   furniture: FurnitureItem[]
   structurePacks?: StructurePack[]
@@ -32,8 +38,11 @@ export const DEFAULT_GRID_VISIBILITY: Record<GridSurface, boolean> = {
 export type DesignState = Required<Omit<PersistedDesign, 'version'>>
 
 export function persistedDesign(state: DesignState): PersistedDesign {
+  const version: PersistedDesign['version'] = state.sceneElementOrder.length
+    ? 4
+    : state.elementFolders.some((folder) => folder.parentId) ? 3 : state.room.door.name || state.room.windows.some((window) => window.name) ? 2 : 1
   return {
-    version: state.sceneElementOrder.length ? 4 : state.elementFolders.some((folder) => folder.parentId) ? 3 : state.room.door.name || state.room.windows.some((window) => window.name) ? 2 : 1,
+    version,
     room: state.room,
     furniture: state.furniture,
     structurePacks: state.structurePacks,
@@ -60,6 +69,9 @@ export function persistedDesignSignature(design: PersistedDesign) {
     elementFolders: design.elementFolders ?? [],
     elementFolderAssignments: design.elementFolderAssignments ?? {},
     sceneElementOrder: design.sceneElementOrder ?? [],
+  }, (_key, value: unknown) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+    return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0))
   })
 }
 
@@ -68,7 +80,7 @@ export function persistedDesignSignature(design: PersistedDesign) {
 export function isPersistedDesign(value: unknown): value is PersistedDesign {
   if (!value || typeof value !== 'object') return false
   const design = value as Partial<PersistedDesign>
-  return (design.version === 1 || design.version === 2 || design.version === 3 || design.version === 4)
+  return (design.version === 1 || design.version === 2 || design.version === 3 || design.version === 4 || design.version === 5)
     && !!design.room
     && typeof design.room === 'object'
     && Array.isArray(design.furniture)

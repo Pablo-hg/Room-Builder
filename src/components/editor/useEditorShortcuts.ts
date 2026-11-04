@@ -9,6 +9,16 @@ export function useEditorShortcuts() {
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
       const target = event.target
+      const key = event.key.toLowerCase()
+      const modifier = event.ctrlKey || event.metaKey
+      if (modifier && !event.altKey && !event.shiftKey && key === 'g') {
+        event.preventDefault()
+        if (event.repeat) return
+        // Confirma primero un valor o nombre que se esté editando.
+        if (target instanceof HTMLElement && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable)) target.blur()
+        useRoomStore.getState().saveDesign()
+        return
+      }
       if (
         target instanceof HTMLInputElement
         || target instanceof HTMLTextAreaElement
@@ -16,8 +26,6 @@ export function useEditorShortcuts() {
         || (target instanceof HTMLElement && target.isContentEditable)
       ) return
 
-      const key = event.key.toLowerCase()
-      const modifier = event.ctrlKey || event.metaKey
       const current = useRoomStore.getState()
       const selectedId = current.selectedId
       const folderId = folderIdFromSelection(selectedId)
@@ -30,7 +38,7 @@ export function useEditorShortcuts() {
         }
         return
       }
-      if (current.selectedIds.length > 1 && modifier && !event.altKey && !event.shiftKey && key === 'g') {
+      if (current.selectedIds.length > 1 && modifier && event.altKey && !event.shiftKey && key === 'g') {
         event.preventDefault()
         current.groupSceneItems(current.selectedIds)
         window.dispatchEvent(new CustomEvent('room-builder:close-context'))

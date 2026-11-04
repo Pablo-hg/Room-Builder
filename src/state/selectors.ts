@@ -46,6 +46,7 @@ export function selectEditorHeader(state: RoomState) {
     savedDesigns: state.savedDesigns,
     selectedSavedDesignId: state.selectedSavedDesignId,
     saveDesign: state.saveDesign,
+    importDesign: state.importDesign,
     createDesign: state.createDesign,
     renameSavedDesign: state.renameSavedDesign,
     deleteSavedDesign: state.deleteSavedDesign,

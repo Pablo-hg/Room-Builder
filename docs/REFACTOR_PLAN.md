@@ -1,8 +1,12 @@
 # Plan de reorganización del código — fase siguiente
 
-**Estado de referencia (referencia local `origin/main`, `9472bd5`, 03/11/2026):** R0, R1, R2.1–R2.9 y R3.1–R3.7 integrados, junto con las correcciones posteriores de superficies, vistas y navegación. R4 no está integrada en esta referencia; sus cambios están en la rama de trabajo. R5 sigue PENDIENTE.
+> **Actualización 04/11/2026:** El propietario retiró las variantes del MVP. Los apartados anteriores sobre R5.1 describen el histórico; el estado de validación figura en el informe de progreso.
 
-**Estado de esta rama:** `refactor/r4-preparar-evolucion`, creada desde `origin/main` (`9472bd5`). R4.1–R4.4 están completadas como **contrato y pruebas puras**, con revisión posterior: 189/189 pruebas unitarias y build aprobado. Los cambios siguen locales, sin commit ni integración. No hay UI multihabitación, ni migración ejecutada sobre datos reales, ni cambio del formato persistido v1–v4. R5 sigue **PENDIENTE**. El detalle está en [progress/R4_PROGRESS.md](progress/R4_PROGRESS.md); el histórico de R3 se conserva en [progress/R3_PROGRESS.md](progress/R3_PROGRESS.md). Las decisiones de arquitectura futura no quedan aprobadas por esta actualización.
+**Estado de referencia (03/11/2026):** R0, R1, R2.1–R2.9, R3.1–R3.7 y R4.1–R4.4 integradas en `main` mediante los PR #19 y #20, junto con las correcciones posteriores de superficies, vistas y navegación y el commit documental `ee455b3`. El estado anterior de este encabezado citaba `origin/main` en `9472bd5` y daba R4 por no integrada; se conserva aquí como histórico: esa referencia dejó de ser válida al fusionarse R4. R5 está en curso, con su plan detallado en [R5_PLAN.md](R5_PLAN.md).
+
+**Estado de R4:** completada como **contrato y pruebas puras** y ya integrada. No hay UI multihabitación, ni migración ejecutada sobre datos reales, ni cambio del formato persistido v1–v4; `ProjectV2` sigue siendo un prototipo no estable (RB-013). El detalle está en [progress/R4_PROGRESS.md](progress/R4_PROGRESS.md); el histórico de R3 se conserva en [progress/R3_PROGRESS.md](progress/R3_PROGRESS.md).
+
+**Estado de R5:** en curso en [R5_PLAN.md](R5_PLAN.md) y [progress/R5_PROGRESS.md](progress/R5_PROGRESS.md). Las variantes de R5.1 se retiraron del MVP; se conserva el anclaje por tipo de objetos nuevos y la compatibilidad de los antiguos. R5.2 fue validada manualmente por el propietario y R5.3 está implementada y en verificación. Los IDs duplicados se importan como copia; el reemplazo y R5.4 siguen aplazados. `ProjectV2` sigue siendo candidato.
 
 ## Antes de tocar código
 
@@ -169,12 +173,21 @@ Aceptación cumplida: sin interfaz pública, sin creación de vivienda y sin dec
 - Sin regresiones en la lectura de los diseños actuales; `npm test` y build en verde. **189/189 unitarias y build aprobado.**
 - Ningún cambio de claves, esquema persistido o comportamiento visible sin autorización expresa. **Cumplido.**
 
-### R5 — Funcionalidad y diseño
+### R5 — Funcionalidad y diseño (en curso)
 
-- Orden acordado: comparación Original/Alternativa A en una sola habitación antes de redimensionado o JSON editable (registro de decisiones, 03/11/2026). R5 sigue PENDIENTE; antes de implementar se debe concretar selección, preferencias e historial por variante, guardado compatible y aceptación de cambios estructurales.
-- Las formas no rectangulares y paredes interiores de RB-025 requieren rediseñar el contrato rectangular actual; ese trabajo queda después de la comparación. Las casas conectadas son posteriores.
+**Estado: EN CURSO.** El plan está en [R5_PLAN.md](R5_PLAN.md); el seguimiento, en [progress/R5_PROGRESS.md](progress/R5_PROGRESS.md).
+
+- **Orden acordado (03/11/2026):** R5.1 comparación Original/Alternativa A en una sola habitación; R5.2 redimensionado del mobiliario compatible; R5.3 JSON editable seguro y versionado; R5.4 simplificación de experiencia solo con decisiones aprobadas y sin adelantar v0.2. Las formas no rectangulares y paredes interiores de RB-025 quedan después; las casas conectadas, más tarde.
+- **R5.1:** persistir dos variantes de mobiliario con estructura común en `PersistedDesign` v5, alternar, conservar selección compatible, historial y guardado; máximo una Alternativa A en la UI. Contrato y decisiones en el plan; completada y verificada con D9/D10 aprobadas; no se inicia R5.2 por indicación del propietario.
+- **R5.2:** capacidades de redimensionado por tipo, reglas puras, controles accesibles, un paso de historial por gesto y sin cambio de formato.
+- **R5.3:** exportación/importación de un diseño con validación estricta, previsualización, límite de tamaño y compatibilidad v1–v5; GLB sigue siendo independiente.
+- **R5.4:** aplazable a E2/E4 de v0.2; no se ejecuta dentro de R5 sin orden expresa.
+- **No incluye:** multihabitación, formas RB-025, comparación lado a lado, backend, cuentas, Workshop ni adopción implícita de `ProjectV2` como formato persistido.
+- **Decisiones:** D1–D8 y las aclaraciones posteriores figuran en el plan; las variantes se retiraron y un ID duplicado se importa como copia. El reemplazo de diseños sigue pendiente.
 
 ## Criterios de salida para cada lote
+
+**Cadencia expresa para lo que queda de R5:** el propietario corrigió la indicación anterior: ejecutar tests, E2E y build al terminar **cada fase completa** (R5.2, R5.3…), sin repetir toda la batería por lote interno ni esperar al final de R5. Entre lotes se revisa código/diff y se registra la validación pendiente. R5.2 queda autorizada desde su matriz y decisiones pendientes. Ver [R5_PLAN.md](R5_PLAN.md).
 
 - Sin regresiones en creación, vistas, aperturas, selección, edición y recuperación de diseños.
 - Tests verdes o bloqueos explicados; build funcional.

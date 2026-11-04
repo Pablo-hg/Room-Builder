@@ -2,7 +2,9 @@ import { makeId, structureGridElementId, structureSurfaceElementId } from '../..
 import { elementName } from '../../domain/selection'
 import { ROOM_LIMITS } from '../../domain/constants'
 import { isFolderSelectionId, withoutFolderAssignments } from '../../domain/elementFolders'
-import { canPlaceFurniture, findFreeFurniturePosition, snapToPlacementGrid, validateOpenings, wallLength } from '../../domain/geometry'
+import { canPlaceFurniture, clampFurnitureElevation, findFreeFurniturePosition, validateOpenings, wallLength } from '../../domain/geometry'
+import { snapMeasurement } from '../../domain/measurements'
+import { canElevateFurniture } from '../../domain/objectCatalog'
 import { BASE_ROOM_SURFACE_IDS } from '../../domain/elementFolders'
 import type { FurnitureItem } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
@@ -162,10 +164,11 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
           const pastedIds: string[] = []
           for (const copy of copies) {
             if ('kind' in copy) {
-              const item: FurnitureItem = { ...copy, id: makeId(copy.kind) }
+              const item: FurnitureItem = { ...copy, id: makeId(copy.kind), attachmentPolicy: 'by-type' }
+              item.y = canElevateFurniture(item) ? snapMeasurement(item.y) : clampFurnitureElevation(item, state.room, false)
               const offsets = [[0.5, 0.5], [0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5], [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5]] as const
               const room = { ...state.room, windows }
-              const position = offsets.map(([x, z]) => ({ x: state.gridSnap ? snapToPlacementGrid(copy.x + x) : copy.x + x, z: state.gridSnap ? snapToPlacementGrid(copy.z + z) : copy.z + z }))
+              const position = offsets.map(([x, z]) => ({ x: snapMeasurement(copy.x + x), z: snapMeasurement(copy.z + z) }))
                 .find((candidate) => canPlaceFurniture({ ...item, ...candidate }, furniture)) ?? findFreeFurniturePosition(item, room, furniture)
               if (!position) return { notice: 'No hay espacio para duplicar toda la selección.' }
               furniture.push({ ...item, ...position })
@@ -174,7 +177,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
               const id = makeId('window')
               const room = { ...state.room, windows }
               const length = wallLength(room, copy.wall)
-              const pasted = [0.5, -0.5, 1, -1, 1.5, -1.5, 2, -2].map((delta) => ({ ...copy, id, offset: copy.offset + delta }))
+              const pasted = [0.5, -0.5, 1, -1, 1.5, -1.5, 2, -2].map((delta) => ({ ...copy, id, offset: snapMeasurement(copy.offset + delta), sill: snapMeasurement(copy.sill) }))
                 .find((candidate) => !validateOpenings({ ...room, windows: [...windows, candidate] }))
               if (!pasted || Math.abs(pasted.offset) + pasted.width / 2 > length / 2 - ROOM_LIMITS.edgeMargin) return { notice: 'No hay espacio para duplicar toda la selección.' }
               windows.push(pasted)
@@ -191,13 +194,14 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
       const copy = runtime.copiedElement
       set((state) => {
         if ('kind' in copy) {
-          const item: FurnitureItem = { ...copy, id: makeId(copy.kind) }
+          const item: FurnitureItem = { ...copy, id: makeId(copy.kind), attachmentPolicy: 'by-type' }
+          item.y = canElevateFurniture(item) ? snapMeasurement(item.y) : clampFurnitureElevation(item, state.room, false)
           const offsets = [
             [0.5, 0.5], [0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5],
             [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5],
           ] as const
           const position = offsets
-            .map(([x, z]) => ({ x: state.gridSnap ? snapToPlacementGrid(copy.x + x) : copy.x + x, z: state.gridSnap ? snapToPlacementGrid(copy.z + z) : copy.z + z }))
+            .map(([x, z]) => ({ x: snapMeasurement(copy.x + x), z: snapMeasurement(copy.z + z) }))
             .find((candidate) => canPlaceFurniture({ ...item, ...candidate }, state.furniture))
             ?? findFreeFurniturePosition(item, state.room, state.furniture)
           if (!position) {
@@ -221,7 +225,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
         const length = wallLength(state.room, source.wall)
         const offsets = [0.5, -0.5, 1, -1, 1.5, -1.5, 2, -2]
         const pasted = offsets
-          .map((delta) => ({ ...source, id, offset: source.offset + delta }))
+          .map((delta) => ({ ...source, id, offset: snapMeasurement(source.offset + delta), sill: snapMeasurement(source.sill) }))
           .find((candidate) => !validateOpenings({ ...state.room, windows: [...state.room.windows, candidate] }))
         if (!pasted || Math.abs(pasted.offset) + pasted.width / 2 > length / 2 - ROOM_LIMITS.edgeMargin) {
           return { notice: 'No hay espacio en la pared para pegar este elemento.' }

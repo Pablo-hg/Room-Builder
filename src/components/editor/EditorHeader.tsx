@@ -47,19 +47,8 @@ export function EditorHeader({ exportMode, onExport }: {
           <span className={`save-state${state.hasUnsavedChanges ? ' save-state--dirty' : ''}`} aria-live="polite">
             {state.hasUnsavedChanges ? 'Cambios sin guardar' : state.selectedSavedDesignId ? 'Guardado' : 'Sin guardar'}
           </span>
-          <button
-            type="button"
-            className="secondary-button export-button"
-            disabled={exportMode}
-            onClick={() => {
-              onExport()
-            }}
-            title="Descargar la habitación como modelo 3D GLB"
-          >
-            ⇩ <span>{exportMode ? 'Exportando…' : 'Descargar 3D'}</span>
-          </button>
-          <SavedDesignsMenu state={state} />
-          <button type="button" className="primary-button" onClick={state.saveDesign}>
+          <SavedDesignsMenu state={state} exportMode={exportMode} onExport={onExport} />
+          <button type="button" className="primary-button" aria-label={state.selectedSavedDesignId ? 'Guardar cambios' : 'Guardar como'} aria-keyshortcuts="Control+G Meta+G" title="Guardar (Ctrl/⌘+G)" onClick={state.saveDesign}>
             ✓ <span>{state.selectedSavedDesignId ? 'Guardar cambios' : 'Guardar como'}</span>
           </button>
         </div>

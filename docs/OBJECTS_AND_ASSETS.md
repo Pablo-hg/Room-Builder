@@ -9,6 +9,8 @@
 4. **Elementos apoyados/apilables:** lámparas de mesa, plantas, jarrones, aparatos.
 5. **Montados en pared/techo:** cuadros, estantes, espejos, apliques, lámparas de techo.
 6. **Superficie/decoro:** alfombras y accesorios que no bloquean circulación como un mueble sólido.
+
+**Fijación por tipo (D9/D10 confirmadas en R5.1):** las alfombras nuevas se fijan al suelo y las lámparas de techo nuevas al techo; ventanas y estantes murales pertenecen a su pared. Las lámparas de pie/mesa conservan libertad vertical. No confundir esta fijación con el candado de edición. Los muebles antiguos sin `attachmentPolicy: 'by-type'` conservan sus posiciones y movilidad anteriores por compatibilidad; los nuevos objetos creados o pegados aplican la política del catálogo. Cambiar de variante o guardar/recargar conserva esa distinción.
 La clasificación en el código actual está repartida entre FurnitureKind, WindowShape, StructureSurface/Pack; **no** asumir que esta taxonomía documental ya está implementada como sistema nuevo.
 
 ## Contrato conceptual de cada objeto

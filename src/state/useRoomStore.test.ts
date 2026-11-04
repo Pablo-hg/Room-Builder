@@ -79,7 +79,7 @@ test('deshace cambios y administra hasta cinco diseños locales', () => {
     const table = store.getState().furniture[0]
     assert.equal(table.y, 0)
     store.getState().moveFurnitureVertically(table.id, 0.63)
-    assert.equal(store.getState().furniture[0].y, 0.625)
+    assert.equal(store.getState().furniture[0].y, 0.63)
     store.getState().moveFurnitureVertically(table.id, 20)
     assert.equal(store.getState().furniture[0].y, 20)
     store.getState().addFurniture('chair')
@@ -129,7 +129,8 @@ test('deshace cambios y administra hasta cinco diseños locales', () => {
 
     store.getState().deleteSavedDesign()
     assert.equal(store.getState().savedDesigns.length, 4)
-    assert.equal(store.getState().hasUnsavedChanges, true)
+    assert.equal(store.getState().selectedSavedDesignId, store.getState().savedDesigns[0].id)
+    assert.equal(store.getState().hasUnsavedChanges, false)
     store.getState().createDesign('blank', 'Sexto')
     assert.equal(store.getState().savedDesigns.length, 5)
 

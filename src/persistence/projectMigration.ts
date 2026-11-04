@@ -16,10 +16,11 @@ import {
   type WallV2,
 } from '../domain/projectV2'
 import type { DoorConfig, FurnitureItem, RoomConfig, WallSide, WindowConfig } from '../domain/types'
+import { flattenLegacyV5 } from './designMigrations'
 
 const DEFAULT_DOOR_COLOR = '#ac704b'
 const DEFAULT_WINDOW_COLOR = '#c88f58'
-const DEFAULT_WALL_THICKNESS = ROOM_LIMITS.placementStep
+const DEFAULT_WALL_THICKNESS = 0.125
 
 const isFiniteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
 const isPositive = (value: unknown): value is number => isFiniteNumber(value) && value > 0
@@ -163,7 +164,7 @@ function remapPreferenceElementId(preferences: EditorPreferencesV2, sourceId: st
 }
 
 /**
- * Migración pura v1–v4 → contrato candidato v2.
+ * Migración pura v1–v5 → contrato candidato v2.
  *
  * Conserva IDs de muebles y aberturas, nombres, colores, preferencias y packs
  * constructivos. Los packs se guardan como legado explícito para no perderlos;
@@ -171,7 +172,7 @@ function remapPreferenceElementId(preferences: EditorPreferencesV2, sourceId: st
  */
 export function migrateDesignToProject(saved: SavedDesign, options: ProjectMigrationOptions = {}): ProjectV2 {
   assertMigratableDesign(saved.data)
-  const data = saved.data
+  const data = flattenLegacyV5(saved.data)
   const projectId = options.projectId ?? saved.id
   if (!projectId) throw new Error('project id required')
   const roomId = `${projectId}:room-0`
@@ -287,6 +288,7 @@ export function projectToPersistedDesignV1(project: ProjectV2, layoutId = projec
     windows,
   }
   const furniture: FurnitureItem[] = layout.furniture.map((item) => ({
+    ...(item.attachmentPolicy ? { attachmentPolicy: item.attachmentPolicy } : {}),
     id: item.id,
     kind: item.kind,
     name: item.name,
@@ -300,7 +302,7 @@ export function projectToPersistedDesignV1(project: ProjectV2, layoutId = projec
     color: item.color,
   }))
   return {
-    version: project.metadata.migratedFromVersion ?? 4,
+    version: project.metadata.migratedFromVersion === 5 ? 4 : project.metadata.migratedFromVersion ?? 4,
     room: roomConfig,
     furniture,
     ...(project.legacyStructurePacks !== undefined ? { structurePacks: structuredClone(project.legacyStructurePacks) } : {}),

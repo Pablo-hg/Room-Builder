@@ -80,6 +80,7 @@ export interface FurnitureDefinitionV2 {
 }
 
 export interface FurnitureInstanceV2 {
+  attachmentPolicy?: 'by-type'
   id: string
   roomId: string
   definitionId?: string
@@ -119,7 +120,7 @@ export interface ProjectMetadataV2 {
   createdAt: string
   updatedAt: string
   source: 'v1-design' | 'new'
-  migratedFromVersion?: 1 | 2 | 3 | 4
+  migratedFromVersion?: 1 | 2 | 3 | 4 | 5
 }
 
 export interface ProjectV2 {
@@ -512,6 +513,7 @@ export function validateProject(project: ProjectV2): ProjectValidationIssue[] {
       if (![item.x, item.y, item.z, item.rotation].every(isFiniteNumber)) add('invalid-furniture', itemPath, 'Posición o rotación inválida.')
       if (!isPositive(item.width) || !isPositive(item.depth) || !isPositive(item.height)) add('invalid-furniture', itemPath, 'Medidas de mueble inválidas.')
       if (typeof item.color !== 'string') add('invalid-furniture', `${itemPath}.color`, 'Color de mueble inválido.')
+      if (item.attachmentPolicy !== undefined && item.attachmentPolicy !== 'by-type') add('invalid-furniture', `${itemPath}.attachmentPolicy`, 'Política de anclaje inválida.')
     }
   }
   if (originalLayouts === 0) add('missing-original-layout', 'layouts', 'Falta la distribución Original.')

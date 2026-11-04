@@ -13,6 +13,8 @@ import { createHistoryActions } from './actions/historyActions'
 import { createDesignActions } from './actions/designActions'
 import { createFolderActions } from './actions/folderActions'
 import { initialRoomFolder } from '../domain/elementFolders'
+import { normalizeDesign } from '../persistence/designMigrations'
+import { createResizeActions } from './actions/resizeActions'
 
 export { structureSurfaceElementId } from '../domain/elementIds'
 
@@ -38,7 +40,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
         current = get()
       }
     }
-    const nextUpdate = Object.prototype.hasOwnProperty.call(rawUpdate, 'selectedId') && !Object.prototype.hasOwnProperty.call(rawUpdate, 'selectedIds')
+    let nextUpdate: Partial<RoomState> = Object.prototype.hasOwnProperty.call(rawUpdate, 'selectedId') && !Object.prototype.hasOwnProperty.call(rawUpdate, 'selectedIds')
       ? { ...rawUpdate, selectedIds: rawUpdate.selectedId ? [rawUpdate.selectedId] : [], selectionAnchor: rawUpdate.selectedId ?? null }
       : rawUpdate
     const nextState = { ...current, ...nextUpdate }
@@ -46,11 +48,16 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     if (designChanged) {
       recordHistoryChange(runtime, persistedDesign(current))
       const activeDesign = nextState.savedDesigns.find((design) => design.id === nextState.selectedSavedDesignId)
+      let savedSignature = ''
+      if (activeDesign) {
+        try { savedSignature = persistedDesignSignature(normalizeDesign(activeDesign.data)) }
+        catch { /* Una entrada inválida no impide editar el diseño actual. */ }
+      }
       storeSet({
         ...nextUpdate,
         undoCount: runtime.undoHistory.length,
         redoCount: runtime.redoHistory.length,
-        hasUnsavedChanges: !activeDesign || persistedDesignSignature(persistedDesign(nextState)) !== persistedDesignSignature(activeDesign.data),
+        hasUnsavedChanges: nextUpdate.hasUnsavedChanges ?? (!activeDesign || persistedDesignSignature(persistedDesign(nextState)) !== savedSignature),
       })
       return
     }
@@ -91,8 +98,6 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     povYaw: 0,
     gridSnap: true,
     gridVisibility: { ...DEFAULT_GRID_VISIBILITY },
-    showSelectionBounds: true,
-    toggleSelectionBounds: () => set((state) => ({ showSelectionBounds: !state.showSelectionBounds })),
     hiddenElementIds: [],
     lockedElementIds: [],
     ...initialRoomFolder(DEFAULT_ROOM),
@@ -110,6 +115,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     ...createFolderActions(context),
     ...createHistoryActions(context),
     ...createDesignActions(context),
+    ...createResizeActions(context),
   }
 })
 

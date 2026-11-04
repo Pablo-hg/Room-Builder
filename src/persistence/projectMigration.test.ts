@@ -5,6 +5,23 @@ import { persistedDesignSignature, type PersistedDesign, type SavedDesign } from
 import { projectStructureFingerprint, validateProject } from '../domain/projectV2'
 import { migrateDesignToProject, projectToPersistedDesignV1 } from './projectMigration'
 
+test('un v5 antiguo de variantes converge con R4 como un único diseño', () => {
+  const data = JSON.parse(readFileSync(new URL('../../tests/fixtures/persisted-designs/valid-v5.json', import.meta.url), 'utf8'))
+  const before = structuredClone(data)
+  const project = migrateDesignToProject({ id: 'v5', name: 'Dos variantes', savedAt: '2026-11-03T10:00:00.000Z', data })
+  assert.deepEqual(validateProject(project), [])
+  assert.equal(project.metadata.migratedFromVersion, 4)
+  assert.equal(project.layouts.length, 1)
+  assert.equal(project.activeLayoutId, project.layouts[0].id)
+  assert.deepEqual(project.layouts[0].furniture.map((item) => item.id), data.furniture.map((item: { id: string }) => item.id))
+  const projected = projectToPersistedDesignV1(project)
+  assert.deepEqual(projected.furniture, data.furniture)
+  assert.deepEqual(projected.room, data.room)
+  assert.deepEqual(projected.elementFolders, data.elementFolders)
+  assert.deepEqual(projected.elementFolderAssignments, data.elementFolderAssignments)
+  assert.deepEqual(data, before)
+})
+
 function fixtureData(name: string): PersistedDesign {
   return JSON.parse(readFileSync(new URL(`../../tests/fixtures/persistence-v1/${name}.json`, import.meta.url), 'utf8'))
 }

@@ -6,6 +6,7 @@ import { isWallMirrorShape, isWallPictureShape, openingKindForShape, OPENING_CAT
 import { useRoomStore } from '../../state/useRoomStore'
 import type { WallSide } from '../../domain/types'
 import { ColorControl, OpeningSwatch, PositionControl, RotationControl, WallPicker } from './Controls'
+import { ResizeControls } from './ResizeControls'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
 type SelectedOpening = (RoomState['room']['door'] & { id: 'door'; kind: 'door'; sill: number }) | (RoomState['room']['windows'][number] & { kind: 'window' })
@@ -16,6 +17,7 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
   const setDoor = useRoomStore((state) => state.setDoor)
   const updateWindow = useRoomStore((state) => state.updateWindow)
   const removeWindow = useRoomStore((state) => state.removeWindow)
+  const resizeWallObject = useRoomStore((state) => state.resizeWallObject)
   const locked = useRoomStore((state) => state.lockedElementIds.includes(selectedOpening.id))
   const pictureShape = selectedOpening.kind === 'window' && isWallPictureShape(selectedOpening.shape)
     ? selectedOpening.shape
@@ -41,9 +43,9 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
   const capabilities = OPENING_CATALOG[catalogKind].capabilities
   const openingName = selectedOpening.name || OPENING_CATALOG[catalogKind].name
   const rawMaxOffset = Math.max(0, wallLength(room, selectedOpening.wall) / 2 - selectedOpening.width / 2 - ROOM_LIMITS.edgeMargin)
-  const openingStep = selectedOpening.kind === 'window' ? ROOM_LIMITS.gridSize : ROOM_LIMITS.placementStep
+  const openingStep = 0.01
   const maxOffset = Math.floor(rawMaxOffset / openingStep) * openingStep
-  const maxSill = Math.max(0, Math.floor((room.height - selectedOpening.height - 0.08) / ROOM_LIMITS.gridSize) * ROOM_LIMITS.gridSize)
+  const maxSill = Math.max(0, Math.floor((room.height - selectedOpening.height - 0.08) * 100) / 100)
   const update = (partial: { wall?: WallSide; offset?: number; rotation?: number; color?: string }) => {
     if (selectedOpening.kind === 'door') {
       setDoor(partial)
@@ -59,6 +61,7 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
         <span><small>Pared</small><strong>{WALL_LABELS[selectedOpening.wall]}</strong></span>
         <span><small>{wallShelf || wallPicture || wallMirror || wallSconce ? 'Altura base' : selectedOpening.kind === 'window' ? 'Antepecho' : 'Desde suelo'}</small><strong>{selectedOpening.sill.toFixed(2)} m</strong></span>
       </div>
+      {selectedOpening.kind === 'window' && <ResizeControls capability={capabilities.resize} value={selectedOpening} disabled={locked} onChange={(dimension, value) => { if (dimension !== 'depth') resizeWallObject(selectedOpening.id, dimension, value) }} />}
       <ColorControl
         label="Color del objeto"
         value={selectedOpening.color ?? (selectedOpening.kind === 'door' ? '#ac704b' : '#c88f58')}

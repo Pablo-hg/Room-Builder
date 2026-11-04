@@ -1,12 +1,13 @@
 import type { FurnitureItem, RoomConfig, StructurePack, StructureSurface } from './types'
 import { structureSurfaceElementId } from './elementIds'
+import { furnitureVisualYOffset } from './objectCatalog'
 
 type Box = { id: string; x: number; y: number; z: number; width: number; height: number; depth: number; rotation: number }
 type World = { room: RoomConfig; furniture: FurnitureItem[]; structurePacks: StructurePack[] }
 const epsilon = 1e-7
 
 function furnitureBox(item: FurnitureItem): Box {
-  return { id: item.id, x: item.x, y: item.y + 0.02 + item.height / 2, z: item.z, width: item.width, height: item.height, depth: item.depth, rotation: item.rotation }
+  return { id: item.id, x: item.x, y: item.y + furnitureVisualYOffset(item) + item.height / 2, z: item.z, width: item.width, height: item.height, depth: item.depth, rotation: item.rotation }
 }
 
 function surfaceBox(room: RoomConfig, pack: StructurePack, surface: StructureSurface): Box {

@@ -1,4 +1,21 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
+
+async function dragToRoot(page: Page, source: Locator, target: Locator) {
+  await source.hover()
+  await page.mouse.down()
+  const start = await source.boundingBox()
+  if (!start) throw new Error('Elemento de origen no disponible')
+  await page.mouse.move(start.x + start.width / 2 + 8, start.y + start.height / 2, { steps: 3 })
+  await target.scrollIntoViewIfNeeded()
+  const destination = await target.boundingBox()
+  if (!destination) throw new Error('Destino no disponible')
+  const x = destination.x + destination.width / 2
+  const y = destination.y + destination.height / 2
+  await page.mouse.move(x, y, { steps: 8 })
+  // HTML5 necesita un dragover posterior al desplazamiento del panel antes del drop.
+  await page.mouse.move(x + 1, y)
+  await page.mouse.up()
+}
 
 test('permite cambiar vistas, añadir un objeto y guardar', async ({ page }) => {
   await page.goto('/')
@@ -118,9 +135,9 @@ test('alterna la visibilidad y el candado de un elemento desde la lista', async 
   await lock.click()
   await expect(row).toHaveClass(/element-row--locked/)
   await expect(row.getByRole('button', { name: 'Desbloquear Silla' })).toHaveAttribute('aria-pressed', 'true')
-  await expect(inspector.getByLabel(/Posición X/)).toBeDisabled()
+  await expect(inspector.getByLabel('Posición X', { exact: true })).toBeDisabled()
   await row.getByRole('button', { name: 'Desbloquear Silla' }).click()
-  await expect(inspector.getByLabel(/Posición X/)).toBeEnabled()
+  await expect(inspector.getByLabel('Posición X', { exact: true })).toBeEnabled()
 
   await visibility.click()
   await expect(row).toHaveClass(/element-row--hidden/)
@@ -160,7 +177,8 @@ test('crea carpetas, mueve elementos y las renombra o elimina', async ({ page })
 
   await renamed.locator('.element-folder__heading').first().click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Borrar' }).click()
-  await expect(catalog.locator('.element-folder')).toHaveCount(0)
+  await expect(catalog.getByRole('button', { name: 'Carpeta Asientos', exact: true })).toHaveCount(0)
+  await expect(catalog.getByRole('button', { name: 'Carpeta Raíz', exact: true })).toBeVisible()
   await expect(catalog.locator('.element-row').filter({ hasText: 'Silla' })).toBeVisible()
   await expect(catalog.locator('.element-row').filter({ hasText: 'Planta' })).toBeVisible()
 })
@@ -170,14 +188,15 @@ test('permite elevar un mueble desde el inspector', async ({ page }) => {
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
 
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
-  const elevation = inspector.getByLabel(/Posición Y/)
+  const elevation = inspector.getByLabel('Posición Y', { exact: true })
   await expect(elevation).toHaveValue('0')
   await elevation.focus()
   await elevation.press('ArrowRight')
-  await expect(elevation).toHaveValue('0.125')
+  await expect(elevation).toHaveValue('0.01')
 })
 
 test('permite mover un mueble lateralmente y en altura en vista frontal', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   await page.getByRole('button', { name: 'Frontal' }).click()
@@ -186,14 +205,15 @@ test('permite mover un mueble lateralmente y en altura en vista frontal', async 
   const selectedItem = inspector.getByRole('heading', { name: 'Sillón', exact: true })
   await expect(selectedItem).toBeVisible()
   const initialPosition = await inspector.locator('.selected-heading p').innerText()
-  const elevation = inspector.getByLabel(/Posición Y/)
+  const elevation = inspector.getByLabel('Posición Y', { exact: true })
   await expect(elevation).toBeVisible()
 
   const canvas = page.locator('.scene-panel canvas').first()
   const bounds = await canvas.boundingBox()
   if (!bounds) throw new Error('No se pudo localizar el canvas de la vista frontal')
-  const objectX = bounds.x + bounds.width / 2
-  const objectY = bounds.y + bounds.height * 0.65
+  // El centro contiene el eje Y; el cuerpo permite desplazar lateralmente y en altura.
+  const objectX = bounds.x + bounds.width / 2 + 20
+  const objectY = bounds.y + bounds.height * 0.61
   await page.mouse.move(objectX, objectY)
   await page.mouse.down()
   await page.mouse.move(objectX + 40, objectY - 35, { steps: 4 })
@@ -211,9 +231,9 @@ test('mantiene ambas alfombras sobre el suelo y oculta el control vertical', asy
     await page.getByRole('button', { name: `${name} ＋ Añadir`, exact: true }).click()
     await expect(inspector.getByRole('heading', { name, exact: true })).toBeVisible()
     await expect(inspector.getByText('Posición Y', { exact: true })).toHaveCount(0)
-    await expect(inspector.getByLabel('Posición X')).toBeVisible()
-    await expect(inspector.getByLabel('Posición Z')).toBeVisible()
-    await page.getByRole('button', { name: 'Eliminar' }).click()
+    await expect(inspector.getByLabel('Posición X', { exact: true })).toBeVisible()
+    await expect(inspector.getByLabel('Posición Z', { exact: true })).toBeVisible()
+    await inspector.getByRole('button', { name: 'Eliminar' }).click()
   }
 })
 
@@ -227,7 +247,7 @@ test('añade los nuevos objetos decorativos e iluminación', async ({ page }) =>
     if (name === 'Lámpara de techo') {
       await expect(inspector.getByText('Posición Y', { exact: true })).toHaveCount(0)
     }
-    await page.getByRole('button', { name: 'Eliminar' }).click()
+    await inspector.getByRole('button', { name: 'Eliminar' }).click()
   }
 
   await page.getByRole('button', { name: 'Aplique de pared ＋ Añadir', exact: true }).click()
@@ -610,17 +630,20 @@ test('administra diseños guardados y respeta el foco del formulario', async ({ 
   await name.fill('Sala')
   await name.press('r')
   await expect(name).toHaveValue('Salar')
-  await page.getByRole('button', { name: 'Lienzo en blanco' }).click()
-  await page.getByRole('button', { name: 'Cambiar nombre de Salar' }).click()
+  await page.getByRole('button', { name: 'Crear en blanco' }).click()
+  await page.getByRole('button', { name: 'Más opciones de Salar' }).click()
+  await page.getByRole('menuitem', { name: 'Renombrar' }).click()
   await page.getByRole('textbox', { name: 'Nuevo nombre para Salar' }).fill('Salón')
   await page.getByRole('button', { name: 'Guardar nombre' }).click()
   await expect(page.locator('.saved-design-choice').filter({ hasText: 'Salón' })).toBeVisible()
-  await page.getByRole('button', { name: 'Crear diseño' }).click()
-  await name.fill('Copia')
-  await page.getByRole('button', { name: 'Copiar diseño actual' }).click()
-  await expect(page.locator('.saved-design-choice').filter({ hasText: 'Copia' })).toBeVisible()
-  await page.getByRole('button', { name: 'Eliminar Copia' }).click()
-  await expect(page.locator('.saved-design-choice').filter({ hasText: 'Copia' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Más opciones de Salón' }).click()
+  await page.getByRole('menuitem', { name: 'Copiar diseño' }).click()
+  await expect(page.locator('.saved-design-choice').filter({ hasText: 'Copia de Salón' })).toBeVisible()
+  await page.getByRole('button', { name: 'Más opciones de Copia de Salón' }).click()
+  await page.getByRole('menuitem', { name: 'Borrar' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Eliminar diseño' }).click()
+  await page.getByRole('button', { name: 'Seleccionar diseño guardado' }).click()
+  await expect(page.locator('.saved-design-choice').filter({ hasText: 'Copia de Salón' })).toHaveCount(0)
   await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: 'Seleccionar diseño guardado' })).toBeFocused()
 })
@@ -632,7 +655,7 @@ test('permite seleccionar un pack y editar una de sus superficies', async ({ pag
   await expect(page.getByText('Pack de construcción', { exact: true }).first()).toBeVisible()
   await page.getByRole('button', { name: /Suelo · Editar/ }).click()
   await expect(page.getByText('Superficie de construcción', { exact: true }).first()).toBeVisible()
-  await expect(page.getByLabel('Desplazamiento X')).toBeVisible()
+  await expect(page.getByLabel('Desplazamiento X', { exact: true })).toBeVisible()
 })
 
 test('arrastra elementos entre carpetas anidadas y sin carpeta', async ({ page }) => {
@@ -648,7 +671,7 @@ test('arrastra elementos entre carpetas anidadas y sin carpeta', async ({ page }
   const chair = catalog.locator('.element-row').filter({ hasText: 'Silla' })
   await chair.dragTo(child.locator('.element-folder__heading').first())
   await expect(child.locator('.element-row').filter({ hasText: 'Silla' })).toBeVisible()
-  await child.locator('.element-row').filter({ hasText: 'Silla' }).dragTo(catalog.getByText('Sin carpeta', { exact: false }))
+  await dragToRoot(page, child.locator('.element-row').filter({ hasText: 'Silla' }), catalog.getByText('Sin carpeta', { exact: false }))
   await expect(child.locator('.element-row').filter({ hasText: 'Silla' })).toHaveCount(0)
   await expect(catalog.locator('.element-row').filter({ hasText: 'Silla' })).toBeVisible()
 })
@@ -661,7 +684,7 @@ test('mueve carpetas con el ratón y mediante el inspector', async ({ page }) =>
   const folder = (name: string) => catalog.locator('.element-folder').filter({ has: page.getByRole('button', { name: `Carpeta ${name}`, exact: true }) })
   await folder('Carpeta 1').locator('.element-folder__heading').first().dragTo(folder('Carpeta 2').locator('.element-folder__heading').first())
   await expect(folder('Carpeta 2').locator('.element-folder').getByRole('button', { name: 'Carpeta Carpeta 1', exact: true })).toBeVisible()
-  await folder('Carpeta 2').locator('.element-folder').locator('.element-folder__heading').first().dragTo(catalog.getByText('Sin carpeta', { exact: false }))
+  await dragToRoot(page, folder('Carpeta 2').locator('.element-folder').locator('.element-folder__heading').first(), catalog.getByText('Sin carpeta', { exact: false }))
   await expect(folder('Carpeta 2').locator('.element-folder').getByRole('button', { name: 'Carpeta Carpeta 1', exact: true })).toHaveCount(0)
   await catalog.getByRole('button', { name: 'Carpeta Carpeta 1', exact: true }).click()
   const location = page.getByLabel('Ubicación de la carpeta')
@@ -815,6 +838,7 @@ test('cierra el menú contextual al pulsar fuera, incluso sobre la escena', asyn
 test('los atajos del menú renombran, ordenan, crean y borran sin interferir al escribir', async ({ page }) => {
   await page.goto('/')
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
+  await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   const chair = catalog.locator('.element-row').filter({ hasText: 'Silla' })
   await chair.click({ button: 'right' })
@@ -831,9 +855,11 @@ test('los atajos del menú renombran, ordenan, crean y borran sin interferir al 
   await input.press('Enter')
   const renamed = catalog.locator('.element-row').filter({ hasText: 'Asiento' })
   await expect(renamed).toBeVisible()
-  const previousY = (await renamed.boundingBox())!.y
   await page.keyboard.press('Alt+Shift+ArrowUp')
-  await expect.poll(async () => (await renamed.boundingBox())!.y).toBeLessThan(previousY)
+  await expect.poll(async () => {
+    const names = await catalog.locator('.element-select').allTextContents()
+    return names.findIndex((name) => name.includes('Asiento')) < names.findIndex((name) => name.includes('Mesa'))
+  }).toBe(true)
   await catalog.getByRole('button', { name: 'Crear carpeta de elementos' }).click()
   await catalog.getByRole('button', { name: 'Carpeta Carpeta 1', exact: true }).click()
   await page.keyboard.press('Alt+Shift+n')

@@ -1,7 +1,7 @@
 import { folderElementIds, folderIdFromSelection } from './elementFolders'
 import { structureSurfaceElementId } from './elementIds'
 import { furnitureHalfExtents } from './geometry'
-import { openingCapabilities } from './objectCatalog'
+import { canElevateFurniture, furnitureVisualYOffset, openingCapabilities } from './objectCatalog'
 import type { RoomState } from '../state/types'
 import type { WallSide } from './types'
 import { elementName } from './selection'
@@ -23,7 +23,8 @@ export function multiSelectionItems(state: Pick<RoomState, 'room' | 'furniture' 
   const items: MultiItem[] = []
   for (const item of state.furniture) if (ids.has(item.id)) {
     const ext = furnitureHalfExtents(item)
-    items.push({ id: item.id, name: item.name, color: item.color, type: 'furniture', axes: ['x', 'y', 'z'], min: { x: item.x - ext.halfWidth, y: item.y + 0.02, z: item.z - ext.halfDepth }, max: { x: item.x + ext.halfWidth, y: item.y + item.height + 0.02, z: item.z + ext.halfDepth } })
+    const y = item.y + furnitureVisualYOffset(item)
+    items.push({ id: item.id, name: item.name, color: item.color, type: 'furniture', axes: canElevateFurniture(item) ? ['x', 'y', 'z'] : ['x', 'z'], min: { x: item.x - ext.halfWidth, y, z: item.z - ext.halfDepth }, max: { x: item.x + ext.halfWidth, y: y + item.height, z: item.z + ext.halfDepth } })
   }
   const openings = [{ ...state.room.door, id: 'door', sill: 0, name: state.room.door.name ?? 'Puerta', shape: undefined }, ...state.room.windows.map((item) => ({ ...item, name: elementName(state, item.id) ?? 'Ventana' }))]
   for (const item of openings) if (ids.has(item.id)) {

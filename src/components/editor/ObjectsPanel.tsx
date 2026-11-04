@@ -579,7 +579,7 @@ export function ObjectsPanel() {
             </div>
           }))}
         </div>
-        <small className="grid-snap-note">El ajuste de movimiento a 12,5 cm se mantiene activo.</small>
+        <small className="grid-snap-note">El ajuste de movimiento a 5 cm se mantiene activo.</small>
         </section>
       </div>
       {contextMenu && <SceneContextMenu key={contextMenu.id} {...contextMenu} siblings={siblingsFor(sceneEntryParent(contextMenu.id, elementFolders, elementFolderAssignments))} onClose={closeContextMenu}

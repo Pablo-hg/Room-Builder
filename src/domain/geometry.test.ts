@@ -177,15 +177,15 @@ describe('clampFurniture', () => {
     assert.ok(Math.abs(result.z - item.depth / 2 + DEFAULT_ROOM.depth / 2) < 1e-8)
   })
 
-  it('divide cada cuadrado visible en cuatro secciones de 12,5 cm', () => {
+  it('ajusta el movimiento a 5 cm manteniendo la cuadrícula visible de 25 cm', () => {
     const result = clampFurniture({ ...item, x: 0.63, z: -0.62 }, DEFAULT_ROOM, true)
-    assert.equal(result.x, 0.625)
-    assert.equal(result.z, -0.625)
-    assert.equal(snapToPlacementGrid(0.19), 0.25)
-    assert.equal(snapToPlacementGrid(0.91), 0.875)
+    assert.ok(Math.abs(result.x - 0.65) < 1e-8)
+    assert.ok(Math.abs(result.z + 0.6) < 1e-8)
+    assert.equal(snapToPlacementGrid(0.19), 0.2)
+    assert.equal(snapToPlacementGrid(0.91), 0.9)
     assert.equal(snapToVisibleGrid(0.91), 1)
-    assert.ok(Math.abs((result.x - item.width / 2) / ROOM_LIMITS.placementStep % 1) < 1e-8)
-    assert.ok(Math.abs((result.z - item.depth / 2) / ROOM_LIMITS.placementStep % 1) < 1e-8)
+    assert.ok(Math.abs(result.x / ROOM_LIMITS.placementStep - 13) < 1e-8)
+    assert.ok(Math.abs(result.z / ROOM_LIMITS.placementStep + 12) < 1e-8)
   })
 
   it('intercambia la huella al girar un cuarto de vuelta', () => {
@@ -202,11 +202,12 @@ describe('clampFurniture', () => {
   })
 
   it('limita la elevación al espacio vertical disponible y la ajusta a la cuadrícula', () => {
-    assert.equal(clampFurnitureElevation({ ...item, y: 0.63 }, DEFAULT_ROOM, true), 0.625)
+    assert.equal(clampFurnitureElevation({ ...item, y: 0.63 }, DEFAULT_ROOM, true), 0.65)
     assert.equal(clampFurnitureElevation({ ...item, y: 20 }, DEFAULT_ROOM, false), DEFAULT_ROOM.height - item.height)
     assert.equal(clampFurnitureElevation({ ...item, y: -1 }, DEFAULT_ROOM, false), 0)
-    assert.equal(clampFurnitureElevation({ ...item, kind: 'rug', y: 1 }, DEFAULT_ROOM, false), 0)
-    assert.equal(clampFurnitureElevation({ ...item, kind: 'circularRug', y: 1 }, DEFAULT_ROOM, false), 0)
+    assert.equal(clampFurnitureElevation({ ...item, kind: 'rug', attachmentPolicy: 'by-type', y: 1 }, DEFAULT_ROOM, false), 0)
+    assert.equal(clampFurnitureElevation({ ...item, kind: 'circularRug', attachmentPolicy: 'by-type', y: 1 }, DEFAULT_ROOM, false), 0)
+    assert.equal(clampFurnitureElevation({ ...item, kind: 'rug', y: 1 }, DEFAULT_ROOM, false), 1)
   })
 })
 
@@ -254,13 +255,13 @@ describe('dimensiones del catálogo', () => {
     assert.equal(OPENING_CATALOG.door.capabilities.rotation.enabled, false)
     assert.deepEqual(OPENING_CATALOG.window.capabilities.translation, ['wall-horizontal', 'wall-vertical'])
     assert.equal(OPENING_CATALOG.window.capabilities.rotation.axis, 'wall-normal')
-    assert.deepEqual(OPENING_CATALOG.circularWindow.capabilities, OPENING_CATALOG.window.capabilities)
+    assert.deepEqual(OPENING_CATALOG.circularWindow.capabilities.resize?.diameter, ['width', 'height'])
     assert.deepEqual(OPENING_CATALOG.wallShelf.capabilities, OPENING_CATALOG.window.capabilities)
     assert.deepEqual(OPENING_CATALOG.pictureSmall.capabilities, OPENING_CATALOG.window.capabilities)
     assert.deepEqual(OPENING_CATALOG.pictureMedium.capabilities, OPENING_CATALOG.window.capabilities)
     assert.deepEqual(OPENING_CATALOG.pictureLarge.capabilities, OPENING_CATALOG.window.capabilities)
     assert.deepEqual(OPENING_CATALOG.mirrorRectangular.capabilities, OPENING_CATALOG.window.capabilities)
-    assert.deepEqual(OPENING_CATALOG.mirrorCircular.capabilities, OPENING_CATALOG.window.capabilities)
+    assert.deepEqual(OPENING_CATALOG.mirrorCircular.capabilities.resize?.diameter, ['width', 'height'])
     assert.deepEqual(OPENING_CATALOG.wallSconce.capabilities, OPENING_CATALOG.window.capabilities)
   })
 })

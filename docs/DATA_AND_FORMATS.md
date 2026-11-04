@@ -1,6 +1,8 @@
 # Datos, unidades, guardado e interoperabilidad
 
-**Estado:** principios CONFIRMADOS; contrato multiproyecto con prototipo puro en R4, no persistido ni declarado estable.
+> **Actualización 04/11/2026:** El propietario retiró las variantes del MVP el 04/11/2026. El código local ya no escribe v5: al leer v5 toma el mobiliario activo y guarda una sola distribución con el formato previo. La conversión y la conservación de medidas editadas están pendientes de pruebas de compatibilidad. El apartado v5 inferior se conserva como histórico.
+
+**Estado:** principios CONFIRMADOS; contrato multiproyecto con prototipo puro en R4, no persistido ni declarado estable. R5.1 integra variantes de una habitación en `PersistedDesign` v5; ver [R5_PLAN.md](R5_PLAN.md) e [informe](progress/R5_PROGRESS.md). El JSON público sigue pendiente de R5.3.
 
 ## Fuente espacial única
 - Convención: sistema XYZ del mundo; X y Z corresponden al plano del suelo, Y a la altura. Las vistas **solo proyectan** la misma escena; no modifican coordenadas del mobiliario.
@@ -10,7 +12,7 @@
 - Puertas y ventanas hacen referencia a pared y posición; las aberturas no son objetos flotantes.
 
 ## Persistencia realmente implementada (26/10/2026)
-`src/domain/designV1.ts` declara `PersistedDesign` versiones 1, 2, 3 y 4 (reexportado desde `src/domain/types.ts`) con room, furniture, structurePacks opcionales, gridSnap, gridVisibility, hiddenElementIds, lockedElementIds, elementFolders y elementFolderAssignments. La versión 4 conserva el orden visual personalizado de los elementos de escena. La versión 3 añade la carpeta padre para carpetas anidadas; los diseños v1 y v2 mantienen sus carpetas en el nivel principal. La versión 2 añade nombres opcionales a puertas y ventanas; se usa cuando existen nombres personalizados en estas aperturas y se siguen admitiendo diseños v1 con sus nombres predeterminados. `lockedElementIds` y las carpetas (`elementFolders` + `elementFolderAssignments`) son opcionales y compatibles con diseños guardados anteriores: conservan los candados y la organización de la lista de elementos. `src/state/useRoomStore.ts` compone las acciones de diseños, que persisten hasta cinco diseños mediante `src/persistence/localDesignRepository.ts`; la cámara es temporal. Existe exportación GLB de escena. **No existe importación/exportación JSON editable pública ni modelo real multihabitación.**
+`src/domain/designV1.ts` declara `PersistedDesign` como unión de las versiones legacy 1–4 y la versión 5 de variantes (reexportado desde `src/domain/types.ts`) con room, furniture, structurePacks opcionales, gridSnap, gridVisibility, hiddenElementIds, lockedElementIds, elementFolders y elementFolderAssignments. La versión 4 conserva el orden visual personalizado de los elementos de escena. La versión 3 añade la carpeta padre para carpetas anidadas; los diseños v1 y v2 mantienen sus carpetas en el nivel principal. La versión 2 añade nombres opcionales a puertas y ventanas; se siguen admitiendo esos datos y diseños v1 con nombres predeterminados; la aplicación guarda ahora v5. `lockedElementIds` y las carpetas (`elementFolders` + `elementFolderAssignments`) son opcionales y compatibles con diseños guardados anteriores: conservan los candados y la organización de la lista de elementos. `src/state/useRoomStore.ts` compone las acciones de diseños, que persisten hasta cinco diseños mediante `src/persistence/localDesignRepository.ts`; la cámara es temporal. Existe exportación GLB de escena. **No existe importación/exportación JSON editable pública ni modelo real multihabitación.**
 
 ## Organización del lector v1 tras R3.3
 
@@ -37,6 +39,22 @@ R4 añade un contrato tipado y pruebas puras, sin usarlo todavía en la aplicaci
 - Informe: [progress/R4_PROGRESS.md](progress/R4_PROGRESS.md).
 
 El esquema sigue **PROPUESTO** (RB-013). No se escribe en `localStorage`, no se modifica `PersistedDesign` v1–v4 y no se declara estable para importación pública. Los packs constructivos actuales se conservan como legado explícito (`legacyStructurePacks`) para no perder datos; su conversión a paredes canónicas queda pendiente. Las variantes comparten IDs de mueble lógico para conservar selección, candados, carpetas y orden.
+
+## Formato v5 para variantes (R5.1)
+
+La comparación Original/Alternativa A persiste dos distribuciones con estructura común. La decisión D1 confirmada en [R5_PLAN.md](R5_PLAN.md) amplía el contrato actual:
+
+- `version: 5`; `room`, `structurePacks` y preferencias siguen siendo del diseño.
+- `layouts: PersistedLayout[]` con `id`, `name`, `kind: 'original' | 'alternative'` y `furniture` propio.
+- `activeLayoutId` y `furniture` superior como espejo controlado de la variante activa. `syncActiveLayout` centraliza su captura al serializar y antes de cambiar de variante; el mobiliario activo es la superficie de edición del store.
+- La validación v5 debe rechazar una discrepancia entre ese espejo y el mobiliario de la variante activa con un error explícito, sin sobrescribir ninguna copia (D1 confirmada).
+- Al leer v1–v4 se genera una única variante Original, sin reescribir el guardado hasta que el usuario guarde.
+- Al guardar se escribe v5. Las claves `room-builder:v0.1:designs` y `room-builder:v0.1:design`, el límite de cinco diseños y la recuperación legacy no cambian.
+- Las preferencias (visibilidad, candados, carpetas y orden) son del diseño y pueden referenciar IDs ausentes en la variante activa; la UI debe ignorarlos sin borrarlos.
+- La estructura (habitación, puerta, ventanas y packs) es común a las dos variantes; no se persiste `structureRevision` hasta la fase multihabitación.
+- D9/D10 confirmadas: los muebles nuevos incluyen `attachmentPolicy: 'by-type'`. El catálogo determina su fijación: alfombras al suelo, lámparas de techo al techo, lámparas de pie/mesa libres. La ausencia de la marca conserva posiciones y movimiento antiguos; cargar un diseño v1–v5 no añade la marca ni corrige sus alturas. Un diseño puede mezclar ambas políticas y conservarlas al guardar/recargar. Duplicar una variante conserva los objetos; pegar crea un objeto nuevo con la política actual. La marca no cambia versión ni claves y no se añade al contrato mural de ventanas/estantes.
+
+La convergencia con la semántica de `LayoutV2` de R4 está comprobada mediante pruebas puras de ambas variantes. No se declara estable ni se expone como JSON público hasta completar R5.3.
 
 ## Formato futuro propuesto
 Separa **proyecto** (una vivienda), **planta**, **habitaciones**, **paredes/aberturas estructurales**, **definiciones de objetos** e **instancias**, y **variantes de distribución**. Ejemplo conceptual, alineado con el prototipo R4 pero NO esquema público estable:
@@ -67,3 +85,8 @@ Mantener espacio/estructura común para las variantes de mobiliario cuando se co
 
 ## Estado de formato
 El contrato R4 está probado como prototipo puro, pero JSON editable y multihabitación siguen siendo objetivos de diseño. No declarar estable el esquema ni exponerlo como formato público hasta validar migración, importación y UI.
+
+
+## Archivo JSON de intercambio R5.3 (implementación pendiente de verificación)
+
+El archivo usa `format: "room-builder-design"`, `schemaVersion: 5`, `exportedAt` y un objeto `design` con `id`, `name`, `savedAt` y `data`. Esta versión corresponde al archivo de intercambio; `data` conserva el formato persistido de una distribución. Límite: 2 MiB; como protección ante geometrías extremas, cotas positivas de hasta 100 m y coordenadas/ángulos con valor absoluto de hasta 10 000. La lectura comprueba estructura, medidas, referencias y anclajes antes de mostrar vista previa; nunca escribe hasta confirmar. Un ID duplicado recibe uno nuevo. En archivos v5 antiguos se importa solo la variante activa y se avisa antes de confirmar. La biblioteca llena bloquea la importación. No se ha validado aún con tests ni E2E.

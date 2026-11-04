@@ -1,13 +1,14 @@
 import { type ThreeEvent, useThree } from '@react-three/fiber'
 import { useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { isWallPictureKind } from '../domain/objectCatalog'
+import { canElevateFurniture, furnitureVisualYOffset, isWallPictureKind } from '../domain/objectCatalog'
 import type { FurnitureItem, WallSide } from '../domain/types'
 import { useHistoryGesture } from '../state/useHistoryGesture'
 import { useRoomStore } from '../state/useRoomStore'
 import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
 
+import { moveFromOrigin, snapMovement } from '../domain/measurements'
 import { FurnitureModel } from './FurnitureModels'
 import { AxisMoveGizmo, FrontAxisMoveGizmo, RotationHandle, FrontRotationHandle } from './FurnitureGizmos'
 import { SelectionBounds } from './SelectionBounds'
@@ -20,10 +21,11 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
   const collision = useRoomStore((state) => showCollision && furnitureHasSpatialWarning(state, item))
   const { camera, size } = useThree()
   const [dragging, setDragging] = useState(false)
-  const canMoveVertically = true
+  const canMoveVertically = canElevateFurniture(item)
   const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
   const point = useMemo(() => new THREE.Vector3(), [])
   const dragOffset = useRef({ x: 0, z: 0 })
+  const dragOrigin = useRef({ x: item.x, z: item.z })
   const frontDragStart = useRef({ clientX: 0, clientY: 0, x: item.x, y: item.y, z: item.z })
 
   const cancelDrag = () => {
@@ -67,6 +69,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
     }
     if (!event.ray.intersectPlane(floorPlane, point)) return
     dragOffset.current = { x: point.x - item.x, z: point.z - item.z }
+    dragOrigin.current = { x: item.x, z: item.z }
     gesture.begin()
     setDragging(true)
     capturePointer(event)
@@ -80,7 +83,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
         : 0.01
       const horizontalAxis = frontWall === 'north' || frontWall === 'south' ? 'x' : 'z'
       const horizontalSign = frontWall === 'south' || frontWall === 'west' ? -1 : 1
-      const horizontalDelta = (event.nativeEvent.clientX - frontDragStart.current.clientX) * worldPerPixel * horizontalSign
+      const horizontalDelta = snapMovement((event.nativeEvent.clientX - frontDragStart.current.clientX) * worldPerPixel * horizontalSign)
       moveFurniture(
         item.id,
         horizontalAxis === 'x' ? frontDragStart.current.x + horizontalDelta : frontDragStart.current.x,
@@ -89,13 +92,13 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
       if (canMoveVertically) {
         moveFurnitureVertically(
           item.id,
-          frontDragStart.current.y - (event.nativeEvent.clientY - frontDragStart.current.clientY) * worldPerPixel,
+          frontDragStart.current.y + snapMovement(-(event.nativeEvent.clientY - frontDragStart.current.clientY) * worldPerPixel),
         )
       }
       return
     }
     if (event.ray.intersectPlane(floorPlane, point)) {
-      moveFurniture(item.id, point.x - dragOffset.current.x, point.z - dragOffset.current.z)
+      moveFurniture(item.id, moveFromOrigin(point.x - dragOffset.current.x, dragOrigin.current.x), moveFromOrigin(point.z - dragOffset.current.z, dragOrigin.current.z))
     }
   }
   const handleUp = (event: ThreeEvent<PointerEvent>) => {
@@ -116,7 +119,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
   }
 
   return (
-    <group position={[item.x, item.y + 0.02, item.z]}>
+    <group position={[item.x, item.y + furnitureVisualYOffset(item), item.z]}>
       <group
         rotation={[0, item.rotation, 0]}
         onPointerDown={handleDown}

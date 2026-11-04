@@ -1,6 +1,7 @@
 import type { ThreeEvent } from '@react-three/fiber'
 import { useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { snapMovement } from '../domain/measurements'
 import type { StructureSurface } from '../domain/types'
 import { useHistoryGesture } from '../state/useHistoryGesture'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
@@ -77,7 +78,7 @@ export function StructureSurfaceTransformGizmo({
       : draggingAxis === 'y'
         ? pointerPoint.y - startPoint.current.y
         : pointerPoint.z - startPoint.current.z
-    move(packId, surface.id, draggingAxis, startingPosition.current[draggingAxis] + delta)
+    move(packId, surface.id, draggingAxis, startingPosition.current[draggingAxis] + snapMovement(delta))
   }
 
   const stopDrag = (event: ThreeEvent<PointerEvent>) => {
