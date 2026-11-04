@@ -1,6 +1,6 @@
 # Registro de decisiones — Room Builder
 
-> **Nota vigente 04/11/2026:** RB-040 desplaza RB-010 y RB-028–RB-031 como **requisitos del MVP** (la comparación A/B ya no aparece en UI); RB-039/RB-041 permiten atravesamientos de mobiliario con aviso. R5 se fusionó en main y su certificación integral sigue pendiente (#24–#33). Workshop y monetización permanecen en [FUTURE_ROADMAP.md](FUTURE_ROADMAP.md).
+> **Última decisión RB-052 (04/11/2026):** el MVP final incluye **vivienda por plantas**, editor de vértices, POV WASD y las siete funciones RB-045–RB-051. v0.2 (#33) queda como checkpoint, **gate final #54**. RB-040 mantiene retirada A/B; RB-039/RB-041 permiten solapes de muebles. **Lecturas anteriores que llamen «futuro» a casas/POV son históricas**, superadas por RB-052. Plan canónico: [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md). Workshop/IA/monetización permanecen en [FUTURE_IMPROVEMENTS.md](FUTURE_IMPROVEMENTS.md).
 
 **Fecha base:** 26/10/2026. Este registro pertenece exclusivamente a Room Builder. NO modifica el registro global de Pablo Web 2.0.
 
@@ -50,6 +50,14 @@
 | RB-042 | Al importar un diseño cuyo ID ya existe, crear una copia con un ID local nuevo | CONFIRMADO (04/11/2026); implementado, en verificación | Precisión de D7. No sustituye un diseño existente; el reemplazo sigue pendiente y la biblioteca llena se bloquea |
 | RB-043 | Evolucionar POV de cámara fija a recorrido libre con WASD y mirada de cámara; empezar desde una puerta de entrada, y al disponer de varias habitaciones permitir cruzar puertas interiores y escoger entrada cuando existan varias | CONFIRMADO como dirección futura (04/11/2026); no implementado | [#36](https://github.com/Pablo-hg/Room-Builder/issues/36): primero una habitación, después tránsito multiestancia basado en RB-027. No cambia MVP v0.2 ni reinterpreta la cámara Libre actual como paseo POV |
 | RB-044 | Meta final de producto: empezar con una habitación y escalar a vivienda con varias estancias conectadas, múltiples plantas seleccionables y vista aérea global acotada, sincronizada con 3D y POV | CONFIRMADO como visión final (04/11/2026); sin implementación nueva | [HOUSE_VISION.md](HOUSE_VISION.md), referencia visual aportada por el propietario y [floorplan-3d](https://github.com/wy51ai/floorplan-3d). Se mantiene **v0.2 = MVP inicial de habitación**, no se reabren tareas de Workshop |
+| RB-045 | Guías visuales y magnetismo opcional e independiente de cuadrícula, activas en Plano e Isométrica; Alt suprime magnetismo | APROBADO para MVP completo; pendiente de implementar | [#37](https://github.com/Pablo-hg/Room-Builder/issues/37) · Decisión C + B |
+| RB-046 | Regla libre con ayudas, mediciones horizontales/verticales/diagonales y cotas guardables/editables | APROBADO para MVP completo; pendiente | [#38](https://github.com/Pablo-hg/Room-Builder/issues/38) · Decisión C; distinta de cotas automáticas #26 |
+| RB-047 | Biblioteca de materiales estilizados, escala/rotación/tonalidades, herramienta Pintar y cuentagotas | APROBADO para MVP completo; pendiente | [#39](https://github.com/Pablo-hg/Room-Builder/issues/39) · Decisión C; los controles de color ya existen |
+| RB-048 | Modo fotografía PNG avanzado con encuadres, resolución/proporción/fondo y cámaras propias recuperables | APROBADO para MVP completo; pendiente | [#40](https://github.com/Pablo-hg/Room-Builder/issues/40) · Decisión C |
+| RB-049 | Plantillas vacías/amuebladas y posibilidad de guardar plantillas personales | APROBADO para MVP completo; pendiente | [#41](https://github.com/Pablo-hg/Room-Builder/issues/41) · Decisión C |
+| RB-050 | Importar plano imagen con escala y trazado asistido, sin reconstrucción automática completa por IA | APROBADO para MVP completo; pendiente | [#45](https://github.com/Pablo-hg/Room-Builder/issues/45) · Decisión B |
+| RB-051 | Editor modular de muebles por primitivas, agrupación, duplicación y materiales (sin edición avanzada de mallas) | APROBADO para MVP completo; pendiente | [#47](https://github.com/Pablo-hg/Room-Builder/issues/47) · Decisión B |
+| RB-052 | El conjunto de todas las issues abiertas #23–#41 seleccionadas, #45/#47 y #51–#54 define el MVP local completo; v0.2 es checkpoint, gate final #54 | CONFIRMADO como alcance y planificación, 04/11/2026 | [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md), épica #23; publicar solo con validación y autorización |
 
 ## Aclaraciones
 - **CONFIRMADO** aquí alude a decisiones expresas de esta conversación, no a entregas realizadas o a documentación global del portfolio.
@@ -59,10 +67,10 @@
 
 ## Cambios pendientes más relevantes
 1. Validar por prototipo la simplificación visual de los controles.
-2. Acordar MVP de una habitación frente a alcance posterior multihabitación.
+2. **Resuelto por RB-052:** v0.2 es checkpoint de una habitación, la casa multihabitación es requisito del MVP completo, con #51–#53.
 3. Establecer paleta/ejemplos concretos solo tras una comparación visual en producto.
 4. Validar y decidir el esquema final de proyecto/variantes a partir del prototipo R4, antes de integrarlo.
-5. La planificación del 03/11 proponía A/B → redimensionado → JSON; es **histórica** y fue superada por R5 integrada y RB-040 (retirada de A/B del MVP). El siguiente trabajo vigente es certificar el producto local y completar UX/accesibilidad conforme a [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md). Las formas RB-025 siguen siendo posteriores.
+5. La planificación del 03/11 proponía A/B → redimensionado → JSON; es **histórica** y fue superada por R5 integrada y RB-040 (retirada de A/B del MVP). El siguiente trabajo vigente es certificar el producto local y completar UX/accesibilidad conforme a [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md). Las formas RB-025 se incluyen ahora en el MVP completo mediante #35; **no** en checkpoint v0.2.
 6. Las variantes se retiraron del MVP; D1 rechaza un espejo v5 discrepante. D7 importa IDs duplicados como copia y mantiene pendiente el reemplazo. Las aclaraciones de R5.2 están en RB-037–RB-039.
 
 ### Historial de aclaraciones de R5.2 (03/11/2026)
