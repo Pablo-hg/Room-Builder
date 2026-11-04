@@ -1,6 +1,6 @@
 # Arquitectura y calidad técnica
 
-> **Estado vigente (04/11/2026, `main` tras PR #22):** R0–R5 integradas en el repositorio. R5.4 se aplazó a v0.2 y el editor local **todavía no está certificado como MVP completo**: según el informe de R5 hubo 213 pruebas unitarias y build correctos, pero no una nueva ejecución única de toda la suite E2E después de los últimos ajustes. La comparación A/B fue retirada de la interfaz MVP (RB-040); la compatibilidad de datos históricos se conserva. La planificación operativa es [MVP_SCOPE](MVP_SCOPE.md) + [LOCAL_MVP_BACKLOG](LOCAL_MVP_BACKLOG.md) y las issues [#23–#33](https://github.com/Pablo-hg/Room-Builder/issues/23). Este aviso prevalece sobre fotografías históricas del documento.
+> **VIGENCIA 04/11/2026:** R0–R5 están integradas; el baseline necesita revalidación E2E completa (#24). El MVP final aprobado requiere migración de vivienda (#51), habitaciones y plantas (#52/#53), geometría irregular (#35), WASD (#36) y siete módulos confirmados (#37/#38/#39/#40/#41/#45/#47). El detalle de arquitectura histórica inferior NO es un contrato de casa publicado. **Plan canónico:** [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md); **checkpoint v0.2** [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md); **gate final** #54.
 
 
 **Estado:** diagnóstico del código actual CONFIRMADO por lectura; organización objetivo PROPUESTA.
