@@ -1,6 +1,7 @@
 import { resizedFurniture, resizedWallObject } from '../../domain/furnitureResize'
 import { furnitureHasSpatialWarning } from '../../domain/structureCollisions'
 import type { RoomActionContext, RoomState } from '../types'
+import { openingMovementAllowed } from '../../domain/axisLocks'
 
 export function createResizeActions({ set }: RoomActionContext): Pick<RoomState, 'resizeFurniture' | 'resizeWallObject'> {
   return {
@@ -19,6 +20,8 @@ export function createResizeActions({ set }: RoomActionContext): Pick<RoomState,
       const item = state.room.windows.find((candidate) => candidate.id === id)
       if (!item) return {}
       const result = resizedWallObject(state.room, item, dimension, value)
+      const candidate = result.value?.windows.find((window) => window.id === id)
+      if (candidate && !openingMovementAllowed(item, candidate)) return { notice: 'El cambio movería un eje bloqueado.' }
       return result.value ? { room: result.value, notice: '' } : { notice: result.error }
     }),
   }

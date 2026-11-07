@@ -5,7 +5,7 @@ import { wallLength } from '../../domain/geometry'
 import { isWallMirrorShape, isWallPictureShape, openingKindForShape, OPENING_CATALOG } from '../../domain/objectCatalog'
 import { useRoomStore } from '../../state/useRoomStore'
 import type { WallSide } from '../../domain/types'
-import { ColorControl, OpeningSwatch, PositionControl, RotationControl, WallPicker } from './Controls'
+import { AxisPositionControl, ColorControl, OpeningSwatch, RotationControl, WallPicker } from './Controls'
 import { ResizeControls } from './ResizeControls'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
@@ -46,6 +46,13 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
   const openingStep = 0.01
   const maxOffset = Math.floor(rawMaxOffset / openingStep) * openingStep
   const maxSill = Math.max(0, Math.floor((room.height - selectedOpening.height - 0.08) * 100) / 100)
+  const horizontalAxis = selectedOpening.wall === 'north' || selectedOpening.wall === 'south' ? 'x' : 'z'
+  const sign = selectedOpening.wall === 'south' || selectedOpening.wall === 'west' ? -1 : 1
+  const position = {
+    x: horizontalAxis === 'x' ? selectedOpening.offset * sign : selectedOpening.wall === 'east' ? room.width / 2 : -room.width / 2,
+    y: selectedOpening.sill,
+    z: horizontalAxis === 'z' ? selectedOpening.offset * sign : selectedOpening.wall === 'south' ? room.depth / 2 : -room.depth / 2,
+  }
   const update = (partial: { wall?: WallSide; offset?: number; rotation?: number; color?: string }) => {
     if (selectedOpening.kind === 'door') {
       setDoor(partial)
@@ -75,10 +82,7 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
         />
       )}
       {capabilities.canChangeWall && <WallPicker label="Pared" value={selectedOpening.wall} onChange={(wall) => update({ wall })} disabled={locked} />}
-      {capabilities.translation.includes('wall-horizontal') && <PositionControl label="Posición lateral" min={-maxOffset} max={maxOffset} step={openingStep} value={selectedOpening.offset} disabled={locked} onChange={(value) => update({ offset: value })} />}
-      {selectedOpening.kind === 'window' && capabilities.translation.includes('wall-vertical') && (
-        <PositionControl label="Altura desde el suelo" min={0} max={maxSill} step={ROOM_LIMITS.gridSize} value={selectedOpening.sill} disabled={locked} onChange={(value) => updateWindow(selectedOpening.id, { sill: value })} />
-      )}
+      {(['x', 'y', 'z'] as const).map((axis) => <AxisPositionControl key={axis} id={selectedOpening.id} axis={axis} label={`Posición ${axis.toUpperCase()}`} value={position[axis]} min={axis === 'y' ? 0 : Math.min(-maxOffset, position[axis])} max={axis === 'y' ? maxSill : Math.max(maxOffset, position[axis])} step={axis === 'y' ? ROOM_LIMITS.gridSize : openingStep} disabled={locked} locked={selectedOpening.axisLocks?.[axis] ?? false} unavailable={axis === 'y' ? selectedOpening.kind === 'door' || !capabilities.translation.includes('wall-vertical') : axis !== horizontalAxis} onChange={(value) => axis === 'y' ? updateWindow(selectedOpening.id, { sill: value }) : update({ offset: value * sign })} />)}
       {locked
         ? <p className="lock-hint">Elemento bloqueado: desbloquea el candado de la lista para moverlo o girarlo.</p>
         : <p className="rotation-hint">{capabilities.rotation.enabled ? 'Arrastra los ejes para mover el elemento y el aro naranja para girarlo.' : 'Arrastra las flechas horizontales para moverla a izquierda o derecha.'}</p>}

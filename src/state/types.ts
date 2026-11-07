@@ -91,6 +91,7 @@ export interface RoomState {
   beginFurnitureMove: () => void
   endFurnitureMove: () => void
   moveFurniture: (id: string, x: number, z: number) => void
+  setElementAxisLock: (id: string, axis: 'x' | 'y' | 'z', locked: boolean) => void
   moveSelectedFurnitureGroup: (axis: 'x' | 'y' | 'z', delta: number) => void
   moveSelectedFurnitureGroupBy: (delta: { x: number; y: number; z: number }) => void
   rotateSelectedFurnitureGroup: () => void

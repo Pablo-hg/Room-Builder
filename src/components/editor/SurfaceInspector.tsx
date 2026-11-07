@@ -23,6 +23,8 @@ export function SurfaceInspector({ selectedSurface }: { selectedSurface: { pack:
       <StructurePositionControls
         label="Desplazamiento"
         position={surface}
+        elementId={structureSurfaceElementId(pack.id, surface.id)}
+        axisLocks={surface.axisLocks}
         onChange={(axis, value) => moveStructureSurface(pack.id, surface.id, axis, value)}
         disabled={locked}
       />

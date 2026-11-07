@@ -87,6 +87,23 @@ Mantener espacio/estructura común para las variantes de mobiliario cuando se co
 - No servicios externos obligatorios ni analítica invasiva. **#45 importa planos reales solo localmente**, sin subirlos a servidor; cuidar su privacidad, límites y portabilidad. El registro local de interacciones de desarrollo debe permanecer limitado a desarrollo, no almacenar información personal innecesaria y no enviarse a terceros.
 
 ## Estado de formato
+
+### Candados XYZ (petición del propietario, 07/11/2026)
+
+Extensión de un diseño individual: **data.version = 6** cuando muebles, puerta,
+ventanas, packs o superficies tienen `axisLocks: { x: boolean, y: boolean,
+z: boolean }`. Las tres claves son obligatorias cuando existe la propiedad.
+Ausencia: comportamiento heredado. No cambia IDs, unidades ni claves locales;
+se conserva lectura v1–v5, incluyendo aplanado de variantes v5.
+
+Un candado explícito congela la coordenada y no implica fijación al suelo/techo.
+La primera edición de candados de un mueble materializa su base visible como Y
+absoluta. Volver a bloquear Y no recoloca el objeto. Los objetos antiguos
+mantienen sus coordenadas al cargar; las alfombras apoyadas en losas corrigen
+solo su desfase visual. El JSON de intercambio mantiene `schemaVersion: 5`,
+con `design.data.version: 6`. El prototipo R4 conserva los candados en ida y
+vuelta. Implementación local pendiente de ejecución de pruebas en main y de
+validación visual; no representa el contrato de vivienda de #51.
 El contrato R4 sigue siendo un prototipo puro; el **JSON editable de una habitación existe** con formato R5.3, pendiente de E2E final. El formato de **proyecto completo** aún no está implementado ni validado; no declararlo público/estable hasta #51–#54.
 
 

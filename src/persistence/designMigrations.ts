@@ -4,6 +4,7 @@ import { normalizeDesignPreferences, normalizeDesignRoom, normalizeStructurePack
 import type { FurnitureItem, RoomConfig, WallSide, WindowConfig } from '../domain/types'
 import { clampFurnitureElevation, snapToVisibleGrid, validateOpenings } from '../domain/geometry'
 import { furnitureAttachment, FURNITURE_PRESETS, isWallPictureKind, isWindowShape, OPENING_CATALOG } from '../domain/objectCatalog'
+import { validateAxisLocks } from '../domain/axisLocks'
 
 /**
  * Aplana un v5 local de la etapa de variantes a su variante activa.
@@ -52,6 +53,7 @@ function validateAttachment(furniture: FurnitureItem[], room: RoomConfig) {
   for (const item of furniture) {
     if (!item || typeof item !== 'object' || !Object.hasOwn(FURNITURE_PRESETS, item.kind)) throw new Error('Mobiliario inválido.')
     if (item.attachmentPolicy !== undefined && item.attachmentPolicy !== 'by-type') throw new Error('Mobiliario inválido.')
+    validateAxisLocks(item.axisLocks)
     const attachment = furnitureAttachment(item)
     if ((attachment === 'floor' || attachment === 'ceiling')
       && typeof item.y === 'number' && Math.abs(item.y - clampFurnitureElevation(item, room, false)) > 1e-9) {
@@ -93,6 +95,7 @@ export function migrateWallPictures(room: RoomConfig, furniture: FurnitureItem[]
   const offsets = [0, -0.5, 0.5, -1, 1, -1.5, 1.5, -2, 2]
 
   furniture.forEach((item) => {
+    validateAxisLocks(item?.axisLocks)
     const legacyMirror = String(item.kind) === 'mirror'
     if (!isWallPictureKind(item.kind) && !legacyMirror) {
       remainingFurniture.push(item)
@@ -108,6 +111,7 @@ export function migrateWallPictures(room: RoomConfig, furniture: FurnitureItem[]
       const candidates = [preferred.offset, ...offsets.filter((offset) => offset !== preferred.offset)]
       for (const offset of candidates) {
         const picture: WindowConfig = {
+          ...(item.axisLocks ? { axisLocks: { ...item.axisLocks } } : {}),
           id: item.id,
           shape,
           wall,

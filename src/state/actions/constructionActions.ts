@@ -9,6 +9,7 @@ import { FRONT_CAMERA_MAX_HEIGHT, FRONT_CAMERA_MIN_HEIGHT, WALL_SIDES } from '..
 import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, OPENING_CATALOG, openingKindForShape } from '../../domain/objectCatalog'
 import { validateOpenings } from '../../domain/geometry'
 import { snapMeasurement } from '../../domain/measurements'
+import { openingMovementAllowed } from '../../domain/axisLocks'
 import type { StructurePack, StructureSurfaceKey, WallSide, WindowConfig } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
 import type { RoomActionContext, RoomState } from '../types'
@@ -42,6 +43,14 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
   return {
     setDimension: (key, value) => set((state) => {
       const next = clampRoomDimension(key, value)
+      if (key !== 'height' && next !== state.room[key]) {
+        const axis = key === 'width' ? 'x' : 'z'
+        const openings = [state.room.door, ...state.room.windows]
+        const movesLockedOpening = openings.some((opening) => opening.axisLocks?.[axis] && (axis === 'x' ? opening.wall === 'east' || opening.wall === 'west' : opening.wall === 'north' || opening.wall === 'south'))
+        const movesLockedWall = state.structurePacks.some((pack) => pack.surfaces.some((surface) => surface.kind === 'wall' && (pack.axisLocks?.[axis] || surface.axisLocks?.[axis]) && (axis === 'x' ? surface.wall === 'east' || surface.wall === 'west' : surface.wall === 'north' || surface.wall === 'south')))
+        if (movesLockedOpening || movesLockedWall) return { notice: `Desbloquea el eje ${axis.toUpperCase()} de los elementos afectados antes de cambiar la habitación.` }
+      }
+      if (key === 'height' && next !== state.room.height && state.structurePacks.some((pack) => pack.surfaces.some((surface) => surface.kind !== 'floor' && (pack.axisLocks?.y || surface.axisLocks?.y)))) return { notice: 'Desbloquea Y de las superficies afectadas antes de cambiar la altura.' }
       recordInteraction('state.room.dimension', {
         view: state.view,
         selectedId: state.selectedId,
@@ -103,11 +112,11 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
         ?? state.structurePacks.find((pack) => pack.id === state.activeRoomId && pack.id.startsWith('floor-pack-'))
       const origin = reference ?? { x: 0, y: 0, z: 0 }
       let floorNumber = 2
-      while (state.structurePacks.some((pack) => pack.name === `Piso ${floorNumber}`)) floorNumber += 1
+      while (state.structurePacks.some((pack) => pack.name === `Habitación ${floorNumber}`)) floorNumber += 1
       const surfaceIds: StructureSurfaceKey[] = ['floor', 'ceiling', 'wall-north', 'wall-east', 'wall-south', 'wall-west']
       const pack: StructurePack = {
         id,
-        name: `Piso ${floorNumber}`,
+        name: `Habitación ${floorNumber}`,
         x: origin.x + (direction === 'east' ? state.room.width : direction === 'west' ? -state.room.width : 0),
         y: direction ? origin.y + (direction === 'up' ? state.room.height : direction === 'down' ? -state.room.height : 0) : nextY,
         z: origin.z + (direction === 'south' ? state.room.depth : direction === 'north' ? -state.room.depth : 0),
@@ -160,6 +169,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       if (state.lockedElementIds.includes(id)) return {}
       const pack = state.structurePacks.find((candidate) => candidate.id === id)
       if (!pack || !Number.isFinite(value)) return {}
+      if (pack.axisLocks?.[axis] || pack.surfaces.some((surface) => surface.axisLocks?.[axis] || state.lockedElementIds.includes(structureSurfaceElementId(pack.id, surface.id)))) return {}
       if (pack[axis] === value) return {}
       const next = snapMeasurement(value)
       if (pack[axis] === next) return {}
@@ -179,6 +189,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       const pack = state.structurePacks.find((candidate) => candidate.id === packId)
       const surface = pack?.surfaces.find((item) => item.id === surfaceId)
       if (!pack || !surface || !Number.isFinite(value)) return {}
+      if (pack.axisLocks?.[axis] || surface.axisLocks?.[axis] || state.lockedElementIds.includes(pack.id)) return {}
       if (surface[axis] === value) return {}
       const next = snapMeasurement(value)
       if (surface[axis] === next) return {}
@@ -327,8 +338,10 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       else finishHistoryTransaction(runtime)
     },
     setDoor: (partial) => set((state) => {
+      if (!openingMovementAllowed(state.room.door, partial)) return {}
       if (state.lockedElementIds.includes('door') && (partial.wall !== undefined || partial.offset !== undefined)) return {}
       const candidate = roomForDoorUpdate(state.room, partial)
+      if (!openingMovementAllowed(state.room.door, candidate.door)) return {}
       const update = safeRoomUpdate(state, candidate)
       if (update.room) {
         recordInteraction('state.opening.updated', {
@@ -380,7 +393,10 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       if (state.lockedElementIds.includes(id) && (partial.wall !== undefined || partial.offset !== undefined || partial.sill !== undefined || partial.rotation !== undefined)) return {}
       const currentWindow = state.room.windows.find((window) => window.id === id)
       if (!currentWindow) return {}
+      if (!openingMovementAllowed(currentWindow, partial)) return {}
       const candidate = roomForWindowUpdate(state.room, currentWindow, partial)
+      const candidateWindow = candidate.windows.find((window) => window.id === id)
+      if (candidateWindow && !openingMovementAllowed(currentWindow, candidateWindow)) return {}
       const update = safeRoomUpdate(state, candidate)
       const nextWindow = candidate.windows.find((window) => window.id === id)
       if (update.room && nextWindow) {

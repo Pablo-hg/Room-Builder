@@ -1,5 +1,7 @@
 import type { FurnitureItem, FurnitureKind, WindowShape } from './types'
 import { furnitureResizeCapability, openingResizeCapability, type ResizeCapability } from './resizeCapabilities'
+import { furnitureAxisLocks } from './axisLocks'
+import { supportingFloorTop, type PlacementWorld } from './furniturePlacement'
 
 export const DEFAULT_ROTATION_STEP = Math.PI / 12
 
@@ -87,7 +89,7 @@ const FURNITURE_DEFINITIONS: Record<FurnitureKind, FurnitureDefinition> = {
 }
 
 export const FURNITURE_CATALOG = Object.fromEntries(Object.entries(FURNITURE_DEFINITIONS).map(([kind, definition]) => [kind, {
-  ...definition, capabilities: { ...definition.capabilities, resize: furnitureResizeCapability(kind as FurnitureKind) },
+  ...definition, capabilities: { ...definition.capabilities, resize: furnitureResizeCapability(kind as FurnitureKind), rotation: { ...definition.capabilities.rotation, enabled: hasUsefulFurnitureRotation(kind as FurnitureKind) } },
 }])) as Record<FurnitureKind, FurnitureDefinition>
 
 export function isFloorBoundFurniture(kind: FurnitureKind): kind is 'rug' | 'circularRug' {
@@ -98,19 +100,33 @@ export function isCeilingMountedFurniture(kind: FurnitureKind): kind is 'ceiling
   return kind === 'ceilingLamp'
 }
 
-export function furnitureAttachment(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy'>): ObjectCapabilities['attachment'] {
+export function furnitureAttachment(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy' | 'axisLocks'>): ObjectCapabilities['attachment'] {
+  if (item.axisLocks && !isWallPictureKind(item.kind)) return 'free'
   if (item.attachmentPolicy === 'by-type' || isWallPictureKind(item.kind)) return FURNITURE_CATALOG[item.kind].capabilities.attachment
   return 'free'
 }
 
-export function canElevateFurniture(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy'>): boolean {
-  return furnitureAttachment(item) === 'free'
+export function canElevateFurniture(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy' | 'axisLocks'>): boolean {
+  return !furnitureAxisLocks(item).y && furnitureAttachment(item) === 'free'
 }
 
 /** Desplazamiento visual heredado solo para objetos sin fijación al suelo o techo. */
-export function furnitureVisualYOffset(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy'>): number {
+export function furnitureVisualYOffset(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy' | 'axisLocks'> & Partial<Pick<FurnitureItem, 'x' | 'y' | 'z'>>, world?: PlacementWorld): number {
+  if (item.axisLocks) return 0
   const attachment = furnitureAttachment(item)
-  return attachment === 'floor' || attachment === 'ceiling' ? 0 : 0.02
+  const legacyOffset = attachment === 'floor' || attachment === 'ceiling' ? 0 : 0.02
+  if (isFloorBoundFurniture(item.kind)) {
+    const top = world && item.x !== undefined && item.y !== undefined && item.z !== undefined
+      ? supportingFloorTop({ x: item.x, y: item.y, z: item.z }, world) : 0.04
+    if (top !== null) return Math.max(legacyOffset, top - (item.y ?? 0))
+  }
+  return legacyOffset
+}
+
+/** Only models with concentric geometry and decoration qualify. Saved angles are retained. */
+export function hasUsefulFurnitureRotation(kind: FurnitureKind, dimensions?: Pick<FurnitureItem, 'width' | 'depth'>): boolean {
+  if (dimensions && Math.abs(dimensions.width - dimensions.depth) > 1e-9) return true
+  return !['ceilingLamp', 'wastebasket', 'circularRug', 'lamp', 'tableLamp'].includes(kind)
 }
 
 export type OpeningKind = 'door' | 'window' | 'circularWindow' | 'wallShelf' | 'pictureSmall' | 'pictureMedium' | 'pictureLarge' | 'mirrorRectangular' | 'mirrorCircular' | 'wallSconce'

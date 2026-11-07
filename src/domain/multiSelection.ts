@@ -5,6 +5,7 @@ import { canElevateFurniture, furnitureVisualYOffset, openingCapabilities } from
 import type { RoomState } from '../state/types'
 import type { WallSide } from './types'
 import { elementName } from './selection'
+import { furnitureAxisLocks } from './axisLocks'
 
 type Axis = 'x' | 'y' | 'z'
 export type MultiItem = { id: string; name: string; color: string; min: Record<Axis, number>; max: Record<Axis, number>; axes: Axis[]; type: 'furniture' | 'opening' | 'surface'; packId?: string; surfaceId?: string; wall?: WallSide }
@@ -23,8 +24,10 @@ export function multiSelectionItems(state: Pick<RoomState, 'room' | 'furniture' 
   const items: MultiItem[] = []
   for (const item of state.furniture) if (ids.has(item.id)) {
     const ext = furnitureHalfExtents(item)
-    const y = item.y + furnitureVisualYOffset(item)
-    items.push({ id: item.id, name: item.name, color: item.color, type: 'furniture', axes: canElevateFurniture(item) ? ['x', 'y', 'z'] : ['x', 'z'], min: { x: item.x - ext.halfWidth, y, z: item.z - ext.halfDepth }, max: { x: item.x + ext.halfWidth, y: y + item.height, z: item.z + ext.halfDepth } })
+    const y = item.y + furnitureVisualYOffset(item, state)
+    const locks = furnitureAxisLocks(item)
+    const axes: Axis[] = (['x', 'y', 'z'] as const).filter((axis) => !locks[axis] && (axis !== 'y' || canElevateFurniture(item)))
+    items.push({ id: item.id, name: item.name, color: item.color, type: 'furniture', axes, min: { x: item.x - ext.halfWidth, y, z: item.z - ext.halfDepth }, max: { x: item.x + ext.halfWidth, y: y + item.height, z: item.z + ext.halfDepth } })
   }
   const openings = [{ ...state.room.door, id: 'door', sill: 0, name: state.room.door.name ?? 'Puerta', shape: undefined }, ...state.room.windows.map((item) => ({ ...item, name: elementName(state, item.id) ?? 'Ventana' }))]
   for (const item of openings) if (ids.has(item.id)) {
@@ -53,7 +56,16 @@ export function multiSelectionItems(state: Pick<RoomState, 'room' | 'furniture' 
     const y = pack.y + surface.y + (surface.kind === 'wall' ? state.room.height / 2 : surface.kind === 'ceiling' ? state.room.height : 0)
     items.push({ id, name: `${pack.name} · ${surface.name}`, color: surface.color, type: 'surface', packId: pack.id, surfaceId: surface.id, axes: ['x', 'y', 'z'], min: { x: x - halfX, y: y - surface.height / 2, z: z - halfZ }, max: { x: x + halfX, y: y + surface.height / 2, z: z + halfZ } })
   }
-  return items
+  return items.map((item) => {
+    if (item.type === 'furniture') return item
+    if (item.type === 'opening') {
+      const opening = item.id === 'door' ? state.room.door : state.room.windows.find((window) => window.id === item.id)
+      return { ...item, axes: item.axes.filter((axis) => !opening?.axisLocks?.[axis]) }
+    }
+    const pack = state.structurePacks.find((candidate) => candidate.id === item.packId)
+    const surface = pack?.surfaces.find((candidate) => candidate.id === item.surfaceId)
+    return { ...item, axes: item.axes.filter((axis) => !pack?.axisLocks?.[axis] && !surface?.axisLocks?.[axis]) }
+  })
 }
 
 export function multiSelectionBounds(items: MultiItem[]) {

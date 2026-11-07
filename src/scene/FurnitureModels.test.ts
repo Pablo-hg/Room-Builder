@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { isValidElement } from 'react'
+import { cloneElement, isValidElement } from 'react'
 import { FURNITURE_CATALOG } from '../domain/objectCatalog'
 import type { FurnitureItem, FurnitureKind } from '../domain/types'
 import { FURNITURE_MODELS, FurnitureModel } from './FurnitureModels'
@@ -24,7 +24,16 @@ test('el catálogo conserva los modelos base y escala cada dimensión de los mod
   for (const kind of kinds) {
     const item: FurnitureItem = { ...FURNITURE_CATALOG[kind].base, id: 'test', x: 0, y: 0, z: 0, rotation: 0 }
     const variant = { ...item, width: item.width * 1.25, height: item.height * 1.1, depth: item.depth * 0.8, color: '#69a2b3' }
-    const serialized = JSON.stringify(normalize(FurnitureModel({ item })))
+    let model = FurnitureModel({ item })
+    if (kind === 'ceilingLamp' && isValidElement<{ children: unknown[] }>(model)) {
+      // Intentional correction: the lamp's lower disc lies horizontally, not vertically.
+      // Check that change explicitly and keep the historical signature for every other primitive.
+      const disc = model.props.children[3]
+      assert.ok(isValidElement<{ rotation?: number[] }>(disc))
+      assert.deepEqual(disc.props.rotation, [Math.PI / 2, 0, 0])
+      model = cloneElement(model, { children: model.props.children.map((child, index) => index === 3 ? cloneElement(disc, { rotation: undefined }) : child) })
+    }
+    const serialized = JSON.stringify(normalize(model))
     assert.equal(createHash('sha256').update(serialized).digest('hex'), reference[kind][0], `El modelo base ${kind} difiere de la referencia anterior`)
     const resized = normalize(FurnitureModel({ item: variant })) as { type: string; props: { scale: number[]; children: unknown } }
     assert.equal(resized.type, 'group')

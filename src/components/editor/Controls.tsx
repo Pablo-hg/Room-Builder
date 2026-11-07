@@ -1,7 +1,7 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { MeasurementControl } from './MeasurementControl'
 import { ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from '../../domain/constants'
-import type { StructureSurface, WallSide } from '../../domain/types'
+import type { AxisLocks, PositionAxis, StructureSurface, WallSide } from '../../domain/types'
 import { structureDimensionMinimum } from '../../domain/structureRules'
 import { OpeningIcon } from '../iconCatalog'
 import { useRoomStore } from '../../state/useRoomStore'
@@ -29,22 +29,38 @@ export function PositionControl({ label, value, min, max, disabled = false, onCh
   return <MeasurementControl label={label} inputLabel={inputLabel} value={value} min={min} max={max} disabled={disabled} onChange={onChange} />
 }
 
+export function AxisPositionControl({ id, axis, locked, disabled = false, unavailable = false, ...props }: {
+  id: string; axis: PositionAxis; locked: boolean; disabled?: boolean; unavailable?: boolean
+  label: string; value: number; min: number; max: number; step: number; onChange: (value: number) => void
+}) {
+  const setElementAxisLock = useRoomStore((state) => state.setElementAxisLock)
+  return <div className="axis-position-control">
+    <label className="axis-position-lock"><input type="checkbox" aria-label={`Bloquear eje ${axis.toUpperCase()}`} checked={locked || unavailable} disabled={disabled || unavailable} onChange={(event) => setElementAxisLock(id, axis, event.target.checked)} /> Bloquear {axis.toUpperCase()}</label>
+    <PositionControl {...props} disabled={disabled || locked || unavailable} />
+  </div>
+}
+
 export function StructurePositionControls({
   label,
   position,
   onChange,
   disabled = false,
+  elementId,
+  axisLocks,
 }: {
   label: string
   position: { x: number; y: number; z: number }
   onChange: (axis: 'x' | 'y' | 'z', value: number) => void
   disabled?: boolean
+  elementId?: string
+  axisLocks?: AxisLocks
 }) {
   return (
     <>
       {(['x', 'y', 'z'] as const).map((axis) => {
         const step = ROOM_LIMITS.placementStep
-        return <PositionControl key={axis} label={`${label} ${axis.toUpperCase()}`} min={Math.floor(Math.min(-10, position[axis]) / step) * step} max={Math.ceil(Math.max(10, position[axis]) / step) * step} step={step} value={position[axis]} disabled={disabled} onChange={(value) => onChange(axis, value)} />
+        const props = { label: `${label} ${axis.toUpperCase()}`, min: Math.floor(Math.min(-10, position[axis]) / step) * step, max: Math.ceil(Math.max(10, position[axis]) / step) * step, step, value: position[axis], disabled, onChange: (value: number) => onChange(axis, value) }
+        return elementId ? <AxisPositionControl key={axis} {...props} id={elementId} axis={axis} locked={axisLocks?.[axis] ?? false} /> : <PositionControl key={axis} {...props} />
       })}
     </>
   )

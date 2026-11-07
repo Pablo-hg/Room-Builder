@@ -1,6 +1,8 @@
 export type ViewMode = 'isometric' | 'top' | 'front' | 'pov' | 'free'
 export type WallSide = 'north' | 'east' | 'south' | 'west'
 export type GridSurface = 'floor' | WallSide
+export type PositionAxis = 'x' | 'y' | 'z'
+export type AxisLocks = Record<PositionAxis, boolean>
 export type FurnitureKind =
   | 'armchair'
   | 'sofa'
@@ -37,6 +39,7 @@ export interface ElementFolder {
 }
 
 export interface DoorConfig {
+  axisLocks?: AxisLocks
   name?: string
   wall: WallSide
   offset: number
@@ -47,6 +50,7 @@ export interface DoorConfig {
 }
 
 export interface WindowConfig {
+  axisLocks?: AxisLocks
   name?: string
   id: string
   shape: WindowShape
@@ -71,6 +75,7 @@ export interface RoomConfig {
 }
 
 export interface FurnitureItem {
+  axisLocks?: AxisLocks
   /** Ausente en objetos antiguos: conserva su libertad de movimiento previa. */
   attachmentPolicy?: 'by-type'
   id: string
@@ -90,6 +95,7 @@ export type StructureSurfaceKind = 'wall' | 'floor' | 'ceiling'
 export type StructureSurfaceKey = 'floor' | 'ceiling' | `wall-${WallSide}`
 
 export interface StructureSurface {
+  axisLocks?: AxisLocks
   id: StructureSurfaceKey
   kind: StructureSurfaceKind
   name: string
@@ -105,6 +111,7 @@ export interface StructureSurface {
 }
 
 export interface StructurePack {
+  axisLocks?: AxisLocks
   id: string
   name: string
   x: number

@@ -1,8 +1,9 @@
 import { furnitureHalfExtents } from './geometry'
 import { furnitureVisualYOffset } from './objectCatalog'
 import type { FurnitureItem } from './types'
+import type { PlacementWorld } from './furniturePlacement'
 
-export function furnitureSelectionBounds(items: FurnitureItem[]) {
+export function furnitureSelectionBounds(items: FurnitureItem[], world?: PlacementWorld) {
   if (!items.length) return null
   const min = { x: Infinity, y: Infinity, z: Infinity }
   const max = { x: -Infinity, y: -Infinity, z: -Infinity }
@@ -12,7 +13,7 @@ export function furnitureSelectionBounds(items: FurnitureItem[]) {
     max.x = Math.max(max.x, item.x + extent.halfWidth)
     min.z = Math.min(min.z, item.z - extent.halfDepth)
     max.z = Math.max(max.z, item.z + extent.halfDepth)
-    const y = item.y + furnitureVisualYOffset(item)
+    const y = item.y + furnitureVisualYOffset(item, world)
     min.y = Math.min(min.y, y)
     max.y = Math.max(max.y, y + item.height)
   }

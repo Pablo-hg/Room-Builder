@@ -1,4 +1,5 @@
 import type { ElementFolder, FurnitureKind, GridSurface, StructurePack, WallSide, WindowShape } from './types'
+import { validateAxisLocks } from './axisLocks'
 
 /**
  * Contrato candidato Project/Room/Layout (R4).
@@ -54,6 +55,7 @@ export interface WallV2 {
 }
 
 export interface OpeningV2 {
+  axisLocks?: import('./types').AxisLocks
   id: string
   name?: string
   wallId: string
@@ -80,6 +82,7 @@ export interface FurnitureDefinitionV2 {
 }
 
 export interface FurnitureInstanceV2 {
+  axisLocks?: import('./types').AxisLocks
   attachmentPolicy?: 'by-type'
   id: string
   roomId: string
@@ -120,7 +123,7 @@ export interface ProjectMetadataV2 {
   createdAt: string
   updatedAt: string
   source: 'v1-design' | 'new'
-  migratedFromVersion?: 1 | 2 | 3 | 4 | 5
+  migratedFromVersion?: 1 | 2 | 3 | 4 | 5 | 6
 }
 
 export interface ProjectV2 {
@@ -422,6 +425,8 @@ export function validateProject(project: ProjectV2): ProjectValidationIssue[] {
 
   const openingIds = new Set<string>()
   for (const [index, opening] of project.openings.entries()) {
+    try { validateAxisLocks(opening.axisLocks) }
+    catch { add('invalid-schema', `openings[${index}].axisLocks`, 'Bloqueos de posición inválidos.') }
     const path = `openings[${index}]`
     if (!isNonEmptyString(opening.id)) add('invalid-opening', `${path}.id`, 'Identificador de abertura vacío.')
     else if (openingIds.has(opening.id)) add('duplicate-id', `${path}.id`, `Abertura duplicada: ${opening.id}.`)
@@ -504,6 +509,8 @@ export function validateProject(project: ProjectV2): ProjectValidationIssue[] {
     const furnitureIds = new Set<string>()
     for (const [furnitureIndex, item] of layout.furniture.entries()) {
       const itemPath = `${path}.furniture[${furnitureIndex}]`
+      try { validateAxisLocks(item.axisLocks) }
+      catch { add('invalid-furniture', `${itemPath}.axisLocks`, 'Bloqueos de posición inválidos.') }
       if (!isNonEmptyString(item.id)) add('invalid-furniture', `${itemPath}.id`, 'Identificador de mueble vacío.')
       else if (furnitureIds.has(item.id)) add('duplicate-id', `${itemPath}.id`, `Mueble duplicado en la variante: ${item.id}.`)
       else furnitureIds.add(item.id)

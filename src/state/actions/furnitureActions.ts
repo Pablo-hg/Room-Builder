@@ -3,7 +3,10 @@ import { applyFurnitureRotation, elevatedFurniture, movedFurniture } from '../..
 import { makeId } from '../../domain/elementIds'
 import { withoutFolderAssignments } from '../../domain/elementFolders'
 import { elementName } from '../../domain/selection'
-import { FURNITURE_PRESETS, isCeilingMountedFurniture, isWallPictureKind } from '../../domain/objectCatalog'
+import { FURNITURE_PRESETS, furnitureVisualYOffset, isCeilingMountedFurniture, isWallPictureKind } from '../../domain/objectCatalog'
+import { furnitureAxisLocks, unlockedAxes } from '../../domain/axisLocks'
+import { supportingFloorTop } from '../../domain/furniturePlacement'
+import { structureSurfaceElementId } from '../../domain/elementIds'
 import { findFreeFurniturePosition, validateOpenings } from '../../domain/geometry'
 import { snapMeasurement } from '../../domain/measurements'
 import { furnitureSelectionBounds } from '../../domain/multiFurniture'
@@ -18,6 +21,7 @@ type FurnitureActions = Pick<
   | 'beginFurnitureMove'
   | 'endFurnitureMove'
   | 'moveFurniture'
+  | 'setElementAxisLock'
   | 'moveSelectedFurnitureGroup'
   | 'moveSelectedFurnitureGroupBy'
   | 'rotateSelectedFurnitureGroup'
@@ -32,11 +36,28 @@ type FurnitureActions = Pick<
 export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 'get' | 'runtime'>): FurnitureActions {
   const { set, get, runtime } = context
   return {
+    setElementAxisLock: (id, axis, locked) => set((state) => {
+      if (state.lockedElementIds.includes(id)) return {}
+      const item = state.furniture.find((candidate) => candidate.id === id)
+      if (item) {
+        const locks = furnitureAxisLocks(item)
+        if (locks[axis] === locked) return {}
+        return { furniture: state.furniture.map((candidate) => candidate.id !== id ? candidate : {
+          ...candidate, y: candidate.y + furnitureVisualYOffset(candidate, state), axisLocks: { ...locks, [axis]: locked },
+        }) }
+      }
+      if (id === 'door') return { room: { ...state.room, door: { ...state.room.door, axisLocks: { ...unlockedAxes(), ...state.room.door.axisLocks, [axis]: locked } } } }
+      if (state.room.windows.some((window) => window.id === id)) return { room: { ...state.room, windows: state.room.windows.map((window) => window.id !== id ? window : { ...window, axisLocks: { ...unlockedAxes(), ...window.axisLocks, [axis]: locked } }) } }
+      return { structurePacks: state.structurePacks.map((pack) => pack.id === id
+        ? { ...pack, axisLocks: { ...unlockedAxes(), ...pack.axisLocks, [axis]: locked } }
+        : { ...pack, surfaces: pack.surfaces.map((surface) => structureSurfaceElementId(pack.id, surface.id) !== id ? surface : { ...surface, axisLocks: { ...unlockedAxes(), ...surface.axisLocks, [axis]: locked } }) }) }
+    }),
     moveSelectedFurnitureGroup: (axis, delta) => get().moveSelectedFurnitureGroupBy({ x: axis === 'x' ? delta : 0, y: axis === 'y' ? delta : 0, z: axis === 'z' ? delta : 0 }),
     moveSelectedFurnitureGroupBy: (delta) => set((state) => {
       const items = multiSelectionItems(state)
       const ids = new Set(items.map((item) => item.id))
       if (items.length < 2 || items.some((item) => state.lockedElementIds.includes(item.id)) || state.selectedIds.some((id) => state.lockedElementIds.includes(id))) return {}
+      if (items.some((item) => item.packId && state.lockedElementIds.includes(item.packId))) return {}
       const amount = { x: snapMeasurement(delta.x), y: snapMeasurement(delta.y), z: snapMeasurement(delta.z) }
       if (!Object.values(amount).every(Number.isFinite) || Object.values(amount).every((value) => Math.abs(value) < 1e-9)) return {}
       if ((['x', 'y', 'z'] as const).some((axis) => Math.abs(amount[axis]) > 1e-9 && items.some((item) => !item.axes.includes(axis)))) return { notice: 'Todos los elementos deben poder moverse en este eje.' }
@@ -58,8 +79,9 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       const selected = multiSelectionItems(state)
       const ids = new Set(selected.map((item) => item.id))
       const items = state.furniture.filter((item) => ids.has(item.id))
-      const bounds = furnitureSelectionBounds(items)
+      const bounds = furnitureSelectionBounds(items, state)
       if (!bounds || items.length < 2 || items.length !== ids.size || state.selectedIds.some((id) => state.lockedElementIds.includes(id)) || items.some((item) => state.lockedElementIds.includes(item.id) || isCeilingMountedFurniture(item.kind))) return {}
+      if (items.some((item) => furnitureAxisLocks(item).x || furnitureAxisLocks(item).z)) return { notice: 'Desbloquea X y Z en todos los objetos para girar la selección.' }
       const { x, z } = bounds.center
       const furniture = state.furniture.map((item) => ids.has(item.id) ? { ...item, x: x + item.z - z, z: z - item.x + x, rotation: (item.rotation + Math.PI / 2) % (2 * Math.PI) } : item)
       return { furniture, notice: '' }
@@ -84,7 +106,15 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
           z: 0,
           rotation: 0,
         }
-        const position = findFreeFurniturePosition(item, state.room, state.furniture)
+        const activePack = state.structurePacks.find((pack) => pack.id === state.activeRoomId)
+        if (activePack) {
+          item.x = activePack.x
+          item.z = activePack.z
+          item.y += activePack.y
+        }
+        const localFurniture = activePack ? state.furniture.map((candidate) => ({ ...candidate, x: candidate.x - activePack.x, z: candidate.z - activePack.z })) : state.furniture
+        const localPosition = findFreeFurniturePosition(item, state.room, localFurniture)
+        const position = localPosition && { x: localPosition.x + (activePack?.x ?? 0), z: localPosition.z + (activePack?.z ?? 0) }
         if (!position) {
           recordInteraction('state.furniture.add-rejected', {
             view: state.view,
@@ -98,7 +128,16 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
           selectedId: state.selectedId,
           details: { id, kind, name: preset.name, x: position.x, z: position.z, selectedAfter: id },
         })
-        return { furniture: [...state.furniture, { ...item, ...position }], selectedId: id, notice: `${preset.name} añadido.` }
+        const placed = { ...item, ...position }
+        if (kind === 'rug' || kind === 'circularRug' || kind === 'ceilingLamp') {
+          placed.axisLocks = { x: false, y: true, z: false }
+          if (kind !== 'ceilingLamp') placed.y = supportingFloorTop(placed, state) ?? placed.y
+          else if (activePack) {
+            const ceiling = activePack.surfaces.find((surface) => surface.kind === 'ceiling')
+            placed.y = activePack.y + state.room.height + (ceiling ? ceiling.y - ceiling.height / 2 : 0) - placed.height
+          }
+        }
+        return { furniture: [...state.furniture, placed], selectedId: id, notice: `${preset.name} añadido.` }
       })
     },
     beginFurnitureMove: () => {

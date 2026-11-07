@@ -6,8 +6,8 @@ type Box = { id: string; x: number; y: number; z: number; width: number; height:
 type World = { room: RoomConfig; furniture: FurnitureItem[]; structurePacks: StructurePack[] }
 const epsilon = 1e-7
 
-function furnitureBox(item: FurnitureItem): Box {
-  return { id: item.id, x: item.x, y: item.y + furnitureVisualYOffset(item) + item.height / 2, z: item.z, width: item.width, height: item.height, depth: item.depth, rotation: item.rotation }
+function furnitureBox(item: FurnitureItem, world: World): Box {
+  return { id: item.id, x: item.x, y: item.y + furnitureVisualYOffset(item, world) + item.height / 2, z: item.z, width: item.width, height: item.height, depth: item.depth, rotation: item.rotation }
 }
 
 function surfaceBox(room: RoomConfig, pack: StructurePack, surface: StructureSurface): Box {
@@ -108,14 +108,14 @@ function sweepsOver(a0: Box, a1: Box, b0: Box, b1: Box) {
  * centre of the room, where a piece of furniture may already be placed, and can be moved apart.
  */
 function introducesCollision(before: World, after: World, continuous: boolean) {
-  const oldFurniture = new Map(before.furniture.map((item) => [item.id, furnitureBox(item)]))
+  const oldFurniture = new Map(before.furniture.map((item) => [item.id, furnitureBox(item, before)]))
   const oldSurfaces = new Map(independentSurfaces(before).map((surface) => [surface.id, surface]))
   const newSurfaces = independentSurfaces(after)
   for (const item of after.furniture) for (const surface of newSurfaces) {
     const oldItem = oldFurniture.get(item.id), oldSurface = oldSurfaces.get(surface.id)
     if (!oldSurface) continue
     if (oldItem && overlaps(oldItem, oldSurface)) continue
-    const furniture = furnitureBox(item)
+    const furniture = furnitureBox(item, after)
     if (overlaps(furniture, surface)) return true
     if (continuous && oldItem && (crossed(oldItem, furniture, oldSurface, surface) || (!sameShape(oldSurface, surface) && sweepsOver(oldSurface, surface, oldItem, furniture)))) return true
   }
@@ -135,38 +135,38 @@ export function introducesEndpointStructureFurnitureCollision(before: World, aft
 }
 
 export function canPlaceAgainstIndependentSurfaces(world: World, item: FurnitureItem) {
-  return !independentSurfaces(world).some((surface) => overlaps(furnitureBox(item), surface))
+  return !independentSurfaces(world).some((surface) => overlaps(furnitureBox(item, world), surface))
 }
 
 export function surfaceIntersectsFurniture(world: World, surfaceId: string) {
   const entry = allSurfaces(world).find(({ box }) => box.id === surfaceId)
-  return !!entry && world.furniture.some((item) => surfaceOverlapsFurniture(entry.surface, entry.box, item))
+  return !!entry && world.furniture.some((item) => surfaceOverlapsFurniture(entry.surface, entry.box, item, world))
 }
 
 export function independentSurfaceHasSpatialWarning(world: World, surfaceId: string) {
   const entry = allSurfaces(world).find(({ box }) => box.id === surfaceId)
   if (!entry) return false
   const isIndependent = world.structurePacks.some((pack) => (pack.id.startsWith('floor-object-') || pack.id.startsWith('wall-object-')) && pack.surfaces.some((surface) => structureSurfaceElementId(pack.id, surface.id) === surfaceId))
-  if (!isIndependent) return world.furniture.some((item) => surfaceOverlapsFurniture(entry.surface, entry.box, item))
+  if (!isIndependent) return world.furniture.some((item) => surfaceOverlapsFurniture(entry.surface, entry.box, item, world))
   const rooms = [{ x: 0, y: 0, z: 0 }, ...world.structurePacks.filter((pack) => pack.id.startsWith('floor-pack-'))]
   const { box } = entry
   const inside = rooms.some((room) => Math.abs(box.x - room.x) + radius(box, { x: 1, z: 0 }) <= world.room.width / 2 + epsilon
     && Math.abs(box.z - room.z) + radius(box, { x: 0, z: 1 }) <= world.room.depth / 2 + epsilon
     && box.y - box.height / 2 >= room.y - epsilon
     && box.y + box.height / 2 <= room.y + world.room.height + epsilon)
-  return !inside || world.furniture.some((item) => surfaceOverlapsFurniture(entry.surface, box, item))
+  return !inside || world.furniture.some((item) => surfaceOverlapsFurniture(entry.surface, box, item, world))
 }
 
-function surfaceOverlapsFurniture(surface: StructureSurface, box: Box, item: FurnitureItem) {
+function surfaceOverlapsFurniture(surface: StructureSurface, box: Box, item: FurnitureItem, world: World) {
   // Furniture rests at floor level; the floor slab is centred on that level and extends slightly above it.
   if (surface.kind === 'floor' && item.y >= box.y - epsilon) return false
   if (surface.kind === 'ceiling' && item.y + item.height <= box.y + epsilon) return false
-  return overlaps(furnitureBox(item), box)
+  return overlaps(furnitureBox(item, world), box)
 }
 
 /** Visual warning only: contacts with floors and walls do not prevent placement. */
 export function furnitureHasSpatialWarning(world: World, item: FurnitureItem) {
-  const box = furnitureBox(item)
+  const box = furnitureBox(item, world)
   const rooms = [{ x: 0, y: 0, z: 0 }, ...world.structurePacks.filter((pack) => pack.id.startsWith('floor-pack-'))]
   const halfX = radius(box, { x: 1, z: 0 })
   const halfZ = radius(box, { x: 0, z: 1 })
@@ -177,6 +177,6 @@ export function furnitureHasSpatialWarning(world: World, item: FurnitureItem) {
     && item.y + item.height <= room.y + world.room.height + epsilon,
   )
   return !insideRoom
-    || allSurfaces(world).some(({ surface, box: surfaceBounds }) => surfaceOverlapsFurniture(surface, surfaceBounds, item))
-    || world.furniture.some((other) => other.id !== item.id && overlaps(box, furnitureBox(other)))
+    || allSurfaces(world).some(({ surface, box: surfaceBounds }) => surfaceOverlapsFurniture(surface, surfaceBounds, item, world))
+    || world.furniture.some((other) => other.id !== item.id && overlaps(box, furnitureBox(other, world)))
 }

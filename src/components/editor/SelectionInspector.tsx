@@ -17,7 +17,7 @@ import type { StructureSurfaceKey } from '../../domain/types'
 function MultiFurnitureInspector({ items }: { items: MultiItem[] }) {
   const bounds = multiSelectionBounds(items)!
   const room = useRoomStore((state) => state.room)
-  const locked = useRoomStore((state) => [...state.selectedIds, ...items.map((item) => item.id)].some((id) => state.lockedElementIds.includes(id)))
+  const locked = useRoomStore((state) => [...state.selectedIds, ...items.flatMap((item) => item.packId ? [item.id, item.packId] : [item.id])].some((id) => state.lockedElementIds.includes(id)))
   const furniture = useRoomStore((state) => state.furniture)
   const selectionCount = useRoomStore((state) => state.selectedIds.length)
   const move = useRoomStore((state) => state.moveSelectedFurnitureGroup)
@@ -27,7 +27,7 @@ function MultiFurnitureInspector({ items }: { items: MultiItem[] }) {
   const updateWindow = useRoomStore((state) => state.updateWindow)
   const setSurfaceColor = useRoomStore((state) => state.setStructureSurfaceColor)
   const gesture = useInspectorGesture(`multi:${items.map((item) => item.id).sort().join(',')}`)
-  const canRotate = items.every((item) => item.type === 'furniture' && !isCeilingMountedFurniture(furniture.find((candidate) => candidate.id === item.id)!.kind))
+  const canRotate = items.every((item) => item.type === 'furniture' && item.axes.includes('x') && item.axes.includes('z') && !isCeilingMountedFurniture(furniture.find((candidate) => candidate.id === item.id)!.kind))
   const setItemColor = (item: MultiItem, color: string) => {
     if (item.type === 'furniture') setFurnitureColor(item.id, color)
     else if (item.type === 'opening') {

@@ -60,6 +60,15 @@
 | RB-052 | El conjunto de todas las issues abiertas #23–#41 seleccionadas, #45/#47 y #51–#54 define el MVP local completo; v0.2 es checkpoint, gate final #54 | CONFIRMADO como alcance y planificación, 04/11/2026 | [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md), épica #23; publicar solo con validación y autorización |
 
 ## Aclaraciones
+
+- **07/11/2026 — Petición explícita del propietario:** los candados XYZ por
+  elemento sustituyen la fijación obligatoria de alfombras/lámparas nuevas.
+  Empiezan con Y bloqueado; desbloquear permite elegir altura absoluta y volver
+  a bloquear conserva la posición. Los datos con candados explícitos se guardan
+  como v6; lectura v1–v5 conservada. Precisa RB-035/RB-036/RB-038 sin borrar su
+  historia. Especificación e implementación local en
+  [R5_PROGRESS.md](progress/R5_PROGRESS.md); pendiente de pruebas en main y
+  aceptación visual. La vivienda canónica sigue pendiente de #51–#53.
 - **CONFIRMADO** aquí alude a decisiones expresas de esta conversación, no a entregas realizadas o a documentación global del portfolio.
 - **PROPUESTO** no autoriza ejecución automática: revisar al planificar tareas.
 - El código actual es fuente de lo implementado; el registro expresa el objetivo.
