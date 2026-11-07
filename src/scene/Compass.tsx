@@ -1,5 +1,5 @@
-import { Canvas, type ThreeEvent } from '@react-three/fiber'
-import { useEffect, useMemo, useState } from 'react'
+import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import * as THREE from 'three'
 import { WALL_LABELS, WALL_SIDES } from '../domain/constants'
 import type { WallSide } from '../domain/types'
@@ -7,6 +7,18 @@ import type { WallSide } from '../domain/types'
 const compassFace = (wall: WallSide, visibleWalls: WallSide[]) => visibleWalls.includes(wall)
   ? { color: '#67a47b', opacity: 0.74 }
   : { color: '#dfe6e1', opacity: 0.18 }
+
+/** Orthographic zoom is measured in pixels: fit the same world extent at every size. */
+function CompassCameraFit() {
+  const { camera, size, invalidate } = useThree()
+  useLayoutEffect(() => {
+    if (!(camera instanceof THREE.OrthographicCamera)) return
+    camera.zoom = Math.min(size.width, size.height) * 38 / 168
+    camera.updateProjectionMatrix()
+    invalidate()
+  }, [camera, size.width, size.height, invalidate])
+  return null
+}
 
 function CompassFaceMaterial({ attach, wall, visibleWalls, hovered }: { attach: string; wall: WallSide; visibleWalls: WallSide[]; hovered: boolean }) {
   const face = compassFace(wall, visibleWalls)
@@ -261,10 +273,11 @@ export function FreeCameraCompass3D({
     <Canvas
       className="compass-3d-scene"
       orthographic
-      camera={{ position: [0, 0, 5], zoom: 45, near: 0.1, far: 20 }}
+      camera={{ position: [0, 0, 5], zoom: 38, near: 0.1, far: 20 }}
       dpr={[1, 1.5]}
       gl={{ alpha: true, antialias: true }}
     >
+      <CompassCameraFit />
       <ambientLight intensity={1.8} />
       <group quaternion={cameraRotation} scale={1.4}>
         <mesh rotation={[0, 0, Math.PI / 2]}>
@@ -328,10 +341,11 @@ export function RoomCompass3D({ visibleWalls, highlightTop, activeOrientation, o
     <Canvas
       className="compass-3d-scene"
       orthographic
-      camera={{ position: [0, 0, 5], zoom: 45, near: 0.1, far: 20 }}
+      camera={{ position: [0, 0, 5], zoom: 38, near: 0.1, far: 20 }}
       dpr={[1, 1.5]}
       gl={{ alpha: true, antialias: true }}
     >
+      <CompassCameraFit />
       <ambientLight intensity={1.8} />
       <directionalLight position={[-3, 5, 6]} intensity={2.4} color="#fff7eb" />
       <group rotation={cubeRotation}>

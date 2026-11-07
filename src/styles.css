@@ -267,11 +267,10 @@ body.can-grab .scene-panel canvas { cursor: grabbing; }
 .empty-scene strong { font-size: 12px; }
 .empty-scene small { margin-top: 3px; color: #8b8f8b; font-size: 10px; }
 .compass { position: absolute; z-index: 3; right: 18px; bottom: 17px; width: 180px; height: 180px; border: 1px solid rgba(69,81,72,.2); border-radius: 50%; background: radial-gradient(circle at 46% 42%, rgba(255,255,255,.99), rgba(248,247,242,.94)); color: #516057; font-size: 11px; font-weight: 800; box-shadow: 0 11px 30px rgba(48,55,49,.16); backdrop-filter: blur(7px); }
-.compass-3d-scene { position: absolute !important; z-index: 5; width: 168px !important; height: 168px !important; left: 5px !important; top: 6px !important; border-radius: 50%; }
+.compass-3d-scene { position: absolute !important; z-index: 5; width: calc(100% - 12px) !important; height: calc(100% - 12px) !important; left: 6px !important; top: 6px !important; border-radius: 50%; }
 
 @media (max-width: 1200px) {
   .compass { right: 14px; bottom: 116px; width: 140px; height: 140px; }
-  .compass-3d-scene { width: 130px !important; height: 130px !important; }
 }
 
 .catalog-families { display: grid; gap: 18px; margin-top: 16px; }
