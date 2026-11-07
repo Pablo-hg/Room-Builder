@@ -728,7 +728,7 @@ test('reordena objetos sin carpeta y dentro de una carpeta', async ({ page }) =>
   await chair.dragTo(door, { sourcePosition: { x: 12, y: 12 }, targetPosition: { x: target.width / 2, y: 4 } })
   await expect.poll(async () => (await chair.boundingBox())!.y < (await door.boundingBox())!.y).toBe(true)
   await chair.click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Mover abajo' }).click()
+  await page.getByRole('menuitem', { name: 'Bajar' }).click()
   await expect.poll(async () => (await chair.boundingBox())!.y > (await door.boundingBox())!.y).toBe(true)
   await catalog.getByRole('button', { name: 'Crear carpeta de elementos' }).click()
   for (const name of ['Silla', 'Puerta']) {
@@ -859,7 +859,7 @@ test('los atajos del menú renombran, ordenan, crean y borran sin interferir al 
   await chair.click({ button: 'right' })
   const menu = page.getByRole('menu', { name: 'Acciones de Silla' })
   await expect(menu.getByRole('menuitem', { name: 'Renombrar', exact: true })).toHaveAttribute('aria-keyshortcuts', 'F2')
-  await expect(menu.getByRole('menuitem', { name: 'Mover arriba', exact: true })).toContainText('Alt + Mayús + ↑')
+  await expect(menu.getByRole('menuitem', { name: 'Subir', exact: true })).toContainText('Alt + Mayús + ↑')
   await page.keyboard.press('F2')
   const input = page.getByRole('textbox', { name: 'Nuevo nombre para Silla' })
   await expect(input).toBeFocused()
