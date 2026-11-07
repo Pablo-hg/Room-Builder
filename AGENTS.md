@@ -57,10 +57,11 @@ Acción: [Mantener / Cambiar].
 ## 3. Verificación y seguridad del trabajo
 
 - Inspeccionar el código real antes de actuar. Evaluar efectos sobre vistas, dimensiones, selección, persistencia y migraciones cuando sean áreas afectadas.
-- Ejecutar primero las pruebas pertinentes para los archivos modificados. Ampliar la validación según alcance y riesgo, utilizando `npm test`, `npm run test:e2e` y `npm run build` cuando corresponda.
-- En cambios amplios o antes de integrar, ejecutar las comprobaciones generales aplicables. Si alguna no puede ejecutarse o no corresponde a la tarea, explicarlo en el resumen final.
+- **Política vigente del propietario (07/11/2026):** las pruebas automáticas (unitarias, E2E y build de CI) se ejecutan **solo al integrar cambios en `main`**. No lanzar CI en `dev`, ramas de desarrollo o PR, ni ejecutar suites allí por iniciativa propia. Esta política pospone la certificación hasta después de la integración; indicar expresamente los riesgos y los tests pendientes.
+- Antes de integrar, revisar estáticamente los cambios y documentar las validaciones pendientes sin afirmar que se han probado. Después de integrar en `main`, el workflow ejecuta `npm ci`, `npm test`, `npm run build` y `npm run test:e2e`.
 - No repetir pruebas costosas si no hay cambios relevantes desde una ejecución válida, salvo para comprobar estabilidad o por requisitos de integración.
 - No afirmar que una vista ha sido validada visualmente sin haberla comprobado. No ocultar fallos, resultados incompletos ni riesgos conocidos.
+- **Política vigente del propietario (07/11/2026):** partir siempre de `main` para crear ramas nuevas de tarea. Subir commits únicamente a esas ramas; **no crear PR**, y **no subir cambios ni integrar automáticamente en `main` o `dev`**. La integración en `main` requiere acción o autorización específica del propietario.
 - No sobrescribir trabajo ajeno ni borrar cambios locales. No hacer commits no solicitados, merges ni publicaciones sin autorización expresa. Trabajar en la rama indicada y entregar un resumen verificable.
 
 ## 4. Eficiencia de tokens y contexto
