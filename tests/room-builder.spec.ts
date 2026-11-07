@@ -39,7 +39,7 @@ test('permite cambiar vistas, añadir un objeto y guardar', async ({ page }) => 
 test('mantiene la cabecera y el documento dentro del viewport en tamaños responsive', async ({ page }) => {
   await page.goto('/')
 
-  for (const width of [1440, 1400, 1351, 1197, 1024, 851, 850, 820, 800, 771, 770, 700, 641, 640, 580, 430, 375, 320]) {
+  for (const width of [1440, 1400, 1351, 1197, 1024, 1001, 1000, 999, 951, 950, 851, 850, 820, 800, 771, 770, 700, 641, 640, 580, 430, 375, 320]) {
     await page.setViewportSize({ width, height: 900 })
     await page.waitForTimeout(250)
     const layout = await page.evaluate(() => {
@@ -762,14 +762,29 @@ test('intercala carpetas y objetos hermanos sin cambiar su pertenencia', async (
   const child = (name: string) => parent.locator('.element-folder').filter({ has: page.getByRole('button', { name: `Carpeta ${name}`, exact: true }) })
   const first = child('Carpeta 2').locator('.element-folder__heading').first()
   const second = child('Carpeta 3').locator('.element-folder__heading').first()
+
+  // Comprobar los hermanos DIRECTOS de Carpeta 1 en el orden real del DOM.
+  // Sus coordenadas Y no son una fuente fiable al arrastrar o desplazar el catálogo.
+  const siblingOrder = () => parent.locator(':scope > .element-list').evaluate((list) =>
+    Array.from(list.children).map((entry) => entry.matches('.element-folder')
+      ? entry.querySelector(':scope > .element-folder__heading .element-folder__select')?.getAttribute('aria-label') ?? null
+      : entry.querySelector(':scope > .element-select strong')?.textContent?.trim() ?? null),
+  )
+  const appearsBefore = async (before: string, after: string) => {
+    const order = await siblingOrder()
+    const firstIndex = order.indexOf(before)
+    const secondIndex = order.indexOf(after)
+    return firstIndex !== -1 && secondIndex !== -1 && firstIndex < secondIndex
+  }
+
   await row('Silla').dragTo(first, { sourcePosition: { x: 12, y: 12 }, targetPosition: { x: 30, y: 2 } })
-  await expect.poll(async () => (await row('Silla').boundingBox())!.y < (await first.boundingBox())!.y).toBe(true)
+  await expect.poll(() => appearsBefore('Silla', 'Carpeta Carpeta 2')).toBe(true)
   await second.dragTo(row('Puerta'), { targetPosition: { x: 40, y: 3 } })
-  await expect.poll(async () => (await second.boundingBox())!.y < (await row('Puerta').boundingBox())!.y).toBe(true)
+  await expect.poll(() => appearsBefore('Carpeta Carpeta 3', 'Puerta')).toBe(true)
   await expect(parent.locator('.element-row').filter({ hasText: 'Silla' })).toHaveCount(1)
   await first.getByRole('button', { name: 'Carpeta Carpeta 2', exact: true }).click()
   await page.getByRole('button', { name: 'Subir carpeta' }).click()
-  await expect.poll(async () => (await first.boundingBox())!.y < (await row('Silla').boundingBox())!.y).toBe(true)
+  await expect.poll(() => appearsBefore('Carpeta Carpeta 2', 'Silla')).toBe(true)
 })
 
 test('abre el menú contextual de objetos y carpetas con ratón y teclado', async ({ page }) => {
