@@ -3,12 +3,13 @@ import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, WALL_LABELS, WALL_SIDES } from
 import { useRoomStore } from '../../state/useRoomStore'
 import { ColorControl, DimensionControl } from './Controls'
 import { SelectionInspector } from './SelectionInspector'
-import { selectedEditableRoom } from '../../domain/roomEditing'
+import { focusedRoom } from '../../domain/roomEditing'
 
 export function SettingsPanel() {
   const state = useRoomStore()
-  const editableRoom = selectedEditableRoom(state)
-  const pack = state.structurePacks.find((candidate) => candidate.id === editableRoom?.packId)
+  const cameraRoom = focusedRoom(state)
+  const editableRoom = cameraRoom.editable
+  const pack = state.structurePacks.find((candidate) => candidate.id === cameraRoom.packId)
   const setSelectedColor = (kind: 'floor' | 'wall', color: string, wall?: typeof WALL_SIDES[number]) => {
     if (!pack) { if (kind === 'floor') state.setFloorColor(color); else if (wall) state.setWallSideColor(wall, color); else state.setWallColor(color); return }
     const token = state.beginHistoryGesture(pack.id)
@@ -33,14 +34,14 @@ export function SettingsPanel() {
               aria-controls="room-section-content"
               onClick={() => setRoomSectionCollapsed((collapsed) => !collapsed)}
             >
-              <span>{editableRoom?.name ?? 'Habitación'}</span>
+              <span>{cameraRoom.name}</span>
               <span className="room-section__chevron" aria-hidden="true" />
             </button>
           </h2>
           <div id="room-section-content" hidden={roomSectionCollapsed}>
-            <p className="section-copy">{editableRoom ? 'Las dimensiones solo modifican esta habitación.' : 'Selecciona una carpeta con suelo y cuatro paredes alineadas para editar sus dimensiones.'}</p>
+            <p className="section-copy">{editableRoom ? 'Habitación enfocada en la cámara. Las dimensiones solo modifican esta habitación.' : 'La habitación enfocada necesita una carpeta con suelo y cuatro paredes alineadas para editar sus dimensiones.'}</p>
             <div className="dimension-visual" aria-hidden="true">
-              <span>{(editableRoom?.size.depth ?? room.depth).toFixed(1)} m</span><div><b>{(editableRoom?.size.width ?? room.width).toFixed(1)} m</b><i>⌂</i></div>
+              <span>{cameraRoom.size.depth.toFixed(1)} m</span><div><b>{cameraRoom.size.width.toFixed(1)} m</b><i>⌂</i></div>
             </div>
             <DimensionControl field="width" label="Anchura" />
             <DimensionControl field="depth" label="Profundidad" />

@@ -64,6 +64,7 @@ export interface WindowConfig {
 }
 
 export interface RoomConfig {
+  extraDoors?: Array<DoorConfig & { id: string }>
   width: number
   depth: number
   height: number

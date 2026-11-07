@@ -90,6 +90,14 @@ Mantener espacio/estructura común para las variantes de mobiliario cuando se co
 
 ### Candados XYZ (petición del propietario, 07/11/2026)
 
+**Última continuación del 07/11/2026:** `RoomConfig.extraDoors` permite puertas
+adicionales en raíz sin reemplazar `room.door`. Sus entradas usan el mismo
+contrato de puerta con ID estable. Estos diseños se guardan como v8; lectura
+v1–v7 mantenida. Las puertas adicionales se conservan como aberturas en R4 y en
+JSON, con selección, candados, historial y referencias. La puerta principal
+mantiene su ID `door`. El catálogo usa la habitación enfocada en la cámara para
+añadir, independiente de la selección de objetos.
+
 **Continuación del 07/11/2026:** `data.version: 7` cuando un pack contiene
 `doors?: (DoorConfig & { id: string })[]`. La pared se identifica por su lado
 en el pack y conserva un hueco geométrico real; la puerta sigue sus movimientos.

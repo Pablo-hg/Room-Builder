@@ -61,6 +61,15 @@
 
 ## Aclaraciones
 
+- **07/11/2026 — Última petición del propietario:** la habitación enfocada en la
+  cámara determina el contexto del catálogo de puertas y del panel de espacio;
+  la selección de objetos permanece independiente. Precisa la continuación
+  anterior: no hace falta seleccionar la carpeta en la lista, pero los tamaños
+  siguen exigiendo componentes completos/coherentes. Una tarjeta Puerta añade
+  en cualquier habitación, incluida raíz mediante `extraDoors` (v8). Zoom por
+  barra además de rueda, distribución móvil por zonas. Validación visual a cargo
+  del propietario; pruebas/build pendientes de main.
+
 - **Continuación del 07/11/2026 — CONFIRMADO por el propietario:** las dimensiones
   modifican solo la habitación seleccionada y se habilitan desde una carpeta con
   sus componentes completos/coherentes. Puertas adicionales vinculadas a paredes

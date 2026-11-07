@@ -104,7 +104,7 @@ test('muestra la guía de atajos del inspector y permite minimizarla', async ({ 
 test('permite minimizar la sección Tu habitación del inspector', async ({ page }) => {
   await page.goto('/')
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
-  const toggle = inspector.getByRole('button', { name: 'Habitación', exact: true })
+  const toggle = inspector.getByRole('button', { name: 'Raíz', exact: true })
   const content = inspector.locator('#room-section-content')
 
   await expect(content).toBeVisible()
@@ -606,7 +606,7 @@ test('incluye puerta y ventana en el catálogo y abre sus propiedades a la izqui
   await page.getByRole('button', { name: /Planta.*Añadir/ }).click()
   await expect(inspector.getByRole('heading', { name: 'Planta' })).toBeVisible()
 
-  await page.getByRole('button', { name: /Puerta Seleccionar/ }).click()
+  await page.getByRole('button', { name: /Puerta Apertura/ }).click()
   await expect(inspector.getByRole('heading', { name: 'Puerta' })).toBeVisible()
   await expect(inspector.getByText('Posición lateral')).toBeVisible()
   await expect(inspector.getByText('1.00 m', { exact: true })).toBeVisible()

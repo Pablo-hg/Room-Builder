@@ -49,7 +49,7 @@ test('las cuadrículas siguen la habitación de la vista y conservan sus ajustes
   await expect(wall).toHaveAttribute('aria-checked', 'true')
   await selector.selectOption({ label: 'Habitación 2' })
   await expect(wall).toHaveAttribute('aria-checked', 'false')
-  await page.getByRole('button', { name: 'Puerta Seleccionar' }).click()
+  await page.getByRole('button', { name: 'Puerta Apertura' }).click()
   await page.screenshot({ path: testInfo.outputPath('habitacion-indicadores.png') })
 })
 

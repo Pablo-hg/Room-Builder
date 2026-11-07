@@ -9,12 +9,14 @@ import { AxisPositionControl, ColorControl, OpeningSwatch, RotationControl, Wall
 import { ResizeControls } from './ResizeControls'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
-type SelectedOpening = (RoomState['room']['door'] & { id: 'door'; kind: 'door'; sill: number }) | (RoomState['room']['windows'][number] & { kind: 'window' })
+type SelectedOpening = (RoomState['room']['door'] & { id: string; kind: 'door'; sill: number }) | (RoomState['room']['windows'][number] & { kind: 'window' })
 
 export function OpeningInspector({ selectedOpening }: { selectedOpening: SelectedOpening }) {
   const gesture = useInspectorGesture(selectedOpening.id)
   const room = useRoomStore((state) => state.room)
   const setDoor = useRoomStore((state) => state.setDoor)
+  const setStructureDoor = useRoomStore((state) => state.setStructureDoor)
+  const removeStructureDoor = useRoomStore((state) => state.removeStructureDoor)
   const updateWindow = useRoomStore((state) => state.updateWindow)
   const removeWindow = useRoomStore((state) => state.removeWindow)
   const resizeWallObject = useRoomStore((state) => state.resizeWallObject)
@@ -55,7 +57,8 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
   }
   const update = (partial: { wall?: WallSide; offset?: number; rotation?: number; color?: string }) => {
     if (selectedOpening.kind === 'door') {
-      setDoor(partial)
+      if (selectedOpening.id === 'door') setDoor(partial)
+      else setStructureDoor(selectedOpening.id, partial)
     } else updateWindow(selectedOpening.id, partial)
   }
   return (
@@ -87,6 +90,7 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
         ? <p className="lock-hint">Elemento bloqueado: desbloquea el candado de la lista para moverlo o girarlo.</p>
         : <p className="rotation-hint">{capabilities.rotation.enabled ? 'Arrastra los ejes para mover el elemento y el aro naranja para girarlo.' : 'Arrastra las flechas horizontales para moverla a izquierda o derecha.'}</p>}
       {selectedOpening.kind === 'window' && capabilities.removable && <button type="button" className="text-button danger" onClick={() => removeWindow(selectedOpening.id)}>Eliminar {openingName.toLowerCase()}</button>}
+      {selectedOpening.kind === 'door' && selectedOpening.id !== 'door' && <button type="button" className="text-button danger" onClick={() => removeStructureDoor(selectedOpening.id)}>Eliminar puerta</button>}
     </section>
   )
 

@@ -2,7 +2,7 @@ import type { ThreeEvent } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { DEFAULT_WALL_COLOR } from '../domain/constants'
-import { isWallMountedDecoration, openingsForWall, wallLength } from '../domain/geometry'
+import { buildWallSegments, isWallMountedDecoration, openingsForWall, wallLength } from '../domain/geometry'
 import type { RoomConfig, WallOpening, WallSide } from '../domain/types'
 import { clipPolygonToWall, openingPolygon } from './wallGeometry'
 import { useRoomStore } from '../state/useRoomStore'
@@ -58,7 +58,7 @@ export function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exp
   const selectedId = useRoomStore((state) => state.selectedId)
   const selectedIds = useRoomStore((state) => state.selectedIds)
   const length = wallLength(room, wall)
-  const openings = useMemo(() => openingsForWall(room, wall), [room.door, room.windows, wall])
+  const openings = useMemo(() => openingsForWall(room, wall), [room.door, room.extraDoors, room.windows, wall])
   const placement = wallPlacement[wall](room)
 
   return (
@@ -69,14 +69,14 @@ export function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exp
           recordSceneInteraction('background.pointer-down', { target: 'wall', wall })
           selectSceneObject(baseWallId(wall), event.nativeEvent)
         }} />
-        <mesh position={[0, 0.055, 0.075]} userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
+        {buildWallSegments(length, 0.11, openings.filter((opening) => opening.kind === 'door')).map((segment, index) => <mesh key={index} position={[segment.center[0], segment.center[1], 0.075]} userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
           event.stopPropagation()
           recordSceneInteraction('background.pointer-down', { target: 'baseboard', wall })
           selectSceneObject(baseWallId(wall), event.nativeEvent)
         }}>
-          <boxGeometry args={[length, 0.11, 0.07]} />
+          <boxGeometry args={[segment.size[0], segment.size[1], 0.07]} />
           <meshStandardMaterial color="#d5a86e" />
-        </mesh>
+        </mesh>)}
         {showGrid && <WallGrid length={length} height={room.height} openings={openings} />}
         {!exportMode && selectedIds.includes(baseWallId(wall)) && <group position={[0, room.height / 2, 0]}><SelectionBounds width={length} height={room.height} depth={0.12} /></group>}
       </group>}

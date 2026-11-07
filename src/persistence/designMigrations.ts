@@ -45,7 +45,7 @@ export function normalizeDesign(value: unknown): PersistedDesign {
   const usedIds = new Set(['door', ...BASE_ROOM_SURFACE_IDS, ...room.windows.map((window) => window.id), ...source.furniture.map((item) => item?.id),
     ...(source.elementFolders ?? []).map((folder) => folderSelectionId(folder.id)),
     ...structurePacks.flatMap((pack) => [pack.id, ...pack.surfaces.flatMap((surface) => [structureSurfaceElementId(pack.id, surface.id), structureGridElementId(pack.id, surface.id)])])])
-  for (const pack of structurePacks) for (const door of pack.doors ?? []) {
+  for (const door of [...(room.extraDoors ?? []), ...structurePacks.flatMap((pack) => pack.doors ?? [])]) {
     if (usedIds.has(door.id)) throw new Error('Identificador de puerta duplicado.')
     usedIds.add(door.id)
   }

@@ -5,12 +5,12 @@ import type { AxisLocks, PositionAxis, StructureSurface, WallSide } from '../../
 import { structureDimensionMinimum } from '../../domain/structureRules'
 import { OpeningIcon } from '../iconCatalog'
 import { useRoomStore } from '../../state/useRoomStore'
-import { selectedEditableRoom } from '../../domain/roomEditing'
+import { focusedRoom } from '../../domain/roomEditing'
 
 export function DimensionControl({ field, label }: { field: 'width' | 'depth' | 'height'; label: string }) {
   const state = useRoomStore()
-  const target = selectedEditableRoom(state)
-  return <MeasurementControl label={label} value={target?.size[field] ?? state.room[field]} disabled={!target} min={field === 'width' ? ROOM_LIMITS.minWidth : field === 'depth' ? ROOM_LIMITS.minDepth : ROOM_LIMITS.minHeight} max={field === 'width' ? ROOM_LIMITS.maxWidth : field === 'depth' ? ROOM_LIMITS.maxDepth : ROOM_LIMITS.maxHeight} onChange={(value) => state.setSelectedRoomDimension(field, value)} />
+  const target = focusedRoom(state)
+  return <MeasurementControl label={label} value={target.size[field]} disabled={!target.editable} min={field === 'width' ? ROOM_LIMITS.minWidth : field === 'depth' ? ROOM_LIMITS.minDepth : ROOM_LIMITS.minHeight} max={field === 'width' ? ROOM_LIMITS.maxWidth : field === 'depth' ? ROOM_LIMITS.maxDepth : ROOM_LIMITS.maxHeight} onChange={(value) => state.setFocusedRoomDimension(field, value)} />
 }
 
 export function ColorControl({ label, value, onChange, disabled = false }: { label: string; value: string; onChange: (color: string) => void; disabled?: boolean }) {

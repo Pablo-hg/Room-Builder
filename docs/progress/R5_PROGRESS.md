@@ -1,5 +1,35 @@
 # R5 — Funcionalidad y diseño
 
+## Contexto de cámara y controles móviles — 07/11/2026
+
+Nueva petición: un único botón Puerta que añada en la habitación enfocada,
+panel de habitación ligado a la cámara, barra de zoom y separación de controles
+en móvil. Sustituye la elección por carpeta como fuente del contexto visible;
+la comprobación de componentes completos/coherentes sigue protegiendo tamaños.
+
+Plan previo: centralizar el contexto de habitación enfocada, conservar selección
+de objetos independiente, reutilizar límites de zoom existentes para rueda y
+barra, separar cabecera/escena/controles cuando la escena sea estrecha. Añadir
+`RoomConfig.extraDoors?: (DoorConfig & { id: string })[]` para permitir añadir
+en raíz manteniendo su puerta principal e IDs antiguos; guardar esos diseños
+como v8 y mantener lectura v1–v7. Aberturas reales y validación de solapes y
+paredes coincidentes; no simular pasos por medianeras duplicadas. JSON/R4 deben
+conservar las puertas adicionales. Suites y build pendientes de main.
+
+Implementado: una tarjeta «Puerta · Añadir», contexto `focusedRoom` común al
+catálogo/panel/dimensiones, puertas adicionales en raíz con huecos en pared y
+rodapié, barra de zoom sincronizada con rueda y valores de cada vista. En escenas
+estrechas, cabecera/escena/controles ocupan filas independientes; la brújula
+mantiene la proporción de escritorio y su tamaño grande sobre 1200 px.
+
+Análisis estático TypeScript de src y E2E afectados correcto; diff correcto.
+Preparadas regresiones `cameraRoomContext.test.ts` y
+`camera-context-mobile.spec.ts`, sin ejecutarlas. La revisión visual mediante
+computer-use se detuvo porque el acceso al navegador no pudo verificar la URL
+actual de Chrome; no se considera validado el diseño móvil. El propietario
+indica que hará la comprobación manual. Vite local de revisión en
+`http://127.0.0.1:5179/`; sin tests, build, CI, push ni integración.
+
 ## Continuación solicitada — 07/11/2026
 
 El propietario solicita recuperar la proporción original de brújula, quitar el

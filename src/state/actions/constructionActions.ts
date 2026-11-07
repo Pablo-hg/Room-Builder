@@ -10,7 +10,7 @@ import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, OPENING_CATAL
 import { validateOpenings } from '../../domain/geometry'
 import { snapMeasurement } from '../../domain/measurements'
 import { openingMovementAllowed } from '../../domain/axisLocks'
-import { packRoomBox, rebasePack, resizedRoomPack, selectedEditableRoom, worldRoomBoxes } from '../../domain/roomEditing'
+import { focusedRoom, packRoomBox, rebasePack, resizedRoomPack, selectedEditableRoom, worldRoomBoxes } from '../../domain/roomEditing'
 import { BASE_ROOM_SURFACE_IDS } from '../../domain/elementFolders'
 import { structureDoorError, structureDoorPosition } from '../../domain/structureDoors'
 import type { StructurePack, StructureSurfaceKey, WallSide, WindowConfig } from '../../domain/types'
@@ -21,6 +21,7 @@ type ConstructionActions = Pick<
   RoomState,
   | 'setDimension'
   | 'setSelectedRoomDimension'
+  | 'setFocusedRoomDimension'
   | 'setWallColor'
   | 'setWallSideColor'
   | 'setFloorColor'
@@ -44,10 +45,8 @@ type ConstructionActions = Pick<
 
 export function createConstructionActions(context: Pick<RoomActionContext, 'set' | 'get' | 'runtime'>): ConstructionActions {
   const { set, get, runtime } = context
-  return {
-    setSelectedRoomDimension: (key, value) => {
+  const resizeRoom = (key: 'width' | 'depth' | 'height', value: number, target: ReturnType<typeof selectedEditableRoom>) => {
       const state = get()
-      const target = selectedEditableRoom(state)
       if (!target) return set({ notice: 'Selecciona una carpeta con una habitación rectangular completa.' })
       if (target.kind === 'root') {
         if (BASE_ROOM_SURFACE_IDS.some((id) => state.lockedElementIds.includes(id))) return set({ notice: 'Desbloquea las superficies de la habitación para cambiar sus dimensiones.' })
@@ -66,12 +65,15 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       })) return set({ notice: 'El cambio desplazaría un eje bloqueado de una puerta.' })
       if (next.surfaces.some((surface, index) => (['x', 'y', 'z'] as const).some((axis) => (pack.axisLocks?.[axis] || surface.axisLocks?.[axis]) && surface[axis] !== pack.surfaces[index][axis]))) return set({ notice: 'El cambio desplazaría un eje bloqueado de la habitación.' })
       return set({ structurePacks: state.structurePacks.map((candidate) => candidate.id === next.id ? next : candidate), notice: '' })
-    },
+    }
+  return {
+    setSelectedRoomDimension: (key, value) => resizeRoom(key, value, selectedEditableRoom(get())),
+    setFocusedRoomDimension: (key, value) => resizeRoom(key, value, focusedRoom(get()).editable),
     setDimension: (key, value) => set((state) => {
       const next = clampRoomDimension(key, value)
       if (key !== 'height' && next !== state.room[key]) {
         const axis = key === 'width' ? 'x' : 'z'
-        const openings = [state.room.door, ...state.room.windows]
+        const openings = [state.room.door, ...(state.room.extraDoors ?? []), ...state.room.windows]
         const movesLockedOpening = openings.some((opening) => opening.axisLocks?.[axis] && (axis === 'x' ? opening.wall === 'east' || opening.wall === 'west' : opening.wall === 'north' || opening.wall === 'south'))
         if (movesLockedOpening) return { notice: `Desbloquea el eje ${axis.toUpperCase()} de los elementos afectados antes de cambiar la habitación.` }
       }

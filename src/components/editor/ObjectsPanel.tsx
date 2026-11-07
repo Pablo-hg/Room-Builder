@@ -71,6 +71,7 @@ export function ObjectsPanel() {
       ...WALL_SIDES.map((wall) => ({ id: baseWallId(wall), name: `Pared ${WALL_LABELS[wall]}`, kind: 'Superficie de la habitación', icon: <StructureSurfaceIcon kind="wall" /> })),
     ] : []),
     { id: 'door', name: room.door.name || 'Puerta', kind: 'Apertura', icon: <OpeningSwatch kind="door" /> },
+    ...(room.extraDoors ?? []).map((door) => ({ id: door.id, name: door.name || 'Puerta', kind: 'Apertura', icon: <OpeningSwatch kind="door" /> })),
     ...room.windows.map((window, index) => {
       const name = OPENING_CATALOG[openingKindForShape(window.shape)].name
       const family = window.shape === 'wallShelf' ? 'Almacenaje' : isWallPictureShape(window.shape) || isWallMirrorShape(window.shape) || window.shape === 'wallSconce' ? 'Decoración' : 'Apertura'
@@ -460,10 +461,6 @@ export function ObjectsPanel() {
               </button>
             </h3>
             {!collapsedCategories.openings && <div className="catalog-grid" id="catalog-grid-openings">
-              <button type="button" className={`catalog-card ${selectedId === 'door' ? 'active' : ''}`} onClick={() => selectElement('door')} aria-pressed={selectedId === 'door'}>
-                <OpeningSwatch kind="door" />
-                <span>{OPENING_CATALOG.door.name}</span><small>Seleccionar</small>
-              </button>
               <button type="button" className="catalog-card" onClick={addStructureDoor}>
                 <OpeningSwatch kind="door" /><span>Puerta</span><small>＋ Añadir</small>
               </button>

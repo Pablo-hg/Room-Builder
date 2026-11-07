@@ -16,7 +16,7 @@ export interface DesignFilePreview { design: SavedDesign; sourceVersion: number;
 /** Omite únicamente referencias a elementos que ya no existen; no modifica el diseño abierto. */
 export function cleanExportReferences(input: PersistedDesign): { data: PersistedDesign; omitted: number } {
   const data = structuredClone(input)
-  const valid = new Set<string>(['door', ...BASE_ROOM_SURFACE_IDS, ...data.furniture.map((item) => item.id), ...data.room.windows.map((item) => item.id)])
+  const valid = new Set<string>(['door', ...BASE_ROOM_SURFACE_IDS, ...data.furniture.map((item) => item.id), ...data.room.windows.map((item) => item.id), ...(data.room.extraDoors ?? []).map((door) => door.id)])
   for (const pack of data.structurePacks ?? []) {
     valid.add(pack.id)
     pack.doors?.forEach((door) => valid.add(door.id))
@@ -95,7 +95,7 @@ function validateFurniture(value: unknown, room: RecordValue, occupied: Set<stri
 }
 
 function validateData(value: unknown): { data: PersistedDesign; sourceVersion: number; removedVariants: number } {
-  if (!object(value) || ![1, 2, 3, 4, 5, 6, 7].includes(Number(value.version)) || typeof value.version !== 'number') invalid('La versión del diseño no es compatible.')
+  if (!object(value) || ![1, 2, 3, 4, 5, 6, 7, 8].includes(Number(value.version)) || typeof value.version !== 'number') invalid('La versión del diseño no es compatible.')
   const source = value as RecordValue
   if (!object(source.room)) invalid('Falta la habitación.')
   const room = source.room as RecordValue
@@ -113,6 +113,13 @@ function validateData(value: unknown): { data: PersistedDesign; sourceVersion: n
       || ![opening.width, opening.height].every(positive) || !optionalString(opening.color) || !optionalName(opening.name, 80)) invalid('Hay una ventana o elemento mural no válido.')
     if (object(opening) && (opening.shape === 'circular' || opening.shape === 'mirrorCircular') && opening.width !== opening.height) invalid('Una apertura circular tiene medidas incompatibles.')
     occupied.add((opening as RecordValue).id as string)
+  }
+  if (room.extraDoors !== undefined) {
+    if (!Array.isArray(room.extraDoors)) invalid('Puertas adicionales inválidas.')
+    for (const extra of room.extraDoors as unknown[]) {
+      if (!object(extra) || !text(extra.id) || occupied.has(extra.id)) invalid('Identificador de puerta inválido o duplicado.')
+      occupied.add((extra as RecordValue).id as string)
+    }
   }
   const packs = source.structurePacks === undefined ? [] : source.structurePacks
   if (!Array.isArray(packs)) invalid('La estructura no es válida.')

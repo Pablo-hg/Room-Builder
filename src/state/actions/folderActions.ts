@@ -228,7 +228,7 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
         return parent ? [[id, parent]] : []
       }))
       return {
-        room: { ...state.room, windows: state.room.windows.filter((window) => !deletedIds.has(window.id)) },
+        room: { ...state.room, windows: state.room.windows.filter((window) => !deletedIds.has(window.id)), ...(state.room.extraDoors ? { extraDoors: state.room.extraDoors.filter((door) => !deletedIds.has(door.id)) } : {}) },
         furniture: state.furniture.filter((item) => !deletedIds.has(item.id)),
         structurePacks: state.structurePacks.filter((pack) => !deletedIds.has(pack.id)).map((pack) => ({ ...pack, surfaces: pack.surfaces.filter((surface) => !deletedIds.has(structureSurfaceElementId(pack.id, surface.id))), ...(pack.doors ? { doors: pack.doors.filter((door) => !deletedIds.has(door.id)) } : {}) })),
         elementFolders: folders, elementFolderAssignments: assignments,

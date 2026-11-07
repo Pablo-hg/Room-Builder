@@ -48,6 +48,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
         }) }
       }
       if (id === 'door') return { room: { ...state.room, door: { ...state.room.door, axisLocks: { ...unlockedAxes(), ...state.room.door.axisLocks, [axis]: locked } } } }
+      if (state.room.extraDoors?.some((door) => door.id === id)) return { room: { ...state.room, extraDoors: state.room.extraDoors.map((door) => door.id === id ? { ...door, axisLocks: { ...unlockedAxes(), ...door.axisLocks, [axis]: locked } } : door) } }
       if (state.room.windows.some((window) => window.id === id)) return { room: { ...state.room, windows: state.room.windows.map((window) => window.id !== id ? window : { ...window, axisLocks: { ...unlockedAxes(), ...window.axisLocks, [axis]: locked } }) } }
       if (state.structurePacks.some((pack) => pack.doors?.some((door) => door.id === id))) return { structurePacks: state.structurePacks.map((pack) => ({ ...pack, ...(pack.doors ? { doors: pack.doors.map((door) => door.id !== id ? door : { ...door, axisLocks: { ...unlockedAxes(), ...door.axisLocks, [axis]: locked } }) } : {}) })) }
       return { structurePacks: state.structurePacks.map((pack) => pack.id === id
@@ -66,6 +67,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       const furniture = state.furniture.map((item) => ids.has(item.id) ? { ...item, x: item.x + amount.x, y: item.y + amount.y, z: item.z + amount.z } : item)
       const shiftOpening = (wall: 'north' | 'east' | 'south' | 'west') => (wall === 'north' || wall === 'south' ? amount.x : amount.z) * (wall === 'south' || wall === 'west' ? -1 : 1)
       const room = { ...state.room,
+        ...(state.room.extraDoors ? { extraDoors: state.room.extraDoors.map((door) => ids.has(door.id) ? { ...door, offset: door.offset + shiftOpening(door.wall) } : door) } : {}),
         door: ids.has('door') ? { ...state.room.door, offset: state.room.door.offset + shiftOpening(state.room.door.wall) } : state.room.door,
         windows: state.room.windows.map((window) => !ids.has(window.id) ? window : { ...window, sill: window.sill + amount.y, offset: window.offset + shiftOpening(window.wall) }),
       }

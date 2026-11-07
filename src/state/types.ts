@@ -57,11 +57,13 @@ export interface RoomState {
   setFreeOrbit: (azimuth: number, elevation: number) => void
   setFreeOrbitDragging: (dragging: boolean) => void
   adjustCameraZoom: (deltaY: number) => void
+  setCameraZoom: (zoom: number) => void
   rotateFront: (direction: -1 | 1) => void
   rotateIso: (direction: -1 | 1) => void
   rotatePov: (direction: -1 | 1) => void
   setDimension: (key: 'width' | 'depth' | 'height', value: number) => void
   setSelectedRoomDimension: (key: 'width' | 'depth' | 'height', value: number) => void
+  setFocusedRoomDimension: (key: 'width' | 'depth' | 'height', value: number) => void
   setWallColor: (color: string) => void
   setWallSideColor: (wall: WallSide, color: string) => void
   setFloorColor: (color: string) => void

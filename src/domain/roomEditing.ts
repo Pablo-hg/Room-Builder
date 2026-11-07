@@ -61,6 +61,17 @@ export function resizedRoomPack(pack: StructurePack, room: RoomConfig, size: Pic
   }) }
 }
 
+export function focusedRoom(state: RoomSelectionState & Pick<RoomState, 'activeRoomId'>) {
+  const pack = state.structurePacks.find((candidate) => candidate.id === state.activeRoomId && candidate.id.startsWith('floor-pack-'))
+  const folderId = pack ? state.elementFolderAssignments[pack.id] : 'room-root'
+  const target = folderId ? selectedEditableRoom({ ...state, selectedIds: [`folder:${folderId}`] }) : null
+  const box = pack && packRoomBox(pack, state.room)
+  return { kind: pack ? 'pack' as const : 'root' as const, packId: pack?.id,
+    name: pack?.name ?? state.elementFolders.find((folder) => folder.id === 'room-root')?.name ?? 'Habitación principal',
+    size: box || state.room,
+    editable: target && (pack ? target.packId === pack.id : target.kind === 'root') ? target : null }
+}
+
 /** RoomConfig remains the legacy anchor; resizing it must not resize/move other packs. */
 export function rebasePack(pack: StructurePack, before: RoomConfig, after: RoomConfig): StructurePack {
   return { ...pack, surfaces: pack.surfaces.map((surface) => ({ ...surface,

@@ -149,7 +149,10 @@ test('rechaza puertas fuera de pared o sobre paredes coincidentes sin inventar m
   const packId = store.getState().structurePacks[0].id
   store.getState().selectElement(structureSurfaceElementId(packId, 'wall-south'))
   store.getState().addStructureDoor()
-  assert.equal(store.getState().structurePacks[0].doors?.length ?? 0, 0)
+  const created = store.getState().structurePacks[0].doors![0]
+  assert.notEqual(created.wall, 'south')
+  store.getState().setStructureDoor(created.id, { wall: 'south' })
+  assert.equal(store.getState().structurePacks[0].doors![0].wall, created.wall)
   assert.match(store.getState().notice, /medianera/)
   store.getState().selectElement(structureSurfaceElementId(packId, 'wall-north'))
   store.getState().addStructureDoor()

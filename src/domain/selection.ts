@@ -23,11 +23,12 @@ export function deriveSelection(state: SelectionSource, id: string | null) {
   }
   const selectedFurniture = state.furniture.find((item) => item.id === id)
   const selectedWindow = state.room.windows.find((window) => window.id === id)
+  const extraDoor = state.room.extraDoors?.find((door) => door.id === id)
   const doorPack = state.structurePacks.find((pack) => pack.doors?.some((door) => door.id === id))
   const selectedStructureDoor = doorPack ? { pack: doorPack, door: doorPack.doors!.find((door) => door.id === id)! } : undefined
   const selectedOpening = id === 'door'
     ? { ...state.room.door, id: 'door' as const, kind: 'door' as const, sill: 0 }
-    : selectedWindow ? { ...selectedWindow, kind: 'window' as const } : null
+    : extraDoor ? { ...extraDoor, kind: 'door' as const, sill: 0 } : selectedWindow ? { ...selectedWindow, kind: 'window' as const } : null
 
   return { selectedPack, selectedSurface, selectedFurniture, selectedWindow, selectedOpening, selectedStructureDoor }
 }
@@ -37,6 +38,8 @@ export function elementName(state: SelectionSource, id: string | null) {
   if (id === BASE_FLOOR_ID) return 'Suelo'
   if (BASE_ROOM_SURFACE_IDS.includes(id)) return `Pared ${WALL_LABELS[id.slice('room-wall:'.length) as WallSide]}`
   if (id === 'door') return state.room.door.name || 'Puerta'
+  const extraDoor = state.room.extraDoors?.find((door) => door.id === id)
+  if (extraDoor) return extraDoor.name || 'Puerta'
   const windowIndex = state.room.windows.findIndex((window) => window.id === id)
   if (windowIndex >= 0) {
     const item = state.room.windows[windowIndex]

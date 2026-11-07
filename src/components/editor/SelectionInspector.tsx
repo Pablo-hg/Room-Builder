@@ -33,7 +33,7 @@ function MultiFurnitureInspector({ items }: { items: MultiItem[] }) {
   const setItemColor = (item: MultiItem, color: string) => {
     if (item.type === 'furniture') setFurnitureColor(item.id, color)
     else if (item.type === 'opening') {
-      if (item.packId) { setStructureDoor(item.id, { color }); return }
+      if (item.packId || room.extraDoors?.some((door) => door.id === item.id)) { setStructureDoor(item.id, { color }); return }
       if (item.id === 'door') setDoor({ color })
       else updateWindow(item.id, { color })
     } else if (item.packId && item.surfaceId) setSurfaceColor(item.packId, item.surfaceId as StructureSurfaceKey, color)

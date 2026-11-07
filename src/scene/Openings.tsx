@@ -23,6 +23,7 @@ function openingName(opening: WallOpening) {
 function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: WallSide, planView: boolean, locked: boolean) {
   const gesture = useHistoryGesture(opening.id)
   const setDoor = useRoomStore((state) => state.setDoor)
+  const setStructureDoor = useRoomStore((state) => state.setStructureDoor)
   const updateWindow = useRoomStore((state) => state.updateWindow)
   const [dragging, setDragging] = useState(false)
   const capabilities = openingCapabilities(opening.kind)
@@ -49,7 +50,7 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
   }
 
   const move = (offset: number, sill?: number) => {
-    if (opening.kind === 'door') setDoor({ offset })
+    if (opening.kind === 'door') { if (opening.id === 'door') setDoor({ offset }); else setStructureDoor(opening.id, { offset }) }
     else updateWindow(opening.id, { offset, ...(sill === undefined ? {} : { sill }) })
   }
 
@@ -97,7 +98,7 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
     event.stopPropagation()
     const latest = useRoomStore.getState().room
     const finalOpening = opening.kind === 'door'
-      ? latest.door
+      ? opening.id === 'door' ? latest.door : latest.extraDoors?.find((door) => door.id === opening.id)
       : latest.windows.find((candidate) => candidate.id === opening.id)
     recordSceneInteraction('opening.drag-end', {
       id: opening.id,

@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test('dimensiones vinculadas a una carpeta completa y nombres locales de superficies', async ({ page }) => {
   await page.goto('/')
   const size = page.getByRole('textbox', { name: 'Introducir anchura en metros', exact: true })
-  await expect(size).toBeDisabled()
+  await expect(size).toBeEnabled()
   await page.getByRole('button', { name: 'Carpeta Raíz', exact: true }).click()
   await expect(size).toBeEnabled()
   const rootWidth = await size.inputValue()
@@ -17,11 +17,13 @@ test('dimensiones vinculadas a una carpeta completa y nombres locales de superfi
   await size.press('Enter')
   await expect(size).toHaveValue('7.00')
   await page.getByRole('button', { name: 'Carpeta Raíz', exact: true }).click()
+  await page.getByLabel('Cámara enfocada en…').selectOption({ label: 'Raíz' })
   await expect(size).toHaveValue(rootWidth)
   await page.getByRole('button', { name: 'Carpeta Habitación 2', exact: true }).click()
+  await page.getByLabel('Cámara enfocada en…').selectOption({ label: 'Habitación 2' })
   await expect(size).toHaveValue('7.00')
   await folder.getByRole('button', { name: 'Suelo Superficie de construcción', exact: true }).click()
-  await expect(size).toBeDisabled()
+  await expect(size).toBeEnabled()
 })
 
 test('añade puertas a otra habitación, selecciona en lista y deshace el borrado', async ({ page }, testInfo) => {
