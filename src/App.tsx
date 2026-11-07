@@ -91,7 +91,6 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
   const visibleWalls = visibleWallsForView(state.view, state.isoOrientation, state.wallView, state.freeAzimuth)
   const visibleWallsText = wallsDescription(state.view, visibleWalls)
   const hasPlacedSceneContent = state.furniture.length > 0 || state.structurePacks.length > 0
-    || state.structurePacks.length > 0
     || state.room.windows.some((window) => !DEFAULT_ROOM.windows.some((defaultWindow) => defaultWindow.id === window.id))
     || Boolean(state.room.extraDoors?.length)
   const viewLabel = state.view === 'front' && state.wallView
