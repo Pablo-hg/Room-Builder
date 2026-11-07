@@ -267,7 +267,7 @@ body.can-grab .scene-panel canvas { cursor: grabbing; }
 .compass-3d-scene { position: absolute !important; z-index: 5; width: 168px !important; height: 168px !important; left: 5px !important; top: 6px !important; border-radius: 50%; }
 
 @media (max-width: 1200px) {
-  .compass { right: 14px; bottom: 100px; width: 140px; height: 140px; }
+  .compass { right: 14px; bottom: 116px; width: 140px; height: 140px; }
   .compass-3d-scene { width: 130px !important; height: 130px !important; }
 }
 
@@ -452,7 +452,9 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
   .view-switcher { grid-column: 1 / -1; grid-row: 2; margin-top: 8px; }
 }
 
-@media (max-width: 850px) {
+/* Los paneles laterales estrechan la escena antes de 850px: apilarlos evita
+   que la brújula, el zoom y los controles de cámara se crucen. */
+@media (max-width: 1000px) {
   body { overflow: auto; }
   .app { display: block; height: auto; min-height: 100vh; }
   .topbar { position: sticky; top: 0; grid-template-columns: 1fr auto; height: auto; min-height: 65px; padding: 9px 13px; }
