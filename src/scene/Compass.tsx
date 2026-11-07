@@ -13,7 +13,7 @@ function CompassCameraFit() {
   const { camera, size, invalidate } = useThree()
   useLayoutEffect(() => {
     if (!(camera instanceof THREE.OrthographicCamera)) return
-    camera.zoom = Math.min(size.width, size.height) * 38 / 168
+    camera.zoom = Math.min(size.width, size.height) * 45 / 168
     camera.updateProjectionMatrix()
     invalidate()
   }, [camera, size.width, size.height, invalidate])
@@ -273,7 +273,7 @@ export function FreeCameraCompass3D({
     <Canvas
       className="compass-3d-scene"
       orthographic
-      camera={{ position: [0, 0, 5], zoom: 38, near: 0.1, far: 20 }}
+      camera={{ position: [0, 0, 5], zoom: 45, near: 0.1, far: 20 }}
       dpr={[1, 1.5]}
       gl={{ alpha: true, antialias: true }}
     >
@@ -341,7 +341,7 @@ export function RoomCompass3D({ visibleWalls, highlightTop, activeOrientation, o
     <Canvas
       className="compass-3d-scene"
       orthographic
-      camera={{ position: [0, 0, 5], zoom: 38, near: 0.1, far: 20 }}
+      camera={{ position: [0, 0, 5], zoom: 45, near: 0.1, far: 20 }}
       dpr={[1, 1.5]}
       gl={{ alpha: true, antialias: true }}
     >
