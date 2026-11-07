@@ -2,8 +2,7 @@ name: Room Builder CI
 
 on:
   push:
-    branches: ['feature/**', 'fix/**', 'refactor/**']
-  workflow_dispatch:
+    branches: [main]
 
 permissions:
   contents: read
