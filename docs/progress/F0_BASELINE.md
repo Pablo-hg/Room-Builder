@@ -43,7 +43,21 @@ Los jobs son independientes para que los E2E sigan dando información incluso si
 
 ## Ejecuciones realizadas antes del cambio de política
 
-El 07/11/2026 se iniciaron workflows de diagnóstico sobre la rama de trabajo antes de la restricción actual. En la ejecución `42366865632` constaron **213/213 pruebas unitarias aprobadas** y build aprobado (bundle de 1.447,19 kB, gzip 401,67 kB); la instalación de Chromium fue corregida al fijar Ubuntu 24.04. Las ejecuciones E2E quedaron iniciadas, pero no se registran aquí como certificación final sin comprobar sus conclusiones. A partir del cambio de política, **no se lanzarán nuevas ejecuciones sobre esa rama**. Resultados históricos de rama ≠ validación tras integrar en `main`.
+El 07/11/2026 se iniciaron workflows de diagnóstico sobre la rama de trabajo antes de la restricción actual. En la ejecución `42366865632` constaron **213/213 pruebas unitarias aprobadas** y build aprobado (bundle de 1.447,19 kB, gzip 401,67 kB); la instalación de Chromium fue corregida al fijar Ubuntu 24.04. Las ejecuciones E2E finalizaron con **116/119 aprobadas y 3 fallidas** tanto en `42366865632` como en `42367039344`. Son resultados diagnósticos de ramas **anteriores al último parche**, no una certificación de `main` ni una validación de los cambios posteriores. A partir del cambio de política, **no se lanzarán nuevas ejecuciones sobre esa rama**. Resultados históricos de rama ≠ validación tras integrar en `main`.
+
+## Corrección de los tres fallos E2E detectados (07/11/2026)
+
+Resultados de las dos ejecuciones previas a la política exclusiva de `main`: **116/119 casos funcionales aprobados**, 3 fallidos; 213/213 unitarias y build aprobados, con aviso de bundle. Se conservaron capturas y trazas en GitHub Actions. **No se han ejecutado tests después de estas correcciones ni en la rama actual**; el resultado definitivo llegará cuando el propietario integre en `main`.
+
+| Fallo original | Diagnóstico | Cambio realizado | Validación pendiente |
+| --- | --- | --- | --- |
+| `furniture-attachments.spec.ts` — anclajes Y / lámparas libres | Timeout de 30 s en un recorrido largo que mezclaba varios anclajes, cámaras y guardado; no prueba por sí solo un defecto de anclaje | Se divide en tres casos separados para alfombra, alfombra circular y lámpara de techo, más un caso específico para las dos lámparas libres. Todos mantienen verificaciones de Y y persistencia | Revisar que pasan los cuatro casos y la compatibilidad legacy |
+| `room-builder.spec.ts` — responsive a 851 px | En el punto previo al layout estrecho la escena se reduce y la brújula se solapa con los controles o el zoom | El diseño de paneles apilados comienza a 1000 px (antes 850 px) y se aumenta el espacio inferior de la brújula en anchos hasta 1200 px. Se añaden tamaños alrededor del nuevo breakpoint a la prueba | Confirmar que no hay solape, desbordamiento ni regresión del editor a 1001/1000/999/951/950/851 px y móviles |
+| `room-builder.spec.ts` — intercala carpetas y hermanos | Timeout en una comparación de coordenadas Y tras un reordenado; la posición visual no permite concluir si la jerarquía es correcta | Se comprueba el **orden real de los hermanos directos en el DOM**, la existencia de los elementos y que `Silla` continúa en `Carpeta 1`; no se excluye la prueba | Si la comprobación DOM falla, investigar un defecto real de reordenación y no ocultarlo |
+
+**Revisión manual solicitada antes de dar el visto bueno:** añadir una alfombra, alfombra circular y lámpara de techo (sin edición Y) y después una lámpara y lámpara de mesa (con Y editable y guardado de 0,01 m); revisar distintas cámaras y el layout alrededor de 1000 px; crear carpetas con subcarpetas, intercalar una silla, subir carpeta y guardar/recargar para comprobar la pertenencia y el orden.
+
+**No se da por cerrada la issue #24.** Se mantienen pendientes las pruebas definitivas sobre `main`, la validación de R5.1–R5.3 y cualquier regresión que aparezca.
 
 ## Matriz de certificación (por completar con evidencias reales)
 
