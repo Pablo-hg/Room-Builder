@@ -5,6 +5,16 @@
 
 **Estado:** diagnóstico del código actual CONFIRMADO por lectura; organización objetivo PROPUESTA.
 
+## Auditoría F0 #34 — extracción conservadora en rama (07/11/2026)
+
+La auditoría de `feature/34-auditar-refactorizar` distingue entre mejoras justificadas y módulos que **no conviene alterar únicamente por su tamaño**. Resultado e inventario de riesgos: [F0_REFACTOR_AUDIT.md](progress/F0_REFACTOR_AUDIT.md). **Sin tests ni build en rama**, pendientes de `main`.
+
+- `ObjectsPanel.tsx`: árbol de escena, carpetas, selección y contexto; **ya no contiene** controles de alta del catálogo ni de cuadrícula.
+- `ObjectCatalogSection.tsx`: categorías y altas de objetos/habitaciones con estado de expansión propio (mismo DOM).
+- `GridVisibilitySection.tsx`: cuadrículas de habitación/superficies, lecturas del mismo `useRoomStore` y mismos switches accesibles.
+- `App.tsx`: limpieza de término redundante al calcular si hay contenido en escena.
+- Se posponen `Openings.tsx`, `FurnitureGizmos.tsx`, partición de `styles.css` y cambios de formato. No se asume mejora medida en rendimiento.
+
 ## Stack actual (package.json, 26/10/2026)
 React 19, TypeScript, Vite 6, Three.js, React Three Fiber, Zustand, pruebas de Node/tsx y Playwright. Mantener salvo necesidad real medida; no hay que introducir otro motor de juego.
 
