@@ -173,10 +173,13 @@ export function ViewControls() {
           {isIsoOrbitDragging ? (
             <span>Girando…</span>
           ) : (
-            <svg className="camera-orbit-mouse-icon" viewBox="0 0 24 28" aria-hidden="true">
+            <><svg className="camera-orbit-mouse-icon" viewBox="0 0 24 28" aria-hidden="true">
               <path d="M12 1.5a8.5 8.5 0 0 0-8.5 8.5v8a8.5 8.5 0 0 0 17 0v-8A8.5 8.5 0 0 0 12 1.5Z" />
               <path d="M12 2v9m-8.5 0h17" />
-            </svg>
+            </svg><svg className="camera-orbit-touch-icon" viewBox="0 0 24 28" aria-hidden="true">
+              <path d="M9 17V6a2 2 0 0 1 4 0v6l3 1c2 .7 3 2.3 3 4.5V21a4 4 0 0 1-4 4h-3a4 4 0 0 1-3.2-1.6L5 18a2 2 0 0 1 2.8-2.8L9 17Z" />
+              <path d="M6 4a5.5 5.5 0 0 1 10 0" />
+            </svg></>
           )}
           <i aria-hidden="true">→</i>
         </button>

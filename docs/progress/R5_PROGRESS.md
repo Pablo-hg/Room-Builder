@@ -1,5 +1,14 @@
 # R5 — Funcionalidad y diseño
 
+## Icono de giro táctil — 07/11/2026
+
+Petición del propietario: sustituir el ratón del botón `camera-orbit-drag` en
+formato móvil/tablet. `ViewControls.tsx` incorpora una mano táctil en SVG;
+`styles.css` la muestra hasta 1200 px, con puntero táctil principal o cuando la
+escena adopta el formato estrecho. Escritorio conserva el ratón. Se mantienen
+las flechas, el nombre accesible y todos los eventos de giro. Revisión estática;
+sin pruebas/build ni validación visual, que realizará el propietario.
+
 ## Contexto de cámara y controles móviles — 07/11/2026
 
 Nueva petición: un único botón Puerta que añada en la habitación enfocada,

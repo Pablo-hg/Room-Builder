@@ -244,7 +244,13 @@ body.can-grab .scene-panel canvas { cursor: grabbing; }
 .camera-controls--plan .plan-camera-reset span { min-width: 0; color: inherit; white-space: nowrap; }
 .camera-controls .camera-orbit-drag { display: grid; grid-template-columns: 18px minmax(112px, auto) 18px; align-items: center; width: auto; min-width: 164px; padding: 0 8px; border-inline: 1px solid rgba(76,91,80,.1); border-radius: 8px; color: #55675c; cursor: ew-resize; touch-action: none; user-select: none; }
 .camera-controls .camera-orbit-drag--free { grid-template-columns: 22px minmax(150px, auto) 22px; min-width: 204px; cursor: move; }
-.camera-orbit-mouse-icon { width: 16px; height: 20px; justify-self: center; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.camera-orbit-mouse-icon, .camera-orbit-touch-icon { justify-self: center; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.camera-orbit-mouse-icon { width: 16px; height: 20px; }
+.camera-orbit-touch-icon { display: none; width: 22px; height: 24px; }
+@media (max-width: 1200px), (pointer: coarse) {
+  .camera-orbit-mouse-icon { display: none; }
+  .camera-orbit-touch-icon { display: block; }
+}
 .camera-controls .camera-orbit-drag:hover { background: #edf2ec; }
 .camera-controls .camera-orbit-drag.dragging { background: #dde9df; color: #304b39; box-shadow: inset 0 0 0 1px rgba(70,100,78,.15); }
 .camera-orbit-drag i { color: #78927f; font-size: 15px; font-style: normal; font-weight: 800; }
@@ -508,6 +514,8 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 
 /* Narrow scene columns use separate rows instead of overlapping canvas overlays. */
 @container (max-width: 680px) {
+  .camera-orbit-mouse-icon { display: none; }
+  .camera-orbit-touch-icon { display: block; }
   .scene-layout { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; min-height: 0; }
   .scene-header { display: grid; gap: 8px; padding: 10px; background: #f2ece3; border-bottom: 1px solid rgba(69,81,72,.12); z-index: 4; }
   .scene-topline { position: static; gap: 8px; align-items: flex-start; min-width: 0; }
