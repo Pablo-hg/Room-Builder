@@ -1,6 +1,6 @@
 # F0 — baseline de certificación R5 (#24)
 
-**Estado de esta entrada:** inventario estático del repositorio. **Las pruebas todavía NO se consideran ejecutadas ni aprobadas** por este documento. La evidencia debe proceder de ejecuciones completas con su SHA y registro en CI o en una máquina de desarrollo. No modificar las entradas históricas de [R5_PROGRESS.md](R5_PROGRESS.md).
+**Estado de esta entrada:** inventario inicial y procedimiento para certificar `main`. Las ejecuciones de la rama anteriores al cambio de política no sustituyen la certificación final sobre `main`. La evidencia de aceptación debe proceder del commit integrado en `main` y de su ejecución completa de CI. No modificar las entradas históricas de [R5_PROGRESS.md](R5_PROGRESS.md).
 
 ## Punto de partida (07/11/2026)
 
@@ -15,7 +15,7 @@
 
 ## Reproducción desde una instalación limpia
 
-Ejecutar desde una copia limpia del commit/PR bajo prueba, con Node 22 y npm disponibles:
+Procedimiento de referencia para la ejecución de CI después de integrar la rama en `main`, con Node 22 y npm disponibles (no ejecutar en ramas adicionales ni en `dev`):
 
 ```bash
 git rev-parse HEAD
@@ -34,12 +34,16 @@ npm run test:e2e -- --workers=2
 
 ## Control automático
 
-El workflow `.github/workflows/ci.yml` ejecuta sobre PR, `main`, `dev` y bajo disparo manual:
+El workflow `.github/workflows/ci.yml` se ejecuta **exclusivamente** al recibir un `push` en `main`. No se activa en `dev`, ramas `feature/*`, `fix/*`, `refactor/*`, al abrir una PR ni mediante disparo manual. Esta política fue solicitada por el propietario el 07/11/2026. Los commits de las tareas se suben solo a ramas creadas desde `main`; **no abrir PR ni fusionar automáticamente**.
 
 1. `npm ci`, **todas** las unitarias y `npm run build`.
 2. Instalación Chromium + dependencias de sistema, listado de casos y **toda** la suite funcional `tests/` sin `--grep` ni `--ignore`. En fallo conserva `test-results/` (capturas/trazas) como artefacto durante 7 días.
 
-Los jobs son independientes para que los E2E sigan dando información incluso si falla el build. No considerar una ejecución parcial como suite completa aprobada. Esta configuración no realiza por sí misma un control obligatorio de merges; si se desea impedir merges con checks fallidos, configurar la protección de la rama en GitHub tras comprobar los jobs.
+Los jobs son independientes para que los E2E sigan dando información incluso si falla el build. No considerar una ejecución parcial como suite completa aprobada. Al ejecutarse después de integrar en `main`, el CI **detecta regresiones a posteriori** y no puede impedir que una integración defectuosa llegue a `main`. No declarar certificada #24 hasta analizar el resultado completo de `main`.
+
+## Ejecuciones realizadas antes del cambio de política
+
+El 07/11/2026 se iniciaron workflows de diagnóstico sobre la rama de trabajo antes de la restricción actual. En la ejecución `42366865632` constaron **213/213 pruebas unitarias aprobadas** y build aprobado (bundle de 1.447,19 kB, gzip 401,67 kB); la instalación de Chromium fue corregida al fijar Ubuntu 24.04. Las ejecuciones E2E quedaron iniciadas, pero no se registran aquí como certificación final sin comprobar sus conclusiones. A partir del cambio de política, **no se lanzarán nuevas ejecuciones sobre esa rama**. Resultados históricos de rama ≠ validación tras integrar en `main`.
 
 ## Matriz de certificación (por completar con evidencias reales)
 
