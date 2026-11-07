@@ -1,9 +1,8 @@
 name: Room Builder CI
 
 on:
-  pull_request:
   push:
-    branches: [main, dev]
+    branches: ['feature/**', 'fix/**', 'refactor/**']
   workflow_dispatch:
 
 permissions:
