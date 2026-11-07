@@ -1,6 +1,6 @@
 # Visión de producto — Room Builder
 
-**Estado:** CONFIRMADO en visión general; detalles técnicos indicados como PROPUESTO.
+**Estado actualizado 04/11/2026:** visión de vivienda por plantas y siete funciones incorporadas al **MVP local completo**, no implementadas todavía; los detalles técnicos siguen siendo PROPUESTOS salvo decisiones RB-045–RB-052. [Plan maestro](MVP_MASTER_PLAN.md).
 
 ## Problema que resuelve
 Quiero representar mi habitación —sus dimensiones, puertas, ventanas y muebles— y experimentar en segundos con otras distribuciones sin mover nada en la realidad. Otros usuarios también podrán crear espacios imaginarios por diversión. El editor debe dar confianza espacial, pero sentirse como un juego.
@@ -11,13 +11,19 @@ Quiero representar mi habitación —sus dimensiones, puertas, ventanas y mueble
 Una herramienta para construir habitaciones con la sencillez de un videojuego: estética alegre y geométrica, interacción directa, medidas editables bajo demanda y transición inmediata entre distribución en plano y visualización en 3D.
 
 ## Usuarios y trabajos
-1. **Quien reorganiza una habitación real:** mide aproximadamente su espacio, añade muebles de dimensiones ajustables, guarda el original y prueba alternativas A/B.
+1. **Quien reorganiza una habitación real:** mide aproximadamente su espacio, añade muebles de dimensiones ajustables, guarda el diseño y puede recuperar/copiar versiones manualmente; **el selector A/B fue retirado del MVP**.
 2. **Quien juega a decorar:** comienza de cero, coloca muebles visualmente y crea una habitación inventada.
-3. **Futuro — quien construye una vivienda:** enlaza estancias y explora su planta o casa completa; no debe necesitar un CAD.
+3. **Quien construye una vivienda (incluido en MVP completo):** enlaza estancias, selecciona plantas y explora la casa; no debe necesitar un CAD.
 
 ## Dos productos relacionados, no dos motores independientes
 - **Room Builder completo (producto independiente):** primero una habitación; después viviendas con varias estancias conectadas. El código debe permitir evolucionar sin rehacerlo.
 - **Room Builder Mini (idea para el Laboratorio de Pablo Web 2.0):** edición simplificada de una sola habitación, catálogo acotado y navegación contextual. Integración y fecha aún PENDIENTES. No modificar el repositorio del portfolio desde aquí.
+
+## Imagen de destino: de una habitación a una casa completa (04/11/2026)
+
+**Decisión de visión:** el usuario debe poder empezar por una habitación sin comprometerse a crear una casa y, a partir de ella, **escalar a un proyecto residencial por plantas**, con habitaciones contiguas, paredes/puertas compartidas, vista aérea acotada de una planta, selector de planta y transición a 3D y POV. La imagen aportada por el propietario ilustra el resultado funcional objetivo, no un diseño que deba copiarse.
+
+La vivienda completa queda **comprometida como parte del MVP local final** (#51–#54); **v0.2 sigue siendo checkpoint inicial** del editor de una habitación (#33). Las siete funciones RB-045–RB-051 también son parte del MVP final. Ver [HOUSE_VISION.md](HOUSE_VISION.md) y [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md). El Workshop continúa separado.
 
 ## Referencias, no objetivos de clonación
 - **Rooms.xyz:** principal referencia de tono, facilidad, espíritu juguetón, diorama, selección y personalización sencillas.
@@ -25,20 +31,21 @@ Una herramienta para construir habitaciones con la sencillez de un videojuego: e
 - **MakeRoom:** referencia creativa de interacción accesible, personalización de muebles y estética de diorama; no adoptar sus misiones como requisito del editor.
 - **[MyRoomPlanner](https://www.myroomplanner.io/es):** referencia funcional para pasar de medidas y plano 2D a mobiliario en 3D, comprobar distribuciones y visualizar espacios antes de mover muebles reales; no es nuestra referencia estética.
 - **Los Sims / modo construcción:** inspiración por facilidad de colocar y mover mobiliario; no se busca simulación de personas.
+- **[floorplan-3d](https://github.com/wy51ai/floorplan-3d):** referencia funcional para el MVP final de plano SVG de vivienda completa, cotas, muros, vistas Three.js y paseo con WASD; no adoptar sin más su arquitectura monolítica.
 No copiar interfaz exacta, código ni arte de estas referencias.
 
 ## Diferenciador
-La precisión debe existir **debajo** de una interacción comprensible; las medidas reales, vistas y comparación permiten tomar decisiones. No hace falta replicar la marca o modelo exacto de cada mueble: basta aproximar dimensiones y volumen, y ver cómo encaja.
+La precisión debe existir **debajo** de una interacción comprensible; las medidas reales, vistas, plantillas y recorridos permiten tomar decisiones. No hace falta replicar la marca o modelo exacto de cada mueble: basta aproximar dimensiones y volumen, y ver cómo encaja.
 
 ## Principios de producto
-- Primero crear **una habitación útil y agradable**; no construir una casa completa en el MVP inicial.
+- Primero cerrar **una habitación útil y agradable** como checkpoint v0.2; después **construir una casa completa** antes del MVP final.
 - Un resultado legible y atractivo incluso con geometría sencilla.
 - Construcción directa: añadir, seleccionar, mover, girar, redimensionar, ocultar y deshacer.
 - No hacer al usuario configurar un motor ni completar tutoriales obligatorios.
 - Tres vistas esenciales: **Plano, Isométrica, Interior/POV desde la puerta**. Herramientas avanzadas disponibles solo cuando aporten valor.
 - No engañar con precisión: el plan es orientativo, no plano constructivo certificado.
 - Estado local y control del usuario. Sin servidor o cuentas en el MVP.
-- Preparar la extensión futura a habitaciones conectadas sin implementarla prematuramente.
+- Desarrollar habitaciones conectadas y plantas **en F4 tras estabilizar el editor**, manteniendo una fuente geométrica única y migraciones.
 
 ## No es
 Un renderizador fotorrealista, software profesional CAD/BIM, un juego pixel art, un simulador de vida, una tienda de muebles ni una comunidad social en la primera versión.

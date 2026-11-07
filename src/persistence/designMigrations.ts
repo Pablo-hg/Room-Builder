@@ -4,6 +4,10 @@ import { normalizeDesignPreferences, normalizeDesignRoom, normalizeStructurePack
 import type { FurnitureItem, RoomConfig, WallSide, WindowConfig } from '../domain/types'
 import { clampFurnitureElevation, snapToVisibleGrid, validateOpenings } from '../domain/geometry'
 import { furnitureAttachment, FURNITURE_PRESETS, isWallPictureKind, isWindowShape, OPENING_CATALOG } from '../domain/objectCatalog'
+import { validateAxisLocks } from '../domain/axisLocks'
+import { structureDoorsWorldError } from '../domain/structureDoors'
+import { structureGridElementId, structureSurfaceElementId } from '../domain/elementIds'
+import { BASE_ROOM_SURFACE_IDS, folderSelectionId } from '../domain/elementFolders'
 
 /**
  * Aplana un v5 local de la etapa de variantes a su variante activa.
@@ -36,6 +40,15 @@ export function normalizeDesign(value: unknown): PersistedDesign {
   const room = normalizeDesignRoom(source)
   if (![room.width, room.depth, room.height].every((value) => Number.isFinite(value) && value > 0)) throw new Error('Las dimensiones de la habitación no son válidas.')
   const structurePacks = normalizeStructurePacks(source.structurePacks, room)
+  const doorError = structureDoorsWorldError(room, structurePacks)
+  if (doorError) throw new Error(doorError)
+  const usedIds = new Set(['door', ...BASE_ROOM_SURFACE_IDS, ...room.windows.map((window) => window.id), ...source.furniture.map((item) => item?.id),
+    ...(source.elementFolders ?? []).map((folder) => folderSelectionId(folder.id)),
+    ...structurePacks.flatMap((pack) => [pack.id, ...pack.surfaces.flatMap((surface) => [structureSurfaceElementId(pack.id, surface.id), structureGridElementId(pack.id, surface.id)])])])
+  for (const door of [...(room.extraDoors ?? []), ...structurePacks.flatMap((pack) => pack.doors ?? [])]) {
+    if (usedIds.has(door.id)) throw new Error('Identificador de puerta duplicado.')
+    usedIds.add(door.id)
+  }
   if (validateOpenings(room)) throw new Error('Aperturas inválidas.')
   const migrated = migrateWallPictures(room, source.furniture)
   validateAttachment(migrated.remainingFurniture, migrated.room)
@@ -52,6 +65,7 @@ function validateAttachment(furniture: FurnitureItem[], room: RoomConfig) {
   for (const item of furniture) {
     if (!item || typeof item !== 'object' || !Object.hasOwn(FURNITURE_PRESETS, item.kind)) throw new Error('Mobiliario inválido.')
     if (item.attachmentPolicy !== undefined && item.attachmentPolicy !== 'by-type') throw new Error('Mobiliario inválido.')
+    validateAxisLocks(item.axisLocks)
     const attachment = furnitureAttachment(item)
     if ((attachment === 'floor' || attachment === 'ceiling')
       && typeof item.y === 'number' && Math.abs(item.y - clampFurnitureElevation(item, room, false)) > 1e-9) {
@@ -93,6 +107,7 @@ export function migrateWallPictures(room: RoomConfig, furniture: FurnitureItem[]
   const offsets = [0, -0.5, 0.5, -1, 1, -1.5, 1.5, -2, 2]
 
   furniture.forEach((item) => {
+    validateAxisLocks(item?.axisLocks)
     const legacyMirror = String(item.kind) === 'mirror'
     if (!isWallPictureKind(item.kind) && !legacyMirror) {
       remainingFurniture.push(item)
@@ -108,6 +123,7 @@ export function migrateWallPictures(room: RoomConfig, furniture: FurnitureItem[]
       const candidates = [preferred.offset, ...offsets.filter((offset) => offset !== preferred.offset)]
       for (const offset of candidates) {
         const picture: WindowConfig = {
+          ...(item.axisLocks ? { axisLocks: { ...item.axisLocks } } : {}),
           id: item.id,
           shape,
           wall,

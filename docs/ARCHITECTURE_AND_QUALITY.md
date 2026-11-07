@@ -1,5 +1,8 @@
 # Arquitectura y calidad técnica
 
+> **VIGENCIA 04/11/2026:** R0–R5 están integradas; el baseline necesita revalidación E2E completa (#24). El MVP final aprobado requiere migración de vivienda (#51), habitaciones y plantas (#52/#53), geometría irregular (#35), WASD (#36) y siete módulos confirmados (#37/#38/#39/#40/#41/#45/#47). El detalle de arquitectura histórica inferior NO es un contrato de casa publicado. **Plan canónico:** [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md); **checkpoint v0.2** [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md); **gate final** #54.
+
+
 **Estado:** diagnóstico del código actual CONFIRMADO por lectura; organización objetivo PROPUESTA.
 
 ## Stack actual (package.json, 26/10/2026)
@@ -87,7 +90,7 @@ No forzar exactamente estos directorios antes de una auditoría; la [reorganizac
 ## Seguridad y privacidad
 - Archivos JSON importados y cadenas de usuario son no fiables; validar tamaño, tipos y límites; no eval, ni código activo derivado de datos.
 - Logs de interacción: en el proyecto actual son diagnósticos locales de desarrollo; documentar y evitar habilitarlos accidentalmente en producción.
-- Las futuras fotos/planos importados requieren aclarar conservación y privacidad; no forman parte del MVP.
+- Las fotos y planos importados **forman parte del MVP final** por #40/#45, pero todavía no están implementados; exigir almacenamiento local, formatos acotados, consentimiento y exportación segura.
 
 ## Entregas
 Para cada PR: qué cambió, qué no, pruebas ejecutadas, capturas si hay cambios visuales, compatibilidad de formatos, archivos afectos, riesgos y pendientes. No hacer merges automáticos.

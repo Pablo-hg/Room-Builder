@@ -15,6 +15,8 @@ import { createFolderActions } from './actions/folderActions'
 import { initialRoomFolder } from '../domain/elementFolders'
 import { normalizeDesign } from '../persistence/designMigrations'
 import { createResizeActions } from './actions/resizeActions'
+import { createStructureDoorActions } from './actions/structureDoorActions'
+import { rootDoorPack, structureDoorsWorldError, structureDoorPosition } from '../domain/structureDoors'
 
 export { structureSurfaceElementId } from '../domain/elementIds'
 
@@ -43,7 +45,39 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     let nextUpdate: Partial<RoomState> = Object.prototype.hasOwnProperty.call(rawUpdate, 'selectedId') && !Object.prototype.hasOwnProperty.call(rawUpdate, 'selectedIds')
       ? { ...rawUpdate, selectedIds: rawUpdate.selectedId ? [rawUpdate.selectedId] : [], selectionAnchor: rawUpdate.selectedId ?? null }
       : rawUpdate
+    if (nextUpdate.structurePacks || nextUpdate.room) {
+      const structurePacks = (nextUpdate.structurePacks ?? current.structurePacks).map((pack) => {
+        const old = current.structurePacks.find((candidate) => candidate.id === pack.id)
+        const removedWalls = old?.surfaces.filter((surface) => surface.kind === 'wall' && !pack.surfaces.some((candidate) => candidate.id === surface.id)).map((surface) => surface.wall) ?? []
+        return pack.doors && removedWalls.length ? { ...pack, doors: pack.doors.filter((door) => !removedWalls.includes(door.wall)) } : pack
+      })
+      const remaining = new Set([...((nextUpdate.room ?? current.room).extraDoors ?? []).map((door) => door.id), ...structurePacks.flatMap((pack) => pack.doors?.map((door) => door.id) ?? [])])
+      const removed = new Set([...(current.room.extraDoors ?? []).map((door) => door.id), ...current.structurePacks.flatMap((pack) => pack.doors?.map((door) => door.id) ?? [])].filter((id) => !remaining.has(id)))
+      nextUpdate = { ...nextUpdate, structurePacks }
+      if (removed.size) nextUpdate = { ...nextUpdate,
+        hiddenElementIds: (nextUpdate.hiddenElementIds ?? current.hiddenElementIds).filter((id) => !removed.has(id)),
+        lockedElementIds: (nextUpdate.lockedElementIds ?? current.lockedElementIds).filter((id) => !removed.has(id)),
+        sceneElementOrder: (nextUpdate.sceneElementOrder ?? current.sceneElementOrder).filter((id) => !removed.has(id)),
+        elementFolderAssignments: Object.fromEntries(Object.entries(nextUpdate.elementFolderAssignments ?? current.elementFolderAssignments).filter(([id]) => !removed.has(id))),
+        selectedIds: (nextUpdate.selectedIds ?? current.selectedIds).filter((id) => !removed.has(id)),
+        ...(removed.has(nextUpdate.selectedId ?? current.selectedId ?? '') ? { selectedId: null, selectedIds: [], selectionAnchor: null } : {}),
+      }
+    }
     const nextState = { ...current, ...nextUpdate }
+    if (Object.hasOwn(rawUpdate, 'room') || Object.hasOwn(rawUpdate, 'structurePacks')) {
+      if (!runtime.isUndoing && !Object.hasOwn(rawUpdate, 'selectedSavedDesignId')) {
+        for (const pack of [rootDoorPack(current.room), ...current.structurePacks]) for (const door of pack.doors ?? []) {
+          const nextPack = pack.id === '__root__' ? rootDoorPack(nextState.room) : nextState.structurePacks.find((candidate) => candidate.id === pack.id)
+          const nextDoor = nextPack?.doors?.find((candidate) => candidate.id === door.id)
+          if (!nextPack || !nextDoor) continue
+          const before = structureDoorPosition(current.room, pack, door)
+          const after = structureDoorPosition(nextState.room, nextPack, nextDoor)
+          if (before && after && (['x', 'y', 'z'] as const).some((axis) => (door.axisLocks?.[axis] || current.lockedElementIds.includes(door.id)) && Math.abs(before[axis] - after[axis]) > 1e-9)) { storeSet({ notice: 'El movimiento desplazaría un eje bloqueado de una puerta.' }); return }
+        }
+      }
+      const error = structureDoorsWorldError(nextState.room, nextState.structurePacks)
+      if (error) { storeSet({ notice: error }); return }
+    }
     const designChanged = persistedDesignSignature(persistedDesign(current)) !== persistedDesignSignature(persistedDesign(nextState))
     if (designChanged) {
       recordHistoryChange(runtime, persistedDesign(current))
@@ -110,6 +144,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     hasUnsavedChanges: false,
     ...createCameraActions(context),
     ...createConstructionActions(context),
+    ...createStructureDoorActions(context),
     ...createFurnitureActions(context),
     ...createSelectionActions(context),
     ...createFolderActions(context),

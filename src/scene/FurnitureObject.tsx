@@ -1,7 +1,7 @@
 import { type ThreeEvent, useThree } from '@react-three/fiber'
 import { useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { canElevateFurniture, furnitureVisualYOffset, isWallPictureKind } from '../domain/objectCatalog'
+import { canElevateFurniture, furnitureVisualYOffset, hasUsefulFurnitureRotation, isWallPictureKind } from '../domain/objectCatalog'
 import type { FurnitureItem, WallSide } from '../domain/types'
 import { useHistoryGesture } from '../state/useHistoryGesture'
 import { useRoomStore } from '../state/useRoomStore'
@@ -22,7 +22,10 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
   const { camera, size } = useThree()
   const [dragging, setDragging] = useState(false)
   const canMoveVertically = canElevateFurniture(item)
-  const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
+  const room = useRoomStore((state) => state.room)
+  const structurePacks = useRoomStore((state) => state.structurePacks)
+  const visualY = item.y + furnitureVisualYOffset(item, { room, structurePacks })
+  const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), -visualY), [visualY])
   const point = useMemo(() => new THREE.Vector3(), [])
   const dragOffset = useRef({ x: 0, z: 0 })
   const dragOrigin = useRef({ x: item.x, z: item.z })
@@ -119,7 +122,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
   }
 
   return (
-    <group position={[item.x, item.y + furnitureVisualYOffset(item), item.z]}>
+    <group position={[item.x, visualY, item.z]}>
       <group
         rotation={[0, item.rotation, 0]}
         onPointerDown={handleDown}
@@ -141,7 +144,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
           {frontWall
             ? <FrontAxisMoveGizmo item={item} wall={frontWall} />
             : <AxisMoveGizmo item={item} groundLevel={!canMoveVertically} canMoveVertically={canMoveVertically} hideAxis={planView ? 'y' : null} />}
-          {frontWall ? <FrontRotationHandle item={item} wall={frontWall} /> : <RotationHandle item={item} />}
+          {hasUsefulFurnitureRotation(item.kind, item) && (frontWall ? <FrontRotationHandle item={item} wall={frontWall} /> : <RotationHandle item={item} />)}
         </>
       )}
     </group>

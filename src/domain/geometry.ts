@@ -23,6 +23,7 @@ export function openingsForWall(room: RoomConfig, wall: WallSide): WallOpening[]
   if (room.door.wall === wall) {
     openings.push({ id: 'door', kind: 'door', offset: room.door.offset, width: room.door.width, bottom: 0, height: room.door.height, rotation: room.door.rotation, color: room.door.color ?? '#ac704b' })
   }
+  for (const door of room.extraDoors ?? []) if (door.wall === wall) openings.push({ id: door.id, kind: 'door', offset: door.offset, width: door.width, bottom: 0, height: door.height, rotation: door.rotation, color: door.color ?? '#ac704b' })
   room.windows.filter((window) => window.wall === wall).forEach((window) => {
     openings.push({ id: window.id, kind: 'window', shape: window.shape, offset: window.offset, width: window.width, bottom: window.sill, height: window.height, rotation: window.rotation, color: window.color ?? '#c88f58' })
   })

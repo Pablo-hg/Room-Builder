@@ -3,6 +3,7 @@ import { canPlaceFurniture, clampFurniture, clampFurnitureElevation, findFreeFur
 import { canElevateFurniture, furnitureAttachment, FURNITURE_PRESETS, isCeilingMountedFurniture, isFloorBoundFurniture } from './objectCatalog'
 import type { FurnitureItem, RoomConfig, WindowConfig } from './types'
 import { snapMeasurement } from './measurements'
+import { furnitureAxisLocks } from './axisLocks'
 
 export interface RoomEditingData {
   room: RoomConfig
@@ -17,6 +18,7 @@ export function safeRoomUpdate(current: RoomEditingData, candidate: RoomConfig):
   const error = validateOpenings(candidate)
   if (error) return { notice: error }
   const furniture = current.furniture.map((item) => {
+    if (item.axisLocks) return { ...item }
     const oldBounds = clampFurniture(item, current.room, false)
     const outside = oldBounds.x !== item.x || oldBounds.z !== item.z
     return outside ? { ...item } : { ...item, ...clampFurniture(item, candidate, false) }
@@ -101,7 +103,8 @@ export function roomForWindowUpdate(room: RoomConfig, currentWindow: WindowConfi
 
 export function movedFurniture(state: RoomEditingData, item: FurnitureItem, x: number, z: number) {
   if (!Number.isFinite(x) || !Number.isFinite(z)) return null
-  return { ...item, x: x === item.x ? x : snapMeasurement(x), z: z === item.z ? z : snapMeasurement(z) }
+  const locks = furnitureAxisLocks(item)
+  return { ...item, x: locks.x || x === item.x ? item.x : snapMeasurement(x), z: locks.z || z === item.z ? item.z : snapMeasurement(z) }
 }
 
 export function elevatedFurniture(state: RoomEditingData, item: FurnitureItem, y: number) {

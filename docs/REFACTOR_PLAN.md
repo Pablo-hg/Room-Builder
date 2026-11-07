@@ -1,4 +1,7 @@
-# Plan de reorganización del código — fase siguiente
+# Plan de reorganización del código — histórico R0–R5
+
+> **HISTÓRICO R0–R5:** estas etapas ya están fusionadas en `main`, con auditoría técnica adicional en #34. Las referencias antiguas a «R5 pendiente» o A/B explican el pasado, **no** son instrucciones activas. El MVP completo (vivienda y siete funciones) está planificado en [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md). Checkpoint inicial v0.2 #33; gate final de publicación #54.
+
 
 > **Actualización 04/11/2026:** El propietario retiró las variantes del MVP. Los apartados anteriores sobre R5.1 describen el histórico; el estado de validación figura en el informe de progreso.
 
@@ -6,7 +9,7 @@
 
 **Estado de R4:** completada como **contrato y pruebas puras** y ya integrada. No hay UI multihabitación, ni migración ejecutada sobre datos reales, ni cambio del formato persistido v1–v4; `ProjectV2` sigue siendo un prototipo no estable (RB-013). El detalle está en [progress/R4_PROGRESS.md](progress/R4_PROGRESS.md); el histórico de R3 se conserva en [progress/R3_PROGRESS.md](progress/R3_PROGRESS.md).
 
-**Estado de R5:** en curso en [R5_PLAN.md](R5_PLAN.md) y [progress/R5_PROGRESS.md](progress/R5_PROGRESS.md). Las variantes de R5.1 se retiraron del MVP; se conserva el anclaje por tipo de objetos nuevos y la compatibilidad de los antiguos. R5.2 fue validada manualmente por el propietario y R5.3 está implementada y en verificación. Los IDs duplicados se importan como copia; el reemplazo y R5.4 siguen aplazados. `ProjectV2` sigue siendo candidato.
+**Estado de R5:** fusionada en `main` mediante PR #22; pendientes E2E globales y cierre de producto en [MVP_SCOPE.md](MVP_SCOPE.md). El histórico está en [R5_PLAN.md](R5_PLAN.md) y [progress/R5_PROGRESS.md](progress/R5_PROGRESS.md). Las variantes de R5.1 se retiraron del MVP; se conserva el anclaje por tipo de objetos nuevos y la compatibilidad de los antiguos. R5.2 fue validada manualmente por el propietario y R5.3 está implementada y en verificación. Los IDs duplicados se importan como copia; el reemplazo y R5.4 siguen aplazados. `ProjectV2` sigue siendo candidato.
 
 ## Antes de tocar código
 
@@ -173,9 +176,9 @@ Aceptación cumplida: sin interfaz pública, sin creación de vivienda y sin dec
 - Sin regresiones en la lectura de los diseños actuales; `npm test` y build en verde. **189/189 unitarias y build aprobado.**
 - Ningún cambio de claves, esquema persistido o comportamiento visible sin autorización expresa. **Cumplido.**
 
-### R5 — Funcionalidad y diseño (en curso)
+### R5 — Funcionalidad y diseño (integrada en main; certificación de MVP pendiente)
 
-**Estado: EN CURSO.** El plan está en [R5_PLAN.md](R5_PLAN.md); el seguimiento, en [progress/R5_PROGRESS.md](progress/R5_PROGRESS.md).
+**Estado del código: INTEGRADO.** El plan histórico está en [R5_PLAN.md](R5_PLAN.md); el seguimiento, en [progress/R5_PROGRESS.md](progress/R5_PROGRESS.md).
 
 - **Orden acordado (03/11/2026):** R5.1 comparación Original/Alternativa A en una sola habitación; R5.2 redimensionado del mobiliario compatible; R5.3 JSON editable seguro y versionado; R5.4 simplificación de experiencia solo con decisiones aprobadas y sin adelantar v0.2. Las formas no rectangulares y paredes interiores de RB-025 quedan después; las casas conectadas, más tarde.
 - **R5.1:** persistir dos variantes de mobiliario con estructura común en `PersistedDesign` v5, alternar, conservar selección compatible, historial y guardado; máximo una Alternativa A en la UI. Contrato y decisiones en el plan; completada y verificada con D9/D10 aprobadas; no se inicia R5.2 por indicación del propietario.

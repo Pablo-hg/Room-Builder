@@ -9,3 +9,14 @@ logs/*.log
 .DS_Store
 __pycache__/
 *.pyc
+
+# Configuración local, secretos y borradores de agentes
+.env
+.env.*
+!.env.example
+.ai/
+opencode.jsonc.backup*
+.cache/
+
+# Capturas nuevas generadas; las evidencias históricas R0 ya versionadas se conservan
+output/playwright/**

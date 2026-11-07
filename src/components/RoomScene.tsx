@@ -15,12 +15,13 @@ import { RoomShell, StudioLight, WallIdentityLabel } from '../scene/RoomShell'
 import { recordSceneInteraction } from '../scene/sceneInteraction'
 import { PlanOpening } from '../scene/Openings'
 import { FurnitureObject } from '../scene/FurnitureObject'
-import { StructureSurfaceObject } from '../scene/StructureSurface'
+import { StructureDoorPlan, StructureSurfaceObject } from '../scene/StructureSurface'
 import { MultiFurnitureGizmo } from '../scene/MultiFurnitureGizmo'
 import { multiSelectionItems } from '../domain/multiSelection'
 import { prioritizeTransformControls } from '../scene/interactionPriority'
 import { FreeCameraKeyboard } from '../scene/FreeCameraKeyboard'
 import { baseWallId, folderSelectionId, ROOT_ROOM_FOLDER } from '../domain/elementFolders'
+import { packRoomBox } from '../domain/roomEditing'
 
 function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null> }) {
   const selectedId = useRoomStore((state) => state.selectedId)
@@ -32,14 +33,17 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
   const assignments = useRoomStore((state) => state.elementFolderAssignments)
   const activeRoomId = useRoomStore((state) => state.activeRoomId)
   const activeRoom = props.structurePacks.find((pack) => pack.id === activeRoomId && pack.id.startsWith('floor-pack-'))
+  const activeBox = activeRoom && packRoomBox(activeRoom, props.room)
   const focusedView = !props.exportMode && props.structurePacks.some((pack) => pack.id.startsWith('floor-pack-')) && (props.view === 'top' || props.view === 'pov')
-  const level = activeRoom?.y ?? 0
+  const level = (activeRoom?.y ?? 0) + (activeBox?.y ?? 0)
+  const levelHeight = activeBox?.height ?? props.room.height
   const showBase = !focusedView || Math.abs(level) < 0.01
-  const multiItems = multiSelectionItems({ room: props.room, furniture: props.furniture, structurePacks: props.structurePacks, elementFolders: folders, elementFolderAssignments: assignments, selectedIds }).filter((item) => !focusedView || (item.min.y >= level - 0.15 && item.min.y < level + props.room.height))
+  const multiItems = multiSelectionItems({ room: props.room, furniture: props.furniture, structurePacks: props.structurePacks, elementFolders: folders, elementFolderAssignments: assignments, selectedIds }).filter((item) => !focusedView || (item.min.y >= level - 0.15 && item.min.y < level + levelHeight))
   const groupSelected = !(selectedIds.length === 1 && selectedIds[0] === folderSelectionId(ROOT_ROOM_FOLDER)) && multiItems.length > 1 && (selectedIds.length > 1 || selectedIds.some((id) => id.startsWith('folder:')))
   const cameraRoom = {
     ...props.room,
-    height: focusedView || props.view === 'front' ? props.room.height : Math.max(props.room.height, ...props.structurePacks.filter((pack) => pack.id.startsWith('floor-pack-')).map((pack) => pack.y + props.room.height)),
+    ...(activeBox ? { width: activeBox.width, depth: activeBox.depth } : {}),
+    height: focusedView || props.view === 'front' ? activeBox?.height ?? props.room.height : Math.max(props.room.height, ...props.structurePacks.filter((pack) => pack.id.startsWith('floor-pack-')).map((pack) => pack.y + (packRoomBox(pack, props.room)?.height ?? props.room.height))),
   }
   const { hidden, labeledWalls, gridWalls } = wallVisibility(props)
 
@@ -51,7 +55,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
       <StudioLight room={props.room} />
       <hemisphereLight args={['#ddecf0', '#bd9170', 0.75]} />
 
-      <RoomShell room={props.room} modelRootRef={modelRootRef} showBase={showBase} showFloorGrid={!props.exportMode && props.gridVisibility.floor}>
+      <RoomShell room={props.room} modelRootRef={modelRootRef} showBase={showBase} showSelection={!props.exportMode} showFloorGrid={!props.exportMode && props.gridVisibility.floor}>
         {showBase && WALL_SIDES.map((wall) => (
           <SoftWall
             key={wall}
@@ -85,6 +89,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
                   showCollision={!props.exportMode}
                   onSelect={() => selectElement(surfaceId)}
                 />
+                {!props.exportMode && props.view === 'top' && !hiddenElementIds.includes(surfaceId) && <StructureDoorPlan room={props.room} packId={pack.id} surface={surface} />}
                 {pack.id === activeRoom?.id && !props.exportMode && surface.kind === 'wall' && surface.wall && labeledWalls.includes(surface.wall) && !hiddenElementIds.includes(surfaceId) && <group position={[surface.x, surface.y, surface.z]}><WallIdentityLabel room={props.room} wall={surface.wall} view={props.view} wallView={props.wallView} /></group>}
                 </group>
               )
@@ -96,7 +101,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
             .filter((opening) => !hiddenElementIds.includes(opening.id))
             .map((opening) => <PlanOpening key={`${wall}-${opening.id}`} room={props.room} opening={opening} wall={wall} groupSelected={groupSelected} />),
         )}
-        {props.furniture.filter((item) => !hiddenElementIds.includes(item.id) && (!focusedView || (item.y >= level - 0.01 && item.y < level + props.room.height))).map((item) => (
+        {props.furniture.filter((item) => !hiddenElementIds.includes(item.id) && (!focusedView || (item.y >= level - 0.01 && item.y < level + levelHeight))).map((item) => (
           <FurnitureObject
             key={item.id}
             item={item}

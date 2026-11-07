@@ -1,5 +1,8 @@
 # Instrucciones permanentes para Codex y agentes — Room Builder
 
+> **FUENTE ACTUAL 04/11/2026:** R5 integrada en `main`. El **MVP completo** aprobado es vivienda por plantas + las siete funciones confirmadas (#37, #38, #39, #40, #41, #45, #47) + #35/#36. **v0.2 es solo checkpoint** (#33). Antes de implementar, leer [docs/MVP_MASTER_PLAN.md](docs/MVP_MASTER_PLAN.md), [docs/MVP_SCOPE.md](docs/MVP_SCOPE.md) y la issue asignada. Gate final **#54**: no publicar sin validación y autorización humana. **Organización:** 24 tareas bajo Milestones nativos F0–F6, orden dentro de cada hito visible en títulos `[F# · NN/TT]` y documentado en `docs/MVP_MASTER_PLAN.md`; **no elegir primero por P0/P1 si faltan sus dependencias** y **únicamente las etiquetas `prioridad:P0` y `prioridad:P1`**. Los contenedores #55–#61 están archivados. **No añadir etiquetas `mvp`, `tipo:*`, `orden:*`, `fase:*` o `hito:*` ni cabeceras con el hito en las descripciones**: el hito está en la columna derecha de GitHub. No crear contenedores nuevos. Fuera de MVP: [FUTURE_IMPROVEMENTS.md](docs/FUTURE_IMPROVEMENTS.md). No modificar configuraciones de agentes sin autorización; ver [CONFIGURATION_AUDIT.md](docs/CONFIGURATION_AUDIT.md).
+
+
 ## Selección de modelo y razonamiento
 
 - Recomienda un modelo únicamente cuando el usuario solicite ayuda para elegirlo o compararlo.
@@ -38,14 +41,14 @@ Acción: [Mantener / Cambiar].
 
 ## 2. Reglas de producto y desarrollo
 
-- Producto independiente: crear y reorganizar habitaciones reales con facilidad de videojuego; futuro multihabitación. La versión mini del Laboratorio de Pablo Web 2.0 es otro alcance y no modifica el portfolio.
+- Producto independiente: empezar creando una habitación, ampliar a **casa con varias plantas y estancias conectadas** como parte del MVP final. La versión Mini del Laboratorio de Pablo Web 2.0 es otro alcance posterior y no modifica el portfolio.
 - Priorizar usabilidad y legibilidad sobre realismo, funciones o complejidad técnica. Mantener la estética 3D low-poly estilizada, tipo diorama; no pixel art ni CAD.
 - No cambiar por iniciativa propia el alcance MVP, la arquitectura aprobada, las guías visuales, los formatos persistidos ni las decisiones marcadas PENDIENTE. Proponer y documentar primero cualquier cambio de ese tipo.
 - Distinguir siempre CONFIRMADO, PROPUESTO, EXPERIMENTAL, PENDIENTE y DESCARTADO. No presentar una propuesta como implementada ni una implementación como validada visualmente.
 - Separar datos del mundo, renderizado, controles, cámaras, estado/persistencia y UI. La posición de un objeto nunca debe depender de una vista concreta.
 - No incorporar objetos visuales sin integrar catálogo, modelo 3D, icono, medidas, interacción y pruebas correspondientes; respetar la guía visual.
 - No romper diseños guardados: versionar cambios de formato, validar entradas y ofrecer migraciones con pruebas cuando proceda. Guardar internamente en metros; interfaz en español de España.
-- Mantener la consistencia constructiva: puertas y ventanas pertenecen a paredes, sin solapes ni huecos falsos. Preparar paredes compartidas para el futuro sin improvisar duplicados.
+- Mantener la consistencia constructiva: puertas y ventanas pertenecen a paredes, sin solapes ni huecos falsos. **Implementar en #51/#52 paredes compartidas físicas únicas**, con migraciones y tests; no improvisar duplicados.
 - No introducir IA, cuentas, backend, librerías grandes ni sistemas sociales por simple conveniencia.
 - No copiar assets ni código de Rooms.xyz, Room Studio u otros proyectos sin comprobar licencia y atribución.
 - Preservar compatibilidad con ratón, pantalla táctil y teclado; accesibilidad textual, movimiento reducido y mensajes claros. Evitar cargas iniciales pesadas.
@@ -54,10 +57,11 @@ Acción: [Mantener / Cambiar].
 ## 3. Verificación y seguridad del trabajo
 
 - Inspeccionar el código real antes de actuar. Evaluar efectos sobre vistas, dimensiones, selección, persistencia y migraciones cuando sean áreas afectadas.
-- Ejecutar primero las pruebas pertinentes para los archivos modificados. Ampliar la validación según alcance y riesgo, utilizando `npm test`, `npm run test:e2e` y `npm run build` cuando corresponda.
-- En cambios amplios o antes de integrar, ejecutar las comprobaciones generales aplicables. Si alguna no puede ejecutarse o no corresponde a la tarea, explicarlo en el resumen final.
+- **Política vigente del propietario (07/11/2026):** las pruebas automáticas (unitarias, E2E y build de CI) se ejecutan **solo al integrar cambios en `main`**. No lanzar CI en `dev`, ramas de desarrollo o PR, ni ejecutar suites allí por iniciativa propia. Esta política pospone la certificación hasta después de la integración; indicar expresamente los riesgos y los tests pendientes.
+- Antes de integrar, revisar estáticamente los cambios y documentar las validaciones pendientes sin afirmar que se han probado. Después de integrar en `main`, el workflow ejecuta `npm ci`, `npm test`, `npm run build` y `npm run test:e2e`.
 - No repetir pruebas costosas si no hay cambios relevantes desde una ejecución válida, salvo para comprobar estabilidad o por requisitos de integración.
 - No afirmar que una vista ha sido validada visualmente sin haberla comprobado. No ocultar fallos, resultados incompletos ni riesgos conocidos.
+- **Política vigente del propietario (07/11/2026):** partir siempre de `main` para crear ramas nuevas de tarea. Subir commits únicamente a esas ramas; **no crear PR**, y **no subir cambios ni integrar automáticamente en `main` o `dev`**. La integración en `main` requiere acción o autorización específica del propietario.
 - No sobrescribir trabajo ajeno ni borrar cambios locales. No hacer commits no solicitados, merges ni publicaciones sin autorización expresa. Trabajar en la rama indicada y entregar un resumen verificable.
 
 ## 4. Eficiencia de tokens y contexto
@@ -94,7 +98,7 @@ Acción: [Mantener / Cambiar].
 ## 6. Jerarquía documental
 
 - `docs/DECISION_LOG.md` registra estados y decisiones.
-- `docs/PRODUCT_VISION.md` delimita el propósito; `docs/MVP_SCOPE.md`, el alcance.
+- `docs/PRODUCT_VISION.md` delimita el propósito; `docs/MVP_SCOPE.md`, el alcance; `docs/MVP_MASTER_PLAN.md`, las fases, prioridades, orden y dependencias.
 - `VISUAL_STYLE_GUIDE.md` define el diseño visual; `docs/DATA_AND_FORMATS.md`, el contrato de datos propuesto.
 - `docs/MODELS.md` es la referencia central de modelos y casos de uso; `docs/MODEL_ROUTING.md` establece la política de selección y `docs/AGENT_EFFICIENCY.md`, las pautas de eficiencia. Estos documentos no prevalecen sobre seguridad, alcance ni reglas de producto de este archivo.
 - El código es la fuente del estado implementado, no de la validez de decisiones de producto.

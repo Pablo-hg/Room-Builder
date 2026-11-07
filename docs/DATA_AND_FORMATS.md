@@ -1,8 +1,11 @@
 # Datos, unidades, guardado e interoperabilidad
 
+> **VIGENCIA ACTUAL 04/11/2026:** el MVP comprometido incluye un contrato versionado de **casa con plantas y habitaciones** (#51–#53) y nuevos datos de cotas (#38), materiales (#39), cámaras (#40), plantillas (#41), importación de plano (#45) y objetos modulares (#47). **Todavía no están implementados**. R5.3 sí implementa JSON editable de una habitación (certificación #25). El selector A/B se retiró por RB-040; v5 se lee por compatibilidad. Plan canónico: [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md). Los párrafos R3/R4/R5 inferiores son fotografías históricas.
+
+
 > **Actualización 04/11/2026:** El propietario retiró las variantes del MVP el 04/11/2026. El código local ya no escribe v5: al leer v5 toma el mobiliario activo y guarda una sola distribución con el formato previo. La conversión y la conservación de medidas editadas están pendientes de pruebas de compatibilidad. El apartado v5 inferior se conserva como histórico.
 
-**Estado:** principios CONFIRMADOS; contrato multiproyecto con prototipo puro en R4, no persistido ni declarado estable. R5.1 integra variantes de una habitación en `PersistedDesign` v5; ver [R5_PLAN.md](R5_PLAN.md) e [informe](progress/R5_PROGRESS.md). El JSON público sigue pendiente de R5.3.
+**Estado actual:** geometría y formato v1–v5 existentes; R5.3 entrega importación/exportación **JSON editable de una habitación**, pendiente de tests completos (#25). La extensión de casa es un contrato **comprometido pero NO desarrollado** (#51–#53). Los datos A/B v5 son históricos por RB-040.
 
 ## Fuente espacial única
 - Convención: sistema XYZ del mundo; X y Z corresponden al plano del suelo, Y a la altura. Las vistas **solo proyectan** la misma escena; no modifican coordenadas del mobiliario.
@@ -11,8 +14,8 @@
 - Restricciones: anchura/profundidad/altura y huecos admitidos deben ser configurables y comprobados. El límite actual de 3 m mínimos de anchura/profundidad no es suficiente para futuros cuartos pequeños; cambiarlo requerirá geometría y tests.
 - Puertas y ventanas hacen referencia a pared y posición; las aberturas no son objetos flotantes.
 
-## Persistencia realmente implementada (26/10/2026)
-`src/domain/designV1.ts` declara `PersistedDesign` como unión de las versiones legacy 1–4 y la versión 5 de variantes (reexportado desde `src/domain/types.ts`) con room, furniture, structurePacks opcionales, gridSnap, gridVisibility, hiddenElementIds, lockedElementIds, elementFolders y elementFolderAssignments. La versión 4 conserva el orden visual personalizado de los elementos de escena. La versión 3 añade la carpeta padre para carpetas anidadas; los diseños v1 y v2 mantienen sus carpetas en el nivel principal. La versión 2 añade nombres opcionales a puertas y ventanas; se siguen admitiendo esos datos y diseños v1 con nombres predeterminados; la aplicación guarda ahora v5. `lockedElementIds` y las carpetas (`elementFolders` + `elementFolderAssignments`) son opcionales y compatibles con diseños guardados anteriores: conservan los candados y la organización de la lista de elementos. `src/state/useRoomStore.ts` compone las acciones de diseños, que persisten hasta cinco diseños mediante `src/persistence/localDesignRepository.ts`; la cámara es temporal. Existe exportación GLB de escena. **No existe importación/exportación JSON editable pública ni modelo real multihabitación.**
+## Fotografía histórica de persistencia (26/10/2026), anterior a R5.3
+`src/domain/designV1.ts` declara `PersistedDesign` como unión de las versiones legacy 1–4 y la versión 5 de variantes (reexportado desde `src/domain/types.ts`) con room, furniture, structurePacks opcionales, gridSnap, gridVisibility, hiddenElementIds, lockedElementIds, elementFolders y elementFolderAssignments. La versión 4 conserva el orden visual personalizado de los elementos de escena. La versión 3 añade la carpeta padre para carpetas anidadas; los diseños v1 y v2 mantienen sus carpetas en el nivel principal. La versión 2 añade nombres opcionales a puertas y ventanas; se siguen admitiendo esos datos y diseños v1 con nombres predeterminados; la aplicación guarda ahora v5. `lockedElementIds` y las carpetas (`elementFolders` + `elementFolderAssignments`) son opcionales y compatibles con diseños guardados anteriores: conservan los candados y la organización de la lista de elementos. `src/state/useRoomStore.ts` compone las acciones de diseños, que persisten hasta cinco diseños mediante `src/persistence/localDesignRepository.ts`; la cámara es temporal. Existe exportación GLB de escena. **Corrección posterior (04/11): ya existe JSON editable de una habitación mediante R5.3; lo que NO existe es un formato y editor multihabitación de producción (#51).**
 
 ## Organización del lector v1 tras R3.3
 
@@ -56,7 +59,7 @@ La comparación Original/Alternativa A persiste dos distribuciones con estructur
 
 La convergencia con la semántica de `LayoutV2` de R4 está comprobada mediante pruebas puras de ambas variantes. No se declara estable ni se expone como JSON público hasta completar R5.3.
 
-## Formato futuro propuesto
+## Formato de proyecto completo — candidato R4, implementación comprometida #51
 Separa **proyecto** (una vivienda), **planta**, **habitaciones**, **paredes/aberturas estructurales**, **definiciones de objetos** e **instancias**, y **variantes de distribución**. Ejemplo conceptual, alineado con el prototipo R4 pero NO esquema público estable:
 
 - Project: schemaVersion, id, name, units, structureRevision, floors[], rooms[], walls[], openings[], furnitureDefinitions[], layouts[], activeLayoutId, preferences, legacyStructurePacks?, metadata.
@@ -77,14 +80,51 @@ El contrato actual solo representa habitaciones rectangulares. Las formas no rec
 Mantener espacio/estructura común para las variantes de mobiliario cuando se comparan «Original» y «Alternativa A». Si el usuario modifica puertas o forma de estancia, informar que afecta al proyecto espacial o crear una nueva versión estructural con acción explícita. Evitar que cambiar de alternativa mueva la puerta sin aviso. El prototipo R4 modela esta separación con `structureRevision` y una confirmación explícita, sin UI.
 
 ## Exportación y seguridad
-- **JSON editable (PROPUESTO para MVP):** versión de esquema, validación estricta y tamaño máximo razonable; importación con previsualización y confirmación. Nunca ejecutar contenido importado, ni confiar en rutas o scripts externos.
+- **JSON editable de un diseño (EXISTE por R5.3):** formato `room-builder-design`, validación, límites y previsualización/confirmación. **JSON de vivienda completa (PENDIENTE #51):** definir nuevo formato/versionado para plantas, contornos y recursos sin destruir v1–v5. Nunca ejecutar contenido importado ni confiar en rutas o scripts externos.
 - **GLB (EXISTE):** exportación visual interoperable, no sustituto del editable. La geometría exportada no garantiza reconversión a un proyecto de Room Builder.
 - **localStorage (EXISTE):** útil para inicio; evitar perder datos por cambios de versión. Posibilidad futura de IndexedDB si escala; NO requerida ahora.
 - Migración: conservar lectura de diseños v1; fixture antiguo en pruebas; backups antes de migraciones destructivas; errores informativos. No falsear la carga de datos inválidos.
-- No servicios externos, analítica invasiva ni subida de planos reales en el MVP. El registro local de interacciones de desarrollo debe permanecer limitado a desarrollo, no almacenar información personal innecesaria y no enviarse a terceros.
+- No servicios externos obligatorios ni analítica invasiva. **#45 importa planos reales solo localmente**, sin subirlos a servidor; cuidar su privacidad, límites y portabilidad. El registro local de interacciones de desarrollo debe permanecer limitado a desarrollo, no almacenar información personal innecesaria y no enviarse a terceros.
 
 ## Estado de formato
-El contrato R4 está probado como prototipo puro, pero JSON editable y multihabitación siguen siendo objetivos de diseño. No declarar estable el esquema ni exponerlo como formato público hasta validar migración, importación y UI.
+
+### Candados XYZ (petición del propietario, 07/11/2026)
+
+**Última continuación del 07/11/2026:** `RoomConfig.extraDoors` permite puertas
+adicionales en raíz sin reemplazar `room.door`. Sus entradas usan el mismo
+contrato de puerta con ID estable. Estos diseños se guardan como v8; lectura
+v1–v7 mantenida. Las puertas adicionales se conservan como aberturas en R4 y en
+JSON, con selección, candados, historial y referencias. La puerta principal
+mantiene su ID `door`. El catálogo usa la habitación enfocada en la cámara para
+añadir, independiente de la selección de objetos.
+
+**Continuación del 07/11/2026:** `data.version: 7` cuando un pack contiene
+`doors?: (DoorConfig & { id: string })[]`. La pared se identifica por su lado
+en el pack y conserva un hueco geométrico real; la puerta sigue sus movimientos.
+Se validan IDs únicos, medidas, pared existente, límites y solapes. Se rechazan
+puertas en paredes coincidentes hasta resolver medianeras únicas (#51/#52).
+El borrado de pared/pack elimina sus puertas y referencias en el mismo historial.
+Se sigue leyendo v1–v6; el contenedor JSON mantiene `schemaVersion: 5`.
+Las dimensiones independientes de packs se expresan mediante las medidas y
+desplazamientos de sus superficies existentes, sin añadir un segundo contrato
+de vivienda. Cambiar la raíz compensa esos desplazamientos para conservar los
+otros packs. Documentación de implementación local, pendiente de pruebas en main.
+
+Extensión de un diseño individual: **data.version = 6** cuando muebles, puerta,
+ventanas, packs o superficies tienen `axisLocks: { x: boolean, y: boolean,
+z: boolean }`. Las tres claves son obligatorias cuando existe la propiedad.
+Ausencia: comportamiento heredado. No cambia IDs, unidades ni claves locales;
+se conserva lectura v1–v5, incluyendo aplanado de variantes v5.
+
+Un candado explícito congela la coordenada y no implica fijación al suelo/techo.
+La primera edición de candados de un mueble materializa su base visible como Y
+absoluta. Volver a bloquear Y no recoloca el objeto. Los objetos antiguos
+mantienen sus coordenadas al cargar; las alfombras apoyadas en losas corrigen
+solo su desfase visual. El JSON de intercambio mantiene `schemaVersion: 5`,
+con `design.data.version: 6`. El prototipo R4 conserva los candados en ida y
+vuelta. Implementación local pendiente de ejecución de pruebas en main y de
+validación visual; no representa el contrato de vivienda de #51.
+El contrato R4 sigue siendo un prototipo puro; el **JSON editable de una habitación existe** con formato R5.3, pendiente de E2E final. El formato de **proyecto completo** aún no está implementado ni validado; no declararlo público/estable hasta #51–#54.
 
 
 ## Archivo JSON de intercambio R5.3 (implementación pendiente de verificación)

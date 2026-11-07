@@ -3,6 +3,8 @@ import { isPersistedDesign, type PersistedDesign, type SavedDesign } from '../do
 import { validateOpenings } from '../domain/geometry'
 import { normalizeDesignPreferences, normalizeStructurePacks } from '../domain/normalizeDesignV1'
 import { FURNITURE_PRESETS, isWindowShape } from '../domain/objectCatalog'
+import { validateAxisLocks } from '../domain/axisLocks'
+import { rootDoorPack, structureDoorError } from '../domain/structureDoors'
 import {
   PROJECT_SCHEMA_VERSION,
   assertValidProject,
@@ -35,6 +37,7 @@ function assertMigratableDesign(data: PersistedDesign): void {
   }
   if (!Array.isArray(room.windows)) throw new Error('invalid windows')
   for (const window of room.windows) {
+    validateAxisLocks(window?.axisLocks)
     if (
       !window
       || typeof window.id !== 'string'
@@ -47,9 +50,13 @@ function assertMigratableDesign(data: PersistedDesign): void {
       || !isFiniteNumber(window.sill)
     ) throw new Error('invalid window')
   }
+  validateAxisLocks(room.door.axisLocks)
+  const extraDoorError = structureDoorError(rootDoorPack(room))
+  if (extraDoorError) throw new Error(extraDoorError)
   if (validateOpenings(room)) throw new Error('invalid openings')
   if (!Array.isArray(data.furniture)) throw new Error('invalid furniture')
   for (const item of data.furniture) {
+    validateAxisLocks(item?.axisLocks)
     if (
       !item
       || typeof item.id !== 'string'
@@ -87,9 +94,10 @@ function canonicalWalls(projectId: string, room: RoomConfig, roomId: string): Wa
   }))
 }
 
-function doorOpening(projectId: string, roomId: string, door: DoorConfig): OpeningV2 {
+function doorOpening(projectId: string, roomId: string, door: DoorConfig, id = `${roomId}:door`): OpeningV2 {
   return {
-    id: `${roomId}:door`,
+    ...(door.axisLocks ? { axisLocks: { ...door.axisLocks } } : {}),
+    id,
     ...(door.name ? { name: door.name } : {}),
     wallId: `${projectId}:wall-${door.wall}`,
     kind: 'door',
@@ -104,6 +112,7 @@ function doorOpening(projectId: string, roomId: string, door: DoorConfig): Openi
 
 function windowOpening(projectId: string, window: WindowConfig): OpeningV2 {
   return {
+    ...(window.axisLocks ? { axisLocks: { ...window.axisLocks } } : {}),
     id: window.id,
     ...(window.name ? { name: window.name } : {}),
     wallId: `${projectId}:wall-${window.wall}`,
@@ -200,6 +209,7 @@ export function migrateDesignToProject(saved: SavedDesign, options: ProjectMigra
     walls: canonicalWalls(projectId, data.room, roomId),
     openings: [
       doorOpening(projectId, roomId, data.room.door),
+      ...(data.room.extraDoors ?? []).map((door) => doorOpening(projectId, roomId, door, door.id)),
       ...data.room.windows.map((window) => windowOpening(projectId, window)),
     ],
     furnitureDefinitions: furnitureDefinitions(data.furniture),
@@ -251,10 +261,12 @@ export function projectToPersistedDesignV1(project: ProjectV2, layoutId = projec
   const wallSides = new Map(walls.map((wall) => [wall.id, wallSideFor(wall, room)]))
   const openings = project.openings.filter((opening) => wallSides.has(opening.wallId))
   const doorOpenings = openings.filter((opening) => opening.kind === 'door')
-  if (doorOpenings.length !== 1) throw new Error('one door is required to project back to v1')
-  const door = doorOpenings[0]
+  if (!doorOpenings.length) throw new Error('one primary door is required to project back to v1')
+  const door = doorOpenings.find((opening) => opening.id === `${room.id}:door`) ?? (doorOpenings.length === 1 ? doorOpenings[0] : undefined)
+  if (!door) throw new Error('one primary door is required to project back to v1')
   const preferences = remapPreferenceElementId(project.preferences, door.id, 'door')
   const doorConfig: DoorConfig = {
+    ...(door.axisLocks ? { axisLocks: { ...door.axisLocks } } : {}),
     ...(door.name ? { name: door.name } : {}),
     wall: wallSides.get(door.wallId)!,
     offset: door.offset,
@@ -266,6 +278,7 @@ export function projectToPersistedDesignV1(project: ProjectV2, layoutId = projec
   const windows: WindowConfig[] = openings
     .filter((opening) => opening.kind === 'window')
     .map((opening) => ({
+      ...(opening.axisLocks ? { axisLocks: { ...opening.axisLocks } } : {}),
       ...(opening.name ? { name: opening.name } : {}),
       id: opening.id,
       shape: opening.shape ?? 'rectangular',
@@ -285,9 +298,14 @@ export function projectToPersistedDesignV1(project: ProjectV2, layoutId = projec
     ...(room.wallColors ? { wallColors: { ...room.wallColors } } : {}),
     ...(room.floorColor ? { floorColor: room.floorColor } : {}),
     door: doorConfig,
+    ...(doorOpenings.length > 1 ? { extraDoors: doorOpenings.filter((opening) => opening.id !== door.id).map((opening) => ({
+      id: opening.id, ...(opening.name ? { name: opening.name } : {}), ...(opening.axisLocks ? { axisLocks: { ...opening.axisLocks } } : {}),
+      wall: wallSides.get(opening.wallId)!, offset: opening.offset, width: opening.width, height: opening.height, rotation: opening.rotation ?? 0, color: opening.color,
+    })) } : {}),
     windows,
   }
   const furniture: FurnitureItem[] = layout.furniture.map((item) => ({
+    ...(item.axisLocks ? { axisLocks: { ...item.axisLocks } } : {}),
     ...(item.attachmentPolicy ? { attachmentPolicy: item.attachmentPolicy } : {}),
     id: item.id,
     kind: item.kind,

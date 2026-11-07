@@ -1,9 +1,9 @@
 # Sistema de objetos, estilos y recursos
 
-**Estado:** reglas de consistencia CONFIRMADAS; ampliaciones marcadas PROPUESTAS. La guía visual canónica es [VISUAL_STYLE_GUIDE.md](../VISUAL_STYLE_GUIDE.md).
+**Estado actualizado 04/11/2026:** reglas visuales CONFIRMADAS. Materiales/pintura/cuentagotas [#39](https://github.com/Pablo-hg/Room-Builder/issues/39) y editor modular de modelos [#47](https://github.com/Pablo-hg/Room-Builder/issues/47) están **aprobados para el MVP completo, no implementados**. La guía visual canónica es [VISUAL_STYLE_GUIDE.md](../VISUAL_STYLE_GUIDE.md).
 
 ## Tipos de elementos
-1. **Estructura:** suelos, paredes, techos (cuando proceda), futuras habitaciones conectadas.
+1. **Estructura:** suelos, paredes, techos y **habitaciones conectadas** cuando se implemente #51/#52.
 2. **Aberturas:** puertas, ventanas; geometría anclada a una pared.
 3. **Mobiliario de suelo:** cama, mesa, escritorio, silla, sofá, armario, almacenaje.
 4. **Elementos apoyados/apilables:** lámparas de mesa, plantas, jarrones, aparatos.
@@ -38,6 +38,14 @@ La clasificación en el código actual está repartida entre FurnitureKind, Wind
 El código actual contiene un catálogo de muebles y aberturas en src/domain/objectCatalog.ts. Mantenerlo como fuente de propiedades implementadas hasta el refactor. Antes de dar por cerrado un objeto: definición, geometría, miniatura, capacidades, interacción, guardado, exportación y pruebas de visibilidad.
 
 **Primer catálogo suficiente:** cama, escritorio/mesa, silla, armario, estantería, sillón/sofá, lámpara y accesorios sencillos. Evitar inflarlo con cien variaciones antes de poder **redimensionar** los esenciales.
+
+## Materiales y editor modular — tareas del MVP completo
+
+**#39 (materiales):** biblioteca local de acabados estilizados (madera, baldosa, pintura, papel, tejidos), parámetros de tono/escala/rotación cuando apliquen, pintar superficies y copiar estilo mediante cuentagotas. Los colores actuales siguen disponibles. Guardar material/params de forma versionada y exportar sin pérdida; sin fotorrealismo.
+
+**#47 (muebles propios):** editor de primitivas con cubos/cilindros/esferas sencillas, agrupar, duplicar, alinear y aplicar materiales #39; guardar definiciones reutilizables en biblioteca local e instancias independientes. Compatible con pivote de base RB-038 y con la futura IA, **sin necesitar IA**.
+
+**Exclusiones:** los objetos apoyados sobre otros con grafo de dependencias (#43), presets de grupos de muebles (#44), importación GLB externo (#48) y objetos que ejecutan acciones (#50) quedan para [FUTURE_IMPROVEMENTS.md](FUTURE_IMPROVEMENTS.md). No confundir un GLB **exportado** con la importación de GLB ajeno.
 
 ## Creador de objetos por texto
 [GENERADOR_OBJETOS.md](../GENERADOR_OBJETOS.md) describe una funcionalidad EXPERIMENTAL aún no implementada. No es requisito MVP; no autoriza por sí solo instalar IA ni cambiar el contrato de objetos.

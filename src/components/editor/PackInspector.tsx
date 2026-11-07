@@ -32,6 +32,8 @@ export function PackInspector({ selectedPack }: { selectedPack: RoomState['struc
       <StructurePositionControls
         label="Mover pack"
         position={selectedPack}
+        elementId={selectedPack.id}
+        axisLocks={selectedPack.axisLocks}
         onChange={(axis, value) => moveStructurePack(selectedPack.id, axis, value)}
         disabled={locked}
       />
@@ -55,7 +57,7 @@ export function PackInspector({ selectedPack }: { selectedPack: RoomState['struc
           ＋ Añadir {surface.label.toLowerCase()}
         </button>
       ))}
-      <button type="button" className="text-button danger" onClick={() => removeStructurePack(selectedPack.id)}>Eliminar piso completo</button>
+      <button type="button" className="text-button danger" onClick={() => removeStructurePack(selectedPack.id)}>Eliminar habitación completa</button>
     </section>
   )
 

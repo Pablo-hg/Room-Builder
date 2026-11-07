@@ -7,7 +7,7 @@ import type { ElementFolder, FurnitureItem, GridSurface, RoomConfig, StructurePa
  * al leer se aplana a su variante activa y se guarda de nuevo como v4.
  */
 export interface PersistedDesign {
-  version: 1 | 2 | 3 | 4 | 5
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
   room: RoomConfig
   furniture: FurnitureItem[]
   structurePacks?: StructurePack[]
@@ -38,7 +38,10 @@ export const DEFAULT_GRID_VISIBILITY: Record<GridSurface, boolean> = {
 export type DesignState = Required<Omit<PersistedDesign, 'version'>>
 
 export function persistedDesign(state: DesignState): PersistedDesign {
-  const version: PersistedDesign['version'] = state.sceneElementOrder.length
+  const hasAxisLocks = state.furniture.some((item) => item.axisLocks)
+    || !!state.room.door.axisLocks || state.room.windows.some((item) => item.axisLocks)
+    || state.structurePacks.some((pack) => pack.axisLocks || pack.surfaces.some((surface) => surface.axisLocks))
+  const version: PersistedDesign['version'] = state.room.extraDoors?.length ? 8 : state.structurePacks.some((pack) => pack.doors?.length) ? 7 : hasAxisLocks ? 6 : state.sceneElementOrder.length
     ? 4
     : state.elementFolders.some((folder) => folder.parentId) ? 3 : state.room.door.name || state.room.windows.some((window) => window.name) ? 2 : 1
   return {
@@ -80,7 +83,7 @@ export function persistedDesignSignature(design: PersistedDesign) {
 export function isPersistedDesign(value: unknown): value is PersistedDesign {
   if (!value || typeof value !== 'object') return false
   const design = value as Partial<PersistedDesign>
-  return (design.version === 1 || design.version === 2 || design.version === 3 || design.version === 4 || design.version === 5)
+  return (design.version === 1 || design.version === 2 || design.version === 3 || design.version === 4 || design.version === 5 || design.version === 6 || design.version === 7 || design.version === 8)
     && !!design.room
     && typeof design.room === 'object'
     && Array.isArray(design.furniture)

@@ -59,8 +59,10 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
       const clean = name.trim().slice(0, 80)
       if (!clean) return {}
       if (id === 'door') return { room: { ...state.room, door: { ...state.room.door, name: clean } } }
+      if (state.room.extraDoors?.some((door) => door.id === id)) return { room: { ...state.room, extraDoors: state.room.extraDoors.map((door) => door.id === id ? { ...door, name: clean } : door) } }
       if (state.room.windows.some((window) => window.id === id)) return { room: { ...state.room, windows: state.room.windows.map((window) => window.id === id ? { ...window, name: clean } : window) } }
       if (state.furniture.some((item) => item.id === id)) return { furniture: state.furniture.map((item) => item.id === id ? { ...item, name: clean } : item) }
+      if (state.structurePacks.some((pack) => pack.doors?.some((door) => door.id === id))) return { structurePacks: state.structurePacks.map((pack) => ({ ...pack, ...(pack.doors ? { doors: pack.doors.map((door) => door.id === id ? { ...door, name: clean } : door) } : {}) })) }
       if (state.structurePacks.some((pack) => pack.id === id)) return { structurePacks: state.structurePacks.map((pack) => pack.id === id ? { ...pack, name: clean } : pack) }
       for (const pack of state.structurePacks) {
         if (pack.surfaces.some((surface) => structureSurfaceElementId(pack.id, surface.id) === id)) return {
@@ -72,6 +74,8 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
       return {}
     }),
     removeSelected: () => set((state) => {
+      if (state.room.extraDoors?.some((door) => door.id === state.selectedId)) return { room: { ...state.room, extraDoors: state.room.extraDoors.filter((door) => door.id !== state.selectedId) }, selectedId: null }
+      if (state.selectedId && state.structurePacks.some((pack) => pack.doors?.some((door) => door.id === state.selectedId))) return { structurePacks: state.structurePacks.map((pack) => ({ ...pack, ...(pack.doors ? { doors: pack.doors.filter((door) => door.id !== state.selectedId) } : {}) })), selectedId: null }
       if (!state.selectedId || state.selectedId === 'door' || isFolderSelectionId(state.selectedId) || BASE_ROOM_SURFACE_IDS.includes(state.selectedId)) return {}
       recordInteraction('state.element.removed', {
         view: state.view,
@@ -165,7 +169,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
           for (const copy of copies) {
             if ('kind' in copy) {
               const item: FurnitureItem = { ...copy, id: makeId(copy.kind), attachmentPolicy: 'by-type' }
-              item.y = canElevateFurniture(item) ? snapMeasurement(item.y) : clampFurnitureElevation(item, state.room, false)
+              if (!item.axisLocks) item.y = canElevateFurniture(item) ? snapMeasurement(item.y) : clampFurnitureElevation(item, state.room, false)
               const offsets = [[0.5, 0.5], [0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5], [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5]] as const
               const room = { ...state.room, windows }
               const position = offsets.map(([x, z]) => ({ x: snapMeasurement(copy.x + x), z: snapMeasurement(copy.z + z) }))
@@ -195,7 +199,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
       set((state) => {
         if ('kind' in copy) {
           const item: FurnitureItem = { ...copy, id: makeId(copy.kind), attachmentPolicy: 'by-type' }
-          item.y = canElevateFurniture(item) ? snapMeasurement(item.y) : clampFurnitureElevation(item, state.room, false)
+          if (!item.axisLocks) item.y = canElevateFurniture(item) ? snapMeasurement(item.y) : clampFurnitureElevation(item, state.room, false)
           const offsets = [
             [0.5, 0.5], [0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5],
             [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5],

@@ -57,7 +57,7 @@ export const BASE_ROOM_SURFACE_IDS = [BASE_FLOOR_ID, ...['north', 'east', 'south
 export function initialRoomFolder(room: RoomConfig) {
   return {
     elementFolders: [{ id: ROOT_ROOM_FOLDER, name: 'Raíz' }],
-    elementFolderAssignments: Object.fromEntries([...BASE_ROOM_SURFACE_IDS, 'door', ...room.windows.map((window) => window.id)].map((id) => [id, ROOT_ROOM_FOLDER])),
+    elementFolderAssignments: Object.fromEntries([...BASE_ROOM_SURFACE_IDS, 'door', ...room.windows.map((window) => window.id), ...(room.extraDoors ?? []).map((door) => door.id)].map((id) => [id, ROOT_ROOM_FOLDER])),
   }
 }
 
@@ -69,7 +69,7 @@ export function folderRoomPack(folders: readonly { id: string }[], assignments: 
 
 export function orderedSceneIds(state: { room: RoomConfig; furniture: FurnitureItem[]; structurePacks: StructurePack[]; sceneElementOrder: string[]; elementFolders?: readonly { id: string }[] }) {
   const folderIds = (state.elementFolders ?? []).map((folder) => folderSelectionId(folder.id))
-  const ids = [...folderIds, ...(folderIds.includes(folderSelectionId(ROOT_ROOM_FOLDER)) ? BASE_ROOM_SURFACE_IDS : []), 'door', ...state.room.windows.map((window) => window.id), ...state.furniture.map((item) => item.id), ...state.structurePacks.flatMap((pack) => [pack.id, ...pack.surfaces.map((surface) => structureSurfaceElementId(pack.id, surface.id))])]
+  const ids = [...folderIds, ...(folderIds.includes(folderSelectionId(ROOT_ROOM_FOLDER)) ? BASE_ROOM_SURFACE_IDS : []), 'door', ...(state.room.extraDoors ?? []).map((door) => door.id), ...state.room.windows.map((window) => window.id), ...state.furniture.map((item) => item.id), ...state.structurePacks.flatMap((pack) => [pack.id, ...pack.surfaces.map((surface) => structureSurfaceElementId(pack.id, surface.id)), ...(pack.doors ?? []).map((door) => door.id)])]
   const valid = new Set(ids)
   const ordered = state.sceneElementOrder.filter((id) => valid.has(id))
   const known = new Set(ordered)

@@ -38,7 +38,7 @@ test('v1–v4 sin marca conservan alturas y libertad; los objetos nuevos se fija
     const newRug = store.getState().selectedId!
     store.getState().addFurniture('ceilingLamp')
     const newCeiling = store.getState().selectedId!
-    assert.equal(store.getState().furniture.find((item) => item.id === newRug)!.y, 0)
+    assert.equal(store.getState().furniture.find((item) => item.id === newRug)!.y, 0.04)
     assert.equal(store.getState().furniture.find((item) => item.id === newCeiling)!.y, DEFAULT_ROOM.height - FURNITURE_PRESETS.ceilingLamp.height)
     store.getState().saveDesign()
     const restored = createRoomStore(repository)
@@ -52,10 +52,11 @@ test('v1–v4 sin marca conservan alturas y libertad; los objetos nuevos se fija
     restored.getState().moveFurnitureVertically('legacy-rug', 1.25)
     assert.equal(restored.getState().furniture.find((item) => item.id === 'legacy-rug')!.y, 1.25)
     restored.getState().moveFurnitureVertically(newRug, 1)
-    assert.equal(restored.getState().furniture.find((item) => item.id === newRug)!.y, 0)
+    assert.equal(restored.getState().furniture.find((item) => item.id === newRug)!.y, 0.04)
     restored.getState().setDimension('height', 3.5)
     assert.equal(restored.getState().furniture.find((item) => item.id === 'legacy-ceiling')!.y, 1.03)
-    assert.equal(restored.getState().furniture.find((item) => item.id === newCeiling)!.y, 3.5 - FURNITURE_PRESETS.ceilingLamp.height)
+    // Y freezes the chosen coordinate; changing the room height is not a reattachment.
+    assert.equal(restored.getState().furniture.find((item) => item.id === newCeiling)!.y, DEFAULT_ROOM.height - FURNITURE_PRESETS.ceilingLamp.height)
     const project = migrateDesignToProject(saved[0])
     assert.equal(project.layouts.length, 1)
     assert.deepEqual(

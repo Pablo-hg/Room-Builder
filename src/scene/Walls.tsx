@@ -2,13 +2,14 @@ import type { ThreeEvent } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { DEFAULT_WALL_COLOR } from '../domain/constants'
-import { isWallMountedDecoration, openingsForWall, wallLength } from '../domain/geometry'
+import { buildWallSegments, isWallMountedDecoration, openingsForWall, wallLength } from '../domain/geometry'
 import type { RoomConfig, WallOpening, WallSide } from '../domain/types'
 import { clipPolygonToWall, openingPolygon } from './wallGeometry'
 import { useRoomStore } from '../state/useRoomStore'
 import { OpeningDetail } from './Openings'
 import { WallGrid } from './WallGrid'
-import { recordSceneInteraction } from './sceneInteraction'
+import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
+import { baseWallId } from '../domain/elementFolders'
 import { SelectionBounds } from './SelectionBounds'
 
 export const wallPlacement: Record<WallSide, (room: RoomConfig) => { position: [number, number, number]; rotation: [number, number, number] }> = {
@@ -18,7 +19,7 @@ export const wallPlacement: Record<WallSide, (room: RoomConfig) => { position: [
   west: (room) => ({ position: [-room.width / 2, 0, 0], rotation: [0, Math.PI / 2, 0] }),
 }
 
-export function WallBody({ length, height, openings, color, onPointerDown }: { length: number; height: number; openings: WallOpening[]; color: string; onPointerDown: (event: ThreeEvent<PointerEvent>) => void }) {
+export function WallBody({ length, height, openings, color, onPointerDown, depth = 0.12 }: { length: number; height: number; openings: WallOpening[]; color: string; onPointerDown: (event: ThreeEvent<PointerEvent>) => void; depth?: number }) {
   const geometry = useMemo(() => {
     const shape = new THREE.Shape()
     shape.moveTo(-length / 2, 0)
@@ -36,16 +37,16 @@ export function WallBody({ length, height, openings, color, onPointerDown }: { l
       shape.holes.push(hole)
     })
     return new THREE.ExtrudeGeometry(shape, {
-      depth: 0.12,
+      depth,
       bevelEnabled: false,
       curveSegments: 1,
       steps: 1,
     })
-  }, [height, length, openings])
+  }, [height, length, openings, depth])
   useEffect(() => () => geometry.dispose(), [geometry])
 
   return (
-    <mesh geometry={geometry} position={[0, 0, -0.06]} castShadow receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={onPointerDown}>
+    <mesh geometry={geometry} position={[0, 0, -depth / 2]} castShadow receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={onPointerDown}>
       <meshStandardMaterial color={color} roughness={0.92} />
     </mesh>
   )
@@ -56,9 +57,8 @@ export function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exp
   const lockedElementIds = useRoomStore((state) => state.lockedElementIds)
   const selectedId = useRoomStore((state) => state.selectedId)
   const selectedIds = useRoomStore((state) => state.selectedIds)
-  const selectElement = useRoomStore((state) => state.selectElement)
   const length = wallLength(room, wall)
-  const openings = useMemo(() => openingsForWall(room, wall), [room.door, room.windows, wall])
+  const openings = useMemo(() => openingsForWall(room, wall), [room.door, room.extraDoors, room.windows, wall])
   const placement = wallPlacement[wall](room)
 
   return (
@@ -67,17 +67,18 @@ export function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exp
         <WallBody length={length} height={room.height} openings={openings} color={room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR} onPointerDown={(event) => {
           event.stopPropagation()
           recordSceneInteraction('background.pointer-down', { target: 'wall', wall })
-          selectElement(null)
+          selectSceneObject(baseWallId(wall), event.nativeEvent)
         }} />
-        <mesh position={[0, 0.055, 0.075]} userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
+        {buildWallSegments(length, 0.11, openings.filter((opening) => opening.kind === 'door')).map((segment, index) => <mesh key={index} position={[segment.center[0], segment.center[1], 0.075]} userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
           event.stopPropagation()
           recordSceneInteraction('background.pointer-down', { target: 'baseboard', wall })
-          selectElement(null)
+          selectSceneObject(baseWallId(wall), event.nativeEvent)
         }}>
-          <boxGeometry args={[length, 0.11, 0.07]} />
+          <boxGeometry args={[segment.size[0], segment.size[1], 0.07]} />
           <meshStandardMaterial color="#d5a86e" />
-        </mesh>
+        </mesh>)}
         {showGrid && <WallGrid length={length} height={room.height} openings={openings} />}
+        {!exportMode && selectedIds.includes(baseWallId(wall)) && <group position={[0, room.height / 2, 0]}><SelectionBounds width={length} height={room.height} depth={0.12} /></group>}
       </group>}
       {openings.map((opening) => (
         <group key={opening.id} visible={showOpeningDetails && !hiddenElementIds.includes(opening.id)}>

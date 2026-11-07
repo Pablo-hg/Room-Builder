@@ -9,6 +9,10 @@ import { FRONT_CAMERA_MAX_HEIGHT, FRONT_CAMERA_MIN_HEIGHT, WALL_SIDES } from '..
 import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, OPENING_CATALOG, openingKindForShape } from '../../domain/objectCatalog'
 import { validateOpenings } from '../../domain/geometry'
 import { snapMeasurement } from '../../domain/measurements'
+import { openingMovementAllowed } from '../../domain/axisLocks'
+import { focusedRoom, packRoomBox, rebasePack, resizedRoomPack, selectedEditableRoom, worldRoomBoxes } from '../../domain/roomEditing'
+import { BASE_ROOM_SURFACE_IDS } from '../../domain/elementFolders'
+import { structureDoorError, structureDoorPosition } from '../../domain/structureDoors'
 import type { StructurePack, StructureSurfaceKey, WallSide, WindowConfig } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
 import type { RoomActionContext, RoomState } from '../types'
@@ -16,6 +20,8 @@ import type { RoomActionContext, RoomState } from '../types'
 type ConstructionActions = Pick<
   RoomState,
   | 'setDimension'
+  | 'setSelectedRoomDimension'
+  | 'setFocusedRoomDimension'
   | 'setWallColor'
   | 'setWallSideColor'
   | 'setFloorColor'
@@ -39,9 +45,38 @@ type ConstructionActions = Pick<
 
 export function createConstructionActions(context: Pick<RoomActionContext, 'set' | 'get' | 'runtime'>): ConstructionActions {
   const { set, get, runtime } = context
+  const resizeRoom = (key: 'width' | 'depth' | 'height', value: number, target: ReturnType<typeof selectedEditableRoom>) => {
+      const state = get()
+      if (!target) return set({ notice: 'Selecciona una carpeta con una habitación rectangular completa.' })
+      if (target.kind === 'root') {
+        if (BASE_ROOM_SURFACE_IDS.some((id) => state.lockedElementIds.includes(id))) return set({ notice: 'Desbloquea las superficies de la habitación para cambiar sus dimensiones.' })
+        return get().setDimension(key, value)
+      }
+      const pack = state.structurePacks.find((candidate) => candidate.id === target.packId)!
+      if (state.lockedElementIds.includes(pack.id) || pack.surfaces.some((surface) => state.lockedElementIds.includes(structureSurfaceElementId(pack.id, surface.id)))) return set({ notice: 'Desbloquea las superficies de la habitación para cambiar sus dimensiones.' })
+      const next = resizedRoomPack(pack, state.room, { ...target.size, [key]: clampRoomDimension(key, value) })
+      if (!next) return
+      const doorError = structureDoorError(next)
+      if (doorError) return set({ notice: doorError })
+      if (pack.doors?.some((door) => {
+        const before = structureDoorPosition(state.room, pack, door)!
+        const after = structureDoorPosition(state.room, next, door)!
+        return (['x', 'y', 'z'] as const).some((axis) => door.axisLocks?.[axis] && Math.abs(before[axis] - after[axis]) > 1e-9)
+      })) return set({ notice: 'El cambio desplazaría un eje bloqueado de una puerta.' })
+      if (next.surfaces.some((surface, index) => (['x', 'y', 'z'] as const).some((axis) => (pack.axisLocks?.[axis] || surface.axisLocks?.[axis]) && surface[axis] !== pack.surfaces[index][axis]))) return set({ notice: 'El cambio desplazaría un eje bloqueado de la habitación.' })
+      return set({ structurePacks: state.structurePacks.map((candidate) => candidate.id === next.id ? next : candidate), notice: '' })
+    }
   return {
+    setSelectedRoomDimension: (key, value) => resizeRoom(key, value, selectedEditableRoom(get())),
+    setFocusedRoomDimension: (key, value) => resizeRoom(key, value, focusedRoom(get()).editable),
     setDimension: (key, value) => set((state) => {
       const next = clampRoomDimension(key, value)
+      if (key !== 'height' && next !== state.room[key]) {
+        const axis = key === 'width' ? 'x' : 'z'
+        const openings = [state.room.door, ...(state.room.extraDoors ?? []), ...state.room.windows]
+        const movesLockedOpening = openings.some((opening) => opening.axisLocks?.[axis] && (axis === 'x' ? opening.wall === 'east' || opening.wall === 'west' : opening.wall === 'north' || opening.wall === 'south'))
+        if (movesLockedOpening) return { notice: `Desbloquea el eje ${axis.toUpperCase()} de los elementos afectados antes de cambiar la habitación.` }
+      }
       recordInteraction('state.room.dimension', {
         view: state.view,
         selectedId: state.selectedId,
@@ -49,6 +84,14 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
         details: { dimension: key === 'width' ? 'la anchura' : key === 'depth' ? 'la profundidad' : 'la altura', value: next },
       })
       const update = safeRoomUpdate(state, { ...state.room, [key]: next })
+      if (update.furniture) {
+        const otherRooms = worldRoomBoxes(state.room, state.structurePacks).slice(1)
+        update.furniture = update.furniture.map((item, index) => {
+          const original = state.furniture[index]
+          return otherRooms.some((room) => Math.abs(original.x - room.x) <= room.width / 2 && Math.abs(original.z - room.z) <= room.depth / 2 && original.y >= room.y - 1e-6 && original.y + original.height <= room.y + room.height + 1e-6) ? original : item
+        })
+      }
+      if (update.room) Object.assign(update, { structurePacks: state.structurePacks.map((pack) => rebasePack(pack, state.room, update.room!)) })
       if (key === 'height' && update.room && Math.abs(state.frontCameraHeight - state.room.height / 2) < 0.001) {
         return {
           ...update,
@@ -97,22 +140,24 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
     addStructurePack: (direction) => set((state) => {
       const id = makeId('floor-pack')
       const folderId = makeId('folder')
-      const nextY = Math.max(state.room.height, ...state.structurePacks.map((pack) => pack.y + state.room.height))
+      const nextY = Math.max(...worldRoomBoxes(state.room, state.structurePacks).map((box) => box.y + box.height))
       const selectedFolder = state.selectedId?.startsWith('folder:') ? state.selectedId.slice('folder:'.length) : null
       const reference = state.structurePacks.find((pack) => pack.id.startsWith('floor-pack-') && (pack.id === state.selectedId || pack.surfaces.some((surface) => structureSurfaceElementId(pack.id, surface.id) === state.selectedId) || (selectedFolder !== null && state.elementFolderAssignments[pack.id] === selectedFolder)))
         ?? state.structurePacks.find((pack) => pack.id === state.activeRoomId && pack.id.startsWith('floor-pack-'))
-      const origin = reference ?? { x: 0, y: 0, z: 0 }
+      const referenceBox = reference && packRoomBox(reference, state.room)
+      const template = { ...state.room, ...(referenceBox ? { width: referenceBox.width, depth: referenceBox.depth, height: referenceBox.height } : {}) }
+      const origin = reference ? { x: reference.x + (referenceBox?.x ?? 0), y: reference.y + (referenceBox?.y ?? 0), z: reference.z + (referenceBox?.z ?? 0) } : { x: 0, y: 0, z: 0 }
       let floorNumber = 2
-      while (state.structurePacks.some((pack) => pack.name === `Piso ${floorNumber}`)) floorNumber += 1
+      while (state.structurePacks.some((pack) => pack.name === `Habitación ${floorNumber}`)) floorNumber += 1
       const surfaceIds: StructureSurfaceKey[] = ['floor', 'ceiling', 'wall-north', 'wall-east', 'wall-south', 'wall-west']
-      const pack: StructurePack = {
+      const pack: StructurePack = rebasePack({
         id,
-        name: `Piso ${floorNumber}`,
-        x: origin.x + (direction === 'east' ? state.room.width : direction === 'west' ? -state.room.width : 0),
-        y: direction ? origin.y + (direction === 'up' ? state.room.height : direction === 'down' ? -state.room.height : 0) : nextY,
-        z: origin.z + (direction === 'south' ? state.room.depth : direction === 'north' ? -state.room.depth : 0),
-        surfaces: surfaceIds.map((surfaceId) => createStructureSurface(state.room, surfaceId)),
-      }
+        name: `Habitación ${floorNumber}`,
+        x: origin.x + (direction === 'east' ? template.width : direction === 'west' ? -template.width : 0),
+        y: direction ? origin.y + (direction === 'up' ? template.height : direction === 'down' ? -template.height : 0) : nextY,
+        z: origin.z + (direction === 'south' ? template.depth : direction === 'north' ? -template.depth : 0),
+        surfaces: surfaceIds.map((surfaceId) => createStructureSurface(template, surfaceId)),
+      }, template, state.room)
       recordInteraction('state.structure-pack.added', {
         view: state.view,
         selectedId: state.selectedId,
@@ -160,6 +205,8 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       if (state.lockedElementIds.includes(id)) return {}
       const pack = state.structurePacks.find((candidate) => candidate.id === id)
       if (!pack || !Number.isFinite(value)) return {}
+      if (pack.doors?.some((door) => door.axisLocks?.[axis] || state.lockedElementIds.includes(door.id))) return {}
+      if (pack.axisLocks?.[axis] || pack.surfaces.some((surface) => surface.axisLocks?.[axis] || state.lockedElementIds.includes(structureSurfaceElementId(pack.id, surface.id)))) return {}
       if (pack[axis] === value) return {}
       const next = snapMeasurement(value)
       if (pack[axis] === next) return {}
@@ -179,6 +226,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       const pack = state.structurePacks.find((candidate) => candidate.id === packId)
       const surface = pack?.surfaces.find((item) => item.id === surfaceId)
       if (!pack || !surface || !Number.isFinite(value)) return {}
+      if (pack.axisLocks?.[axis] || surface.axisLocks?.[axis] || state.lockedElementIds.includes(pack.id)) return {}
       if (surface[axis] === value) return {}
       const next = snapMeasurement(value)
       if (surface[axis] === next) return {}
@@ -327,8 +375,10 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       else finishHistoryTransaction(runtime)
     },
     setDoor: (partial) => set((state) => {
+      if (!openingMovementAllowed(state.room.door, partial)) return {}
       if (state.lockedElementIds.includes('door') && (partial.wall !== undefined || partial.offset !== undefined)) return {}
       const candidate = roomForDoorUpdate(state.room, partial)
+      if (!openingMovementAllowed(state.room.door, candidate.door)) return {}
       const update = safeRoomUpdate(state, candidate)
       if (update.room) {
         recordInteraction('state.opening.updated', {
@@ -380,7 +430,10 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       if (state.lockedElementIds.includes(id) && (partial.wall !== undefined || partial.offset !== undefined || partial.sill !== undefined || partial.rotation !== undefined)) return {}
       const currentWindow = state.room.windows.find((window) => window.id === id)
       if (!currentWindow) return {}
+      if (!openingMovementAllowed(currentWindow, partial)) return {}
       const candidate = roomForWindowUpdate(state.room, currentWindow, partial)
+      const candidateWindow = candidate.windows.find((window) => window.id === id)
+      if (candidateWindow && !openingMovementAllowed(currentWindow, candidateWindow)) return {}
       const update = safeRoomUpdate(state, candidate)
       const nextWindow = candidate.windows.find((window) => window.id === id)
       if (update.room && nextWindow) {

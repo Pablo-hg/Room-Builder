@@ -1,3 +1,5 @@
+> **ARCHIVO HISTÓRICO DE PROMPTS (03/11/2026):** contiene instrucciones superadas sobre R5 pendiente, A/B y v0.2 como cierre final. NO ejecutar automáticamente ni crear issues desde él. La última decisión del 04/11 establece un **MVP completo** de vivienda por plantas más siete funciones y POV; el checkpoint de una habitación es v0.2 (#33), y la gate final es #54. **Fuente única actual:** [MVP_MASTER_PLAN.md](../../MVP_MASTER_PLAN.md) y [MVP_SCOPE.md](../../MVP_SCOPE.md). Se preserva el texto histórico para trazabilidad.
+
 # Room Builder — Hoja de ruta v0.2 y guía de ejecución con Codex
 
 **Publicación documental:** 03/11/2026. **Base auditada:** `main` en `e56973f`.
