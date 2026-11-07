@@ -104,7 +104,7 @@ test('muestra la guía de atajos del inspector y permite minimizarla', async ({ 
 test('permite minimizar la sección Tu habitación del inspector', async ({ page }) => {
   await page.goto('/')
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
-  const toggle = inspector.getByRole('button', { name: 'Tu habitación' })
+  const toggle = inspector.getByRole('button', { name: 'Habitación', exact: true })
   const content = inspector.locator('#room-section-content')
 
   await expect(content).toBeVisible()
@@ -783,7 +783,7 @@ test('intercala carpetas y objetos hermanos sin cambiar su pertenencia', async (
   await expect.poll(() => appearsBefore('Carpeta Carpeta 3', 'Puerta')).toBe(true)
   await expect(parent.locator('.element-row').filter({ hasText: 'Silla' })).toHaveCount(1)
   await first.getByRole('button', { name: 'Carpeta Carpeta 2', exact: true }).click()
-  await page.getByRole('button', { name: 'Subir carpeta' }).click()
+  await page.getByRole('button', { name: 'Subir', exact: true }).click()
   await expect.poll(() => appearsBefore('Carpeta Carpeta 2', 'Silla')).toBe(true)
 })
 

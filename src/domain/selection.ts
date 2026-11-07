@@ -23,11 +23,13 @@ export function deriveSelection(state: SelectionSource, id: string | null) {
   }
   const selectedFurniture = state.furniture.find((item) => item.id === id)
   const selectedWindow = state.room.windows.find((window) => window.id === id)
+  const doorPack = state.structurePacks.find((pack) => pack.doors?.some((door) => door.id === id))
+  const selectedStructureDoor = doorPack ? { pack: doorPack, door: doorPack.doors!.find((door) => door.id === id)! } : undefined
   const selectedOpening = id === 'door'
     ? { ...state.room.door, id: 'door' as const, kind: 'door' as const, sill: 0 }
     : selectedWindow ? { ...selectedWindow, kind: 'window' as const } : null
 
-  return { selectedPack, selectedSurface, selectedFurniture, selectedWindow, selectedOpening }
+  return { selectedPack, selectedSurface, selectedFurniture, selectedWindow, selectedOpening, selectedStructureDoor }
 }
 
 export function elementName(state: SelectionSource, id: string | null) {
@@ -41,8 +43,9 @@ export function elementName(state: SelectionSource, id: string | null) {
     const name = OPENING_CATALOG[openingKindForShape(item.shape)].name
     return item.name || `${name} ${windowIndex + 1}`
   }
-  const { selectedPack, selectedSurface, selectedFurniture } = deriveSelection(state, id)
+  const { selectedPack, selectedSurface, selectedFurniture, selectedStructureDoor } = deriveSelection(state, id)
+  if (selectedStructureDoor) return selectedStructureDoor.door.name || 'Puerta'
   if (selectedPack) return selectedPack.name
-  if (selectedSurface) return `${selectedSurface.pack.name} · ${selectedSurface.surface.name}`
+  if (selectedSurface) return selectedSurface.surface.name
   return selectedFurniture?.name ?? id
 }

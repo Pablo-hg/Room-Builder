@@ -3,6 +3,7 @@ import { DEFAULT_GRID_VISIBILITY, type PersistedDesign } from './designV1'
 import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, isWindowShape, OPENING_CATALOG, openingKindForShape } from './objectCatalog'
 import { createStructureSurface } from './structureRules'
 import { validateAxisLocks } from './axisLocks'
+import { structureDoorError } from './structureDoors'
 import type { GridSurface, RoomConfig, StructurePack, StructureSurface, StructureSurfaceKey } from './types'
 
 export function normalizeStructurePacks(value: unknown, room: RoomConfig): StructurePack[] {
@@ -53,7 +54,10 @@ export function normalizeStructurePacks(value: unknown, room: RoomConfig): Struc
         rotation: surface.rotation ?? 0,
       } as StructureSurface
     })
-    return { ...pack, surfaces } as StructurePack
+    const normalized = { ...pack, surfaces } as StructurePack
+    const doorError = structureDoorError(normalized)
+    if (doorError) throw new Error(doorError)
+    return normalized
   })
 }
 

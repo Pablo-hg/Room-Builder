@@ -19,6 +19,7 @@ export function cleanExportReferences(input: PersistedDesign): { data: Persisted
   const valid = new Set<string>(['door', ...BASE_ROOM_SURFACE_IDS, ...data.furniture.map((item) => item.id), ...data.room.windows.map((item) => item.id)])
   for (const pack of data.structurePacks ?? []) {
     valid.add(pack.id)
+    pack.doors?.forEach((door) => valid.add(door.id))
     for (const surface of pack.surfaces) {
       valid.add(structureSurfaceElementId(pack.id, surface.id))
       valid.add(structureGridElementId(pack.id, surface.id))
@@ -94,7 +95,7 @@ function validateFurniture(value: unknown, room: RecordValue, occupied: Set<stri
 }
 
 function validateData(value: unknown): { data: PersistedDesign; sourceVersion: number; removedVariants: number } {
-  if (!object(value) || ![1, 2, 3, 4, 5, 6].includes(Number(value.version)) || typeof value.version !== 'number') invalid('La versión del diseño no es compatible.')
+  if (!object(value) || ![1, 2, 3, 4, 5, 6, 7].includes(Number(value.version)) || typeof value.version !== 'number') invalid('La versión del diseño no es compatible.')
   const source = value as RecordValue
   if (!object(source.room)) invalid('Falta la habitación.')
   const room = source.room as RecordValue
@@ -120,6 +121,13 @@ function validateData(value: unknown): { data: PersistedDesign; sourceVersion: n
       || ![pack.x, pack.y, pack.z].every(finite) || !Array.isArray(pack.surfaces)) invalid('Hay una estructura no válida.')
     const p = pack as RecordValue
     occupied.add(p.id as string)
+    if (p.doors !== undefined) {
+      if (!Array.isArray(p.doors)) invalid('Puertas de habitación inválidas.')
+      for (const door of p.doors as unknown[]) {
+        if (!object(door) || !text(door.id) || occupied.has(door.id)) invalid('Identificador de puerta inválido o duplicado.')
+        occupied.add((door as RecordValue).id as string)
+      }
+    }
     const surfaceIds = new Set<string>()
     for (const surface of p.surfaces as unknown[]) {
       if (!object(surface) || !text(surface.id) || surfaceIds.has(surface.id) || !text(surface.name) || typeof surface.color !== 'string'

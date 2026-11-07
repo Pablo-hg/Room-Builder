@@ -7,6 +7,7 @@ import { PackInspector } from './PackInspector'
 import { SurfaceInspector } from './SurfaceInspector'
 import { FurnitureInspector } from './FurnitureInspector'
 import { OpeningInspector } from './OpeningInspector'
+import { StructureDoorInspector } from './StructureDoorInspector'
 import { FolderInspector } from './FolderInspector'
 import { multiSelectionBounds, multiSelectionItems, type MultiItem } from '../../domain/multiSelection'
 import { isCeilingMountedFurniture } from '../../domain/objectCatalog'
@@ -25,12 +26,14 @@ function MultiFurnitureInspector({ items }: { items: MultiItem[] }) {
   const setFurnitureColor = useRoomStore((state) => state.setFurnitureColor)
   const setDoor = useRoomStore((state) => state.setDoor)
   const updateWindow = useRoomStore((state) => state.updateWindow)
+  const setStructureDoor = useRoomStore((state) => state.setStructureDoor)
   const setSurfaceColor = useRoomStore((state) => state.setStructureSurfaceColor)
   const gesture = useInspectorGesture(`multi:${items.map((item) => item.id).sort().join(',')}`)
   const canRotate = items.every((item) => item.type === 'furniture' && item.axes.includes('x') && item.axes.includes('z') && !isCeilingMountedFurniture(furniture.find((candidate) => candidate.id === item.id)!.kind))
   const setItemColor = (item: MultiItem, color: string) => {
     if (item.type === 'furniture') setFurnitureColor(item.id, color)
     else if (item.type === 'opening') {
+      if (item.packId) { setStructureDoor(item.id, { color }); return }
       if (item.id === 'door') setDoor({ color })
       else updateWindow(item.id, { color })
     } else if (item.packId && item.surfaceId) setSurfaceColor(item.packId, item.surfaceId as StructureSurfaceKey, color)
@@ -70,7 +73,7 @@ export function SelectionInspector() {
   const selectedFolder = selectedFolderId
     ? elementFolders.find((folder) => folder.id === selectedFolderId)
     : undefined
-  const { selectedPack, selectedSurface, selectedFurniture, selectedOpening } = deriveSelection(
+  const { selectedPack, selectedSurface, selectedFurniture, selectedOpening, selectedStructureDoor } = deriveSelection(
     { room, furniture, structurePacks }, selectedId,
   )
 
@@ -92,6 +95,7 @@ export function SelectionInspector() {
   if (selectedFolder) return <FolderInspector folder={selectedFolder} />
   if (selectedPack) return <PackInspector selectedPack={selectedPack} />
   if (selectedSurface) return <SurfaceInspector selectedSurface={selectedSurface} />
+  if (selectedStructureDoor) return <StructureDoorInspector {...selectedStructureDoor} />
   if (selectedFurniture) return <FurnitureInspector selectedFurniture={selectedFurniture} />
   if (selectedOpening) return <OpeningInspector selectedOpening={selectedOpening} />
 

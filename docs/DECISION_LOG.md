@@ -61,6 +61,13 @@
 
 ## Aclaraciones
 
+- **Continuación del 07/11/2026 — CONFIRMADO por el propietario:** las dimensiones
+  modifican solo la habitación seleccionada y se habilitan desde una carpeta con
+  sus componentes completos/coherentes. Puertas adicionales vinculadas a paredes
+  de los packs, persistidas en v7; las conexiones por medianeras únicas mantienen
+  la dependencia #51/#52. Implementación local y límites en
+  [R5_PROGRESS.md](progress/R5_PROGRESS.md), sin certificación funcional/visual.
+
 - **07/11/2026 — Petición explícita del propietario:** los candados XYZ por
   elemento sustituyen la fijación obligatoria de alfombras/lámparas nuevas.
   Empiezan con Y bloqueado; desbloquear permite elegir altura absoluta y volver

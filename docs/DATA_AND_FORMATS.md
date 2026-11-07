@@ -90,6 +90,18 @@ Mantener espacio/estructura común para las variantes de mobiliario cuando se co
 
 ### Candados XYZ (petición del propietario, 07/11/2026)
 
+**Continuación del 07/11/2026:** `data.version: 7` cuando un pack contiene
+`doors?: (DoorConfig & { id: string })[]`. La pared se identifica por su lado
+en el pack y conserva un hueco geométrico real; la puerta sigue sus movimientos.
+Se validan IDs únicos, medidas, pared existente, límites y solapes. Se rechazan
+puertas en paredes coincidentes hasta resolver medianeras únicas (#51/#52).
+El borrado de pared/pack elimina sus puertas y referencias en el mismo historial.
+Se sigue leyendo v1–v6; el contenedor JSON mantiene `schemaVersion: 5`.
+Las dimensiones independientes de packs se expresan mediante las medidas y
+desplazamientos de sus superficies existentes, sin añadir un segundo contrato
+de vivienda. Cambiar la raíz compensa esos desplazamientos para conservar los
+otros packs. Documentación de implementación local, pendiente de pruebas en main.
+
 Extensión de un diseño individual: **data.version = 6** cuando muebles, puerta,
 ventanas, packs o superficies tienen `axisLocks: { x: boolean, y: boolean,
 z: boolean }`. Las tres claves son obligatorias cuando existe la propiedad.

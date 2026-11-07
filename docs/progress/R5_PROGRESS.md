@@ -1,5 +1,75 @@
 # R5 — Funcionalidad y diseño
 
+## Continuación solicitada — 07/11/2026
+
+El propietario solicita recuperar la proporción original de brújula, quitar el
+prefijo de habitación de las superficies, seleccionar superficies raíz, editar
+dimensiones solo desde una carpeta completa y añadir puertas en otros packs.
+Confirma dimensiones independientes por habitación.
+
+Plan técnico previo: deducir la caja rectangular desde suelo y cuatro paredes
+coherentes existentes; redimensionar conjuntamente sus superficies sin añadir
+otro modelo de vivienda. Al redimensionar la raíz conservar las posiciones
+mundiales de los packs mediante sus desplazamientos actuales. Añadir
+`StructurePack.doors?: (DoorConfig & { id: string })[]`, ligadas a la superficie
+de su pared, con hueco geométrico y validación de límites/solapes. Persistir como
+v7 si hay puertas de pack, manteniendo lectura v1–v6. No crear paredes duplicadas
+ni pasos falsos: rechazar puertas sobre una pared coincidente con otra pared
+hasta disponer de medianeras únicas de #51/#52. Las puertas de packs se editan
+en inspector y siguen a su pared; no reutilizar el arrastre global de la puerta
+raíz porque sus coordenadas pertenecen a otro espacio.
+
+Pruebas unitarias/E2E/build pendientes de main. Esta ampliación de packs
+heredados no certifica la vivienda canónica ni las conexiones entre estancias.
+
+Implementación local de la continuación:
+
+- `Compass.tsx`: restaura zoom 45 a 168 px (proporción original de escritorio),
+  manteniendo el escalado por tamaño real que evita el recorte bajo 1200 px.
+- `ObjectsPanel.tsx`, `selection.ts`, `multiSelection.ts`: etiquetas locales
+  «Suelo», «Techo», «Pared…»; nombres/IDs persistidos intactos.
+- `RoomShell.tsx`, `Walls.tsx`: selección directa de suelo/paredes raíz,
+  selección múltiple por modificadores y contorno visible fuera de exportación.
+- `roomEditing.ts`, `Controls.tsx`, `SettingsPanel.tsx`, acciones constructivas:
+  dimensiones disponibles solo desde una carpeta con exactamente una caja
+  rectangular completa (suelo y cuatro paredes; techo opcional, coherente si
+  existe). Una carpeta incompleta, una superficie, un mueble o una selección
+  múltiple no habilitan el cambio de habitación. Colores vinculados a la
+  habitación seleccionada. El cambio raíz conserva el mundo de los otros packs
+  y conserva muebles identificables por posición dentro de ellos; no añade
+  pertenencia canónica de mobiliario a habitaciones.
+- `structureDoors.ts`, acciones, inspector y `StructureSurface.tsx`: varias
+  puertas por pack con huecos extruidos de su pared, marco y marcadores en Plano.
+  Editar posición/color/pared mediante inspector; borrado, renombrado, candados,
+  selección/carpetas, referencias y undo/redo. Arrastre espacial de estas
+  puertas pendiente: no se conecta al arrastre de coordenadas de la puerta raíz.
+- `normalizeDesignV1.ts`, `designMigrations.ts`, `designFile.ts`, `designV1.ts`,
+  `projectV2.ts`: persistencia v7 y validación. El prototipo R4 conserva las
+  puertas en el legado y las incluye en la huella estructural; no son todavía
+  aberturas de una vivienda canónica. La raíz mantiene su puerta principal.
+
+Preparadas `src/state/roomEditing.test.ts` y `tests/room-editing.spec.ts`:
+carpetas incompletas, tamaños independientes, conservación del mundo y muebles
+de otras habitaciones, etiquetas, dos puertas en distintas paredes, JSON/R4,
+borrado en cascada/undo y rechazo de paredes coincidentes o puertas fuera de
+límites. Adaptados selectores de E2E a nombres locales, acotando por carpeta
+cuando hay varias habitaciones. **No ejecutados**.
+
+Repetir comprobaciones manuales: brújula a 1440/1200/1199/1024/640/430 px;
+seleccionar suelo/pared raíz en 3D y lista; dimensiones deshabilitadas sin
+carpeta completa; cambiar dimensiones de dos habitaciones por separado y de
+raíz sin alterar las otras; añadir varias puertas a un pack desde el catálogo,
+editar posición/pared, revisar huecos/Plano, borrar pared y deshacer,
+guardar/recargar/exportar/importar. Las conexiones sobre paredes coincidentes
+siguen bloqueadas por la dependencia de medianeras únicas. Pruebas, build,
+capturas nuevas y aceptación visual pendientes de main/validación humana.
+
+Verificación estática de esta continuación: TypeScript de `src` (incluidas las
+pruebas preparadas) y de los seis E2E afectados correcto, sin emisión de archivos;
+`git diff --check` correcto. Unitarias, E2E, build y CI **no ejecutados**.
+Incluida también regresión de creación contigua a un pack redimensionado:
+hereda sus medidas y usa su extensión real para colocar el pack nuevo.
+
 **Estado:** R5.1 fue completada históricamente en `518a990`; el propietario retiró después las variantes del MVP. R5.2 validada manualmente por el propietario, con tests pendientes; R5.3 en implementación, sin tests, y R5.4 aplazada. Las entradas anteriores se conservan como histórico; la última entrada recoge el estado vigente.
 **Rama:** `refractor/r5-funcionalidad-diseño`.
 **Base:** `main` con R0–R4 integradas (PR #19 y #20) y el commit documental `ee455b3`.

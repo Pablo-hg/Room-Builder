@@ -20,6 +20,7 @@ export function multiSelectionItems(state: Pick<RoomState, 'room' | 'furniture' 
   for (const pack of state.structurePacks) if (ids.has(pack.id)) {
     ids.delete(pack.id)
     pack.surfaces.forEach((surface) => ids.add(structureSurfaceElementId(pack.id, surface.id)))
+    pack.doors?.forEach((door) => ids.add(door.id))
   }
   const items: MultiItem[] = []
   for (const item of state.furniture) if (ids.has(item.id)) {
@@ -54,11 +55,27 @@ export function multiSelectionItems(state: Pick<RoomState, 'room' | 'furniture' 
     const x = pack.x + surface.x + (surface.kind === 'wall' ? wall === 'east' ? state.room.width / 2 : wall === 'west' ? -state.room.width / 2 : 0 : 0)
     const z = pack.z + surface.z + (surface.kind === 'wall' ? wall === 'north' ? -state.room.depth / 2 : wall === 'south' ? state.room.depth / 2 : 0 : 0)
     const y = pack.y + surface.y + (surface.kind === 'wall' ? state.room.height / 2 : surface.kind === 'ceiling' ? state.room.height : 0)
-    items.push({ id, name: `${pack.name} · ${surface.name}`, color: surface.color, type: 'surface', packId: pack.id, surfaceId: surface.id, axes: ['x', 'y', 'z'], min: { x: x - halfX, y: y - surface.height / 2, z: z - halfZ }, max: { x: x + halfX, y: y + surface.height / 2, z: z + halfZ } })
+    items.push({ id, name: surface.name, color: surface.color, type: 'surface', packId: pack.id, surfaceId: surface.id, axes: ['x', 'y', 'z'], min: { x: x - halfX, y: y - surface.height / 2, z: z - halfZ }, max: { x: x + halfX, y: y + surface.height / 2, z: z + halfZ } })
+  }
+  for (const pack of state.structurePacks) for (const door of pack.doors ?? []) {
+    if (!ids.has(door.id)) continue
+    const wholePack = pack.surfaces.every((surface) => ids.has(structureSurfaceElementId(pack.id, surface.id)))
+    const surface = pack.surfaces.find((candidate) => candidate.kind === 'wall' && candidate.wall === door.wall)
+    if (!surface) continue
+    const angle = { north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 }[door.wall] + surface.rotation
+    const x = pack.x + surface.x + (door.wall === 'east' ? state.room.width / 2 : door.wall === 'west' ? -state.room.width / 2 : 0) + Math.cos(angle) * door.offset
+    const z = pack.z + surface.z + (door.wall === 'south' ? state.room.depth / 2 : door.wall === 'north' ? -state.room.depth / 2 : 0) - Math.sin(angle) * door.offset
+    const y = pack.y + surface.y + state.room.height / 2 - surface.height / 2
+    const halfX = Math.abs(Math.cos(angle)) * door.width / 2 + Math.abs(Math.sin(angle)) * surface.depth / 2
+    const halfZ = Math.abs(Math.sin(angle)) * door.width / 2 + Math.abs(Math.cos(angle)) * surface.depth / 2
+    items.push({ id: door.id, name: door.name || 'Puerta', color: door.color ?? '#ac704b', type: 'opening', packId: pack.id,
+      axes: wholePack ? (['x', 'y', 'z'] as const).filter((axis) => !door.axisLocks?.[axis] && !pack.axisLocks?.[axis]) : [],
+      min: { x: x - halfX, y, z: z - halfZ }, max: { x: x + halfX, y: y + door.height, z: z + halfZ } })
   }
   return items.map((item) => {
     if (item.type === 'furniture') return item
     if (item.type === 'opening') {
+      if (item.packId) return item
       const opening = item.id === 'door' ? state.room.door : state.room.windows.find((window) => window.id === item.id)
       return { ...item, axes: item.axes.filter((axis) => !opening?.axisLocks?.[axis]) }
     }

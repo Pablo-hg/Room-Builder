@@ -1,6 +1,7 @@
 import type { FurnitureItem, RoomConfig, StructurePack, StructureSurface } from './types'
 import { structureSurfaceElementId } from './elementIds'
 import { furnitureVisualYOffset } from './objectCatalog'
+import { worldRoomBoxes } from './roomEditing'
 
 type Box = { id: string; x: number; y: number; z: number; width: number; height: number; depth: number; rotation: number }
 type World = { room: RoomConfig; furniture: FurnitureItem[]; structurePacks: StructurePack[] }
@@ -148,12 +149,12 @@ export function independentSurfaceHasSpatialWarning(world: World, surfaceId: str
   if (!entry) return false
   const isIndependent = world.structurePacks.some((pack) => (pack.id.startsWith('floor-object-') || pack.id.startsWith('wall-object-')) && pack.surfaces.some((surface) => structureSurfaceElementId(pack.id, surface.id) === surfaceId))
   if (!isIndependent) return world.furniture.some((item) => surfaceOverlapsFurniture(entry.surface, entry.box, item, world))
-  const rooms = [{ x: 0, y: 0, z: 0 }, ...world.structurePacks.filter((pack) => pack.id.startsWith('floor-pack-'))]
+  const rooms = worldRoomBoxes(world.room, world.structurePacks)
   const { box } = entry
-  const inside = rooms.some((room) => Math.abs(box.x - room.x) + radius(box, { x: 1, z: 0 }) <= world.room.width / 2 + epsilon
-    && Math.abs(box.z - room.z) + radius(box, { x: 0, z: 1 }) <= world.room.depth / 2 + epsilon
+  const inside = rooms.some((room) => Math.abs(box.x - room.x) + radius(box, { x: 1, z: 0 }) <= room.width / 2 + epsilon
+    && Math.abs(box.z - room.z) + radius(box, { x: 0, z: 1 }) <= room.depth / 2 + epsilon
     && box.y - box.height / 2 >= room.y - epsilon
-    && box.y + box.height / 2 <= room.y + world.room.height + epsilon)
+    && box.y + box.height / 2 <= room.y + room.height + epsilon)
   return !inside || world.furniture.some((item) => surfaceOverlapsFurniture(entry.surface, box, item, world))
 }
 
@@ -167,14 +168,14 @@ function surfaceOverlapsFurniture(surface: StructureSurface, box: Box, item: Fur
 /** Visual warning only: contacts with floors and walls do not prevent placement. */
 export function furnitureHasSpatialWarning(world: World, item: FurnitureItem) {
   const box = furnitureBox(item, world)
-  const rooms = [{ x: 0, y: 0, z: 0 }, ...world.structurePacks.filter((pack) => pack.id.startsWith('floor-pack-'))]
+  const rooms = worldRoomBoxes(world.room, world.structurePacks)
   const halfX = radius(box, { x: 1, z: 0 })
   const halfZ = radius(box, { x: 0, z: 1 })
   const insideRoom = rooms.some((room) =>
-    Math.abs(item.x - room.x) + halfX <= world.room.width / 2 + epsilon
-    && Math.abs(item.z - room.z) + halfZ <= world.room.depth / 2 + epsilon
+    Math.abs(item.x - room.x) + halfX <= room.width / 2 + epsilon
+    && Math.abs(item.z - room.z) + halfZ <= room.depth / 2 + epsilon
     && item.y >= room.y - epsilon
-    && item.y + item.height <= room.y + world.room.height + epsilon,
+    && item.y + item.height <= room.y + room.height + epsilon,
   )
   return !insideRoom
     || allSurfaces(world).some(({ surface, box: surfaceBounds }) => surfaceOverlapsFurniture(surface, surfaceBounds, item, world))

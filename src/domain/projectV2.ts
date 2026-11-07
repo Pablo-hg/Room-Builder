@@ -123,7 +123,7 @@ export interface ProjectMetadataV2 {
   createdAt: string
   updatedAt: string
   source: 'v1-design' | 'new'
-  migratedFromVersion?: 1 | 2 | 3 | 4 | 5 | 6
+  migratedFromVersion?: 1 | 2 | 3 | 4 | 5 | 6 | 7
 }
 
 export interface ProjectV2 {
@@ -302,6 +302,7 @@ function normalizedStructure(project: Pick<ProjectV2, 'floors' | 'rooms' | 'wall
         y: round(pack.y),
         z: round(pack.z),
         surfaces: [...pack.surfaces].sort((a, b) => a.id.localeCompare(b.id)),
+        ...(pack.doors ? { doors: byId(pack.doors) } : {}),
       }))
       : null,
   }

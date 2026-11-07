@@ -61,11 +61,15 @@ export interface RoomState {
   rotateIso: (direction: -1 | 1) => void
   rotatePov: (direction: -1 | 1) => void
   setDimension: (key: 'width' | 'depth' | 'height', value: number) => void
+  setSelectedRoomDimension: (key: 'width' | 'depth' | 'height', value: number) => void
   setWallColor: (color: string) => void
   setWallSideColor: (wall: WallSide, color: string) => void
   setFloorColor: (color: string) => void
   addStructurePack: (direction?: 'up' | 'down' | 'north' | 'south' | 'east' | 'west') => void
   addStructureObject: (kind: 'floor' | 'wall') => void
+  addStructureDoor: () => void
+  setStructureDoor: (id: string, partial: { wall?: WallSide; offset?: number; color?: string }) => void
+  removeStructureDoor: (id: string) => void
   moveStructurePack: (id: string, axis: 'x' | 'y' | 'z', value: number) => void
   moveStructureSurface: (packId: string, surfaceId: StructureSurfaceKey, axis: 'x' | 'y' | 'z', value: number) => void
   resizeStructureSurface: (packId: string, surfaceId: StructureSurfaceKey, dimension: 'width' | 'height' | 'depth', value: number) => void

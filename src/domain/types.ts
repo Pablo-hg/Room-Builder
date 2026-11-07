@@ -112,6 +112,7 @@ export interface StructureSurface {
 
 export interface StructurePack {
   axisLocks?: AxisLocks
+  doors?: Array<DoorConfig & { id: string }>
   id: string
   name: string
   x: number

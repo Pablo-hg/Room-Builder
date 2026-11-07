@@ -69,7 +69,7 @@ export function folderRoomPack(folders: readonly { id: string }[], assignments: 
 
 export function orderedSceneIds(state: { room: RoomConfig; furniture: FurnitureItem[]; structurePacks: StructurePack[]; sceneElementOrder: string[]; elementFolders?: readonly { id: string }[] }) {
   const folderIds = (state.elementFolders ?? []).map((folder) => folderSelectionId(folder.id))
-  const ids = [...folderIds, ...(folderIds.includes(folderSelectionId(ROOT_ROOM_FOLDER)) ? BASE_ROOM_SURFACE_IDS : []), 'door', ...state.room.windows.map((window) => window.id), ...state.furniture.map((item) => item.id), ...state.structurePacks.flatMap((pack) => [pack.id, ...pack.surfaces.map((surface) => structureSurfaceElementId(pack.id, surface.id))])]
+  const ids = [...folderIds, ...(folderIds.includes(folderSelectionId(ROOT_ROOM_FOLDER)) ? BASE_ROOM_SURFACE_IDS : []), 'door', ...state.room.windows.map((window) => window.id), ...state.furniture.map((item) => item.id), ...state.structurePacks.flatMap((pack) => [pack.id, ...pack.surfaces.map((surface) => structureSurfaceElementId(pack.id, surface.id)), ...(pack.doors ?? []).map((door) => door.id)])]
   const valid = new Set(ids)
   const ordered = state.sceneElementOrder.filter((id) => valid.has(id))
   const known = new Set(ordered)

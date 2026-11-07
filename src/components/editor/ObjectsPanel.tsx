@@ -44,6 +44,7 @@ export function ObjectsPanel() {
   const gridVisibility = useRoomStore((state) => state.gridVisibility)
   const addFurniture = useRoomStore((state) => state.addFurniture)
   const addWindow = useRoomStore((state) => state.addWindow)
+  const addStructureDoor = useRoomStore((state) => state.addStructureDoor)
   const addStructurePack = useRoomStore((state) => state.addStructurePack)
   const addStructureObject = useRoomStore((state) => state.addStructureObject)
   const selectElement = useRoomStore((state) => state.selectElement)
@@ -80,10 +81,11 @@ export function ObjectsPanel() {
     }),
     ...furniture.map((item) => ({ id: item.id, name: item.name, kind: FURNITURE_FAMILIES.find((family) => family.id === FURNITURE_CATALOG[item.kind].family)?.label ?? 'Mueble', icon: <FurnitureIcon kind={item.kind} color={item.color} /> })),
     ...structurePacks.flatMap((pack) => [
+      ...(pack.doors ?? []).map((door) => ({ id: door.id, name: door.name || 'Puerta', kind: 'Apertura', icon: <OpeningSwatch kind="door" /> })),
       { id: pack.id, name: pack.name, kind: 'Pack de construcción', icon: <StructurePackIcon /> },
       ...pack.surfaces.map((surface) => ({
         id: structureSurfaceElementId(pack.id, surface.id),
-        name: `${pack.name} · ${surface.name}`,
+        name: surface.name,
         kind: 'Superficie de construcción',
         icon: <StructureSurfaceIcon kind={surface.kind === 'ceiling' ? 'wall' : surface.kind} />,
       })),
@@ -461,6 +463,9 @@ export function ObjectsPanel() {
               <button type="button" className={`catalog-card ${selectedId === 'door' ? 'active' : ''}`} onClick={() => selectElement('door')} aria-pressed={selectedId === 'door'}>
                 <OpeningSwatch kind="door" />
                 <span>{OPENING_CATALOG.door.name}</span><small>Seleccionar</small>
+              </button>
+              <button type="button" className="catalog-card" onClick={addStructureDoor}>
+                <OpeningSwatch kind="door" /><span>Puerta</span><small>＋ Añadir</small>
               </button>
               <button type="button" className="catalog-card" onClick={() => addWindow('rectangular')}>
                 <OpeningSwatch kind="window" />

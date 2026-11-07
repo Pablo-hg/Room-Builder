@@ -6,6 +6,7 @@ import { elementName } from '../../domain/selection'
 import { FURNITURE_PRESETS, furnitureVisualYOffset, isCeilingMountedFurniture, isWallPictureKind } from '../../domain/objectCatalog'
 import { furnitureAxisLocks, unlockedAxes } from '../../domain/axisLocks'
 import { supportingFloorTop } from '../../domain/furniturePlacement'
+import { packRoomBox } from '../../domain/roomEditing'
 import { structureSurfaceElementId } from '../../domain/elementIds'
 import { findFreeFurniturePosition, validateOpenings } from '../../domain/geometry'
 import { snapMeasurement } from '../../domain/measurements'
@@ -48,6 +49,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       }
       if (id === 'door') return { room: { ...state.room, door: { ...state.room.door, axisLocks: { ...unlockedAxes(), ...state.room.door.axisLocks, [axis]: locked } } } }
       if (state.room.windows.some((window) => window.id === id)) return { room: { ...state.room, windows: state.room.windows.map((window) => window.id !== id ? window : { ...window, axisLocks: { ...unlockedAxes(), ...window.axisLocks, [axis]: locked } }) } }
+      if (state.structurePacks.some((pack) => pack.doors?.some((door) => door.id === id))) return { structurePacks: state.structurePacks.map((pack) => ({ ...pack, ...(pack.doors ? { doors: pack.doors.map((door) => door.id !== id ? door : { ...door, axisLocks: { ...unlockedAxes(), ...door.axisLocks, [axis]: locked } }) } : {}) })) }
       return { structurePacks: state.structurePacks.map((pack) => pack.id === id
         ? { ...pack, axisLocks: { ...unlockedAxes(), ...pack.axisLocks, [axis]: locked } }
         : { ...pack, surfaces: pack.surfaces.map((surface) => structureSurfaceElementId(pack.id, surface.id) !== id ? surface : { ...surface, axisLocks: { ...unlockedAxes(), ...surface.axisLocks, [axis]: locked } }) }) }
@@ -90,7 +92,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       const items = multiSelectionItems(state)
       const ids = new Set(items.map((item) => item.id))
       if (items.length < 2 || items.some((item) => state.lockedElementIds.includes(item.id)) || state.selectedIds.some((id) => state.lockedElementIds.includes(id))) return {}
-      return { furniture: state.furniture.map((item) => ids.has(item.id) ? { ...item, color } : item), room: { ...state.room, door: ids.has('door') ? { ...state.room.door, color } : state.room.door, windows: state.room.windows.map((window) => ids.has(window.id) ? { ...window, color } : window) }, structurePacks: state.structurePacks.map((pack) => ({ ...pack, surfaces: pack.surfaces.map((surface) => ids.has(`structure-surface:${pack.id}:${surface.id}`) ? { ...surface, color } : surface) })) }
+      return { furniture: state.furniture.map((item) => ids.has(item.id) ? { ...item, color } : item), room: { ...state.room, door: ids.has('door') ? { ...state.room.door, color } : state.room.door, windows: state.room.windows.map((window) => ids.has(window.id) ? { ...window, color } : window) }, structurePacks: state.structurePacks.map((pack) => ({ ...pack, surfaces: pack.surfaces.map((surface) => ids.has(`structure-surface:${pack.id}:${surface.id}`) ? { ...surface, color } : surface), ...(pack.doors ? { doors: pack.doors.map((door) => ids.has(door.id) ? { ...door, color } : door) } : {}) })) }
     }),
     addFurniture: (kind) => {
       if (isWallPictureKind(kind)) return get().addWindow(kind)
@@ -107,13 +109,14 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
           rotation: 0,
         }
         const activePack = state.structurePacks.find((pack) => pack.id === state.activeRoomId)
+        const activeBox = activePack && packRoomBox(activePack, state.room)
         if (activePack) {
-          item.x = activePack.x
-          item.z = activePack.z
-          item.y += activePack.y
+          item.x = activePack.x + (activeBox?.x ?? 0)
+          item.z = activePack.z + (activeBox?.z ?? 0)
+          item.y += activePack.y + (activeBox?.y ?? 0)
         }
         const localFurniture = activePack ? state.furniture.map((candidate) => ({ ...candidate, x: candidate.x - activePack.x, z: candidate.z - activePack.z })) : state.furniture
-        const localPosition = findFreeFurniturePosition(item, state.room, localFurniture)
+        const localPosition = findFreeFurniturePosition(item, { ...state.room, ...(activeBox ? { width: activeBox.width, depth: activeBox.depth } : {}) }, localFurniture)
         const position = localPosition && { x: localPosition.x + (activePack?.x ?? 0), z: localPosition.z + (activePack?.z ?? 0) }
         if (!position) {
           recordInteraction('state.furniture.add-rejected', {
@@ -134,7 +137,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
           if (kind !== 'ceilingLamp') placed.y = supportingFloorTop(placed, state) ?? placed.y
           else if (activePack) {
             const ceiling = activePack.surfaces.find((surface) => surface.kind === 'ceiling')
-            placed.y = activePack.y + state.room.height + (ceiling ? ceiling.y - ceiling.height / 2 : 0) - placed.height
+            placed.y = ceiling ? activePack.y + state.room.height + ceiling.y - ceiling.height / 2 - placed.height : activePack.y + (activeBox?.y ?? 0) + (activeBox?.height ?? state.room.height) - placed.height
           }
         }
         return { furniture: [...state.furniture, placed], selectedId: id, notice: `${preset.name} añadido.` }

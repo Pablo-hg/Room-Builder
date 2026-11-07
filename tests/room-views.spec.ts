@@ -1,4 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+const roomFloor = (page: Page, name: string) => page.locator('.element-folder').filter({ has: page.getByRole('button', { name: `Carpeta ${name}`, exact: true }) }).getByRole('button', { name: 'Suelo Superficie de construcción', exact: true })
 
 test('el selector y las cuadrículas muestran el nombre actualizado de la carpeta raíz', async ({ page }) => {
   await page.goto('/')
@@ -98,10 +100,10 @@ test('borrar la carpeta de habitación elimina el pack y se puede deshacer', asy
   await folder.click({ button: 'right' })
   await page.getByRole('menuitem', { name: /Borrar/ }).click()
   await expect(folder).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Habitación 2 · Suelo Superficie de construcción', exact: true })).toHaveCount(0)
+  await expect(roomFloor(page, 'Habitación 2')).toHaveCount(0)
   await page.getByRole('button', { name: 'Deshacer el último cambio' }).click()
   await expect(folder).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Habitación 2 · Suelo Superficie de construcción', exact: true })).toBeVisible()
+  await expect(roomFloor(page, 'Habitación 2')).toBeVisible()
   await folder.click()
   await page.keyboard.press('Delete')
   await expect(folder).toHaveCount(0)
@@ -134,7 +136,7 @@ test('la carpeta del pack muestra sus propiedades y no duplica el pack como hijo
   await position.focus()
   await position.press('ArrowRight')
   await expect(position).not.toHaveValue('0')
-  await page.getByRole('button', { name: /Habitación 2 · Suelo Superficie de construcción/ }).click()
+  await roomFloor(page, 'Habitación 2').click()
   await folder.click()
   await expect(inspector.getByText('Pack de construcción', { exact: true })).toBeVisible()
   await folder.press('F2')
@@ -156,8 +158,8 @@ test('crea habitaciones en distintas caras y cambia de habitación en las vistas
   }
   await create('Encima')
   await create('Pared B')
-  await expect(page.getByRole('button', { name: /Habitación 2 · Suelo Superficie de construcción/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Habitación 3 · Suelo Superficie de construcción/ })).toBeVisible()
+  await expect(roomFloor(page, 'Habitación 2')).toBeVisible()
+  await expect(roomFloor(page, 'Habitación 3')).toBeVisible()
   for (const view of ['Plano', 'Frontal', 'POV']) {
     await page.getByRole('button', { name: view, exact: true }).click()
     const selector = page.getByLabel('Cámara enfocada en…')
