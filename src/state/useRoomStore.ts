@@ -18,6 +18,7 @@ import { createResizeActions } from './actions/resizeActions'
 import { createStructureDoorActions } from './actions/structureDoorActions'
 import { rootDoorPack, structureDoorsWorldError, structureDoorPosition } from '../domain/structureDoors'
 import { packRoomBox } from '../domain/roomEditing'
+import { movedSceneFolderAssignments } from '../domain/spatialFolderPlacement'
 
 export { structureSurfaceElementId } from '../domain/elementIds'
 
@@ -79,6 +80,16 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
       nextUpdate = { ...nextUpdate, activeRoomId, isoCameraHeight: origin.y,
         topCameraX: 0, topCameraZ: 0, freeCameraOffset: origin, freeCameraNavigated: false }
       nextFocusHistory = [...nextFocusHistory.filter((id) => id !== activeRoomId), activeRoomId]
+    }
+    // An element entering another room's 3D volume moves into that room's
+    // scene folder in the SAME history entry as its geometry. Undo/redo restore
+    // persisted assignments verbatim, without a second automatic reparenting.
+    if (!runtime.isUndoing && !replacingDesign && (Object.hasOwn(rawUpdate, 'furniture') || Object.hasOwn(rawUpdate, 'structurePacks'))) {
+      const movedAssignments = movedSceneFolderAssignments(
+        current, { ...current, ...nextUpdate },
+        Object.hasOwn(rawUpdate, 'furniture'), Object.hasOwn(rawUpdate, 'structurePacks'),
+      )
+      if (movedAssignments) nextUpdate = { ...nextUpdate, elementFolderAssignments: movedAssignments }
     }
     const nextState = { ...current, ...nextUpdate }
     if (Object.hasOwn(rawUpdate, 'room') || Object.hasOwn(rawUpdate, 'structurePacks')) {
