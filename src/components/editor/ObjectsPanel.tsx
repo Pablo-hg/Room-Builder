@@ -324,7 +324,7 @@ export function ObjectsPanel() {
                       onKeyDown={() => setPointerFocusedId(null)}
                       onClick={(event) => selectListEntry(folderSelectionId(folder.id), event)}
                     >
-                      {roomPack ? <RoomPackIcon /> : <FolderIcon />}
+                      {(folder.id === ROOT_ROOM_FOLDER || roomPack) ? <RoomPackIcon /> : <FolderIcon />}
                       <span className="element-folder__name">{folder.name}</span>
                       <small>{elementIds.length - (roomPack ? 1 : 0)}</small>
                     </button>
