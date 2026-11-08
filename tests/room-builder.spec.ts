@@ -70,6 +70,27 @@ test('mantiene la cabecera y el documento dentro del viewport en tamaños respon
   }
 })
 
+test('la carpeta raíz usa el icono de habitación y su selección se mantiene sin mover los ejes', async ({ page }) => {
+  await page.goto('/')
+  const root = page.getByRole('button', { name: 'Carpeta Raíz', exact: true })
+  await expect(root.locator('svg path')).toHaveCount(1)
+  await root.click()
+  await expect(root).toHaveAttribute('aria-pressed', 'true')
+  await expect(root.locator('..').locator('..')).toHaveClass(/element-folder__heading/)
+  // Contorno 3D verde y ausencia de gizmo: comprobación visual pendiente.
+})
+
+test('la transición de paneles está habilitada en escritorio sin afectar al responsive', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  const workspace = page.locator('.workspace')
+  await expect.poll(async () => workspace.evaluate((element) => getComputedStyle(element).transitionProperty)).toContain('grid-template-columns')
+  await page.getByRole('button', { name: 'Minimizar panel izquierdo' }).click()
+  await expect(workspace).toHaveClass(/workspace--objects-collapsed/)
+  await page.getByRole('button', { name: 'Mostrar panel izquierdo' }).click()
+  await expect(workspace).not.toHaveClass(/workspace--objects-collapsed/)
+})
+
 test('usa atajos para copiar, pegar, deshacer y rehacer objetos', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
