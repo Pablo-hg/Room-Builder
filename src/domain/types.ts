@@ -114,6 +114,8 @@ export interface StructureSurface {
 export interface StructurePack {
   axisLocks?: AxisLocks
   doors?: Array<DoorConfig & { id: string }>
+  /** Windows and wall-mounted decorations belonging to this room (legacy root uses RoomConfig.windows). */
+  windows?: WindowConfig[]
   id: string
   name: string
   x: number

@@ -7,13 +7,14 @@ import { folderSelectionId } from '../../domain/elementFolders'
 import { elementName } from '../../domain/selection'
 import { FRONT_CAMERA_MAX_HEIGHT, FRONT_CAMERA_MIN_HEIGHT, WALL_SIDES } from '../../domain/constants'
 import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, OPENING_CATALOG, openingKindForShape } from '../../domain/objectCatalog'
-import { validateOpenings } from '../../domain/geometry'
+import { findAvailableOpeningOffset, validateOpenings, wallLength } from '../../domain/geometry'
+import { packWindowById, structureWindowError } from '../../domain/structureWindows'
 import { snapMeasurement } from '../../domain/measurements'
 import { openingMovementAllowed } from '../../domain/axisLocks'
 import { focusedCreationTarget, focusedRoom, packRoomBox, rebasePack, resizedRoomPack, selectedEditableRoom, worldRoomBoxes } from '../../domain/roomEditing'
 import { planRoomCreation } from '../../domain/roomCreation'
 import { BASE_ROOM_SURFACE_IDS } from '../../domain/elementFolders'
-import { structureDoorError, structureDoorPosition } from '../../domain/structureDoors'
+import { hasCoincidentWall, structureDoorError, structureDoorPosition } from '../../domain/structureDoors'
 import type { StructurePack, StructureSurfaceKey, WallSide, WindowConfig } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
 import type { RoomActionContext, RoomState } from '../types'
@@ -330,8 +331,9 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       if (!pack) return {}
       const surfaceIds = pack.surfaces.map((surface) => structureSurfaceElementId(pack.id, surface.id))
       const gridIds = pack.surfaces.map((surface) => structureGridElementId(pack.id, surface.id))
+      const openingIds = [...(pack.doors ?? []), ...(pack.windows ?? [])].map((opening) => opening.id)
       const folderId = state.elementFolderAssignments[id]
-      const removed = new Set([id, ...surfaceIds])
+      const removed = new Set([id, ...surfaceIds, ...openingIds])
       const removeFolder = !!folderId && !state.elementFolders.some((folder) => folder.parentId === folderId) && !Object.entries(state.elementFolderAssignments).some(([elementId, assigned]) => assigned === folderId && !removed.has(elementId))
       recordInteraction('state.structure-pack.removed', {
         view: state.view,
@@ -340,11 +342,11 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       })
       return {
         structurePacks: state.structurePacks.filter((candidate) => candidate.id !== id),
-        hiddenElementIds: state.hiddenElementIds.filter((hiddenId) => hiddenId !== id && !surfaceIds.includes(hiddenId) && !gridIds.includes(hiddenId)),
-        lockedElementIds: state.lockedElementIds.filter((lockedId) => lockedId !== id && !surfaceIds.includes(lockedId)),
-        elementFolderAssignments: withoutFolderAssignments(state.elementFolderAssignments, [id, ...surfaceIds]),
+        hiddenElementIds: state.hiddenElementIds.filter((hiddenId) => hiddenId !== id && !surfaceIds.includes(hiddenId) && !gridIds.includes(hiddenId) && !openingIds.includes(hiddenId)),
+        lockedElementIds: state.lockedElementIds.filter((lockedId) => lockedId !== id && !surfaceIds.includes(lockedId) && !openingIds.includes(lockedId)),
+        elementFolderAssignments: withoutFolderAssignments(state.elementFolderAssignments, [id, ...surfaceIds, ...openingIds]),
         ...(removeFolder ? { elementFolders: state.elementFolders.filter((folder) => folder.id !== folderId) } : {}),
-        selectedId: state.selectedId === id || (removeFolder && state.selectedId === folderSelectionId(folderId)) || surfaceIds.includes(state.selectedId ?? '') ? null : state.selectedId,
+        selectedId: state.selectedId === id || (removeFolder && state.selectedId === folderSelectionId(folderId)) || (surfaceIds.includes(state.selectedId ?? '') || openingIds.includes(state.selectedId ?? '')) ? null : state.selectedId,
         notice: `${pack.name} eliminado.`,
       }
     }),
@@ -398,45 +400,69 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
     }),
     addWindow: (shape = 'rectangular') => set((state) => {
       const definition = OPENING_CATALOG[openingKindForShape(shape)]
+      const focusedPack = state.structurePacks.find((pack) => pack.id === state.activeRoomId && pack.id.startsWith('floor-pack-'))
       const walls: WallSide[] = ['north', 'east', 'south', 'west']
-      const offsets = [0, -1.25, 1.25, -2, 2]
+      const windowId = makeId('window')
       for (const wall of walls) {
-        for (const offset of offsets) {
-          const window: WindowConfig = {
-            id: makeId('window'),
-            shape,
-            wall,
-            offset,
-            width: definition.width,
-            height: definition.height,
-            sill: definition.defaultBottom,
-            rotation: 0,
-            color: isWallPictureShape(shape)
-              ? FURNITURE_PRESETS[shape].color
-              : isWallMirrorShape(shape)
-                ? '#9a8067'
-                : shape === 'wallSconce'
-                  ? '#d3a755'
-                : '#c88f58',
-          }
-          const candidate = { ...state.room, windows: [...state.room.windows, window] }
-          if (!validateOpenings(candidate)) {
-            recordInteraction('state.window.added', {
-              view: state.view,
-              selectedId: state.selectedId,
-              details: { id: window.id, name: `${definition.name} ${state.room.windows.length + 1}`, wall, offset, selectedAfter: window.id },
-            })
-            const { folderId } = focusedCreationTarget({ ...state, activeRoomId: null })
-            return { room: candidate,
-              ...(folderId ? { elementFolderAssignments: { ...state.elementFolderAssignments, [window.id]: folderId } } : {}),
-              selectedId: window.id, notice: `${definition.name} añadida.` }
-          }
+        const wallSurface = focusedPack?.surfaces.find((surface) => surface.kind === 'wall' && surface.wall === wall)
+        if (focusedPack && (!wallSurface || hasCoincidentWall(state.room, state.structurePacks, focusedPack, wallSurface))) continue
+        const buildWindow = (offset: number): WindowConfig => ({
+          id: windowId, shape, wall, offset,
+          width: definition.width, height: definition.height, sill: definition.defaultBottom, rotation: 0,
+          color: isWallPictureShape(shape) ? FURNITURE_PRESETS[shape].color
+            : isWallMirrorShape(shape) ? '#9a8067' : shape === 'wallSconce' ? '#d3a755' : '#c88f58',
+        })
+        const offset = focusedPack
+          ? findAvailableOpeningOffset(wallSurface!.width, definition.width, 0,
+            (value) => !structureWindowError({ ...focusedPack, windows: [...(focusedPack.windows ?? []), buildWindow(value)] }))
+          : findAvailableOpeningOffset(wallLength(state.room, wall), definition.width, 0,
+            (value) => !validateOpenings({ ...state.room, windows: [...state.room.windows, buildWindow(value)] }))
+        if (offset === null) continue
+        const window = buildWindow(offset)
+        recordInteraction('state.window.added', { view: state.view, selectedId: state.selectedId,
+          details: { id: window.id, name: definition.name, wall, offset, packId: focusedPack?.id, selectedAfter: window.id } })
+        const { folderId } = focusedCreationTarget(state)
+        return {
+          ...(focusedPack ? {
+            structurePacks: state.structurePacks.map((pack) => pack.id === focusedPack.id
+              ? { ...pack, windows: [...(pack.windows ?? []), window] } : pack),
+          } : { room: { ...state.room, windows: [...state.room.windows, window] } }),
+          ...(folderId ? { elementFolderAssignments: { ...state.elementFolderAssignments, [window.id]: folderId } } : {}),
+          selectedId: window.id, notice: `${definition.name} añadida.`,
         }
       }
-      return { notice: `No queda espacio válido para colocar ${definition.name.toLowerCase()}.` }
+      return { notice: `No queda espacio válido para colocar ${definition.name.toLowerCase()} en la habitación enfocada.` }
     }),
     updateWindow: (id, partial) => set((state) => {
       if (state.lockedElementIds.includes(id) && (partial.wall !== undefined || partial.offset !== undefined || partial.sill !== undefined || partial.rotation !== undefined)) return {}
+      const structureSource = packWindowById(state.structurePacks, id)
+      if (structureSource) {
+        const { pack, window: currentWindow } = structureSource
+        if (!openingMovementAllowed(currentWindow, partial)) return {}
+        const adjusted = { ...partial,
+          ...(partial.offset === undefined ? {} : { offset: snapMeasurement(partial.offset) }),
+          ...(partial.sill === undefined ? {} : { sill: snapMeasurement(partial.sill) }),
+        }
+        const replaceWindow = (window: WindowConfig) => ({ ...pack, windows: pack.windows!.map((item) => item.id === id ? window : item) })
+        let nextWindow = { ...currentWindow, ...adjusted }
+        let candidatePack = replaceWindow(nextWindow)
+        let error = structureWindowError(candidatePack)
+        if (error && partial.wall !== undefined && partial.wall !== currentWindow.wall && partial.offset === undefined) {
+          const wall = pack.surfaces.find((surface) => surface.kind === 'wall' && surface.wall === partial.wall)
+          const offset = wall && findAvailableOpeningOffset(wall.width, nextWindow.width, currentWindow.offset,
+            (value) => !structureWindowError(replaceWindow({ ...nextWindow, offset: value })))
+          if (offset !== null && offset !== undefined) {
+            nextWindow = { ...nextWindow, offset }
+            candidatePack = replaceWindow(nextWindow)
+            error = structureWindowError(candidatePack)
+          }
+        }
+        if (error) return { notice: error }
+        if (!openingMovementAllowed(currentWindow, nextWindow)) return {}
+        recordInteraction('state.opening.updated', { view: state.view, selectedId: state.selectedId,
+          coalesceKey: `opening-${id}`, details: { ...nextWindow, name: elementName(state, id) } })
+        return { structurePacks: state.structurePacks.map((item) => item.id === pack.id ? candidatePack : item), notice: '' }
+      }
       const currentWindow = state.room.windows.find((window) => window.id === id)
       if (!currentWindow) return {}
       if (!openingMovementAllowed(currentWindow, partial)) return {}
@@ -456,6 +482,16 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       return update
     }),
     removeWindow: (id) => set((state) => {
+      const source = packWindowById(state.structurePacks, id)
+      if (source) return {
+        structurePacks: state.structurePacks.map((pack) => pack.id === source.pack.id
+          ? { ...pack, windows: pack.windows?.filter((window) => window.id !== id) } : pack),
+        hiddenElementIds: state.hiddenElementIds.filter((item) => item !== id),
+        lockedElementIds: state.lockedElementIds.filter((item) => item !== id),
+        elementFolderAssignments: withoutFolderAssignments(state.elementFolderAssignments, [id]),
+        selectedId: state.selectedId === id ? null : state.selectedId,
+        notice: '',
+      }
       recordInteraction('state.element.removed', {
         view: state.view,
         selectedId: state.selectedId,

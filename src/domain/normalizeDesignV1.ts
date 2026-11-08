@@ -4,6 +4,7 @@ import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, isWindowShape
 import { createStructureSurface } from './structureRules'
 import { validateAxisLocks } from './axisLocks'
 import { rootDoorPack, structureDoorError } from './structureDoors'
+import { structureWindowError } from './structureWindows'
 import type { GridSurface, RoomConfig, StructurePack, StructureSurface, StructureSurfaceKey } from './types'
 
 export function normalizeStructurePacks(value: unknown, room: RoomConfig): StructurePack[] {
@@ -55,7 +56,7 @@ export function normalizeStructurePacks(value: unknown, room: RoomConfig): Struc
       } as StructureSurface
     })
     const normalized = { ...pack, surfaces } as StructurePack
-    const doorError = structureDoorError(normalized)
+    const doorError = structureDoorError(normalized) || structureWindowError(normalized)
     if (doorError) throw new Error(doorError)
     return normalized
   })

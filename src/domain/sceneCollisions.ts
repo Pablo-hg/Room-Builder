@@ -1,6 +1,7 @@
 import { structureSurfaceElementId } from './elementIds'
 import { elementName } from './selection'
 import { structureDoorPosition } from './structureDoors'
+import { structureWindowFrame } from './structureWindows'
 import { furnitureOutsideRoom, furnitureSceneBox, independentSceneBoxes, independentSurfaceOutsideRoom, sceneBoxesOverlap, type SceneCollisionBox } from './structureCollisions'
 import type { RoomConfig, FurnitureItem, StructurePack, WallSide } from './types'
 
@@ -47,6 +48,20 @@ function sceneSources(world: SceneWorld): Source[] {
 
   for (const pack of world.structurePacks) {
     if (hidden.has(pack.id)) continue
+    for (const window of pack.windows ?? []) {
+      if (hidden.has(window.id)) continue
+      const frame = structureWindowFrame(world.room, pack, window.wall)
+      if (!frame) continue
+      const surface = pack.surfaces.find((item) => item.kind === 'wall' && item.wall === window.wall)
+      if (!surface || hidden.has(structureSurfaceElementId(pack.id, surface.id))) continue
+      sources.push({ id: window.id, name: elementName(world, window.id) ?? 'Ventana', kind: 'opening', box: {
+        id: window.id,
+        x: frame.x + Math.cos(frame.yaw) * window.offset,
+        y: frame.floorY + window.sill + window.height / 2,
+        z: frame.z - Math.sin(frame.yaw) * window.offset,
+        width: window.width, height: window.height, depth: Math.max(0.14, frame.depth), rotation: frame.yaw,
+      } })
+    }
     for (const [index, door] of (pack.doors ?? []).entries()) {
       if (hidden.has(door.id)) continue
       const wall = pack.surfaces.find((surface) => surface.kind === 'wall' && surface.wall === door.wall)

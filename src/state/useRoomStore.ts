@@ -53,10 +53,13 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
       const structurePacks = (nextUpdate.structurePacks ?? current.structurePacks).map((pack) => {
         const old = current.structurePacks.find((candidate) => candidate.id === pack.id)
         const removedWalls = old?.surfaces.filter((surface) => surface.kind === 'wall' && !pack.surfaces.some((candidate) => candidate.id === surface.id)).map((surface) => surface.wall) ?? []
-        return pack.doors && removedWalls.length ? { ...pack, doors: pack.doors.filter((door) => !removedWalls.includes(door.wall)) } : pack
+        return removedWalls.length ? { ...pack,
+          ...(pack.doors ? { doors: pack.doors.filter((door) => !removedWalls.includes(door.wall)) } : {}),
+          ...(pack.windows ? { windows: pack.windows.filter((window) => !removedWalls.includes(window.wall)) } : {}),
+        } : pack
       })
-      const remaining = new Set([...((nextUpdate.room ?? current.room).extraDoors ?? []).map((door) => door.id), ...structurePacks.flatMap((pack) => pack.doors?.map((door) => door.id) ?? [])])
-      const removed = new Set([...(current.room.extraDoors ?? []).map((door) => door.id), ...current.structurePacks.flatMap((pack) => pack.doors?.map((door) => door.id) ?? [])].filter((id) => !remaining.has(id)))
+      const remaining = new Set([...((nextUpdate.room ?? current.room).extraDoors ?? []).map((door) => door.id), ...structurePacks.flatMap((pack) => [...(pack.doors ?? []).map((door) => door.id), ...(pack.windows ?? []).map((window) => window.id)])])
+      const removed = new Set([...(current.room.extraDoors ?? []).map((door) => door.id), ...current.structurePacks.flatMap((pack) => [...(pack.doors ?? []).map((door) => door.id), ...(pack.windows ?? []).map((window) => window.id)])].filter((id) => !remaining.has(id)))
       nextUpdate = { ...nextUpdate, structurePacks }
       if (removed.size) nextUpdate = { ...nextUpdate,
         hiddenElementIds: (nextUpdate.hiddenElementIds ?? current.hiddenElementIds).filter((id) => !removed.has(id)),

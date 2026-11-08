@@ -219,8 +219,11 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
         if ((pack.id.startsWith('floor-object-') || pack.id.startsWith('wall-object-'))
           && pack.surfaces.every((surface) => deletedIds.has(structureSurfaceElementId(pack.id, surface.id)))) deletedIds.add(pack.id)
       }
-      for (const pack of state.structurePacks) if (deletedIds.has(pack.id)) for (const surface of pack.surfaces) {
-        deletedIds.add(structureSurfaceElementId(pack.id, surface.id)); deletedIds.add(structureGridElementId(pack.id, surface.id))
+      for (const pack of state.structurePacks) if (deletedIds.has(pack.id)) {
+        for (const surface of pack.surfaces) {
+          deletedIds.add(structureSurfaceElementId(pack.id, surface.id)); deletedIds.add(structureGridElementId(pack.id, surface.id))
+        }
+        for (const opening of [...(pack.doors ?? []), ...(pack.windows ?? [])]) deletedIds.add(opening.id)
       }
       for (const pack of state.structurePacks) for (const surface of pack.surfaces) if (deletedIds.has(structureSurfaceElementId(pack.id, surface.id))) deletedIds.add(structureGridElementId(pack.id, surface.id))
       const folders = state.elementFolders.filter((folder) => !foldersToRemove.has(folder.id)).map((folder) => {
@@ -236,7 +239,7 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
       return {
         room: { ...state.room, windows: state.room.windows.filter((window) => !deletedIds.has(window.id)), ...(state.room.extraDoors ? { extraDoors: state.room.extraDoors.filter((door) => !deletedIds.has(door.id)) } : {}) },
         furniture: state.furniture.filter((item) => !deletedIds.has(item.id)),
-        structurePacks: state.structurePacks.filter((pack) => !deletedIds.has(pack.id)).map((pack) => ({ ...pack, surfaces: pack.surfaces.filter((surface) => !deletedIds.has(structureSurfaceElementId(pack.id, surface.id))), ...(pack.doors ? { doors: pack.doors.filter((door) => !deletedIds.has(door.id)) } : {}) })),
+        structurePacks: state.structurePacks.filter((pack) => !deletedIds.has(pack.id)).map((pack) => ({ ...pack, surfaces: pack.surfaces.filter((surface) => !deletedIds.has(structureSurfaceElementId(pack.id, surface.id))), ...(pack.doors ? { doors: pack.doors.filter((door) => !deletedIds.has(door.id)) } : {}), ...(pack.windows ? { windows: pack.windows.filter((window) => !deletedIds.has(window.id)) } : {}) })),
         elementFolders: folders, elementFolderAssignments: assignments,
         hiddenElementIds: state.hiddenElementIds.filter((id) => !deletedIds.has(id)), lockedElementIds: state.lockedElementIds.filter((id) => !deletedIds.has(id)),
         selectedId: null, notice: 'Elementos seleccionados eliminados.',

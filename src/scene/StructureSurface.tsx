@@ -11,7 +11,7 @@ import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
 import { StructureSurfaceTransformGizmo } from './StructureSurfaceGizmo'
 import { SelectionBounds } from './SelectionBounds'
 import { independentSurfaceHasSpatialWarning } from '../domain/structureCollisions'
-import { structureDoorOpenings } from '../domain/structureDoors'
+import { structurePackOpenings, structureWindowFrame } from '../domain/structureWindows'
 import { WallBody } from './Walls'
 import { OpeningDetail } from './Openings'
 import { surfacePosition } from '../domain/roomEditing'
@@ -61,7 +61,9 @@ export function StructureSurfaceObject({
   const pack = useRoomStore((state) => state.structurePacks.find((candidate) => candidate.id === packId))
   const selectedId = useRoomStore((state) => state.selectedId)
   const hiddenIds = useRoomStore((state) => state.hiddenElementIds)
-  const openings = pack ? structureDoorOpenings(pack, surface) : []
+  const openings = pack ? structurePackOpenings(pack, surface) : []
+  const frame = pack && surface.wall ? structureWindowFrame(room, pack, surface.wall) : null
+  const openingLockedIds = useRoomStore((state) => state.lockedElementIds)
   const isIndependent = packId.startsWith('floor-object-') || packId.startsWith('wall-object-')
   const view = useRoomStore((state) => state.view)
   const { camera, size } = useThree()
@@ -162,7 +164,7 @@ export function StructureSurfaceObject({
         <group position={[0, -surface.height / 2, 0]}>
           <WallBody length={surface.width} height={surface.height} openings={openings} color={surface.color} depth={surface.depth} onPointerDown={selectSurface} />
           {openings.filter((opening) => !hiddenIds.includes(opening.id)).map((opening) => <group key={opening.id}>
-            <OpeningDetail room={room} wall={wall} opening={opening} selected={false} locked />
+            <OpeningDetail room={room} wall={wall} opening={opening} selected={selectedId === opening.id} locked={openingLockedIds.includes(opening.id)} frame={frame ?? undefined} />
             {showCollision && (selectedId === opening.id || collisionIds.has(opening.id)) && <group position={[opening.offset, opening.height / 2, 0]}><SelectionBounds width={opening.width} height={opening.height} depth={surface.depth + 0.08} collision={collisionIds.has(opening.id)} /></group>}
           </group>)}
         </group>
@@ -216,9 +218,9 @@ export function StructureDoorPlan({ room, packId, surface, collisionIds }: { roo
   const [x, y, z] = surfacePosition(room, surface)
   const angle = { north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 }[surface.wall] + surface.rotation
   return <group position={[x, y - surface.height / 2 + 0.05, z]} rotation={[0, angle, 0]}>
-    {structureDoorOpenings(pack, surface).filter((door) => !hiddenIds.includes(door.id)).map((door) => <group key={door.id} position={[door.offset, 0, 0]}>
+    {structurePackOpenings(pack, surface).filter((door) => !hiddenIds.includes(door.id)).map((door) => <group key={door.id} position={[door.offset, 0, 0]}>
       <mesh onPointerDown={(event) => { event.stopPropagation(); selectSceneObject(door.id, event.nativeEvent) }}>
-        <boxGeometry args={[door.width, 0.06, surface.depth + 0.08]} /><meshBasicMaterial color={selectedId === door.id ? '#ea6f4c' : '#e9895b'} />
+        <boxGeometry args={[door.width, 0.06, surface.depth + 0.08]} /><meshBasicMaterial color={selectedId === door.id ? '#ea6f4c' : door.kind === 'window' ? '#e9b87d' : '#e9895b'} />
       </mesh>
       {collisionIds.has(door.id) && <SelectionBounds width={door.width} height={0.08} depth={surface.depth + 0.08} collision />}
     </group>)}

@@ -3,6 +3,7 @@ import { validateAxisLocks } from './axisLocks'
 import { surfacePosition } from './roomEditing'
 import type { DoorConfig, RoomConfig, StructurePack, StructureSurface, WallOpening } from './types'
 import { createStructureSurface } from './structureRules'
+import { structureWindowError } from './structureWindows'
 
 export type StructureDoor = DoorConfig & { id: string }
 export function rootDoorPack(room: RoomConfig): StructurePack {
@@ -66,7 +67,7 @@ export function hasCoincidentWall(room: RoomConfig, packs: StructurePack[], pack
 
 export function structureDoorsWorldError(room: RoomConfig, packs: StructurePack[]): string | null {
   for (const pack of [rootDoorPack(room), ...packs]) {
-    const error = structureDoorError(pack)
+    const error = structureDoorError(pack) || structureWindowError(pack)
     if (error) return error
     for (const door of pack.doors ?? []) {
       const wall = pack.surfaces.find((surface) => surface.kind === 'wall' && surface.wall === door.wall)!

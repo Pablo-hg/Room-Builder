@@ -7,6 +7,7 @@ import { useRoomStore } from '../../state/useRoomStore'
 import type { WallSide } from '../../domain/types'
 import { AxisPositionControl, ColorControl, OpeningSwatch, RotationControl, WallPicker } from './Controls'
 import { ResizeControls } from './ResizeControls'
+import { packWindowById } from '../../domain/structureWindows'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
 type SelectedOpening = (RoomState['room']['door'] & { id: string; kind: 'door'; sill: number }) | (RoomState['room']['windows'][number] & { kind: 'window' })
@@ -14,6 +15,11 @@ type SelectedOpening = (RoomState['room']['door'] & { id: string; kind: 'door'; 
 export function OpeningInspector({ selectedOpening }: { selectedOpening: SelectedOpening }) {
   const gesture = useInspectorGesture(selectedOpening.id)
   const room = useRoomStore((state) => state.room)
+  const structurePacks = useRoomStore((state) => state.structurePacks)
+  const packWindow = selectedOpening.kind === 'window' ? packWindowById(structurePacks, selectedOpening.id) : null
+  const targetWall = packWindow?.pack.surfaces.find((surface) => surface.kind === 'wall' && surface.wall === selectedOpening.wall)
+  const targetLength = targetWall?.width ?? wallLength(room, selectedOpening.wall)
+  const targetHeight = targetWall?.height ?? room.height
   const setDoor = useRoomStore((state) => state.setDoor)
   const setStructureDoor = useRoomStore((state) => state.setStructureDoor)
   const removeStructureDoor = useRoomStore((state) => state.removeStructureDoor)
@@ -44,10 +50,10 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
           : 'window'
   const capabilities = OPENING_CATALOG[catalogKind].capabilities
   const openingName = selectedOpening.name || OPENING_CATALOG[catalogKind].name
-  const rawMaxOffset = Math.max(0, wallLength(room, selectedOpening.wall) / 2 - selectedOpening.width / 2 - ROOM_LIMITS.edgeMargin)
+  const rawMaxOffset = Math.max(0, targetLength / 2 - selectedOpening.width / 2 - ROOM_LIMITS.edgeMargin)
   const openingStep = 0.01
   const maxOffset = Math.floor(rawMaxOffset / openingStep) * openingStep
-  const maxSill = Math.max(0, Math.floor((room.height - selectedOpening.height - 0.08) * 100) / 100)
+  const maxSill = Math.max(0, Math.floor((targetHeight - selectedOpening.height - 0.08) * 100) / 100)
   const horizontalAxis = selectedOpening.wall === 'north' || selectedOpening.wall === 'south' ? 'x' : 'z'
   const sign = selectedOpening.wall === 'south' || selectedOpening.wall === 'west' ? -1 : 1
   const position = {

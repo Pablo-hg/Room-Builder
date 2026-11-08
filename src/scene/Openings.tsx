@@ -13,6 +13,9 @@ import { colorTone } from './colorTone'
 import { SelectionBounds } from './SelectionBounds'
 import { AXIS_COLORS } from './axisColors'
 import { AxisAnchor } from './AxisAnchor'
+import type { structureWindowFrame } from '../domain/structureWindows'
+
+type PackWindowFrame = NonNullable<ReturnType<typeof structureWindowFrame>>
 
 function openingName(opening: WallOpening) {
   return opening.kind === 'door'
@@ -20,7 +23,7 @@ function openingName(opening: WallOpening) {
     : OPENING_CATALOG[openingKindForShape(opening.shape ?? 'rectangular')].name
 }
 
-function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: WallSide, planView: boolean, locked: boolean) {
+function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: WallSide, planView: boolean, locked: boolean, frame?: PackWindowFrame) {
   const gesture = useHistoryGesture(opening.id)
   const setDoor = useRoomStore((state) => state.setDoor)
   const setStructureDoor = useRoomStore((state) => state.setStructureDoor)
@@ -35,14 +38,20 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
   const dragOrigin = useRef({ offset: opening.offset, sill: opening.bottom })
   const point = useMemo(() => new THREE.Vector3(), [])
   const plane = useMemo(() => {
+    if (frame) {
+      if (planView) return new THREE.Plane(new THREE.Vector3(0, 1, 0), -(frame.floorY + 0.035))
+      const normal = new THREE.Vector3(Math.sin(frame.yaw), 0, Math.cos(frame.yaw))
+      return new THREE.Plane().setFromNormalAndCoplanarPoint(normal, new THREE.Vector3(frame.x, frame.floorY, frame.z))
+    }
     if (planView) return new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.035)
     if (wall === 'north') return new THREE.Plane(new THREE.Vector3(0, 0, 1), room.depth / 2)
     if (wall === 'south') return new THREE.Plane(new THREE.Vector3(0, 0, 1), -room.depth / 2)
     if (wall === 'east') return new THREE.Plane(new THREE.Vector3(1, 0, 0), -room.width / 2)
     return new THREE.Plane(new THREE.Vector3(1, 0, 0), room.width / 2)
-  }, [planView, room.depth, room.width, wall])
+  }, [planView, room.depth, room.width, wall, frame])
 
   const offsetAtPoint = (position: THREE.Vector3) => {
+    if (frame) return (position.x - frame.x) * Math.cos(frame.yaw) - (position.z - frame.z) * Math.sin(frame.yaw)
     if (wall === 'north') return position.x
     if (wall === 'south') return planView ? position.x : -position.x
     if (wall === 'east') return position.z
@@ -74,7 +83,7 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
     dragOrigin.current = { offset: opening.offset, sill: opening.bottom }
     dragAxis.current = axis
     dragOffset.current = offsetAtPoint(point) - opening.offset
-    dragSill.current = point.y - opening.bottom
+    dragSill.current = (point.y - (frame?.floorY ?? 0)) - opening.bottom
     gesture.begin()
     setDragging(true)
     document.body.classList.add('can-grab')
@@ -88,7 +97,7 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
       move(
         axis === 'vertical' || !canMoveHorizontal ? opening.offset : moveFromOrigin(offsetAtPoint(point) - dragOffset.current, dragOrigin.current.offset),
         opening.kind === 'window' && canMoveVertical && !planView && axis !== 'horizontal'
-          ? moveFromOrigin(point.y - dragSill.current, dragOrigin.current.sill)
+          ? moveFromOrigin(point.y - (frame?.floorY ?? 0) - dragSill.current, dragOrigin.current.sill)
           : undefined,
       )
     }
@@ -100,6 +109,7 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
     const finalOpening = opening.kind === 'door'
       ? opening.id === 'door' ? latest.door : latest.extraDoors?.find((door) => door.id === opening.id)
       : latest.windows.find((candidate) => candidate.id === opening.id)
+        ?? useRoomStore.getState().structurePacks.flatMap((pack) => pack.windows ?? []).find((candidate) => candidate.id === opening.id)
     recordSceneInteraction('opening.drag-end', {
       id: opening.id,
       kind: opening.kind,
@@ -153,7 +163,9 @@ const openingRingRadius = (opening: WallOpening, planView: boolean) => planView
 function OpeningMoveGizmo({ opening, dragEventsForAxis, horizontal = true, planView = false, vertical = false }: { opening: WallOpening; dragEventsForAxis: ReturnType<typeof useOpeningInteraction>['dragEventsForAxis']; horizontal?: boolean; planView?: boolean; vertical?: boolean }) {
   const [hoveredAxis, setHoveredAxis] = useState<'horizontal' | 'vertical' | null>(null)
   const [activeAxis, setActiveAxis] = useState<'horizontal' | 'vertical' | null>(null)
-  const wall = useRoomStore((state) => opening.kind === 'door' ? state.room.door.wall : state.room.windows.find((item) => item.id === opening.id)?.wall ?? 'north')
+  const wall = useRoomStore((state) => opening.kind === 'door' ? state.room.door.wall
+    : state.room.windows.find((item) => item.id === opening.id)?.wall
+      ?? state.structurePacks.flatMap((pack) => pack.windows ?? []).find((item) => item.id === opening.id)?.wall ?? 'north')
   const coneHeight = 0.15
   const tipDistance = 0.5
   const coneCenter = tipDistance - coneHeight / 2
@@ -303,6 +315,7 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
     event.stopPropagation()
     const latestRoom = useRoomStore.getState().room
     const finalRotation = latestRoom.windows.find((candidate) => candidate.id === opening.id)?.rotation
+      ?? useRoomStore.getState().structurePacks.flatMap((pack) => pack.windows ?? []).find((candidate) => candidate.id === opening.id)?.rotation
     recordSceneInteraction('opening.rotation-end', {
       id: opening.id,
       kind: opening.kind,
@@ -372,8 +385,8 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
   )
 }
 
-export function OpeningDetail({ room, opening, wall, selected, locked }: { room: RoomConfig; opening: WallOpening; wall: WallSide; selected: boolean; locked: boolean }) {
-  const interaction = useOpeningInteraction(room, opening, wall, false, locked)
+export function OpeningDetail({ room, opening, wall, selected, locked, frame }: { room: RoomConfig; opening: WallOpening; wall: WallSide; selected: boolean; locked: boolean; frame?: PackWindowFrame }) {
+  const interaction = useOpeningInteraction(room, opening, wall, false, locked, frame)
   const capabilities = openingCapabilities(opening.kind)
   const canMoveHorizontal = capabilities.translation.includes('wall-horizontal')
   const canMoveVertical = capabilities.translation.includes('wall-vertical')

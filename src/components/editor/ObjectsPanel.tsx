@@ -66,6 +66,15 @@ export function ObjectsPanel() {
     ...furniture.map((item) => ({ id: item.id, name: item.name, kind: FURNITURE_FAMILIES.find((family) => family.id === FURNITURE_CATALOG[item.kind].family)?.label ?? 'Mueble', icon: <FurnitureIcon kind={item.kind} color={item.color} /> })),
     ...structurePacks.flatMap((pack) => [
       ...(pack.doors ?? []).map((door) => ({ id: door.id, name: door.name || 'Puerta', kind: 'Apertura', icon: <OpeningSwatch kind="door" /> })),
+      ...(pack.windows ?? []).map((window) => {
+        const label = OPENING_CATALOG[openingKindForShape(window.shape)].name
+        const family = window.shape === 'wallShelf' ? 'Almacenaje'
+          : isWallPictureShape(window.shape) || isWallMirrorShape(window.shape) || window.shape === 'wallSconce' ? 'Decoración' : 'Apertura'
+        const icon = isWallPictureShape(window.shape)
+          ? <FurnitureIcon kind={window.shape} color={window.color} />
+          : <OpeningSwatch kind={openingKindForShape(window.shape) as 'window' | 'circularWindow' | 'wallShelf' | 'mirrorRectangular' | 'mirrorCircular' | 'wallSconce'} color={window.color} />
+        return { id: window.id, name: window.name || label, kind: `${family} · pared ${WALL_LABELS[window.wall]}`, icon }
+      }),
       ...(!pack.id.startsWith('floor-object-') && !pack.id.startsWith('wall-object-') ? [{ id: pack.id, name: pack.name, kind: 'Pack de construcción', icon: <StructurePackIcon /> }] : []),
       ...pack.surfaces.map((surface) => ({
         id: structureSurfaceElementId(pack.id, surface.id),
