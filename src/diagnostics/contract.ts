@@ -60,7 +60,3 @@ export function parseEvent(value: unknown): DiagnosticEvent {
     data: safeData(value.data) as Record<string, unknown>,
   }
 }
-
-export function formatEvent(event: DiagnosticEvent) {
-  return `${event.timestamp} [${event.level}] ${event.action} ${event.result ?? event.phase} ${event.objectIds.join(', ')} ${JSON.stringify(event.data)}`
-}

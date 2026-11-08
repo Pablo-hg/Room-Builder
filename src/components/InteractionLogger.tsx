@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { useEffect } from 'react'
 import { flushInteractionLog } from '../debug/interactionLog'
 import { diagnostics } from '../diagnostics/engine'
 import { flushDiagnostics, startDiagnostics } from '../diagnostics/runtime'
@@ -6,8 +6,6 @@ import { spatialDiagnostics } from '../diagnostics/spatial'
 import { useRoomStore } from '../state/useRoomStore'
 
 let sessionStarted = false
-// Literal DEV guards let Vite eliminate both the UI and its CSS/importer from production.
-const Viewer = import.meta.env.DEV ? lazy(() => import('../diagnostics/dev/DiagnosticViewer')) : null
 
 export default function InteractionLogger() {
   useEffect(() => {
@@ -47,5 +45,5 @@ export default function InteractionLogger() {
     }
   }, [])
 
-  return Viewer ? <Suspense fallback={null}><Viewer /></Suspense> : null
+  return null
 }
