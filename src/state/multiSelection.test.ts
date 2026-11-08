@@ -221,7 +221,7 @@ test('mueve y colorea juntos una puerta y un mueble solo por el eje compatible',
 test('incluye los descendientes de carpetas y evita duplicar elementos seleccionados', () => {
   const store = createRoomStore()
   store.getState().createElementFolder('Grupo')
-  const folder = store.getState().elementFolders[0].id
+  const folder = store.getState().elementFolders.find((entry) => entry.name === 'Grupo')!.id
   store.getState().addFurniture('chair')
   const chair = store.getState().selectedId!
   store.getState().moveElementToFolder(chair, folder)

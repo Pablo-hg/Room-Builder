@@ -78,8 +78,17 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
         // Removing a physical support must not delete its logical apertures.
         for (const pack of current.structurePacks.filter((old) => !packs.some((item) => item.id === old.id))) {
           const present = new Set(worldOpenings({ room, structurePacks: packs }).map((opening) => opening.id))
-          const doors = (pack.doors ?? []).filter((door) => !present.has(door.id))
-          const windows = (pack.windows ?? []).filter((window) => !present.has(window.id) && (window.shape === 'rectangular' || window.shape === 'circular'))
+          // Preserve an aperture only when it still has a physical wall to
+          // attach to. Removing an entire room must not resurrect unsupported
+          // windows in the root room or leave orphaned scene-folder entries.
+          const candidateWorld = { room, structurePacks: packs }
+          const survives = (id: string) => {
+            const opening = oldOpeningGeometry.get(id)
+            return opening && openingHasSupport(candidateWorld, opening)
+          }
+          const doors = (pack.doors ?? []).filter((door) => !present.has(door.id) && survives(door.id))
+          const windows = (pack.windows ?? []).filter((window) => !present.has(window.id)
+            && (window.shape === 'rectangular' || window.shape === 'circular') && survives(window.id))
           room = { ...room, extraDoors: [...(room.extraDoors ?? []), ...doors], windows: [...room.windows, ...windows] }
           const preserved = new Set([...doors, ...windows].map((opening) => opening.id))
           const folders = nextUpdate.elementFolders ?? current.elementFolders
@@ -100,16 +109,24 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
             if (fitted) nextUpdate = { ...nextUpdate, ...fitted }
           }
         }
-      } else if (!runtime.isUndoing) {
-        nextUpdate = { ...nextUpdate, ...anchorWallOpenings({ room: nextUpdate.room ?? current.room, structurePacks: nextUpdate.structurePacks ?? current.structurePacks }) }
       }
-      const structurePacks = (nextUpdate.structurePacks ?? current.structurePacks).map((pack) => {
+      // Loading a v1-v9 design must not silently upgrade it to v10 by
+      // inserting wallPosition everywhere: that changed its persisted
+      // signature and incorrectly marked an undo as unsaved. Existing
+      // anchors are preserved; new geometrical edits are reconciled above.
+      const candidatePacks = nextUpdate.structurePacks ?? current.structurePacks
+      const structurePacks = candidatePacks.map((pack) => {
         const old = current.structurePacks.find((candidate) => candidate.id === pack.id)
         const removedWalls = old?.surfaces.filter((surface) => surface.kind === 'wall' && !pack.surfaces.some((candidate) => candidate.id === surface.id)).map((surface) => surface.wall) ?? []
-        return removedWalls.length ? { ...pack,
-          ...(pack.doors ? { doors: pack.doors.filter((door) => door.wallPosition || !removedWalls.includes(door.wall)) } : {}),
-          ...(pack.windows ? { windows: pack.windows.filter((window) => window.freePosition || window.wallPosition || !removedWalls.includes(window.wall)) } : {}),
-        } : pack
+        if (!removedWalls.length) return pack
+        const validSupport = (id: string) => {
+          const opening = oldOpeningGeometry.get(id)
+          return !!opening && openingHasSupport({ room: nextUpdate.room ?? current.room, structurePacks: candidatePacks }, opening)
+        }
+        return { ...pack,
+          ...(pack.doors ? { doors: pack.doors.filter((door) => !removedWalls.includes(door.wall) || !!door.wallPosition && validSupport(door.id)) } : {}),
+          ...(pack.windows ? { windows: pack.windows.filter((window) => window.freePosition || !removedWalls.includes(window.wall) || !!window.wallPosition && validSupport(window.id)) } : {}),
+        }
       })
       const remaining = new Set([...(nextUpdate.room ?? current.room).windows.map((window) => window.id), ...((nextUpdate.room ?? current.room).extraDoors ?? []).map((door) => door.id), ...structurePacks.flatMap((pack) => [...(pack.doors ?? []).map((door) => door.id), ...(pack.windows ?? []).map((window) => window.id)])])
       const removed = new Set([...current.room.windows.map((window) => window.id), ...(current.room.extraDoors ?? []).map((door) => door.id), ...current.structurePacks.flatMap((pack) => [...(pack.doors ?? []).map((door) => door.id), ...(pack.windows ?? []).map((window) => window.id)])].filter((id) => !remaining.has(id)))

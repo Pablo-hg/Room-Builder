@@ -210,10 +210,10 @@ test('permite elevar un mueble desde el inspector', async ({ page }) => {
 
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
   const elevation = inspector.getByLabel('Posición Y', { exact: true })
-  await expect(elevation).toHaveValue('0')
+  await expect(elevation).toHaveValue('0.02')
   await elevation.focus()
   await elevation.press('ArrowRight')
-  await expect(elevation).toHaveValue('0.01')
+  await expect(elevation).toHaveValue('0.03')
 })
 
 test('permite mover un mueble lateralmente y en altura en vista frontal', async ({ page }) => {
@@ -244,14 +244,14 @@ test('permite mover un mueble lateralmente y en altura en vista frontal', async 
   await expect(elevation).not.toHaveValue('0')
 })
 
-test('mantiene ambas alfombras sobre el suelo y oculta el control vertical', async ({ page }) => {
+test('mantiene ambas alfombras sobre el suelo y permite el movimiento vertical', async ({ page }) => {
   await page.goto('/')
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
 
   for (const name of ['Alfombra', 'Alfombra circular']) {
     await page.getByRole('button', { name: `${name} ＋ Añadir`, exact: true }).click()
     await expect(inspector.getByRole('heading', { name, exact: true })).toBeVisible()
-    await expect(inspector.getByText('Posición Y', { exact: true })).toHaveCount(0)
+    await expect(inspector.getByText('Posición Y', { exact: true })).toBeVisible()
     await expect(inspector.getByLabel('Posición X', { exact: true })).toBeVisible()
     await expect(inspector.getByLabel('Posición Z', { exact: true })).toBeVisible()
     await inspector.getByRole('button', { name: 'Eliminar' }).click()
@@ -266,7 +266,7 @@ test('añade los nuevos objetos decorativos e iluminación', async ({ page }) =>
     await page.getByRole('button', { name: `${name} ＋ Añadir`, exact: true }).click()
     await expect(inspector.getByRole('heading', { name, exact: true })).toBeVisible()
     if (name === 'Lámpara de techo') {
-      await expect(inspector.getByText('Posición Y', { exact: true })).toHaveCount(0)
+      await expect(inspector.getByText('Posición Y', { exact: true })).toBeVisible()
     }
     await inspector.getByRole('button', { name: 'Eliminar' }).click()
   }

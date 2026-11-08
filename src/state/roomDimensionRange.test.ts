@@ -51,6 +51,8 @@ test('habitaciones adicionales mantienen sus superficies y pueden tener dimensio
 
 test('las aperturas conservan la validación de límites en habitaciones normales', () => {
   const store = createRoomStore()
-  const invalid = { ...store.getState().room, door: { ...store.getState().room.door, offset: 50 } }
+  // Los anclajes v10 usan coordenadas mundiales, no el offset local.
+  // Comprobamos la validación legacy cuando no hay anclaje compartido.
+  const invalid = { ...store.getState().room, door: { ...store.getState().room.door, wallPosition: undefined, offset: 50 } }
   assert.match(validateOpenings(invalid) ?? '', /fuera/)
 })

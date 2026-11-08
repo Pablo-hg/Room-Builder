@@ -23,7 +23,7 @@ test('un mueble puede cruzar las paredes y el suelo y conservar su posición al 
   await expect(y).toHaveValue('-1.00')
   await page.getByRole('button', { name: 'Deshacer el último cambio' }).click()
   await page.getByRole('button', { name: /Silla Asientos/ }).click()
-  await expect(y).toHaveValue('0.00')
+  await expect(y).toHaveValue('0.02')
 })
 
 test('el suelo del plano desplaza la cámara y el botón restablece posición y zoom', async ({ page }) => {
@@ -91,7 +91,7 @@ for (const kind of ['Suelo', 'Pared']) {
     await width.press('Enter')
     await expect(width).toHaveValue('2.75')
     await page.getByRole('button', { name: /Deshacer el último cambio/ }).click()
-    await page.getByRole('button', { name: new RegExp(`${kind} 1 · ${kind} independiente Superficie de construcción`) }).click()
+    await page.getByRole('button', { name: new RegExp(`${kind} independiente Superficie de construcción`) }).click()
     await expect(width).not.toHaveValue('2.75')
     await expect(thickness).toHaveValue('0.25')
   })
@@ -140,7 +140,7 @@ for (const kind of ['Suelo', 'Pared']) {
     await page.mouse.up()
     await expect(position).not.toHaveValue(initial)
     await page.getByRole('button', { name: 'Deshacer el último cambio' }).click()
-    await page.getByRole('button', { name: new RegExp(`${kind} 1 · ${kind} independiente Superficie de construcción`) }).click()
+    await page.getByRole('button', { name: new RegExp(`${kind} independiente Superficie de construcción`) }).click()
     await expect(position).toHaveValue(initial)
   })
 

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { structureGridElementId, structureSurfaceElementId } from '../domain/elementIds'
 import { persistedDesign } from '../domain/designV1'
+import { roomVerticalBounds } from '../domain/roomEditing'
 import { normalizeDesignPreferences, normalizeStructurePacks } from '../domain/normalizeDesignV1'
 import { createRoomStore } from './useRoomStore'
 import { multiSelectionItems, multiSelectionBounds } from '../domain/multiSelection'
@@ -14,8 +15,15 @@ test('las habitaciones se crean en las seis direcciones y agrupan todas sus supe
     const state = store.getState()
     const pack = state.structurePacks[0]
     assert.deepEqual(normalizeStructurePacks(persistedDesign(state).structurePacks, state.room), [pack])
-    const distance = axis === 'x' ? state.room.width : axis === 'y' ? state.room.height : state.room.depth
-    assert.equal(pack[axis], sign * distance)
+    if (axis === 'y') {
+      const rootBounds = roomVerticalBounds(state.room)
+      const createdBounds = roomVerticalBounds(state.room, { ...pack, y: 0 })
+      const expected = sign > 0 ? rootBounds.top - createdBounds.bottom : rootBounds.bottom - createdBounds.top
+      assert.ok(Math.abs(pack.y - expected) < 1e-9)
+    } else {
+      const distance = axis === 'x' ? state.room.width : state.room.depth
+      assert.equal(pack[axis], sign * distance)
+    }
     const folderId = state.elementFolderAssignments[pack.id]
     assert.ok(state.elementFolders.some((folder) => folder.id === folderId))
     for (const surface of pack.surfaces) assert.equal(state.elementFolderAssignments[structureSurfaceElementId(pack.id, surface.id)], folderId)
