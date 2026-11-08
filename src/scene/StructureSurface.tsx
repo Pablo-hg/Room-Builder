@@ -25,6 +25,8 @@ export function StructureSurfaceObject({
   locked,
   showGrid,
   showCollision = true,
+  colliding = false,
+  collisionIds,
   onSelect,
 }: {
   room: RoomConfig
@@ -36,6 +38,8 @@ export function StructureSurfaceObject({
   locked: boolean
   showGrid: boolean
   showCollision?: boolean
+  colliding?: boolean
+  collisionIds: ReadonlySet<string>
   onSelect: () => void
   packId: string
 }) {
@@ -46,7 +50,8 @@ export function StructureSurfaceObject({
   const setStructureSurfaceRotation = useRoomStore((state) => state.setStructureSurfaceRotation)
   const surfaceId = structureSurfaceElementId(packId, surface.id)
   const gridHidden = useRoomStore((state) => state.hiddenElementIds.includes(structureGridElementId(packId, surface.id)))
-  const collision = useRoomStore((state) => showCollision && independentSurfaceHasSpatialWarning(state, surfaceId))
+  const spatialWarning = useRoomStore((state) => showCollision && independentSurfaceHasSpatialWarning(state, surfaceId))
+  const collision = spatialWarning || colliding
   const pack = useRoomStore((state) => state.structurePacks.find((candidate) => candidate.id === packId))
   const selectedId = useRoomStore((state) => state.selectedId)
   const hiddenIds = useRoomStore((state) => state.hiddenElementIds)
@@ -81,7 +86,7 @@ export function StructureSurfaceObject({
           <WallBody length={surface.width} height={surface.height} openings={openings} color={surface.color} depth={surface.depth} onPointerDown={selectSurface} />
           {openings.filter((opening) => !hiddenIds.includes(opening.id)).map((opening) => <group key={opening.id}>
             <OpeningDetail room={room} wall={wall} opening={opening} selected={false} locked />
-            {showCollision && selectedId === opening.id && <group position={[opening.offset, opening.height / 2, 0]}><SelectionBounds width={opening.width} height={opening.height} depth={surface.depth + 0.08} /></group>}
+            {showCollision && (selectedId === opening.id || collisionIds.has(opening.id)) && <group position={[opening.offset, opening.height / 2, 0]}><SelectionBounds width={opening.width} height={opening.height} depth={surface.depth + 0.08} collision={collisionIds.has(opening.id)} /></group>}
           </group>)}
         </group>
       </group> : <mesh
@@ -126,7 +131,7 @@ export function StructureSurfaceObject({
   )
 }
 
-export function StructureDoorPlan({ room, packId, surface }: { room: RoomConfig; packId: string; surface: StructureSurface }) {
+export function StructureDoorPlan({ room, packId, surface, collisionIds }: { room: RoomConfig; packId: string; surface: StructureSurface; collisionIds: ReadonlySet<string> }) {
   const pack = useRoomStore((state) => state.structurePacks.find((candidate) => candidate.id === packId))
   const selectedId = useRoomStore((state) => state.selectedId)
   const hiddenIds = useRoomStore((state) => state.hiddenElementIds)
