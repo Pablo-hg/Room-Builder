@@ -80,8 +80,9 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
       capturePointer(event)
       return
     }
-    if (!event.ray.intersectPlane(floorPlane, point) && !shiftClickPending.current) return
-    dragOffset.current = { x: point.x - item.x, z: point.z - item.z }
+    const intersectsFloor = event.ray.intersectPlane(floorPlane, point) !== null
+    if (!intersectsFloor && !shiftClickPending.current) return
+    dragOffset.current = intersectsFloor ? { x: point.x - item.x, z: point.z - item.z } : { x: 0, z: 0 }
     dragOrigin.current = { x: item.x, z: item.z }
     gesture.begin()
     setDragging(true)
