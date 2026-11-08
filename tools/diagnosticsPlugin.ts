@@ -51,13 +51,9 @@ export class DiagnosticFileWriter {
     return work
   }
   /** Deduplicate retries during the Vite process without requiring IDs in the visible log. */
-  private shouldShow(event: DiagnosticEvent) {
-    if (event.category !== 'collisions' || !event.operationId || !/^spatial\.(entered|left)$/.test(event.action)) return true
-    const key = [event.operationId, event.action, String(event.data.rule ?? ''), ...[...event.objectIds].sort()].join('|')
-    if (this.summarizedCollisions.has(key)) return false
-    this.summarizedCollisions.add(key)
-    if (this.summarizedCollisions.size > 10000) this.summarizedCollisions.delete(this.summarizedCollisions.values().next().value!)
-    return true
+  private collisionKey(event: DiagnosticEvent) {
+    if (event.category !== 'collisions' || !event.operationId || !/^spatial\.(entered|left)$/.test(event.action)) return undefined
+    return [event.operationId, event.action, String(event.data.rule ?? ''), ...[...event.objectIds].sort()].join('|')
   }
   private bound(contents: string) {
     if (Buffer.byteLength(contents) <= this.maxBytes) return contents
@@ -79,9 +75,21 @@ export class DiagnosticFileWriter {
     const events = batch.map(parseEvent)
     const newEvents = new Map(events.filter((event) => !this.seen.has(event.eventId)).map((event) => [event.eventId, event]))
     if (newEvents.size) {
-      const addition = [...newEvents.values()].filter((event) => this.shouldShow(event)).map(readableEvent).join('')
+      const committedCollisionKeys = new Set<string>()
+      const addition = [...newEvents.values()].filter((event) => {
+        const key = this.collisionKey(event)
+        if (!key) return true
+        if (this.summarizedCollisions.has(key) || committedCollisionKeys.has(key)) return false
+        committedCollisionKeys.add(key)
+        return true
+      }).map(readableEvent).join('')
       if (addition && size + Buffer.byteLength(addition) <= this.maxBytes) await appendFile(this.file, addition, 'utf8')
       else if (addition) await this.replace(this.bound(await readFile(this.file, 'utf8') + addition))
+      // Commit deduplication state only after a successful write; failed sends must retry.
+      for (const key of committedCollisionKeys) {
+        this.summarizedCollisions.add(key)
+        if (this.summarizedCollisions.size > 10000) this.summarizedCollisions.delete(this.summarizedCollisions.values().next().value!)
+      }
       for (const id of newEvents.keys()) {
         this.seen.add(id)
         if (this.seen.size > 10000) this.seen.delete(this.seen.values().next().value!)

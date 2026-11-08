@@ -90,3 +90,19 @@ test('repeated collision transitions in a single operation are summarized only i
     assert.equal(await readFile(writer.file, 'utf8'), contents)
   } finally { await rm(root, { recursive: true, force: true }) }
 })
+test('a failed collision write can be retried without silently losing the warning', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'room-builder-log-retry-'))
+  try {
+    const directory = join(root, 'logs')
+    await writeFile(directory, 'temporary file prevents mkdir')
+    const writer = new DiagnosticFileWriter(directory)
+    const engine = new DiagnosticEngine()
+    const warning = engine.emit({ action: 'spatial.entered', category: 'collisions', level: 'warn',
+      operationId: 'op-1', objectIds: ['obj-a', 'obj-b'], data: { rule: 'oriented-box-overlap' } })!
+    await assert.rejects(writer.append([warning]))
+    await unlink(directory); await mkdir(directory)
+    await writer.append([warning])
+    const contents = await readFile(writer.file, 'utf8')
+    assert.equal(contents.split('Aparece un conflicto espacial').length - 1, 1)
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
