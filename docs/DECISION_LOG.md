@@ -63,6 +63,8 @@
 
 ## Aclaraciones
 
+- **08/11/2026 — CONFIRMADO, última simplificación del propietario (#34):** al ejecutar `npm run dev`, mantener un único log activo legible, `logs/diagnostics/LECTURA.log`, reuniendo todas las categorías y señalando el tipo de interacción. Sustituye la generación por fecha/sesión/categoría y sus copias. Límite de 5 MiB con retirada de entradas completas antiguas, sin nuevos archivos de rotación. Preservar los históricos existentes; IndexedDB y la exportación estructurada continúan independientes.
+
 - **08/11/2026 — CONFIRMADO, rectificación posterior del propietario (#34):** retirar el visor de diagnósticos de toda la web, también en desarrollo. Consultar mediante archivos internos legibles y herramientas de terminal del proyecto/VS Code. Eliminar Compartir diagnóstico; conservar Exportar diagnóstico. Sustituye exclusivamente esas partes de la decisión anterior; IndexedDB, privacidad y ausencia de telemetría siguen vigentes.
 
 - **08/11/2026 — CONFIRMADO por el propietario (#34):** diagnóstico local común para desarrollo y web publicada, IndexedDB canónico (inicialmente 7 días y aproximadamente 5 MiB), separado de undo/redo. Vite solo copia eventos a JSONL en desarrollo; visor/importador excluido de producción. Ayuda pública ofrece exportar/compartir por iniciativa del usuario, sin backend ni telemetría. No modifica política de colisiones ni formatos de diseños. Implementación y límites en [DIAGNOSTICS.md](DIAGNOSTICS.md); validación pendiente en main. Sustituye para este sistema la propuesta inicial de registrar solo en DEV.

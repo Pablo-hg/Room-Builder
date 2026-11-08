@@ -1,6 +1,6 @@
 import type { DiagnosticEvent } from '../../src/diagnostics/contract'
 
-export const READABLE_HEADER = 'ROOM BUILDER · DIAGNÓSTICO DEL EDITOR\nHora de Madrid · Posiciones y tamaños en metros · Giros en grados\nEl JSONL conserva los datos originales y las referencias completas.\n\n'
+export const READABLE_HEADER = 'ROOM BUILDER · DIAGNÓSTICO DEL EDITOR\nHora de Madrid · Posiciones y tamaños en metros · Giros en grados\nInteracciones, colisiones, errores y sistema en un único archivo.\nLas entradas más antiguas pueden retirarse al alcanzar el límite de tamaño.\n\n'
 const labels: Record<string, string> = {
   interactions: 'INTERACCIÓN', collisions: 'CONFLICTO ESPACIAL', errors: 'ERROR / ADVERTENCIA', system: 'SISTEMA',
   debug: 'DETALLE', info: 'INFO', warn: 'AVISO', error: 'ERROR',
@@ -89,11 +89,44 @@ function changes(before: unknown, after: unknown, path = ''): string[] {
     return [`  · ${name}: ${valueText(a, field)} → ${valueText(b, field)}`]
   })
 }
+export function interactionType(event: DiagnosticEvent): string {
+  const action = event.action.replace(/^editor\./, '').replace(/\.attempt$/, '')
+  if (event.category === 'collisions') return event.data.disposition === 'blocking' ? 'RESTRICCIÓN QUE BLOQUEA LA OPERACIÓN'
+    : event.data.rule === 'outside-room' ? 'LÍMITE DE HABITACIÓN' : 'AVISO ESPACIAL / SOLAPE'
+  if (/^session\./.test(action)) return 'SESIÓN DEL EDITOR'
+  if (/^(runtime\.|spatial\.detection)/.test(action)) return 'FALLO DEL EDITOR'
+  if (/^(storage\.|mirror\.)/.test(action)) return 'ALMACENAMIENTO DE DIAGNÓSTICO'
+  if (/^(selectElement|selectSceneListItem)$/.test(action)) {
+    const selected = record(event.data.after).selectedIds
+    return Array.isArray(selected) ? selected.length === 0 ? 'DESELECCIÓN' : selected.length > 1 ? 'SELECCIÓN MÚLTIPLE' : 'SELECCIÓN' : 'SELECCIÓN'
+  }
+  if (/Camera|^setView$|^setIsoAngle$|^setFreeOrbit$|^look|^rotate(Front|Iso|Pov)$|^setActiveRoomId$/.test(action)) return 'CÁMARA / VISTA'
+  if (/^(undo|redo)$/.test(action)) return action === 'undo' ? 'DESHACER' : 'REHACER'
+  if (/^diagnostic\.|export/.test(action)) return 'EXPORTACIÓN'
+  if (action === 'design.read-json' || action === 'importDesign') return 'IMPORTACIÓN'
+  if (action === 'saveDesign') return 'GUARDADO DE DISEÑO'
+  if (action === 'loadDesign' || action === 'initializeSavedDesigns') return 'CARGA DE DISEÑO'
+  if (/^(add|create|paste)/.test(action)) return 'CREACIÓN'
+  if (/^(remove|delete)/.test(action)) return 'ELIMINACIÓN'
+  if (/^resize|Dimension|^measurement\./.test(action)) return 'MEDIDAS / TAMAÑO'
+  if (/Rotation|^rotate/.test(action)) return 'GIRO DE ELEMENTOS'
+  if (/Color|^color/.test(action)) return 'COLOR / ASPECTO'
+  if (/Lock|^toggleElementLock/.test(action)) return 'BLOQUEO DE ELEMENTOS / EJES'
+  if (/Visibility|^toggleGrid/.test(action)) return 'VISIBILIDAD'
+  if (/^detach/.test(action)) return 'ANCLAJE A PARED'
+  if (/^moveScene|Folder|^group|^stepScene/.test(action)) return 'ORGANIZACIÓN DE ELEMENTOS'
+  if (/^move/.test(action)) return 'MOVIMIENTO'
+  if (/^setDoor$|^setStructureDoor$|^updateWindow$/.test(action)) return 'EDICIÓN DE PUERTA / VENTANA'
+  if (/^rename/.test(action)) return 'RENOMBRADO'
+  if (action === 'copySelected') return 'COPIA'
+  return event.category === 'system' ? 'SISTEMA' : 'EDICIÓN'
+}
 export function readableEvent(event: DiagnosticEvent): string {
   const action = event.action.replace(/^editor\./, '').replace(/\.attempt$/, '')
-  const title = actions[event.action] ?? actions[action] ?? `Acción: ${event.action}`
+  const type = interactionType(event)
+  const title = type === 'DESELECCIÓN' ? 'Deseleccionar elementos' : actions[event.action] ?? actions[action] ?? `Acción: ${event.action}`
   const outcome = String(event.result ?? event.data.outcome ?? event.phase)
-  const lines = [`[${date.format(new Date(event.timestamp))}] ${labels[event.level]} · ${labels[event.category]}`, `${title} — ${labels[outcome] ?? outcome}`]
+  const lines = [`[${date.format(new Date(event.timestamp))}] ${labels[event.level]} · ${labels[event.category]}`, `Tipo: ${type}`, `${title} — ${labels[outcome] ?? outcome}`]
   if (event.data.view) lines.push(`Vista: ${valueText(event.data.view, 'view')}`)
   if (event.data.appVersion) lines.push(`Versión de la aplicación: ${event.data.appVersion}`)
   if (event.objectIds.length) lines.push(`Elementos: ${event.objectIds.join(', ')}`)

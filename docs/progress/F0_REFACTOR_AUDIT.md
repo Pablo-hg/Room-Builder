@@ -300,3 +300,11 @@ Guía vigente y comandos: [DIAGNOSTICS.md](../DIAGNOSTICS.md).
 ## Exportación directa bajo los atajos — 08/11/2026
 
 Nueva indicación del propietario: no exigir comandos para generar lecturas. Se mantiene la generación automática JSONL/lectura de Vite como recorrido habitual; el lector de terminal existente queda como utilidad opcional de mantenimiento. Se retira el selector Ayuda de la cabecera y se sustituye por el botón directo **Exportar diagnóstico**, debajo de la sección **Atajos de teclado** del panel de configuración, independiente de su plegado. Conserva aviso de privacidad, estado de preparación/descarga y errores de almacenamiento. Se elimina el CSS del desplegable y se adapta el E2E existente, sin ejecutar suites/build/CI. Validación visual pendiente.
+
+## Un único log activo en desarrollo — 08/11/2026
+
+Última preferencia del propietario: al ejecutar `npm run dev`, reunir todo en **logs/diagnostics/LECTURA.log**, actualizado automáticamente, con tipo de interacción explícito. Sustituye los nuevos segmentos por sesión/categoría y sus copias; se preservan los archivos históricos existentes. Se conserva IndexedDB y exportación estructurada en el navegador, sin visor web ni compartir.
+
+El escritor abre/crea el archivo al iniciar Vite, mezcla categorías, deduplica IDs recuperables de las referencias del propio texto y limita a 5 MiB recortando entradas antiguas completas, sin copias de rotación. Distingue selección/deselección/multiselección, movimiento, giro, medidas, cámara, creación, eliminación, archivos y restricciones. Conserva resultado, valores efectivos, motivos y referencias. Admite que el usuario vacíe/elimine el log sin inutilizar la cadena de escritura.
+
+Revisión TypeScript sin emisión correcta para app/herramientas. Preparadas regresiones de archivo único, categorías mezcladas, límite, reapertura/recuperación y tipos de interacción. No se ejecutan suites, build ni CI; comprobación en vivo pendiente. Los cambios concurrentes sobre puertas/geometría permanecen fuera de este ajuste.

@@ -15,7 +15,8 @@ export function filterEvents(events: DiagnosticEvent[], filters: Filters) {
 }
 const HELP = `Diagnósticos internos de Room Builder (sin interfaz web)
 Uso: npm run diagnostics -- [archivo.json|archivo.jsonl|historico.log|carpeta] [opciones]
-Por defecto: logs/diagnostics, últimos 200 eventos en orden temporal.
+Por defecto: logs/diagnostics/LECTURA.log (archivo activo, ya legible).
+Los filtros estructurados requieren un JSON/JSONL histórico o exportado.
   --categoria interactions|collisions|errors|system
   --nivel debug|info|warn|error
   --fecha AAAA-MM-DD   Filtra por fecha UTC; la lectura muestra hora de Madrid.
@@ -28,7 +29,7 @@ Por defecto: logs/diagnostics, últimos 200 eventos en orden temporal.
 export async function main(args: string[]) {
   if (args.includes('--help') || args.includes('--ayuda')) { process.stdout.write(HELP); return }
   const values: Record<string, string> = {}, switches = new Set<string>()
-  let source = 'logs/diagnostics'
+  let source = 'logs/diagnostics/LECTURA.log'
   let positional = false
   for (let index = 0; index < args.length; index++) {
     const option = args[index]
@@ -48,7 +49,7 @@ export async function main(args: string[]) {
   const input = resolve(source), directory = (await stat(input)).isDirectory()
   const output = values.salida && resolve(values.salida)
   if (output && (output === input || directory && output.endsWith('.jsonl'))) throw new Error('La salida no puede sobrescribir el origen ni un JSONL.')
-  const cache = new Map<string, { stamp: string; events: DiagnosticEvent[]; legacy?: string }>()
+  const cache = new Map<string, { stamp: string; events: DiagnosticEvent[]; legacy?: string; readable?: string }>()
   let running = false
   const refresh = async () => {
     if (running) return
@@ -63,7 +64,10 @@ export async function main(args: string[]) {
         if (cache.get(file)?.stamp === stamp) continue
         if (info.size > 8 * 1024 * 1024) throw new Error('Un archivo supera el límite de 8 MiB.')
         const text = await readFile(file, 'utf8')
-        if (text.trimStart().startsWith('[')) {
+        if (text.trimStart().startsWith('ROOM BUILDER · DIAGNÓSTICO DEL EDITOR')) {
+          if (['categoria', 'nivel', 'fecha', 'sesion', 'objeto', 'operacion'].some((key) => values[key])) throw new Error('Los filtros requieren un JSON/JSONL estructurado; el log activo ya es legible.')
+          cache.set(file, { stamp, events: [], readable: text })
+        } else if (text.trimStart().startsWith('[')) {
           cache.set(file, { stamp, events: [], legacy: parseLegacy(text).map((entry) => `[${entry.localTimestamp}] [${entry.session}] ${entry.description}`).join('\n') })
         } else {
           // A live append can leave an incomplete final line: retry it on the next refresh.
@@ -84,7 +88,8 @@ export async function main(args: string[]) {
       for (const entry of cache.values()) for (const event of entry.events) { unique.set(event.eventId, event); if (unique.size > 100000) throw new Error('Demasiados eventos para una lectura; selecciona un archivo o carpeta menor.') }
       const events = filterEvents([...unique.values()], values).sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.seq - b.seq).slice(-limit)
       const historical = [...cache.values()].flatMap((entry) => entry.legacy ? [entry.legacy] : [])
-      const contents = READABLE_HEADER + (historical.length ? 'HISTÓRICO ORIGINAL (sin resultados estructurados)\n' + historical.join('\n') + '\n' : '') + (events.length ? events.map(readableEvent).join('') : historical.length ? '' : 'No hay eventos que coincidan con los filtros.\n')
+      const readable = [...cache.values()].flatMap((entry) => entry.readable ? [entry.readable] : [])
+      const contents = readable.length ? readable.join('\n') : READABLE_HEADER + (historical.length ? 'HISTÓRICO ORIGINAL (sin resultados estructurados)\n' + historical.join('\n') + '\n' : '') + (events.length ? events.map(readableEvent).join('') : historical.length ? '' : 'No hay eventos que coincidan con los filtros.\n')
       if (output) { await writeFile(output, contents, 'utf8'); process.stdout.write(`Lectura actualizada: ${output}\n`) }
       else { if (switches.has('--seguir') && process.stdout.isTTY) process.stdout.write('\x1b[2J\x1b[H'); process.stdout.write(contents) }
     } finally { running = false }

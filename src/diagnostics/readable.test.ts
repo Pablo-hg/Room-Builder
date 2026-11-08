@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { DiagnosticEngine } from './engine'
-import { readableEvent } from '../../tools/diagnostics/readable'
+import { readableEvent, interactionType } from '../../tools/diagnostics/readable'
 import { filterEvents } from '../../tools/diagnostics/read'
 
 test('internal reading explains effective movement, zoom and cancellation in Spanish', () => {
@@ -29,4 +29,19 @@ test('file reader filters actual event fields, without interpreting descriptions
   const a = engine.emit({ action: 'same', category: 'interactions', objectIds: ['obj-a'] })!
   const b = engine.emit({ action: 'same', category: 'collisions', level: 'warn', objectIds: ['obj-b'], operationId: 'op2' })!
   assert.deepEqual(filterEvents([a, b], { categoria: 'collisions', nivel: 'warn', objeto: 'obj-b', operacion: 'op2' }), [b])
+})
+test('interaction types distinguish selection, movement, rotation, dimensions and camera', () => {
+  const engine = new DiagnosticEngine()
+  const cases = [
+    ['editor.selectSceneListItem', 'SELECCIÓN'], ['editor.moveSelectedFurnitureGroupBy', 'MOVIMIENTO'],
+    ['editor.setFurnitureRotation', 'GIRO DE ELEMENTOS'], ['editor.resizeFurniture', 'MEDIDAS / TAMAÑO'],
+    ['editor.rotateIso', 'CÁMARA / VISTA'], ['editor.saveDesign', 'GUARDADO DE DISEÑO'],
+  ]
+  for (const [action, type] of cases) {
+    const event = engine.emit({ action })!
+    assert.equal(interactionType(event), type)
+    assert.ok(readableEvent(event).includes(`Tipo: ${type}`))
+  }
+  assert.equal(interactionType(engine.emit({ action: 'editor.selectElement', data: { after: { selectedIds: [] } } })!), 'DESELECCIÓN')
+  assert.equal(interactionType(engine.emit({ action: 'editor.selectSceneListItem', data: { after: { selectedIds: ['obj-a', 'obj-b'] } } })!), 'SELECCIÓN MÚLTIPLE')
 })

@@ -1,74 +1,79 @@
-import { appendFile, mkdir, readdir, stat, unlink, readFile, writeFile, rename } from 'node:fs/promises'
-import { createHash } from 'node:crypto'
+﻿import { appendFile, mkdir, readFile, writeFile, rename, stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import type { Plugin } from 'vite'
 import { byteSize, parseEvent, type DiagnosticEvent } from '../src/diagnostics/contract'
 import { READABLE_HEADER, readableEvent } from './diagnostics/readable'
 
+/** One bounded, readable development log. Browser IndexedDB remains canonical. */
 export class DiagnosticFileWriter {
   private chain = Promise.resolve()
   private seen = new Set<string>()
-  private cleaned = 0
-  private readableDirty = new Set<string>()
-  private warnedReadable = false
-  constructor(private directory: string, private segmentBytes = 1024 * 1024, private totalBytes = 50 * 1024 * 1024) {}
+  private opening?: Promise<void>
+  readonly file: string
+  constructor(private directory: string, private maxBytes = 5 * 1024 * 1024) {
+    this.file = resolve(directory, 'LECTURA.log')
+    if (maxBytes < Buffer.byteLength(READABLE_HEADER) + 256) throw new Error('diagnostic.file-limit-too-small')
+  }
+  initialize() {
+    if (!this.opening) this.opening = this.open().catch((error) => { this.opening = undefined; throw error })
+    return this.opening
+  }
+  private async open() {
+    await mkdir(this.directory, { recursive: true })
+    let contents: string
+    try { contents = await readFile(this.file, 'utf8') }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      await writeFile(this.file, READABLE_HEADER, { encoding: 'utf8', flag: 'wx' })
+      return
+    }
+    // Recognize the previous manually generated reading without discarding its entries.
+    if (contents.trim() && !contents.trimStart().startsWith('ROOM BUILDER · DIAGNÓSTICO DEL EDITOR')) throw new Error('diagnostic.unrecognized-reading')
+    const entries = contents.search(/^\[\d{2}\/\d{2}\/\d{4}/m)
+    contents = READABLE_HEADER + (entries >= 0 ? contents.slice(entries) : '')
+    await this.replace(this.bound(contents))
+    this.remember(contents)
+  }
   append(batch: DiagnosticEvent[]) {
     const work = this.chain.then(() => this.write(batch))
     this.chain = work.then(() => undefined, () => undefined)
     return work
   }
-  private async write(batch: DiagnosticEvent[]) {
-    await mkdir(this.directory, { recursive: true })
-    for (const input of batch) {
-      const event = parseEvent(input)
-      if (this.seen.has(event.eventId)) continue
-      const session = createHash('sha256').update(event.sessionId).digest('hex').slice(0, 16)
-      const prefix = `${event.timestamp.slice(0, 10)}-${session}-${event.category}-`
-      const files = (await readdir(this.directory)).filter((name) => name.startsWith(prefix) && /-\d{5}\.jsonl$/.test(name)).sort()
-      let segment = files.length ? Number(files[files.length - 1].slice(-11, -6)) : 1
-      const line = JSON.stringify(event) + '\n'
-      let file = resolve(this.directory, `${prefix}${String(segment).padStart(5, '0')}.jsonl`)
-      const size = await stat(file).then((info) => info.size).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return 0; throw error })
-      if (size + Buffer.byteLength(line) > this.segmentBytes) { segment++; file = resolve(this.directory, `${prefix}${String(segment).padStart(5, '0')}.jsonl`) }
-      await appendFile(file, line, 'utf8')
-      this.seen.add(event.eventId)
+  private remember(contents: string) {
+    for (const match of contents.matchAll(/^Referencia: #(\d+).* · sesión (\S+)$/gm)) {
+      this.seen.add(`${match[2]}:${match[1]}`)
       if (this.seen.size > 10000) this.seen.delete(this.seen.values().next().value!)
-      const readable = file.replace(/\.jsonl$/, '.lectura.log')
-      try {
-        const exists = await stat(readable).then(() => true).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return false; throw error })
-        if (!exists) this.readableDirty.add(file)
-        else if (!this.readableDirty.has(file)) await appendFile(readable, readableEvent(event), 'utf8')
-      } catch { this.readableDirty.add(file) }
     }
-    for (const file of this.readableDirty) {
-      const readable = file.replace(/\.jsonl$/, '.lectura.log')
-      try {
-        const events = (await readFile(file, 'utf8')).split(/\r?\n/).filter(Boolean).map((line) => parseEvent(JSON.parse(line)))
-        await writeFile(`${readable}.tmp`, READABLE_HEADER + events.map(readableEvent).join(''), 'utf8')
-        await rename(`${readable}.tmp`, readable)
-        this.readableDirty.delete(file)
-      } catch {
-        if (!this.warnedReadable) console.warn('[Room Builder] No se pudo actualizar una copia legible; el JSONL conserva los eventos.')
-        this.warnedReadable = true
+  }
+  private bound(contents: string) {
+    if (Buffer.byteLength(contents) <= this.maxBytes) return contents
+    const tail = Buffer.from(contents).subarray(-(this.maxBytes - Buffer.byteLength(READABLE_HEADER))).toString('utf8')
+    const firstComplete = tail.search(/^\[\d{2}\/\d{2}\/\d{4}/m)
+    return READABLE_HEADER + (firstComplete >= 0 ? tail.slice(firstComplete) : '')
+  }
+  private async replace(contents: string) {
+    await writeFile(`${this.file}.tmp`, contents, 'utf8')
+    await rename(`${this.file}.tmp`, this.file)
+  }
+  private async write(batch: DiagnosticEvent[]) {
+    await this.initialize()
+    let size = await stat(this.file).then((info) => info.size).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return 0; throw error })
+    if (!size) {
+      this.opening = undefined; this.seen.clear()
+      await this.initialize(); size = (await stat(this.file)).size
+    }
+    const events = batch.map(parseEvent)
+    const newEvents = new Map(events.filter((event) => !this.seen.has(event.eventId)).map((event) => [event.eventId, event]))
+    if (newEvents.size) {
+      const addition = [...newEvents.values()].map(readableEvent).join('')
+      if (size + Buffer.byteLength(addition) <= this.maxBytes) await appendFile(this.file, addition, 'utf8')
+      else await this.replace(this.bound(await readFile(this.file, 'utf8') + addition))
+      for (const id of newEvents.keys()) {
+        this.seen.add(id)
+        if (this.seen.size > 10000) this.seen.delete(this.seen.values().next().value!)
       }
     }
-    if (!this.readableDirty.size) this.warnedReadable = false
-    if (Date.now() - this.cleaned > 60_000) { await this.cleanup(); this.cleaned = Date.now() }
-    return batch.map((event) => event.eventId)
-  }
-  private async cleanup() {
-    const files = await Promise.all((await readdir(this.directory)).filter((name) => /^\d{4}-\d{2}-\d{2}-[a-f0-9]{16}-(interactions|collisions|errors|system)-\d{5}\.jsonl$/.test(name)).map(async (name) => {
-      const file = resolve(this.directory, name), info = await stat(file)
-      const readable = file.replace(/\.jsonl$/, '.lectura.log')
-      const readableSize = await stat(readable).then((value) => value.size).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return 0; throw error })
-      return { file, readable, info, bytes: info.size + readableSize }
-    }))
-    files.sort((a, b) => a.info.mtimeMs - b.info.mtimeMs)
-    let total = files.reduce((sum, item) => sum + item.bytes, 0)
-    for (const { file, readable, info, bytes } of files) if (info.mtimeMs < Date.now() - 7 * 86400000 || total > this.totalBytes) {
-      await unlink(readable).catch((error: NodeJS.ErrnoException) => { if (error.code !== 'ENOENT') throw error })
-      await unlink(file); total -= bytes; this.readableDirty.delete(file)
-    }
+    return events.map((event) => event.eventId)
   }
 }
 
@@ -77,6 +82,7 @@ export function diagnosticsPlugin(): Plugin {
     name: 'room-builder-local-diagnostics', apply: 'serve',
     configureServer(server) {
       const writer = new DiagnosticFileWriter(resolve(server.config.root, 'logs', 'diagnostics'))
+      void writer.initialize().catch(() => console.warn('[Room Builder] No se pudo abrir logs/diagnostics/LECTURA.log; se reintentará al recibir eventos.'))
       let waiting = 0
       server.middlewares.use('/__room-builder/interaction-log', (request, response) => {
         if (request.method !== 'POST') { response.writeHead(405).end(); return }
