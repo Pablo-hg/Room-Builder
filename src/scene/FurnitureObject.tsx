@@ -13,6 +13,7 @@ import { FurnitureModel } from './FurnitureModels'
 import { AxisMoveGizmo, FrontAxisMoveGizmo, RotationHandle, FrontRotationHandle } from './FurnitureGizmos'
 import { SelectionBounds } from './SelectionBounds'
 import { furnitureHasSpatialWarning } from '../domain/structureCollisions'
+import { cameraAwareShiftDrag } from './cameraAwareShiftDrag'
 
 export function FurnitureObject({ item, selected, outlined, canDrag, planView, frontWall, showCollision = true, colliding = false }: { item: FurnitureItem; selected: boolean; outlined: boolean; canDrag: boolean; planView: boolean; frontWall: WallSide | null; showCollision?: boolean; colliding?: boolean }) {
   const gesture = useHistoryGesture(item.id)
@@ -56,8 +57,9 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
       x: Math.round(event.nativeEvent.clientX),
       y: Math.round(event.nativeEvent.clientY),
     })
-    if (selectSceneObject(item.id, event.nativeEvent)) return
+    if (selectSceneObject(item.id, event.nativeEvent, { allowShiftDrag: true })) return
     if (!canDrag) return
+    frontDragStart.current = { clientX: event.nativeEvent.clientX, clientY: event.nativeEvent.clientY, x: item.x, y: item.y, z: item.z }
     if (frontWall !== null) {
       frontDragStart.current = {
         clientX: event.nativeEvent.clientX,
@@ -81,6 +83,13 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
   const handleMove = (event: ThreeEvent<PointerEvent>) => {
     if (!dragging || !canDrag || !gesture.isActive()) return
     event.stopPropagation()
+    if (event.nativeEvent.shiftKey) {
+      const start = frontDragStart.current
+      const projected = cameraAwareShiftDrag(camera, size, { clientX: start.clientX, clientY: start.clientY, position: { x: start.x, y: start.y, z: start.z } }, event.nativeEvent)
+      moveFurniture(item.id, moveFromOrigin(projected.x, start.x), moveFromOrigin(projected.z, start.z))
+      if (canMoveVertically) moveFurnitureVertically(item.id, moveFromOrigin(projected.y, start.y))
+      return
+    }
     if (frontWall !== null) {
       const worldPerPixel = camera instanceof THREE.OrthographicCamera
         ? (camera.right - camera.left) / camera.zoom / Math.max(size.width, 1)
