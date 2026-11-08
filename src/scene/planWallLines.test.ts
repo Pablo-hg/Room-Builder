@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { DEFAULT_ROOM, DEFAULT_WALL_COLOR } from '../domain/constants'
 import { createStructureSurface } from '../domain/structureRules'
-import { planWallStrips } from './planWallLines'
+import { planWallStrips } from './planWallGeometry'
 import type { StructurePack } from '../domain/types'
 
 test('en plano el trazo es más ancho que el grosor raíz y el color neutro se mantiene', () => {

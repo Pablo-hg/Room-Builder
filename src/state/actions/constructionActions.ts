@@ -63,7 +63,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       if (state.lockedElementIds.includes(pack.id) || pack.surfaces.some((surface) => state.lockedElementIds.includes(structureSurfaceElementId(pack.id, surface.id)))) return set({ notice: 'Desbloquea las superficies de la habitación para cambiar sus dimensiones.' })
       const next = resizedRoomPack(pack, state.room, { ...target.size, [key]: clampRoomDimension(key, value) })
       if (!next) return
-      const doorError = structureDoorError(next)
+      const doorError = structureDoorError(next) || structureWindowError(next)
       if (doorError) return set({ notice: doorError })
       if (pack.doors?.some((door) => {
         const before = structureDoorPosition(state.room, pack, door)!

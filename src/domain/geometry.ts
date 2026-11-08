@@ -64,11 +64,16 @@ export function validateOpenings(room: RoomConfig, onConflict?: (conflict: Openi
     const items = openingsForWall(room, wall).filter((item) => !anchored.has(item.id))
     for (const item of items) {
       const [start, end] = openingInterval(item.offset, item.width)
-      if (start < -length / 2 + ROOM_LIMITS.edgeMargin || end > length / 2 - ROOM_LIMITS.edgeMargin) {
+      // Al reducir una habitación por debajo de una abertura existente, el
+      // hueco queda fuera pero no puede impedir editar las dimensiones.
+      // En paredes con espacio suficiente se sigue validando el borde.
+      const enoughHorizontalSpace = length >= item.width + ROOM_LIMITS.edgeMargin * 2 - 1e-9
+      if (enoughHorizontalSpace && (start < -length / 2 + ROOM_LIMITS.edgeMargin || end > length / 2 - ROOM_LIMITS.edgeMargin)) {
         onConflict?.({ rule: 'opening-bounds', objectIds: [item.id], wall })
         return `${item.kind === 'door' ? 'La puerta' : 'Una ventana'} queda fuera de la pared ${WALL_LABELS[wall]}.`
       }
-      if (item.bottom < 0 || item.bottom + item.height > room.height - 0.08) {
+      const enoughVerticalSpace = room.height >= item.height + 0.08 - 1e-9
+      if (item.bottom < 0 || (enoughVerticalSpace && item.bottom + item.height > room.height - 0.08)) {
         onConflict?.({ rule: 'opening-height', objectIds: [item.id], wall })
         return `Una apertura supera la altura disponible.`
       }

@@ -18,12 +18,12 @@ export const WALL_LABELS: Record<WallSide, string> = {
 }
 
 export const ROOM_LIMITS = {
-  minWidth: 3,
-  maxWidth: 10,
-  minDepth: 3,
-  maxDepth: 10,
-  minHeight: 2.5,
-  maxHeight: 10,
+  minWidth: 0.01,
+  maxWidth: 100,
+  minDepth: 0.01,
+  maxDepth: 100,
+  minHeight: 0.01,
+  maxHeight: 100,
   wallHeight: 2.7,
   edgeMargin: 0.25,
   openingGap: 0.15,

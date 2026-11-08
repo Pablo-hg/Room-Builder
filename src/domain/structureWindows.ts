@@ -45,8 +45,10 @@ export function structureWindowError(pack: StructurePack): string | null {
     if (window.freePosition && window.wallPosition) return 'Anclaje de ventana ambiguo.'
     if (window.freePosition || window.wallPosition) continue
     const surface = pack.surfaces.find((wall) => wall.kind === 'wall' && wall.wall === window.wall)
-    if (!surface || Math.abs(window.offset) + window.width / 2 > surface.width / 2 - ROOM_LIMITS.edgeMargin + 1e-8
-      || window.sill < 0 || window.sill + window.height > surface.height - 0.08) {
+    const horizontalFits = surface && surface.width >= window.width + ROOM_LIMITS.edgeMargin * 2 - 1e-9
+    const verticalFits = surface && surface.height >= window.height + 0.08 - 1e-9
+    if (!surface || (horizontalFits && Math.abs(window.offset) + window.width / 2 > surface.width / 2 - ROOM_LIMITS.edgeMargin + 1e-8)
+      || window.sill < 0 || (verticalFits && window.sill + window.height > surface.height - 0.08)) {
       return `Una ventana queda fuera de la pared ${WALL_LABELS[window.wall]}.`
     }
     // Otra ventana/puerta puede compartir espacio: se marca en rojo, no se rechaza.

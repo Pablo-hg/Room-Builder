@@ -361,3 +361,11 @@ Regresiones E2E preparadas en `tests/room-views.spec.ts`, `tests/selection.spec.
 ## Grosor y color de paredes en vista Plano (08/11/2026)
 
 La vista Plano ocultaba deliberadamente las paredes 3D, por lo que cambiar su espesor físico o material habría afectado otras vistas y las exportaciones. Ahora se dibuja una **capa de trazos específica de Plano**, con un espesor visual de al menos 0,22 m frente a 0,12–0,13 m de los muros normales. El trazo usa un verde grisáceo neutro con el color de pared predeterminado y el color real de la pared cuando ha sido personalizado; se aplica también a los muros de packs y paredes independientes. El algoritmo omite los elementos ocultos y la capa entera se excluye de vistas 3D y exportación. Los huecos de puertas y ventanas se reflejan en el trazado mediante un corte a 1,25 m o media altura, respetando también aperturas circulares. Pruebas unitarias `src/scene/planWallLines.test.ts` preparadas, sin ejecutar hasta integrar en `main`.
+
+## Corrección de pantalla blanca y rango dimensional (08/11/2026)
+
+- Windows/Vite puede resolver de forma ambigua `planWallLines.ts` y `PlanWallLines.tsx` por su distinción solo en mayúsculas. El módulo de cálculo pasa a llamarse `planWallGeometry.ts`; se actualizan imports y se elimina el archivo ambiguo sin cambiar la exportación `PlanWallLines`.
+- Límites de habitación: anchura, profundidad y altura **0,01–100,00 m**, con control de centímetros. Una dimensión 0,00 sigue prohibida para evitar geometría degenerada. Las dimensiones de muebles/aperturas y el grosor de superficies conservan sus propias reglas.
+- Al contraer una habitación hasta que ya no quepan aperturas existentes, se conservan los objetos y se permite el cambio. Las aperturas pueden quedar temporalmente fuera; se muestran mediante incidencias, sin borrar ni recolocar automáticamente el diseño. Para tamaños que sí permiten esas aperturas se mantienen las comprobaciones de borde y posición.
+- El encuadre de Plano, Frontal e Isométrica permite ahora alejar la cámara cuando las habitaciones alcanzan decenas de metros; Plano sitúa la cámara sobre paredes de hasta 100 m de altura.
+- Preparadas regresiones de rango, carga y geometría sin ejecutar; build y CI exclusivamente en `main`.

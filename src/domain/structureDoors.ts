@@ -37,7 +37,13 @@ export function structureDoorError(pack: StructurePack): string | null {
     ids.add(door.id)
     if (door.wallPosition) continue
     const wall = pack.surfaces.find((surface) => surface.kind === 'wall' && surface.wall === door.wall)
-    if (!wall || Math.abs(door.offset) + door.width / 2 > wall.width / 2 - 0.12 || door.height > wall.height - 0.08) return 'La puerta no cabe en su pared.'
+    if (!wall) return 'La puerta no cabe en su pared.'
+    const horizontalFits = wall.width >= door.width + 0.24 - 1e-9
+    if (horizontalFits && Math.abs(door.offset) + door.width / 2 > wall.width / 2 - 0.12) return 'La puerta no cabe en su pared.'
+    // Una habitación estrecha/baja puede contener una apertura provisional
+    // fuera de su volumen; se informa visualmente, no se bloquea el tamaño.
+    // La altura de esta puerta es fija. Si la pared se hace demasiado baja,
+    // conservamos la apertura existente sin bloquear el cambio de habitación.
     // Una segunda puerta en el mismo tramo se considera colisión visual.
   }
   return null

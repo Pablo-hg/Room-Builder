@@ -23,7 +23,7 @@ import { packRoomBox } from '../domain/roomEditing'
 import { WorldWallObjects } from '../scene/WorldWallObjects'
 import { physicalWalls } from '../domain/wallConnections'
 import { wallUnionFaces } from '../domain/wallSolidGeometry'
-import { planWallStrips } from '../scene/planWallLines'
+import { planWallStrips } from '../scene/planWallGeometry'
 import { PlanWallLines } from '../scene/PlanWallLines'
 
 function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null>; collisionIds: ReadonlySet<string> }) {
