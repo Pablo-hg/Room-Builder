@@ -1,7 +1,7 @@
 import { structureSurfaceElementId } from './elementIds'
 import { elementName } from './selection'
 import { structureDoorPosition } from './structureDoors'
-import { furnitureSceneBox, independentSceneBoxes, sceneBoxesOverlap, type SceneCollisionBox } from './structureCollisions'
+import { furnitureOutsideRoom, furnitureSceneBox, independentSceneBoxes, independentSurfaceOutsideRoom, sceneBoxesOverlap, type SceneCollisionBox } from './structureCollisions'
 import type { RoomConfig, FurnitureItem, StructurePack, WallSide } from './types'
 
 type SceneWorld = { room: RoomConfig; furniture: FurnitureItem[]; structurePacks: StructurePack[]; hiddenElementIds?: string[] }
@@ -13,6 +13,8 @@ export interface SceneCollision {
   secondId: string
   secondName: string
 }
+
+export interface SceneOutsideIssue { id: string; name: string }
 
 /** Transform the wall-local offset into world coordinates, as in wallPlacement. */
 function wallBox(room: RoomConfig, wall: WallSide, offset: number, bottom: number, width: number, height: number, id: string, name: string): Source {
@@ -80,7 +82,6 @@ export function detectSceneCollisions(world: SceneWorld): SceneCollision[] {
   for (let i = 0; i < sources.length; i += 1) {
     for (let j = i + 1; j < sources.length; j += 1) {
       const first = sources[i], second = sources[j]
-      if (first.kind === 'surface' && second.kind === 'surface') continue
       const surface = first.kind === 'surface' ? first : second.kind === 'surface' ? second : null
       const other = surface === first ? second : first
       if (surface?.support === 'floor' && other.floorY !== undefined && other.floorY >= surface.box.y - 1e-6) continue
@@ -91,6 +92,26 @@ export function detectSceneCollisions(world: SceneWorld): SceneCollision[] {
     }
   }
   return collisions
+}
+
+/** List only elements entirely or partially outside every room, not normal contact. */
+export function detectOutsideRoom(world: SceneWorld): SceneOutsideIssue[] {
+  const hidden = new Set(world.hiddenElementIds ?? [])
+  const outside: SceneOutsideIssue[] = []
+  for (const item of world.furniture) {
+    if (!hidden.has(item.id) && furnitureOutsideRoom(world, item)) outside.push({ id: item.id, name: item.name })
+  }
+  for (const pack of world.structurePacks) {
+    if (!pack.id.startsWith('floor-object-') && !pack.id.startsWith('wall-object-')) continue
+    if (hidden.has(pack.id)) continue
+    for (const surface of pack.surfaces) {
+      const id = structureSurfaceElementId(pack.id, surface.id)
+      if (!hidden.has(id) && independentSurfaceOutsideRoom(world, id)) {
+        outside.push({ id, name: elementName(world, id) ?? surface.name })
+      }
+    }
+  }
+  return outside
 }
 
 export function collisionElementIds(collisions: readonly SceneCollision[]): Set<string> {
