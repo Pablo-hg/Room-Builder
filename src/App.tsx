@@ -1,16 +1,20 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { DEFAULT_ROOM, WALL_LABELS } from './domain/constants'
 import { sideWallsForFrontView, visibleWallsForOrientation } from './domain/geometry'
 import type { ViewMode, WallSide } from './domain/types'
 import RoomScene, { FreeCameraCompass3D, RoomCompass3D } from './components/RoomScene'
 import InteractionLogger from './components/InteractionLogger'
 import { useRoomStore } from './state/useRoomStore'
+import { collisionElementIds, detectOutsideRoom, detectSceneCollisions, detectUnsupportedOpenings } from './domain/sceneCollisions'
+import { SceneCollisionPanel } from './components/editor/SceneCollisionPanel'
 import { useShallow } from 'zustand/react/shallow'
 import { selectActiveDesignName, selectEditorScene } from './state/selectors'
 import { SettingsPanel } from './components/editor/SettingsPanel'
 import { ObjectsPanel } from './components/editor/ObjectsPanel'
 import { ViewControls } from './components/editor/ViewControls'
 import { RoomViewSelector } from './components/editor/RoomViewSelector'
+import { ZoomControl } from './components/editor/ZoomControl'
+import { packRoomBox } from './domain/roomEditing'
 import { visibleWallsForView } from './components/editor/viewHelpers'
 import { EditorHeader } from './components/editor/EditorHeader'
 import { VIEW_OPTIONS } from './components/editor/viewOptions'
@@ -55,6 +59,15 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
   onExportComplete: (error?: Error) => void
 }) {
   const state = useRoomStore(useShallow(selectEditorScene))
+  const hiddenElementIds = useRoomStore((current) => current.hiddenElementIds)
+  const collisions = useMemo(() => detectSceneCollisions({ room: state.room, furniture: state.furniture, structurePacks: state.structurePacks, hiddenElementIds }), [state.room, state.furniture, state.structurePacks, hiddenElementIds])
+  const collisionIds = useMemo(() => collisionElementIds(collisions), [collisions])
+  const outside = useMemo(() => detectOutsideRoom({ room: state.room, furniture: state.furniture, structurePacks: state.structurePacks, hiddenElementIds }), [state.room, state.furniture, state.structurePacks, hiddenElementIds])
+  const unsupported = useMemo(() => detectUnsupportedOpenings({ room: state.room, furniture: state.furniture, structurePacks: state.structurePacks, hiddenElementIds }), [state.room, state.furniture, state.structurePacks, hiddenElementIds])
+  const spatialIssueIds = useMemo(() => new Set([...collisionIds, ...outside.map((item) => item.id)]), [collisionIds, outside])
+  const activeRoomId = useRoomStore((current) => current.activeRoomId)
+  const focusedPack = state.structurePacks.find((pack) => pack.id === activeRoomId && pack.id.startsWith('floor-pack-'))
+  const roomSize = focusedPack && packRoomBox(focusedPack, state.room) || state.room
   const sceneOrbitDrag = useRef<{
     pointerId: number
     mode: 'isometric' | 'free'
@@ -86,8 +99,8 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
   const visibleWalls = visibleWallsForView(state.view, state.isoOrientation, state.wallView, state.freeAzimuth)
   const visibleWallsText = wallsDescription(state.view, visibleWalls)
   const hasPlacedSceneContent = state.furniture.length > 0 || state.structurePacks.length > 0
-    || state.structurePacks.length > 0
     || state.room.windows.some((window) => !DEFAULT_ROOM.windows.some((defaultWindow) => defaultWindow.id === window.id))
+    || Boolean(state.room.extraDoors?.length)
   const viewLabel = state.view === 'front' && state.wallView
     ? `Frontal · ${WALL_LABELS[state.wallView]}`
     : currentView.label
@@ -191,14 +204,19 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
           >
             <span aria-hidden="true">{objectsCollapsed ? '›' : '‹'}</span>
           </button>
+          <div className="scene-layout">
+          <div className="scene-header">
           <div className="scene-topline">
             <div className="scene-topline__labels">
               <span className="view-badge"><i /> Vista {viewLabel}</span>
               <span className="visible-walls-badge"><b aria-hidden="true">◫</b> {visibleWallsText}</span>
               <span className="grid-scale"><b aria-hidden="true">▦</b> Cuadrado: 25 cm · movimiento: 5 cm</span>
             </div>
-            <span className="room-size">{state.room.width.toFixed(1)} × {state.room.depth.toFixed(1)} m</span>
+            <span className="room-size">{roomSize.width.toFixed(1)} × {roomSize.depth.toFixed(1)} m</span>
           </div>
+          <RoomViewSelector />
+          </div>
+          <div className="scene-stage">
           <RoomScene
             room={state.room}
             view={state.view}
@@ -216,21 +234,16 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
             gridVisibility={state.gridVisibility}
             furniture={state.furniture}
             structurePacks={state.structurePacks}
+            collisionIds={spatialIssueIds}
             exportMode={exportMode}
             exportRequest={exportRequest}
             onExportComplete={onExportComplete}
             exportDesignName={exportDesignName}
           />
+          {!exportMode && <SceneCollisionPanel collisions={collisions} outside={outside} unsupported={unsupported} />}
           {!hasPlacedSceneContent && state.view !== 'pov' && (
             <div className="empty-scene"><span>✦</span><strong>La habitación está lista</strong><small>Añade tu primera pieza desde el catálogo</small></div>
           )}
-          <ViewControls />
-          <RoomViewSelector />
-          <div className={`zoom-indicator ${state.view === 'front' ? 'zoom-indicator--front' : ''}`} aria-live="polite">
-            <b aria-hidden="true">↕</b>
-            <span>Rueda · Zoom</span>
-            <output>{Math.round(activeCameraZoom * 100)}%</output>
-          </div>
           <div className="compass" role="group" aria-label={compassLabel(state.view, state.isoOrientation, state.freeAzimuth, state.freeElevation)}>
             {state.view === 'free' ? (
               <FreeCameraCompass3D
@@ -271,6 +284,9 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
                 Ver en isométrica las paredes {walls}
               </button>
             ))}
+          </div>
+          </div>
+          <div className="scene-controls"><ZoomControl /><ViewControls /></div>
           </div>
         </section>
   )

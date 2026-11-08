@@ -1,5 +1,114 @@
 # R5 — Funcionalidad y diseño
 
+## Icono de giro táctil — 07/11/2026
+
+Petición del propietario: sustituir el ratón del botón `camera-orbit-drag` en
+formato móvil/tablet. `ViewControls.tsx` incorpora una mano táctil en SVG;
+`styles.css` la muestra hasta 1200 px, con puntero táctil principal o cuando la
+escena adopta el formato estrecho. Escritorio conserva el ratón. Se mantienen
+las flechas, el nombre accesible y todos los eventos de giro. Revisión estática;
+sin pruebas/build ni validación visual, que realizará el propietario.
+
+## Contexto de cámara y controles móviles — 07/11/2026
+
+Nueva petición: un único botón Puerta que añada en la habitación enfocada,
+panel de habitación ligado a la cámara, barra de zoom y separación de controles
+en móvil. Sustituye la elección por carpeta como fuente del contexto visible;
+la comprobación de componentes completos/coherentes sigue protegiendo tamaños.
+
+Plan previo: centralizar el contexto de habitación enfocada, conservar selección
+de objetos independiente, reutilizar límites de zoom existentes para rueda y
+barra, separar cabecera/escena/controles cuando la escena sea estrecha. Añadir
+`RoomConfig.extraDoors?: (DoorConfig & { id: string })[]` para permitir añadir
+en raíz manteniendo su puerta principal e IDs antiguos; guardar esos diseños
+como v8 y mantener lectura v1–v7. Aberturas reales y validación de solapes y
+paredes coincidentes; no simular pasos por medianeras duplicadas. JSON/R4 deben
+conservar las puertas adicionales. Suites y build pendientes de main.
+
+Implementado: una tarjeta «Puerta · Añadir», contexto `focusedRoom` común al
+catálogo/panel/dimensiones, puertas adicionales en raíz con huecos en pared y
+rodapié, barra de zoom sincronizada con rueda y valores de cada vista. En escenas
+estrechas, cabecera/escena/controles ocupan filas independientes; la brújula
+mantiene la proporción de escritorio y su tamaño grande sobre 1200 px.
+
+Análisis estático TypeScript de src y E2E afectados correcto; diff correcto.
+Preparadas regresiones `cameraRoomContext.test.ts` y
+`camera-context-mobile.spec.ts`, sin ejecutarlas. La revisión visual mediante
+computer-use se detuvo porque el acceso al navegador no pudo verificar la URL
+actual de Chrome; no se considera validado el diseño móvil. El propietario
+indica que hará la comprobación manual. Vite local de revisión en
+`http://127.0.0.1:5179/`; sin tests, build, CI, push ni integración.
+
+## Continuación solicitada — 07/11/2026
+
+El propietario solicita recuperar la proporción original de brújula, quitar el
+prefijo de habitación de las superficies, seleccionar superficies raíz, editar
+dimensiones solo desde una carpeta completa y añadir puertas en otros packs.
+Confirma dimensiones independientes por habitación.
+
+Plan técnico previo: deducir la caja rectangular desde suelo y cuatro paredes
+coherentes existentes; redimensionar conjuntamente sus superficies sin añadir
+otro modelo de vivienda. Al redimensionar la raíz conservar las posiciones
+mundiales de los packs mediante sus desplazamientos actuales. Añadir
+`StructurePack.doors?: (DoorConfig & { id: string })[]`, ligadas a la superficie
+de su pared, con hueco geométrico y validación de límites/solapes. Persistir como
+v7 si hay puertas de pack, manteniendo lectura v1–v6. No crear paredes duplicadas
+ni pasos falsos: rechazar puertas sobre una pared coincidente con otra pared
+hasta disponer de medianeras únicas de #51/#52. Las puertas de packs se editan
+en inspector y siguen a su pared; no reutilizar el arrastre global de la puerta
+raíz porque sus coordenadas pertenecen a otro espacio.
+
+Pruebas unitarias/E2E/build pendientes de main. Esta ampliación de packs
+heredados no certifica la vivienda canónica ni las conexiones entre estancias.
+
+Implementación local de la continuación:
+
+- `Compass.tsx`: restaura zoom 45 a 168 px (proporción original de escritorio),
+  manteniendo el escalado por tamaño real que evita el recorte bajo 1200 px.
+- `ObjectsPanel.tsx`, `selection.ts`, `multiSelection.ts`: etiquetas locales
+  «Suelo», «Techo», «Pared…»; nombres/IDs persistidos intactos.
+- `RoomShell.tsx`, `Walls.tsx`: selección directa de suelo/paredes raíz,
+  selección múltiple por modificadores y contorno visible fuera de exportación.
+- `roomEditing.ts`, `Controls.tsx`, `SettingsPanel.tsx`, acciones constructivas:
+  dimensiones disponibles solo desde una carpeta con exactamente una caja
+  rectangular completa (suelo y cuatro paredes; techo opcional, coherente si
+  existe). Una carpeta incompleta, una superficie, un mueble o una selección
+  múltiple no habilitan el cambio de habitación. Colores vinculados a la
+  habitación seleccionada. El cambio raíz conserva el mundo de los otros packs
+  y conserva muebles identificables por posición dentro de ellos; no añade
+  pertenencia canónica de mobiliario a habitaciones.
+- `structureDoors.ts`, acciones, inspector y `StructureSurface.tsx`: varias
+  puertas por pack con huecos extruidos de su pared, marco y marcadores en Plano.
+  Editar posición/color/pared mediante inspector; borrado, renombrado, candados,
+  selección/carpetas, referencias y undo/redo. Arrastre espacial de estas
+  puertas pendiente: no se conecta al arrastre de coordenadas de la puerta raíz.
+- `normalizeDesignV1.ts`, `designMigrations.ts`, `designFile.ts`, `designV1.ts`,
+  `projectV2.ts`: persistencia v7 y validación. El prototipo R4 conserva las
+  puertas en el legado y las incluye en la huella estructural; no son todavía
+  aberturas de una vivienda canónica. La raíz mantiene su puerta principal.
+
+Preparadas `src/state/roomEditing.test.ts` y `tests/room-editing.spec.ts`:
+carpetas incompletas, tamaños independientes, conservación del mundo y muebles
+de otras habitaciones, etiquetas, dos puertas en distintas paredes, JSON/R4,
+borrado en cascada/undo y rechazo de paredes coincidentes o puertas fuera de
+límites. Adaptados selectores de E2E a nombres locales, acotando por carpeta
+cuando hay varias habitaciones. **No ejecutados**.
+
+Repetir comprobaciones manuales: brújula a 1440/1200/1199/1024/640/430 px;
+seleccionar suelo/pared raíz en 3D y lista; dimensiones deshabilitadas sin
+carpeta completa; cambiar dimensiones de dos habitaciones por separado y de
+raíz sin alterar las otras; añadir varias puertas a un pack desde el catálogo,
+editar posición/pared, revisar huecos/Plano, borrar pared y deshacer,
+guardar/recargar/exportar/importar. Las conexiones sobre paredes coincidentes
+siguen bloqueadas por la dependencia de medianeras únicas. Pruebas, build,
+capturas nuevas y aceptación visual pendientes de main/validación humana.
+
+Verificación estática de esta continuación: TypeScript de `src` (incluidas las
+pruebas preparadas) y de los seis E2E afectados correcto, sin emisión de archivos;
+`git diff --check` correcto. Unitarias, E2E, build y CI **no ejecutados**.
+Incluida también regresión de creación contigua a un pack redimensionado:
+hereda sus medidas y usa su extensión real para colocar el pack nuevo.
+
 **Estado:** R5.1 fue completada históricamente en `518a990`; el propietario retiró después las variantes del MVP. R5.2 validada manualmente por el propietario, con tests pendientes; R5.3 en implementación, sin tests, y R5.4 aplazada. Las entradas anteriores se conservan como histórico; la última entrada recoge el estado vigente.
 **Rama:** `refractor/r5-funcionalidad-diseño`.
 **Base:** `main` con R0–R4 integradas (PR #19 y #20) y el commit documental `ee455b3`.
@@ -424,3 +533,115 @@ El propietario autorizó completar los pendientes y las pruebas antes de subir l
 ## Reconciliación de GitHub (04/11/2026)
 
 La rama `main` integra R5 mediante el merge de PR #21 (a `dev`) y PR #22 (a `main`), commit `d5ff7841b9b20a97fcc0d337ceb7f4c687588799`. Las frases anteriores «sin commit/merge» son testimonios del momento de escritura y **no describen el estado remoto posterior**. Esta reconciliación no constituye una nueva ejecución de pruebas: se conserva el dato del informe (213 unitarias y build aprobados, E2E dirigidas aprobadas y suite completa todavía sin repetición única final). La verificación final queda en la [issue #24](https://github.com/Pablo-hg/Room-Builder/issues/24).
+# Revisión de seis incidencias — 07/11/2026
+
+## Solución técnica previa a implementación
+
+Petición del propietario: alfombras, bloqueos XYZ, nombre Habitación, giro circular,
+brújula adaptable y textos Subir/Bajar, en `feature/24-certificar-r5-e2e-ci`.
+
+- Añadir `axisLocks?: { x: boolean; y: boolean; z: boolean }` a las entidades
+  móviles existentes (muebles, packs, superficies y aberturas). Es una extensión
+  opcional, sin cambiar IDs ni claves de almacenamiento. Revisión del contrato
+  antes de implementarlo: guardar como **v6** cuando haya candados explícitos;
+  mantener la lectura v1–v5 y las versiones anteriores para datos sin candados.
+  Leer v1–v5 sin la propiedad conserva los valores por defecto actuales. Validar
+  estrictamente la propiedad cuando exista; conservarla en JSON, historial y R4.
+- El bloqueo congela una coordenada; no es un anclaje. En muebles, la primera
+  edición de candados materializa la altura absoluta visible y sustituye la
+  fijación automática por coordenadas explícitas. Bloquear Y posteriormente no
+  recoloca el objeto. La marca histórica `attachmentPolicy` se conserva.
+- Las alfombras heredadas mantienen sus coordenadas guardadas: corregir su base
+  visible únicamente si coincide con una losa de suelo en su huella y nivel.
+  Usar la misma base en render y límites; nunca elevar todo el catálogo ni elegir
+  siempre la planta más alta. Los muebles con candados explícitos usan Y absoluta.
+- Las aberturas mantienen los ejes permitidos por la pared; desbloquear no las
+  libera de ella. Los packs se desplazan completos, conservando sus superficies.
+  La multiselección solo se mueve por ejes permitidos en todos sus elementos;
+  girar un grupo tampoco puede eludir candados de posición.
+- La vivienda canónica con plantas y medianeras sigue pendiente de #51–#53.
+  Esta corrección usa los packs independientes existentes, sin simular una casa
+  canónica ni introducir relaciones persistidas de pertenencia a una habitación.
+- La simetría horizontal se declara por modelo, sin borrar rotaciones guardadas.
+  La brújula ajustará la cámara al tamaño real del canvas, manteniendo los
+  breakpoints y distribución responsive recientes.
+
+Validación: revisión estática y preparación de regresiones. Por política del
+propietario no ejecutar unitarias, E2E, build ni CI en esta rama; ejecución
+pendiente en `main`. Las capturas aportadas son evidencia del defecto previo,
+no validación visual de la solución.
+
+El contenedor JSON de intercambio sigue en `schemaVersion: 5`; la versión de
+`design.data` pasa a 6. Son contratos distintos. Las aplicaciones anteriores
+no entienden v6; debe usarse la versión actual del editor para abrir esos diseños.
+
+## Resultado local de las seis incidencias
+
+| Incidencia | Causa | Cambio y archivos principales |
+| --- | --- | --- |
+| Alfombras enterradas | La losa está centrada en su cota y su cara superior sobrepasa la alfombra; los muebles nuevos fijados no tenían desfase | `furniturePlacement.ts`, `objectCatalog.ts`, `FurnitureObject.tsx`, `multiSelection.ts`, `multiFurniture.ts`, `structureCollisions.ts`: apoyo en la cara superior del suelo de su nivel, base compartida por render/selección/avisos. Datos antiguos conservados; los nuevos guardan su base absoluta |
+| Restricción vertical y ausencia de candados XYZ | El catálogo confundía fijación por tipo con capacidad de elevar; algunos caminos de movimiento trabajaban directamente con coordenadas | `axisLocks.ts`, `types.ts`, acciones de muebles/construcción/redimensionado/selección, inspectores, gizmos, `designV1.ts`, normalización y persistencia: candados individuales, historial, multiselección, validación y formato v6. Las aberturas siguen sujetas a su pared y la puerta al suelo |
+| Nombre Piso | `addStructurePack` generaba literalmente `Piso N` y el inspector usaba «Eliminar piso completo» | `constructionActions.ts`, `PackInspector.tsx`: `Habitación N` y «Eliminar habitación completa». IDs y nombres guardados anteriores no se reescriben |
+| Aro en objetos circulares | La escena añadía el aro a todo mueble; el inspector usaba una excepción aislada para la lámpara de techo | `objectCatalog.ts`, `FurnitureInspector.tsx`, `FurnitureObject.tsx`: capacidad por modelo, con excepción para elipses antiguas. Ocultar en lámparas de techo/pie/mesa, papelera y alfombra circular; conservar en jarrón por su adorno lateral, planta y alfombra rectangular. `FurnitureModels.tsx`: disco inferior de lámpara horizontal, imprescindible para la simetría. Ángulos guardados intactos |
+| Brújula recortada | Se reducía el canvas conservando zoom ortográfico de píxeles; tamaño interior y contenedor tenían reglas independientes | `Compass.tsx`, `styles.css`: cámara proporcional al canvas real, margen para etiquetas y hover, canvas centrado proporcional; breakpoints recientes conservados |
+| Textos de ordenación | Literales «Mover arriba/abajo» y «Subir/Bajar carpeta» | `SceneContextMenu.tsx`, `FolderInspector.tsx`: «Subir/Bajar», mismos handlers y atajos |
+
+### Verificación realizada
+
+- Revisión del código real, diff, coordenadas, anclajes, persistencia y rutas de
+  movimiento; revisión de las cuatro capturas del defecto anterior.
+- Análisis estático TypeScript sin emisión: `tsc --project tsconfig.app.json
+  --noEmit --incremental false`, correcto. Incluye `src` y sus pruebas preparadas.
+- Análisis de tipos sin emisión de los seis archivos E2E modificados, correcto.
+- Unitarias, E2E, build y GitHub Actions **no ejecutados** en esta rama.
+  No hay certificación funcional ni validación visual de la solución.
+
+### Regresiones preparadas y pendientes de ejecutar en main
+
+- `src/state/axisLocks.test.ts`: congelación XYZ, multiselección y giro,
+  desbloquear/rebloquear/deshacer/rehacer, alfombras heredadas en otra altura,
+  creación en habitación activa, packs/superficies/aberturas, recarga/JSON/R4,
+  datos de candados inválidos y simetría frente a modelos asimétricos/elipses.
+- `furnitureAttachmentCompatibility.test.ts`: apoyo corregido y semántica de Y
+  congelada; conserva los casos antiguos. `designV1.test.ts` y fixture de versión
+  desconocida ahora usan 999 porque 6 es una versión reconocida.
+- `FurnitureModels.test.ts`: comprueba la orientación horizontal del disco y
+  mantiene la firma histórica para el resto de primitivas, sin borrar la prueba.
+- `tests/furniture-attachments.spec.ts`: controles Y visibles/bloqueados,
+  desbloqueo, elección de altura y guardado; compatibilidad antigua y selección.
+- `tests/compass-responsive.spec.ts`: 1200, 1199, 1024, 1000, 950, 850, 640 y
+  430 px, límites de canvas, separación del zoom y capturas isométrica/Libre.
+  Las capturas requieren revisión humana: los límites del canvas por sí solos
+  no demuestran que sus etiquetas WebGL estén bien.
+- Selectores actualizados en `room-views`, `history-transactions`,
+  `structure-extraction` y `room-builder` para los textos nuevos.
+- Tras integración autorizada: workflow de main (`npm ci`, `npm test`,
+  `npm run build`, `npm run test:e2e`).
+
+### Comprobaciones manuales del propietario
+
+1. Añadir ambas alfombras en la habitación base y en un pack elevado; comprobar
+   apoyo en Plano/Isométrica/Frontal y que diseños antiguos conservan posición.
+2. Bloquear cada eje y probar inspector, arrastre directo, flechas del gizmo y
+   teclado; desbloquear Y, elegir altura, bloquear otra vez sin salto.
+3. Guardar/recargar/exportar/importar; deshacer/rehacer candados y movimientos.
+   Probar una selección con elementos que tengan candados distintos y un pack
+   con una superficie bloqueada. Verificar que puerta/ventanas siguen en pared.
+4. Crear un pack vacío: nombre «Habitación N». Los nombres guardados anteriores
+   se conservan; pueden renombrarse con F2.
+5. Revisar ausencia de aro en los modelos circulares indicados y su presencia
+   en jarrón/planta/alfombra rectangular; comprobar elipses antiguas y ángulos
+   guardados, que no se borran.
+6. Revisar las ocho anchuras indicadas, etiquetas normales y hover de la brújula,
+   orientación por clic y separación de cámara/zoom; comprobar «Subir/Bajar».
+
+### Límites y riesgos pendientes
+
+La inferencia de apoyo antiguo solo corrige alfombras cercanas a una losa de su
+nivel; no cambia alturas arbitrarias ni asigna una habitación canónica. Un
+mueble con candados explícitos conserva Y absoluta aunque se mueva una losa o
+cambie la altura de la habitación: para recolocarlo hay que desbloquear Y.
+La vivienda por plantas y medianeras físicas únicas corresponde a #51–#53.
+La versión v6 exige el editor actualizado. La certificación funcional, las
+capturas nuevas y aceptación manual siguen pendientes. Sin PR, push, integración
+ni publicación automática; solo commits locales en la rama autorizada.

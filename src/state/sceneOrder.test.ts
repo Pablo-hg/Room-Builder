@@ -15,7 +15,7 @@ test('ordenar solo cambia el orden visual y admite historial', () => {
   store.getState().reorderSceneElement(id, 'door', 'before')
   assert.equal(orderedSceneIds(store.getState())[0], id)
   assert.deepEqual(store.getState().furniture, originalFurniture)
-  assert.equal(persistedDesign(store.getState()).version, 4)
+  assert.equal(persistedDesign(store.getState()).version, 10)
   store.getState().undo()
   assert.notEqual(orderedSceneIds(store.getState())[0], id)
   store.getState().redo()

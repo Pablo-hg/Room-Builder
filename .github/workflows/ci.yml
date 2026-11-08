@@ -1,0 +1,63 @@
+name: Room Builder CI
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: room-builder-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-and-build:
+    name: Unitarias y build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Entorno reproducible
+        run: |
+          node --version
+          npm --version
+          git rev-parse HEAD
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  e2e-chromium:
+    name: E2E funcional — Chromium (suite completa tests/)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencias limpias
+        run: npm ci
+      - name: Instalar Chromium y dependencias del sistema
+        run: npx playwright install --with-deps chromium
+      - name: Inventario de la suite real
+        run: |
+          npx playwright --version
+          npx playwright test --list
+      - name: Ejecutar TODA la suite funcional (sin filtros)
+        run: npm run test:e2e -- --workers=2
+      - name: Conservar trazas y capturas de fallos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: room-builder-e2e-failures
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore

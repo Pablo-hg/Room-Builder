@@ -1,22 +1,18 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
-import { WALL_LABELS } from '../../domain/constants'
-import { visibleWallsForView } from './viewHelpers'
-import { FURNITURE_CATALOG, FURNITURE_FAMILIES, FURNITURE_PRESETS, isWallPictureKind, isWallPictureShape, isWallMirrorShape, OPENING_CATALOG, openingKindForShape } from '../../domain/objectCatalog'
-import type { FurnitureKind } from '../../domain/types'
+import { WALL_LABELS, WALL_SIDES } from '../../domain/constants'
+import { FURNITURE_CATALOG, FURNITURE_FAMILIES, isWallPictureShape, isWallMirrorShape, OPENING_CATALOG, openingKindForShape } from '../../domain/objectCatalog'
 import { FurnitureIcon, StructurePackIcon, StructureSurfaceIcon } from '../iconCatalog'
 import { useRoomStore } from '../../state/useRoomStore'
-import { structureGridElementId, structureSurfaceElementId } from '../../domain/elementIds'
-import { deriveSelection, elementName } from '../../domain/selection'
+import { structureSurfaceElementId } from '../../domain/elementIds'
+import { deriveSelection, elementName, structureSurfaceName } from '../../domain/selection'
 import { BASE_FLOOR_ID, baseWallId, canMoveFolder, folderElementIds, folderIdFromSelection, folderRoomPack, folderSelectionId, orderedSceneIds, ROOT_ROOM_FOLDER, sceneEntryParent } from '../../domain/elementFolders'
-import { WALL_SIDES } from '../../domain/constants'
 import { OpeningSwatch } from './Controls'
 import { EyeIcon, FolderIcon, LockIcon, RoomPackIcon } from './ElementIcons'
 import { SceneContextMenu } from './SceneContextMenu'
+import { ObjectCatalogSection } from './ObjectCatalogSection'
+import { GridVisibilitySection } from './GridVisibilitySection'
 
 export function ObjectsPanel() {
-  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
-  const [catalogCollapsed, setCatalogCollapsed] = useState(false)
-  const [choosingRoomPosition, setChoosingRoomPosition] = useState(false)
   const [draggedElement, setDraggedElement] = useState<string | null>(null)
   const [draggedFolder, setDraggedFolder] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
@@ -34,21 +30,9 @@ export function ObjectsPanel() {
   const room = useRoomStore((state) => state.room)
   const furniture = useRoomStore((state) => state.furniture)
   const structurePacks = useRoomStore((state) => state.structurePacks)
-  const activeRoomId = useRoomStore((state) => state.activeRoomId)
-  const selectedId = useRoomStore((state) => state.selectedId)
   const selectedIds = useRoomStore((state) => state.selectedIds)
-  const view = useRoomStore((state) => state.view)
-  const isoOrientation = useRoomStore((state) => state.isoOrientation)
-  const freeAzimuth = useRoomStore((state) => state.freeAzimuth)
-  const wallView = useRoomStore((state) => state.wallView)
-  const gridVisibility = useRoomStore((state) => state.gridVisibility)
-  const addFurniture = useRoomStore((state) => state.addFurniture)
-  const addWindow = useRoomStore((state) => state.addWindow)
-  const addStructurePack = useRoomStore((state) => state.addStructurePack)
-  const addStructureObject = useRoomStore((state) => state.addStructureObject)
   const selectElement = useRoomStore((state) => state.selectElement)
   const selectSceneListItem = useRoomStore((state) => state.selectSceneListItem)
-  const toggleGridVisibility = useRoomStore((state) => state.toggleGridVisibility)
   const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
   const lockedElementIds = useRoomStore((state) => state.lockedElementIds)
   const toggleElementVisibility = useRoomStore((state) => state.toggleElementVisibility)
@@ -70,20 +54,31 @@ export function ObjectsPanel() {
       ...WALL_SIDES.map((wall) => ({ id: baseWallId(wall), name: `Pared ${WALL_LABELS[wall]}`, kind: 'Superficie de la habitación', icon: <StructureSurfaceIcon kind="wall" /> })),
     ] : []),
     { id: 'door', name: room.door.name || 'Puerta', kind: 'Apertura', icon: <OpeningSwatch kind="door" /> },
+    ...(room.extraDoors ?? []).map((door) => ({ id: door.id, name: door.name || 'Puerta', kind: 'Apertura', icon: <OpeningSwatch kind="door" /> })),
     ...room.windows.map((window, index) => {
       const name = OPENING_CATALOG[openingKindForShape(window.shape)].name
       const family = window.shape === 'wallShelf' ? 'Almacenaje' : isWallPictureShape(window.shape) || isWallMirrorShape(window.shape) || window.shape === 'wallSconce' ? 'Decoración' : 'Apertura'
       const icon = isWallPictureShape(window.shape)
         ? <FurnitureIcon kind={window.shape} color={window.color} />
         : <OpeningSwatch kind={openingKindForShape(window.shape) as 'window' | 'circularWindow' | 'wallShelf' | 'mirrorRectangular' | 'mirrorCircular' | 'wallSconce'} color={window.color} />
-      return { id: window.id, name: window.name || `${name} ${index + 1}`, kind: `${family} · pared ${WALL_LABELS[window.wall]}`, icon }
+      return { id: window.id, name: window.name || `${name} ${index + 1}`, kind: `${family} · ${window.freePosition ? 'libre' : `pared ${WALL_LABELS[window.wall]}`}`, icon }
     }),
     ...furniture.map((item) => ({ id: item.id, name: item.name, kind: FURNITURE_FAMILIES.find((family) => family.id === FURNITURE_CATALOG[item.kind].family)?.label ?? 'Mueble', icon: <FurnitureIcon kind={item.kind} color={item.color} /> })),
     ...structurePacks.flatMap((pack) => [
-      { id: pack.id, name: pack.name, kind: 'Pack de construcción', icon: <StructurePackIcon /> },
+      ...(pack.doors ?? []).map((door) => ({ id: door.id, name: door.name || 'Puerta', kind: 'Apertura', icon: <OpeningSwatch kind="door" /> })),
+      ...(pack.windows ?? []).map((window) => {
+        const label = OPENING_CATALOG[openingKindForShape(window.shape)].name
+        const family = window.shape === 'wallShelf' ? 'Almacenaje'
+          : isWallPictureShape(window.shape) || isWallMirrorShape(window.shape) || window.shape === 'wallSconce' ? 'Decoración' : 'Apertura'
+        const icon = isWallPictureShape(window.shape)
+          ? <FurnitureIcon kind={window.shape} color={window.color} />
+          : <OpeningSwatch kind={openingKindForShape(window.shape) as 'window' | 'circularWindow' | 'wallShelf' | 'mirrorRectangular' | 'mirrorCircular' | 'wallSconce'} color={window.color} />
+        return { id: window.id, name: window.name || label, kind: `${family} · ${window.freePosition ? 'libre' : `pared ${WALL_LABELS[window.wall]}`}`, icon }
+      }),
+      ...(!pack.id.startsWith('floor-object-') && !pack.id.startsWith('wall-object-') ? [{ id: pack.id, name: pack.name, kind: 'Pack de construcción', icon: <StructurePackIcon /> }] : []),
       ...pack.surfaces.map((surface) => ({
         id: structureSurfaceElementId(pack.id, surface.id),
-        name: `${pack.name} · ${surface.name}`,
+        name: structureSurfaceName(surface),
         kind: 'Superficie de construcción',
         icon: <StructureSurfaceIcon kind={surface.kind === 'ceiling' ? 'wall' : surface.kind} />,
       })),
@@ -92,15 +87,6 @@ export function ObjectsPanel() {
   const order = orderedSceneIds({ room, furniture, structurePacks, sceneElementOrder, elementFolders })
   const orderIndex = new Map(order.map((id, index) => [id, index]))
   sceneElements.sort((a, b) => (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0))
-  const visibleGridWalls = visibleWallsForView(view, isoOrientation, wallView, freeAzimuth)
-  const activeRoom = structurePacks.find((pack) => pack.id === activeRoomId && pack.id.startsWith('floor-pack-'))
-  const gridControls = [
-    { id: 'floor' as const, label: 'Suelo' },
-    ...visibleGridWalls.map((wall) => ({ id: wall, label: `Pared ${WALL_LABELS[wall]}` })),
-  ].filter((control) => !activeRoom || activeRoom.surfaces.some((surface) => control.id === 'floor' ? surface.kind === 'floor' : surface.kind === 'wall' && surface.wall === control.id))
-  const toggleCategory = (category: string) => {
-    setCollapsedCategories((current) => ({ ...current, [category]: !current[category] }))
-  }
   const toggleFolder = (id: string) => {
     setCollapsedFolders((current) => ({ ...current, [id]: !current[id] }))
   }
@@ -347,7 +333,7 @@ export function ObjectsPanel() {
                       onKeyDown={() => setPointerFocusedId(null)}
                       onClick={(event) => selectListEntry(folderSelectionId(folder.id), event)}
                     >
-                      {roomPack ? <RoomPackIcon /> : <FolderIcon />}
+                      {(folder.id === ROOT_ROOM_FOLDER || roomPack) ? <RoomPackIcon /> : <FolderIcon />}
                       <span className="element-folder__name">{folder.name}</span>
                       <small>{elementIds.length - (roomPack ? 1 : 0)}</small>
                     </button>
@@ -393,144 +379,7 @@ export function ObjectsPanel() {
   return (
     <aside id="objects-panel" className="side-panel objects-panel" aria-label="Catálogo de objetos">
       <div className="side-panel__content objects-panel__content">
-        <section className="panel-section">
-        <span className="eyebrow">Objetos</span>
-        <div className="catalog-heading">
-          <div>
-            <h2>Pequeño catálogo</h2>
-            {!catalogCollapsed && <p className="section-copy">Añade muebles, aperturas y decoración mural, o selecciona la puerta existente.</p>}
-          </div>
-          <button
-            type="button"
-            className="catalog-family__toggle catalog-toggle-all"
-            aria-expanded={!catalogCollapsed}
-            aria-controls="catalog-families"
-            aria-label={catalogCollapsed ? 'Mostrar catálogo completo' : 'Minimizar catálogo completo'}
-            onClick={() => setCatalogCollapsed((collapsed) => !collapsed)}
-          >
-            <i aria-hidden="true" />
-          </button>
-        </div>
-        {!catalogCollapsed && <div className="catalog-families" id="catalog-families">
-          <section className={`catalog-family ${collapsedCategories.structure ? 'catalog-family--collapsed' : ''}`} aria-labelledby="catalog-structure">
-            <h3>
-              <button
-                id="catalog-structure"
-                type="button"
-                className="catalog-family__toggle"
-                aria-expanded={!collapsedCategories.structure}
-                aria-controls="catalog-grid-structure"
-                onClick={() => toggleCategory('structure')}
-              >
-                <span>Construcción</span><i aria-hidden="true" />
-              </button>
-            </h3>
-            {!collapsedCategories.structure && <div className="catalog-grid" id="catalog-grid-structure">
-              <button type="button" className="catalog-card" aria-expanded={choosingRoomPosition} onClick={() => setChoosingRoomPosition((open) => !open)}>
-                <StructurePackIcon />
-                <span>Nueva habitación vacía</span><small>＋ Elegir ubicación</small>
-              </button>
-              {choosingRoomPosition && <div className="room-position-choices" aria-label="Ubicación de la nueva habitación">
-                <strong>¿Dónde crearla?</strong>
-                {([['up', 'Encima'], ['down', 'Debajo'], ['north', `Pared ${WALL_LABELS.north}`], ['east', `Pared ${WALL_LABELS.east}`], ['south', `Pared ${WALL_LABELS.south}`], ['west', `Pared ${WALL_LABELS.west}`]] as const).map(([direction, label]) => <button type="button" key={direction} onClick={() => { addStructurePack(direction); setChoosingRoomPosition(false) }}>{label}</button>)}
-              </div>}
-              <button type="button" className="catalog-card" onClick={() => addStructureObject('floor')}>
-                <StructureSurfaceIcon kind="floor" />
-                <span>Suelo</span><small>＋ Objeto independiente</small>
-              </button>
-              <button type="button" className="catalog-card" onClick={() => addStructureObject('wall')}>
-                <StructureSurfaceIcon kind="wall" />
-                <span>Pared</span><small>＋ Objeto independiente</small>
-              </button>
-            </div>}
-          </section>
-          <section className={`catalog-family ${collapsedCategories.openings ? 'catalog-family--collapsed' : ''}`} aria-labelledby="catalog-openings">
-            <h3>
-              <button
-                id="catalog-openings"
-                type="button"
-                className="catalog-family__toggle"
-                aria-expanded={!collapsedCategories.openings}
-                aria-controls="catalog-grid-openings"
-                onClick={() => toggleCategory('openings')}
-              >
-                <span>Aperturas</span><i aria-hidden="true" />
-              </button>
-            </h3>
-            {!collapsedCategories.openings && <div className="catalog-grid" id="catalog-grid-openings">
-              <button type="button" className={`catalog-card ${selectedId === 'door' ? 'active' : ''}`} onClick={() => selectElement('door')} aria-pressed={selectedId === 'door'}>
-                <OpeningSwatch kind="door" />
-                <span>{OPENING_CATALOG.door.name}</span><small>Seleccionar</small>
-              </button>
-              <button type="button" className="catalog-card" onClick={() => addWindow('rectangular')}>
-                <OpeningSwatch kind="window" />
-                <span>{OPENING_CATALOG.window.name}</span><small>＋ Añadir</small>
-              </button>
-              <button type="button" className="catalog-card" onClick={() => addWindow('circular')}>
-                <OpeningSwatch kind="circularWindow" />
-                <span>{OPENING_CATALOG.circularWindow.name}</span><small>＋ Añadir</small>
-              </button>
-            </div>}
-          </section>
-          {FURNITURE_FAMILIES.map((family) => {
-            const kinds = (Object.keys(FURNITURE_CATALOG) as FurnitureKind[]).filter((kind) => FURNITURE_CATALOG[kind].family === family.id)
-            return (
-              <section className={`catalog-family ${collapsedCategories[family.id] ? 'catalog-family--collapsed' : ''}`} key={family.id} aria-labelledby={`catalog-${family.id}`}>
-                <h3>
-                  <button
-                    id={`catalog-${family.id}`}
-                    type="button"
-                    className="catalog-family__toggle"
-                    aria-expanded={!collapsedCategories[family.id]}
-                    aria-controls={`catalog-grid-${family.id}`}
-                    onClick={() => toggleCategory(family.id)}
-                  >
-                    <span>{family.label}</span><i aria-hidden="true" />
-                  </button>
-                </h3>
-                {!collapsedCategories[family.id] && <div className="catalog-grid" id={`catalog-grid-${family.id}`}>
-                  {kinds.map((kind) => (
-                    <button
-                      key={kind}
-                      type="button"
-                      className="catalog-card"
-                      onClick={() => {
-                        if (isWallPictureKind(kind)) addWindow(kind)
-                        else addFurniture(kind)
-                      }}
-                    >
-                      <FurnitureIcon kind={kind} />
-                      <span>{FURNITURE_PRESETS[kind].name}</span><small>＋ Añadir</small>
-                    </button>
-                  ))}
-                  {family.id === 'wallDecor' && (
-                    <>
-                      <button type="button" className="catalog-card" onClick={() => addWindow('wallSconce')}>
-                        <OpeningSwatch kind="wallSconce" />
-                        <span>{OPENING_CATALOG.wallSconce.name}</span><small>＋ Añadir</small>
-                      </button>
-                      <button type="button" className="catalog-card" onClick={() => addWindow('mirrorRectangular')}>
-                        <OpeningSwatch kind="mirrorRectangular" />
-                        <span>{OPENING_CATALOG.mirrorRectangular.name}</span><small>＋ Añadir</small>
-                      </button>
-                      <button type="button" className="catalog-card" onClick={() => addWindow('mirrorCircular')}>
-                        <OpeningSwatch kind="mirrorCircular" />
-                        <span>{OPENING_CATALOG.mirrorCircular.name}</span><small>＋ Añadir</small>
-                      </button>
-                    </>
-                  )}
-                  {family.id === 'storage' && (
-                    <button type="button" className="catalog-card" onClick={() => addWindow('wallShelf')}>
-                      <OpeningSwatch kind="wallShelf" />
-                      <span>{OPENING_CATALOG.wallShelf.name}</span><small>＋ Añadir</small>
-                    </button>
-                  )}
-                </div>}
-              </section>
-            )
-          })}
-        </div>}
-        </section>
+        <ObjectCatalogSection />
         <section className="panel-section elements-section" aria-labelledby="elements-heading">
         <span className="eyebrow">Escena</span>
         <div className="elements-heading">
@@ -547,40 +396,7 @@ export function ObjectsPanel() {
         {elementFolders.length > 0 && <p className={`element-group-label${dropTarget === 'root' ? ' element-group-label--drop-target' : ''}`} onDragOver={(event) => { if (!draggedElement && !draggedFolder) return; event.preventDefault(); setDropTarget('root') }} onDrop={(event) => { event.preventDefault(); moveSceneItems(draggedItems, null); setDraggedElement(null); setDraggedFolder(null); setDropTarget(null) }}>Nivel principal · Sin carpeta</p>}
         <div className="element-list">{renderEntries(null)}</div>
         </section>
-        <section className="panel-section grid-section" aria-labelledby="grid-heading">
-        <div className="grid-section__heading">
-          <span className="grid-icon" aria-hidden="true">▦</span>
-          <span><strong id="grid-heading">Cuadrículas visibles</strong><small>{activeRoom?.name ?? elementFolders.find((folder) => folder.id === ROOT_ROOM_FOLDER)?.name ?? 'Habitación principal'} · cuadrados de 25 cm</small></span>
-        </div>
-        <div className="grid-visibility-list">
-          {gridControls.map((surface) => {
-            const roomSurface = activeRoom?.surfaces.find((item) => surface.id === 'floor' ? item.kind === 'floor' : item.kind === 'wall' && item.wall === surface.id)
-            const gridId = activeRoom && roomSurface ? structureGridElementId(activeRoom.id, roomSurface.id) : null
-            const visible = gridId ? !hiddenElementIds.includes(gridId) : gridVisibility[surface.id]
-            return (
-            <div className="grid-visibility-row" key={surface.id}>
-              <span>{surface.label}</span>
-              <button
-                type="button"
-                className={`switch ${visible ? 'on' : ''}`}
-                role="switch"
-                aria-checked={visible}
-                aria-label={`Mostrar cuadrícula de ${surface.label.toLowerCase()}`}
-                onClick={() => gridId ? toggleElementVisibility(gridId) : toggleGridVisibility(surface.id)}
-              ><span /></button>
-            </div>
-          )})}
-          {structurePacks.filter((pack) => pack.id.startsWith('floor-object-') || pack.id.startsWith('wall-object-')).flatMap((pack) => pack.surfaces.map((surface) => {
-            const id = structureGridElementId(pack.id, surface.id)
-            const visible = !hiddenElementIds.includes(id)
-            return <div className="grid-visibility-row" key={id}>
-              <span>{pack.name}</span>
-              <button type="button" className={`switch ${visible ? 'on' : ''}`} role="switch" aria-checked={visible} aria-label={`Mostrar cuadrícula de ${pack.name}`} onClick={() => toggleElementVisibility(id)}><span /></button>
-            </div>
-          }))}
-        </div>
-        <small className="grid-snap-note">El ajuste de movimiento a 5 cm se mantiene activo.</small>
-        </section>
+        <GridVisibilitySection />
       </div>
       {contextMenu && <SceneContextMenu key={contextMenu.id} {...contextMenu} siblings={siblingsFor(sceneEntryParent(contextMenu.id, elementFolders, elementFolderAssignments))} onClose={closeContextMenu}
         onRename={() => {

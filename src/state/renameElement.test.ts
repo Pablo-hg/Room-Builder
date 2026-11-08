@@ -26,13 +26,13 @@ test('los nombres de muebles, packs y superficies se guardan y se deshacen', () 
 test('los nombres de aperturas se guardan y admiten deshacer/rehacer', () => {
   const store = createRoomStore()
   const legacy = persistedDesign(store.getState())
-  assert.equal(legacy.version, 1)
+  assert.equal(legacy.version, 10)
   store.getState().renameElement('door', 'Entrada')
   store.getState().addWindow('rectangular')
   const id = store.getState().selectedId!
   store.getState().renameElement(id, 'Ventanal')
   const saved = persistedDesign(store.getState())
-  assert.equal(saved.version, 2)
+  assert.equal(saved.version, 10)
   assert.equal(saved.room.door.name, 'Entrada')
   assert.equal(saved.room.windows.find((window) => window.id === id)?.name, 'Ventanal')
   store.getState().undo()
@@ -48,6 +48,8 @@ test('recupera nombres de aperturas desde un diseño guardado v2', () => {
   const windowId = original.getState().selectedId!
   original.getState().renameElement(windowId, 'Ventanal')
   const data = { ...JSON.parse(JSON.stringify(persistedDesign(original.getState()))), version: 2 }
+  delete data.room.door.wallPosition
+  for (const window of data.room.windows) delete window.wallPosition
   const repository = { read: () => [{ id: 'guardado', name: 'Casa', savedAt: '', data }], write: () => {} }
   const restored = createRoomStore(repository)
   restored.getState().initializeSavedDesigns()

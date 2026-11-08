@@ -34,7 +34,7 @@ test('v1 conserva fixtures completos, antiguos y de límite sin mutaciones ni ca
 })
 
 test('v1 mantiene el control de cabecera y diferencia validación de lista y carga anidada', () => {
-  for (const value of [null, [], 1, '', {}, { version: 1 }, { version: 6, room: {}, furniture: [] }, { version: 1, room: {}, furniture: {} }]) {
+  for (const value of [null, [], 1, '', {}, { version: 1 }, { version: 999, room: {}, furniture: [] }, { version: 1, room: {}, furniture: {} }]) {
     assert.equal(isPersistedDesign(value), false)
   }
   assert.equal(isPersistedDesign(fixture('invalid-unsupported-version')), false)

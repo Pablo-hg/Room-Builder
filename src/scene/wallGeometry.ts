@@ -30,7 +30,7 @@ export function openingPolygon(opening: WallOpening): WallPoint[] {
 }
 
 export function clipPolygonToWall(polygon: WallPoint[], length: number, height: number) {
-  const inset = 0.0005
+  const inset = 0
   const left = -length / 2 + inset
   const right = length / 2 - inset
   const bottom = inset

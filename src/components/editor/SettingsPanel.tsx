@@ -3,15 +3,25 @@ import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, WALL_LABELS, WALL_SIDES } from
 import { useRoomStore } from '../../state/useRoomStore'
 import { ColorControl, DimensionControl } from './Controls'
 import { SelectionInspector } from './SelectionInspector'
+import { PackInspector } from './PackInspector'
+import { focusedRoom } from '../../domain/roomEditing'
+import { DiagnosticExportButton } from './DiagnosticExportButton'
 
 export function SettingsPanel() {
+  const state = useRoomStore()
+  const cameraRoom = focusedRoom(state)
+  const editableRoom = cameraRoom.editable
+  const pack = state.structurePacks.find((candidate) => candidate.id === cameraRoom.packId)
+  const setSelectedColor = (kind: 'floor' | 'wall', color: string, wall?: typeof WALL_SIDES[number]) => {
+    if (!pack) { if (kind === 'floor') state.setFloorColor(color); else if (wall) state.setWallSideColor(wall, color); else state.setWallColor(color); return }
+    const token = state.beginHistoryGesture(pack.id)
+    pack.surfaces.filter((surface) => surface.kind === kind && (!wall || surface.wall === wall)).forEach((surface) => state.setStructureSurfaceColor(pack.id, surface.id, color))
+    state.commitHistoryGesture(token)
+  }
   const [roomSectionCollapsed, setRoomSectionCollapsed] = useState(false)
   const [wallColorsCollapsed, setWallColorsCollapsed] = useState(false)
   const [shortcutGuideCollapsed, setShortcutGuideCollapsed] = useState(false)
   const room = useRoomStore((state) => state.room)
-  const setWallColor = useRoomStore((state) => state.setWallColor)
-  const setWallSideColor = useRoomStore((state) => state.setWallSideColor)
-  const setFloorColor = useRoomStore((state) => state.setFloorColor)
   return (
     <aside id="settings-panel" className="side-panel settings-panel" aria-label="Inspector y configuración detallada">
       <div className="side-panel__content settings-panel__content">
@@ -26,27 +36,27 @@ export function SettingsPanel() {
               aria-controls="room-section-content"
               onClick={() => setRoomSectionCollapsed((collapsed) => !collapsed)}
             >
-              <span>Tu habitación</span>
+              <span>{cameraRoom.name}</span>
               <span className="room-section__chevron" aria-hidden="true" />
             </button>
           </h2>
           <div id="room-section-content" hidden={roomSectionCollapsed}>
-            <p className="section-copy">Ajusta el tamaño, los colores y las aperturas.</p>
+            <p className="section-copy">{editableRoom ? 'Habitación enfocada en la cámara. Las dimensiones solo modifican esta habitación.' : 'La habitación enfocada necesita una carpeta con suelo y cuatro paredes alineadas para editar sus dimensiones.'}</p>
             <div className="dimension-visual" aria-hidden="true">
-              <span>{room.depth.toFixed(1)} m</span><div><b>{room.width.toFixed(1)} m</b><i>⌂</i></div>
+              <span>{cameraRoom.size.depth.toFixed(1)} m</span><div><b>{cameraRoom.size.width.toFixed(1)} m</b><i>⌂</i></div>
             </div>
             <DimensionControl field="width" label="Anchura" />
             <DimensionControl field="depth" label="Profundidad" />
             <DimensionControl field="height" label="Altura" />
             <ColorControl
               label="Suelo"
-              value={room.floorColor ?? DEFAULT_FLOOR_COLOR}
-              onChange={setFloorColor}
+              value={pack?.surfaces.find((surface) => surface.kind === 'floor')?.color ?? room.floorColor ?? DEFAULT_FLOOR_COLOR}
+              onChange={(color) => setSelectedColor('floor', color)}
             />
             <ColorControl
               label="Todas las paredes"
-              value={room.wallColor ?? DEFAULT_WALL_COLOR}
-              onChange={setWallColor}
+              value={pack?.surfaces.find((surface) => surface.kind === 'wall')?.color ?? room.wallColor ?? DEFAULT_WALL_COLOR}
+              onChange={(color) => setSelectedColor('wall', color)}
             />
             <h3 className={`wall-colors-heading${wallColorsCollapsed ? ' wall-colors-heading--collapsed' : ''}`}>
               <button
@@ -66,11 +76,12 @@ export function SettingsPanel() {
                 <ColorControl
                   key={wall}
                   label={`Pared ${WALL_LABELS[wall]}`}
-                  value={room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR}
-                  onChange={(color) => setWallSideColor(wall, color)}
+                  value={pack?.surfaces.find((surface) => surface.wall === wall)?.color ?? room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR}
+                  onChange={(color) => setSelectedColor('wall', color, wall)}
                 />
               ))}
             </div>
+            {pack && <PackInspector key={pack.id} selectedPack={pack} />}
           </div>
         </section>
         <section className="panel-section shortcut-guide">
@@ -104,6 +115,9 @@ export function SettingsPanel() {
             </dl>
             <p className="shortcut-guide__hint">Copia, pega y duplica con un elemento seleccionado.</p>
           </div>
+        </section>
+        <section className="panel-section diagnostic-export-section" aria-label="Diagnóstico local">
+          <DiagnosticExportButton />
         </section>
       </div>
     </aside>

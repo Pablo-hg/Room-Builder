@@ -2,24 +2,28 @@ import type { ReactNode, RefObject } from 'react'
 import { useEffect, useMemo, useRef } from 'react'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { DEFAULT_FLOOR_COLOR, WALL_LABELS } from '../domain/constants'
+import { DEFAULT_FLOOR_COLOR, ROOT_FLOOR_THICKNESS, ROOT_PLATFORM_THICKNESS, ROOT_PLATFORM_Y, WALL_LABELS } from '../domain/constants'
 import type { RoomConfig, ViewMode, WallSide } from '../domain/types'
 import { useRoomStore } from '../state/useRoomStore'
 import { FloorGrid } from './FloorGrid'
-import { recordSceneInteraction } from './sceneInteraction'
+import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
-import { BASE_FLOOR_ID } from '../domain/elementFolders'
+import { BASE_FLOOR_ID, folderSelectionId, ROOT_ROOM_FOLDER } from '../domain/elementFolders'
+import { SelectionBounds } from './SelectionBounds'
 
-export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, children }: {
+export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, showSelection = true, children }: {
   room: RoomConfig
   modelRootRef: RefObject<THREE.Group | null>
   showFloorGrid: boolean
   showBase?: boolean
+  showSelection?: boolean
   children: ReactNode
 }) {
   const selectElement = useRoomStore((state) => state.selectElement)
   const view = useRoomStore((state) => state.view)
   const floorHidden = useRoomStore((state) => state.hiddenElementIds.includes(BASE_FLOOR_ID))
+  const floorSelected = useRoomStore((state) => state.selectedIds.includes(BASE_FLOOR_ID))
+  const rootSelected = useRoomStore((state) => state.selectedIds.includes(folderSelectionId(ROOT_ROOM_FOLDER)))
   const { camera, size } = useThree()
   const pan = useRef<{ pointerId: number; x: number; y: number; cameraX: number; cameraZ: number; right: THREE.Vector3; up: THREE.Vector3; scale: number } | null>(null)
   const capturePan = usePointerCancellation(() => { pan.current = null })
@@ -48,20 +52,22 @@ export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, 
       {showBase && !floorHidden && <mesh receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
         event.stopPropagation()
         recordSceneInteraction('background.pointer-down', { target: 'floor' })
-        selectElement(null)
+        selectSceneObject(BASE_FLOOR_ID, event.nativeEvent)
         startPan(event)
       }} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={endPan} onLostPointerCapture={() => { pan.current = null }}>
-        <boxGeometry args={[room.width, 0.08, room.depth]} />
+        <boxGeometry args={[room.width, ROOT_FLOOR_THICKNESS, room.depth]} />
         <meshStandardMaterial color={room.floorColor ?? DEFAULT_FLOOR_COLOR} roughness={0.94} />
       </mesh>}
+      {showBase && !floorHidden && showSelection && floorSelected && <SelectionBounds width={room.width} height={ROOT_FLOOR_THICKNESS} depth={room.depth} />}
+      {showBase && showSelection && rootSelected && <group position={[0, room.height / 2, 0]}><SelectionBounds width={room.width} height={room.height} depth={room.depth} /></group>}
       <FloorGrid room={room} visible={showBase && !floorHidden && showFloorGrid} />
       {children}
-      {showBase && <mesh position={[0, -0.11, 0]} receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
+      {showBase && <mesh position={[0, ROOT_PLATFORM_Y, 0]} receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
         event.stopPropagation()
         recordSceneInteraction('background.pointer-down', { target: 'platform' })
         selectElement(null)
       }}>
-        <boxGeometry args={[room.width + 0.28, 0.14, room.depth + 0.28]} />
+        <boxGeometry args={[room.width + 0.28, ROOT_PLATFORM_THICKNESS, room.depth + 0.28]} />
         <meshStandardMaterial color="#b7835d" roughness={0.9} />
       </mesh>}
     </group>

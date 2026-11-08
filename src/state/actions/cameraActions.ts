@@ -2,8 +2,14 @@ import { FRONT_CAMERA_MAX_HEIGHT, FRONT_CAMERA_MIN_HEIGHT } from '../../domain/c
 import { frontWallForOrientation, orientationForAzimuth, orientationForFrontWall } from '../../domain/geometry'
 import type { WallSide } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
-import { ISO_BASE_ANGLE, ISO_QUARTER_TURN, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM } from '../defaults'
+import { cameraZoomLimits, ISO_BASE_ANGLE, ISO_QUARTER_TURN } from '../defaults'
 import type { RoomActionContext, RoomState } from '../types'
+import { packRoomBox } from '../../domain/roomEditing'
+
+const focusedElevation = (state: RoomState) => {
+  const pack = state.structurePacks.find((candidate) => candidate.id === state.activeRoomId)
+  return pack ? pack.y + (packRoomBox(pack, state.room)?.y ?? 0) : 0
+}
 
 const normalizeIsoAngle = (angle: number) => {
   const fullTurn = Math.PI * 2
@@ -43,6 +49,7 @@ type CameraActions = Pick<
   | 'setFreeOrbit'
   | 'setFreeOrbitDragging'
   | 'adjustCameraZoom'
+  | 'setCameraZoom'
   | 'rotateFront'
   | 'rotateIso'
   | 'rotatePov'
@@ -71,7 +78,7 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
         : frontWallForOrientation(orientation)
       return {
         view,
-        ...(view === 'isometric' && state.view !== 'isometric' ? { isoCameraHeight: state.structurePacks.find((pack) => pack.id === state.activeRoomId)?.y ?? 0 } : {}),
+        ...(view === 'isometric' && state.view !== 'isometric' ? { isoCameraHeight: focusedElevation(state) } : {}),
         topOrientation: view === 'top' ? orientation : state.topOrientation,
         wallView: view === 'front' || view === 'top' ? frontWall : null,
         isIsoOrbitDragging: false,
@@ -106,7 +113,7 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
       })
       return {
         view: 'isometric',
-        ...(state.view !== 'isometric' ? { isoCameraHeight: state.structurePacks.find((pack) => pack.id === state.activeRoomId)?.y ?? 0 } : {}),
+        ...(state.view !== 'isometric' ? { isoCameraHeight: focusedElevation(state) } : {}),
         isoOrientation: normalizedOrientation,
         isoAngle: normalizeIsoAngle(ISO_BASE_ANGLE + normalizedOrientation * ISO_QUARTER_TURN),
         isIsoOrbitDragging: false,
@@ -161,12 +168,19 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
       return { freeAzimuth: nextAzimuth, freeElevation: nextElevation, ...freeOrbitPosition(state, nextAzimuth, nextElevation) }
     }),
     setFreeOrbitDragging: (isFreeOrbitDragging) => set({ isFreeOrbitDragging }),
+    setCameraZoom: (zoom) => set((state) => {
+      if (!Number.isFinite(zoom)) return {}
+      const { min, max } = cameraZoomLimits(state.view)
+      const value = Math.max(min, Math.min(max, zoom))
+      return state.view === 'pov' ? { povCameraZoom: value } : state.view === 'free' ? { freeCameraZoom: value } : { cameraZoom: value }
+    }),
     adjustCameraZoom: (deltaY) => set((state) => {
       const limitedDelta = Math.max(-120, Math.min(120, deltaY))
       const isPov = state.view === 'pov'
       const isFree = state.view === 'free'
       const cameraZoom = (isPov ? state.povCameraZoom : isFree ? state.freeCameraZoom : state.cameraZoom) * Math.exp(-limitedDelta * 0.0015)
-      const nextZoom = Math.max(isPov ? 1 : MIN_CAMERA_ZOOM, Math.min(isFree ? 4 : MAX_CAMERA_ZOOM, cameraZoom))
+      const { min, max } = cameraZoomLimits(state.view)
+      const nextZoom = Math.max(min, Math.min(max, cameraZoom))
       recordInteraction('state.camera.zoom', {
         view: state.view,
         selectedId: state.selectedId,

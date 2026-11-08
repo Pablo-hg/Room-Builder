@@ -1,7 +1,7 @@
 import React, { type ReactElement } from 'react'
 import * as THREE from 'three'
 import type { FurnitureItem, FurnitureKind } from '../domain/types'
-import { furnitureAttachment, FURNITURE_PRESETS } from '../domain/objectCatalog'
+import { FURNITURE_PRESETS } from '../domain/objectCatalog'
 import { colorTone } from './colorTone'
 
 type ModelContext = {
@@ -123,7 +123,7 @@ function renderCeilingLamp({ item, material, darkColor, deeperColor, lightColor 
       <mesh position={[0, item.height - 0.025, 0]} castShadow><cylinderGeometry args={[0.18, 0.18, 0.05, 24]} /><meshStandardMaterial color={darkColor} metalness={0.2} roughness={0.55} /></mesh>
       <mesh position={[0, item.height * 0.58, 0]} castShadow><cylinderGeometry args={[0.025, 0.025, item.height * 0.78, 12]} /><meshStandardMaterial color={deeperColor} metalness={0.25} roughness={0.5} /></mesh>
       <mesh position={[0, item.height * 0.2, 0]} castShadow><cylinderGeometry args={[0.13, 0.27, item.height * 0.38, 28, 1, true]} />{material}</mesh>
-      <mesh position={[0, item.height * 0.01, 0]}><circleGeometry args={[0.13, 24]} /><meshStandardMaterial color={lightColor} emissive={lightColor} emissiveIntensity={0.2} side={THREE.DoubleSide} /></mesh>
+      <mesh position={[0, item.height * 0.01, 0]} rotation={[Math.PI / 2, 0, 0]}><circleGeometry args={[0.13, 24]} /><meshStandardMaterial color={lightColor} emissive={lightColor} emissiveIntensity={0.2} side={THREE.DoubleSide} /></mesh>
       <pointLight position={[0, 0, 0]} color="#ffe0a6" intensity={0.45} distance={3} />
     </group>
   )
@@ -167,7 +167,7 @@ function renderCircularRug({ item, material, paleColor }: ModelContext) {
   const radius = Math.min(item.width, item.depth) / 2
   return (
     <group>
-      {furnitureAttachment(item) === 'floor' ? (
+      {item.attachmentPolicy === 'by-type' ? (
         <mesh position={[0, 0.0155, 0]} receiveShadow><cylinderGeometry args={[radius, radius, 0.031, 64]} />{material}</mesh>
       ) : (
         <mesh position={[0, 0.031, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow><circleGeometry args={[radius, 64]} />{material}</mesh>

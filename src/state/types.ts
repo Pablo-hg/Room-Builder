@@ -57,15 +57,21 @@ export interface RoomState {
   setFreeOrbit: (azimuth: number, elevation: number) => void
   setFreeOrbitDragging: (dragging: boolean) => void
   adjustCameraZoom: (deltaY: number) => void
+  setCameraZoom: (zoom: number) => void
   rotateFront: (direction: -1 | 1) => void
   rotateIso: (direction: -1 | 1) => void
   rotatePov: (direction: -1 | 1) => void
   setDimension: (key: 'width' | 'depth' | 'height', value: number) => void
+  setSelectedRoomDimension: (key: 'width' | 'depth' | 'height', value: number) => void
+  setFocusedRoomDimension: (key: 'width' | 'depth' | 'height', value: number) => void
   setWallColor: (color: string) => void
   setWallSideColor: (wall: WallSide, color: string) => void
   setFloorColor: (color: string) => void
   addStructurePack: (direction?: 'up' | 'down' | 'north' | 'south' | 'east' | 'west') => void
   addStructureObject: (kind: 'floor' | 'wall') => void
+  addStructureDoor: () => void
+  setStructureDoor: (id: string, partial: { wall?: WallSide; offset?: number; color?: string }) => void
+  removeStructureDoor: (id: string) => void
   moveStructurePack: (id: string, axis: 'x' | 'y' | 'z', value: number) => void
   moveStructureSurface: (packId: string, surfaceId: StructureSurfaceKey, axis: 'x' | 'y' | 'z', value: number) => void
   resizeStructureSurface: (packId: string, surfaceId: StructureSurfaceKey, dimension: 'width' | 'height' | 'depth', value: number) => void
@@ -83,6 +89,8 @@ export interface RoomState {
   setDoor: (partial: { wall?: WallSide; offset?: number; color?: string }) => void
   addWindow: (shape?: WindowShape) => void
   updateWindow: (id: string, partial: Partial<Pick<WindowConfig, 'wall' | 'offset' | 'width' | 'sill' | 'rotation' | 'color'>>) => void
+  moveWallObject: (id: string, axis: 'x' | 'y' | 'z', value: number) => void
+  detachWallObject: (id: string) => void
   removeWindow: (id: string) => void
   addFurniture: (kind: FurnitureKind) => void
   selectElement: (id: string | null) => void
@@ -91,6 +99,7 @@ export interface RoomState {
   beginFurnitureMove: () => void
   endFurnitureMove: () => void
   moveFurniture: (id: string, x: number, z: number) => void
+  setElementAxisLock: (id: string, axis: 'x' | 'y' | 'z', locked: boolean) => void
   moveSelectedFurnitureGroup: (axis: 'x' | 'y' | 'z', delta: number) => void
   moveSelectedFurnitureGroupBy: (delta: { x: number; y: number; z: number }) => void
   rotateSelectedFurnitureGroup: () => void
@@ -106,6 +115,7 @@ export interface RoomState {
   copySelected: () => boolean
   pasteSelected: () => boolean
   toggleGridVisibility: (surface: GridSurface) => void
+  setGridGroupVisibility: (scope: 'focused' | 'all', visible: boolean) => void
   toggleElementVisibility: (id: string) => void
   toggleElementLock: (id: string) => void
   createElementFolder: (name: string, elementId?: string, parentId?: string) => void

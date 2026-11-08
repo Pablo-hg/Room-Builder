@@ -6,6 +6,7 @@ import { persistedDesign } from '../../domain/designV1'
 import { makeId } from '../../domain/elementIds'
 import { cleanExportReferences, DESIGN_FILE_MAX_BYTES, parseDesignFile, serializeDesignFile, type DesignFilePreview } from '../../persistence/designFile'
 import { DesignModal } from './DesignModal'
+import { diagnostics } from '../../diagnostics/engine'
 
 type ContextMenu = { x: number; y: number; designId: string | null }
 
@@ -53,6 +54,8 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
   }
   const showError = (message: string) => { setFileNotice(''); setFileError(message); setSavedDesignsOpen(true) }
   const exportDesign = (designId: string | null) => {
+    const operationId = diagnostics.nextOperation()
+    diagnostics.emit({ action: 'design.export-json', operationId, phase: 'started' })
     try {
       const current = useRoomStore.getState()
       const saved = current.savedDesigns.find((entry) => entry.id === designId)
@@ -73,15 +76,18 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
       setFileError('')
       setFileNotice(omitted ? `Archivo descargado. Se omitieron ${omitted} referencias obsoletas o duplicadas.` : 'Archivo descargado.')
       setSavedDesignsOpen(true)
-    } catch (error) { showError(error instanceof Error ? error.message : 'No se pudo exportar el diseño.') }
+      diagnostics.emit({ action: 'design.export-json', operationId, result: 'completed', data: { downloadRequested: true, omittedReferences: omitted } })
+    } catch (error) { diagnostics.emit({ action: 'design.export-json', operationId, category: 'errors', level: 'error', result: 'failed', data: { reason: 'export-failed' } }); showError(error instanceof Error ? error.message : 'No se pudo exportar el diseño.') }
   }
   const readDesign = async (file: File | undefined) => {
     setPreview(null); setFileError(''); setFileNotice('')
     if (!file) return
-    if (file.size > DESIGN_FILE_MAX_BYTES) { showError('El archivo supera el límite de 2 MB.'); return }
+    const operationId = diagnostics.nextOperation()
+    diagnostics.emit({ action: 'design.read-json', operationId, phase: 'started' })
+    if (file.size > DESIGN_FILE_MAX_BYTES) { diagnostics.emit({ action: 'design.read-json', operationId, level: 'warn', result: 'rejected', data: { reason: 'file-size-limit' } }); showError('El archivo supera el límite de 2 MB.'); return }
     setReadingFile(true)
-    try { const next = parseDesignFile(await file.text()); setSavedDesignsOpen(false); setPreview(next) }
-    catch (error) { showError(error instanceof Error ? error.message : 'No se pudo leer el archivo.') }
+    try { const next = parseDesignFile(await file.text()); setSavedDesignsOpen(false); setPreview(next); diagnostics.emit({ action: 'design.read-json', operationId, result: 'completed', data: { validated: true, sourceVersion: next.sourceVersion } }) }
+    catch (error) { diagnostics.emit({ action: 'design.read-json', operationId, category: 'errors', level: 'warn', result: 'rejected', data: { reason: 'read-or-validation-failed' } }); showError(error instanceof Error ? error.message : 'No se pudo leer el archivo.') }
     finally { setReadingFile(false) }
   }
   const copyDesign = (designId: string | null) => {

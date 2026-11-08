@@ -1,32 +1,65 @@
 import { expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 
-test('los nuevos anclajes ocultan Y y las lámparas libres mantienen la edición vertical', async ({ page }, testInfo) => {
-  await page.goto('/')
-  const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
-  for (const name of ['Alfombra', 'Alfombra circular', 'Lámpara de techo']) {
+// Cada tipo se comprueba en una página aislada: los cambios de cámara no
+// consumen el timeout de las operaciones de guardado de otros objetos.
+for (const { name, kind } of [
+  { name: 'Alfombra', kind: 'rug' },
+  { name: 'Alfombra circular', kind: 'circularRug' },
+  { name: 'Lámpara de techo', kind: 'ceilingLamp' },
+] as const) {
+  test(`los candados de ${name} permiten elegir Y y conservan su posición al guardar`, async ({ page }, testInfo) => {
+    await page.goto('/')
+    const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
     await page.getByRole('button', { name: `${name} ＋ Añadir`, exact: true }).click()
-    await expect(inspector.getByRole('slider', { name: 'Posición Y', exact: true })).toHaveCount(0)
+    await expect(inspector.getByRole('heading', { name, exact: true })).toBeVisible()
+    const y = inspector.getByRole('slider', { name: 'Posición Y', exact: true })
+    await expect(y).toBeDisabled()
+
     for (const view of ['Frontal', 'Plano', 'Isométrica']) {
       await page.getByRole('button', { name: view, exact: true }).click()
-      await expect(inspector.getByRole('slider', { name: 'Posición Y', exact: true })).toHaveCount(0)
+      await expect(y).toBeDisabled()
     }
-  }
-  await page.screenshot({ path: testInfo.outputPath('lampara-fijada.png') })
+    if (kind === 'ceilingLamp') await page.screenshot({ path: testInfo.outputPath('lampara-fijada.png') })
+
+    const lock = inspector.getByRole('checkbox', { name: 'Bloquear eje Y', exact: true })
+    await lock.uncheck()
+    await expect(y).toBeEnabled()
+    const input = inspector.getByRole('textbox', { name: 'Introducir Y en metros', exact: true })
+    await input.fill('1.25')
+    await input.press('Enter')
+    await lock.check()
+    await expect(y).toHaveValue('1.25')
+    await expect(y).toBeDisabled()
+
+    await page.getByRole('button', { name: 'Guardar como', exact: true }).click()
+    const data = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs')!)[0].data)
+    expect(data.furniture).toHaveLength(1)
+    expect(data.furniture[0].kind).toBe(kind)
+    expect(data.furniture[0].attachmentPolicy).toBe('by-type')
+    expect(data.furniture[0].y).toBe(1.25)
+    expect(data.furniture[0].axisLocks).toEqual({ x: false, y: true, z: false })
+  })
+}
+
+test('las lámparas libres permiten mover Y un centímetro y conservarlo al guardar', async ({ page }) => {
+  await page.goto('/')
+  const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
   for (const name of ['Lámpara', 'Lámpara de mesa']) {
     await page.getByRole('button', { name: `${name} ＋ Añadir`, exact: true }).click()
+    await expect(inspector.getByRole('heading', { name, exact: true })).toBeVisible()
     const y = inspector.getByRole('slider', { name: 'Posición Y', exact: true })
     await expect(y).toBeVisible()
     await y.focus()
     await y.press('ArrowRight')
-    await expect(y).toHaveValue('0.01')
+    await expect(y).toHaveValue('0.03')
   }
+
   await page.getByRole('button', { name: 'Guardar como', exact: true }).click()
   const data = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs')!)[0].data)
+  expect(data.furniture).toHaveLength(2)
   expect(data.furniture.every((item: { attachmentPolicy?: string }) => item.attachmentPolicy === 'by-type')).toBe(true)
-  for (const item of data.furniture) {
-    expect(item.y).toBe(item.kind === 'ceilingLamp' ? data.room.height - item.height : item.kind === 'rug' || item.kind === 'circularRug' ? 0 : 0.01)
-  }
+  expect(data.furniture.every((item: { y: number }) => item.y === 0.01)).toBe(true)
 })
 
 test('objetos antiguos conservan su altura y libertad al mezclar nuevos y recargar', async ({ page }) => {
@@ -51,20 +84,20 @@ test('objetos antiguos conservan su altura y libertad al mezclar nuevos y recarg
   const oldRug = page.locator('.element-select').filter({ hasText: 'Alfombra antigua' })
   const y = page.getByRole('slider', { name: 'Posición Y', exact: true })
   await oldRug.click()
-  await expect(y).toHaveValue('0.75')
+  await expect(y).toHaveValue('0.77')
   await y.focus()
   await y.press('ArrowRight')
-  await expect(y).toHaveValue('0.76')
+  await expect(y).toHaveValue('0.78')
   await page.getByRole('button', { name: 'Alfombra ＋ Añadir', exact: true }).click()
-  await expect(y).toHaveCount(0)
+  await expect(y).toBeDisabled()
   await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
   await page.reload()
   await load()
   const newRug = page.locator('.element-select').filter({ hasText: 'Alfombra' }).filter({ hasNotText: 'antigua' })
   await newRug.click()
-  await expect(y).toHaveCount(0)
+  await expect(y).toBeDisabled()
   await oldRug.click()
-  await expect(y).toHaveValue('0.76')
+  await expect(y).toHaveValue('0.78')
 })
 
 test('la selección mixta bloquea el eje Y y conserva el movimiento horizontal', async ({ page }) => {

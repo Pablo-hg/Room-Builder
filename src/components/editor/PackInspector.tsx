@@ -3,6 +3,7 @@ import { useRoomStore } from '../../state/useRoomStore'
 import { structureSurfaceElementId } from '../../domain/elementIds'
 import type { StructureSurfaceKey } from '../../domain/types'
 import { StructurePositionControls } from './Controls'
+import { structureSurfaceName } from '../../domain/selection'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
 
@@ -25,13 +26,14 @@ export function PackInspector({ selectedPack }: { selectedPack: RoomState['struc
     { id: 'wall-west', label: 'Pared oeste' },
   ]
   return (
-    <section className="panel-section selection-section selection-section--inspector" {...gesture.events}>
-      <span className="eyebrow">Pack de construcción</span>
-      <h2>{selectedPack.name}</h2>
-      <p className="section-copy">Mueve el pack completo; selecciona una superficie en la escena o en la lista para editarla por separado.</p>
+    <div className="room-pack-controls" aria-label="Controles de la habitación enfocada" {...gesture.events}>
+      <h3>Posición de la habitación</h3>
+      <p className="section-copy">Mueve la habitación completa; selecciona una superficie en la escena o en la lista para editarla por separado.</p>
       <StructurePositionControls
         label="Mover pack"
         position={selectedPack}
+        elementId={selectedPack.id}
+        axisLocks={selectedPack.axisLocks}
         onChange={(axis, value) => moveStructurePack(selectedPack.id, axis, value)}
         disabled={locked}
       />
@@ -41,22 +43,25 @@ export function PackInspector({ selectedPack }: { selectedPack: RoomState['struc
         const id = structureSurfaceElementId(selectedPack.id, surface.id)
         return (
           <div className="structure-surface-visibility" key={surface.id}>
-            <label title={`Mostrar u ocultar ${surface.name}`}>
+            <label title={`Mostrar u ocultar ${structureSurfaceName(surface)}`}>
               <input type="checkbox" checked={!hiddenElementIds.includes(id)} onChange={() => toggleElementVisibility(id)} />
               <small>{hiddenElementIds.includes(id) ? 'Oculta' : 'Visible'}</small>
             </label>
-            <button type="button" onClick={() => selectElement(id)}>{surface.name} · Editar</button>
+            <button type="button" onClick={() => selectElement(id)}>{structureSurfaceName(surface)} · Editar</button>
           </div>
         )
       })}
-      <h3>Añadir superficie</h3>
-      {availableSurfaces.filter((surface) => !existingSurfaces.has(surface.id)).map((surface) => (
-        <button type="button" className="text-button" key={surface.id} onClick={() => addStructureSurface(selectedPack.id, surface.id)}>
-          ＋ Añadir {surface.label.toLowerCase()}
-        </button>
-      ))}
-      <button type="button" className="text-button danger" onClick={() => removeStructurePack(selectedPack.id)}>Eliminar piso completo</button>
-    </section>
+      {availableSurfaces.some((surface) => !existingSurfaces.has(surface.id)) && (
+        <>
+          <h3>Añadir superficie</h3>
+          {availableSurfaces.filter((surface) => !existingSurfaces.has(surface.id)).map((surface) => (
+            <button type="button" className="text-button" key={surface.id} onClick={() => addStructureSurface(selectedPack.id, surface.id)}>
+              ＋ Añadir {surface.label.toLowerCase()}
+            </button>
+          ))}
+        </>
+      )}
+      <button type="button" className="text-button danger" onClick={() => removeStructurePack(selectedPack.id)}>Eliminar habitación completa</button>
+    </div>
   )
-
 }

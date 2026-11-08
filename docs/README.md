@@ -1,5 +1,7 @@
 # Guía de documentación de Room Builder
 
+- [Diagnósticos locales del editor](DIAGNOSTICS.md): IndexedDB y un único archivo de desarrollo `logs/diagnostics/LECTURA.log`, actualizado automáticamente y con tipo de interacción explícito. Sin visor web ni compartir. Exportación bajo Atajos de teclado; certificación pendiente.
+
 **Actualizado el 04/11/2026.** R5 está integrada en `main`, pero **ni el checkpoint v0.2 ni el MVP completo están certificados**. El objetivo actual de publicación incluye **casa con plantas + siete nuevas funcionalidades confirmadas**, no solo una habitación.
 
 ## Entrada obligatoria para ejecutar tareas

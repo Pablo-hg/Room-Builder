@@ -1,9 +1,21 @@
 # Arquitectura y calidad técnica
 
+**08/11/2026 — #34, última preferencia del propietario:** IndexedDB conserva los eventos estructurados del navegador. En desarrollo, Vite genera un único archivo activo `logs/diagnostics/LECTURA.log`, legible en español, con tipo de interacción explícito y un máximo de 5 MiB; no crea nuevas copias por categoría/sesión. Se preservan los archivos históricos. No hay visor web ni opción de compartir; Exportar diagnóstico permanece bajo Atajos de teclado. No se conecta al historial ni modifica diseños/colisiones. Arquitectura y límites: [DIAGNOSTICS.md](DIAGNOSTICS.md). Pruebas/build y validación visual pendientes de main.
+
 > **VIGENCIA 04/11/2026:** R0–R5 están integradas; el baseline necesita revalidación E2E completa (#24). El MVP final aprobado requiere migración de vivienda (#51), habitaciones y plantas (#52/#53), geometría irregular (#35), WASD (#36) y siete módulos confirmados (#37/#38/#39/#40/#41/#45/#47). El detalle de arquitectura histórica inferior NO es un contrato de casa publicado. **Plan canónico:** [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md); **checkpoint v0.2** [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md); **gate final** #54.
 
 
 **Estado:** diagnóstico del código actual CONFIRMADO por lectura; organización objetivo PROPUESTA.
+
+## Auditoría F0 #34 — extracción conservadora en rama (07/11/2026)
+
+La auditoría de `feature/34-auditar-refactorizar` distingue entre mejoras justificadas y módulos que **no conviene alterar únicamente por su tamaño**. Resultado e inventario de riesgos: [F0_REFACTOR_AUDIT.md](progress/F0_REFACTOR_AUDIT.md). **Sin tests ni build en rama**, pendientes de `main`.
+
+- `ObjectsPanel.tsx`: árbol de escena, carpetas, selección y contexto; **ya no contiene** controles de alta del catálogo ni de cuadrícula.
+- `ObjectCatalogSection.tsx`: categorías y altas de objetos/habitaciones con estado de expansión propio (mismo DOM).
+- `GridVisibilitySection.tsx`: cuadrículas de habitación/superficies, lecturas del mismo `useRoomStore` y mismos switches accesibles.
+- `App.tsx`: limpieza de término redundante al calcular si hay contenido en escena.
+- Se posponen `Openings.tsx`, `FurnitureGizmos.tsx`, partición de `styles.css` y cambios de formato. No se asume mejora medida en rendimiento.
 
 ## Stack actual (package.json, 26/10/2026)
 React 19, TypeScript, Vite 6, Three.js, React Three Fiber, Zustand, pruebas de Node/tsx y Playwright. Mantener salvo necesidad real medida; no hay que introducir otro motor de juego.

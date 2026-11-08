@@ -1,5 +1,9 @@
 # Registro de decisiones — Room Builder
 
+> **Paredes conectadas y aperturas compartidas, petición expresa del propietario (08/11/2026, #34):** se sustituye para esta implementación la exigencia de fusionar las paredes coincidentes en una medianera única de RB-027. Cada pared física conserva ID, geometría, material, carpeta, selección y bloqueos. Las conexiones se derivan de su contacto físico; una sola puerta/ventana editable produce recortes en todas las paredes paralelas del recorrido que atraviese. El anclaje mundial `wallPosition` requiere datos v10, con lectura de v1–v9 sin alterar los archivos originales. Esto no entrega el contrato canónico de vivienda/plantas de #51–#53. Implementación local, pruebas pendientes: [informe F0](progress/F0_REFACTOR_AUDIT.md#paredes-conectadas-y-aperturas-compartidas).
+
+> **Petición posterior del propietario, 08/11/2026 (rama #34):** ventanas y decoración mural pueden despegarse y moverse en XYZ mundial; las puertas conservan Y bloqueada y anclaje constructivo. La representación opcional `freePosition` se guarda en v9, sin migrar posiciones históricas; despegar una ventana retira el hueco y volver a abrirlo exige colocación explícita válida. El aviso de exterior se basa en la unión de cuerpos de habitaciones, no en contención en una sola. Amplía el anclaje mural de RB-035/RB-041 para esos elementos; no autoriza medianeras duplicadas ni huecos superpuestos. Implementación local y verificación pendiente en [F0](progress/F0_REFACTOR_AUDIT.md).
+
 > **Última decisión RB-052 (04/11/2026):** el MVP final incluye **vivienda por plantas**, editor de vértices, POV WASD y las siete funciones RB-045–RB-051. v0.2 (#33) queda como checkpoint, **gate final #54**. RB-040 mantiene retirada A/B; RB-039/RB-041 permiten solapes de muebles. **Lecturas anteriores que llamen «futuro» a casas/POV son históricas**, superadas por RB-052. Plan canónico: [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md). Workshop/IA/monetización permanecen en [FUTURE_IMPROVEMENTS.md](FUTURE_IMPROVEMENTS.md).
 
 **Fecha base:** 26/10/2026. Este registro pertenece exclusivamente a Room Builder. NO modifica el registro global de Pablo Web 2.0.
@@ -60,6 +64,37 @@
 | RB-052 | El conjunto de todas las issues abiertas #23–#41 seleccionadas, #45/#47 y #51–#54 define el MVP local completo; v0.2 es checkpoint, gate final #54 | CONFIRMADO como alcance y planificación, 04/11/2026 | [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md), épica #23; publicar solo con validación y autorización |
 
 ## Aclaraciones
+
+- **08/11/2026 — CONFIRMADO, última simplificación del propietario (#34):** al ejecutar `npm run dev`, mantener un único log activo legible, `logs/diagnostics/LECTURA.log`, reuniendo todas las categorías y señalando el tipo de interacción. Sustituye la generación por fecha/sesión/categoría y sus copias. Límite de 5 MiB con retirada de entradas completas antiguas, sin nuevos archivos de rotación. Preservar los históricos existentes; IndexedDB y la exportación estructurada continúan independientes.
+
+- **08/11/2026 — CONFIRMADO, rectificación posterior del propietario (#34):** retirar el visor de diagnósticos de toda la web, también en desarrollo. Consultar mediante archivos internos legibles y herramientas de terminal del proyecto/VS Code. Eliminar Compartir diagnóstico; conservar Exportar diagnóstico. Sustituye exclusivamente esas partes de la decisión anterior; IndexedDB, privacidad y ausencia de telemetría siguen vigentes.
+
+- **08/11/2026 — CONFIRMADO por el propietario (#34):** diagnóstico local común para desarrollo y web publicada, IndexedDB canónico (inicialmente 7 días y aproximadamente 5 MiB), separado de undo/redo. Vite solo copia eventos a JSONL en desarrollo; visor/importador excluido de producción. Ayuda pública ofrece exportar/compartir por iniciativa del usuario, sin backend ni telemetría. No modifica política de colisiones ni formatos de diseños. Implementación y límites en [DIAGNOSTICS.md](DIAGNOSTICS.md); validación pendiente en main. Sustituye para este sistema la propuesta inicial de registrar solo en DEV.
+
+- **07/11/2026 — Última petición del propietario:** la habitación enfocada en la
+  cámara determina el contexto del catálogo de puertas y del panel de espacio;
+  la selección de objetos permanece independiente. Precisa la continuación
+  anterior: no hace falta seleccionar la carpeta en la lista, pero los tamaños
+  siguen exigiendo componentes completos/coherentes. Una tarjeta Puerta añade
+  en cualquier habitación, incluida raíz mediante `extraDoors` (v8). Zoom por
+  barra además de rueda, distribución móvil por zonas. Validación visual a cargo
+  del propietario; pruebas/build pendientes de main.
+
+- **Continuación del 07/11/2026 — CONFIRMADO por el propietario:** las dimensiones
+  modifican solo la habitación seleccionada y se habilitan desde una carpeta con
+  sus componentes completos/coherentes. Puertas adicionales vinculadas a paredes
+  de los packs, persistidas en v7; las conexiones por medianeras únicas mantienen
+  la dependencia #51/#52. Implementación local y límites en
+  [R5_PROGRESS.md](progress/R5_PROGRESS.md), sin certificación funcional/visual.
+
+- **07/11/2026 — Petición explícita del propietario:** los candados XYZ por
+  elemento sustituyen la fijación obligatoria de alfombras/lámparas nuevas.
+  Empiezan con Y bloqueado; desbloquear permite elegir altura absoluta y volver
+  a bloquear conserva la posición. Los datos con candados explícitos se guardan
+  como v6; lectura v1–v5 conservada. Precisa RB-035/RB-036/RB-038 sin borrar su
+  historia. Especificación e implementación local en
+  [R5_PROGRESS.md](progress/R5_PROGRESS.md); pendiente de pruebas en main y
+  aceptación visual. La vivienda canónica sigue pendiente de #51–#53.
 - **CONFIRMADO** aquí alude a decisiones expresas de esta conversación, no a entregas realizadas o a documentación global del portfolio.
 - **PROPUESTO** no autoriza ejecución automática: revisar al planificar tareas.
 - El código actual es fuente de lo implementado; el registro expresa el objetivo.

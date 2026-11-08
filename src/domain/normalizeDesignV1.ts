@@ -2,6 +2,10 @@ import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, WALL_SIDES } from './constants
 import { DEFAULT_GRID_VISIBILITY, type PersistedDesign } from './designV1'
 import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, isWindowShape, OPENING_CATALOG, openingKindForShape } from './objectCatalog'
 import { createStructureSurface } from './structureRules'
+import { validateAxisLocks } from './axisLocks'
+import { validateFreeWallPosition, validateWallPosition } from './freeWallPosition'
+import { rootDoorPack, structureDoorError } from './structureDoors'
+import { structureWindowError } from './structureWindows'
 import type { GridSurface, RoomConfig, StructurePack, StructureSurface, StructureSurfaceKey } from './types'
 
 export function normalizeStructurePacks(value: unknown, room: RoomConfig): StructurePack[] {
@@ -10,6 +14,7 @@ export function normalizeStructurePacks(value: unknown, room: RoomConfig): Struc
   return value.map((candidate) => {
     if (!candidate || typeof candidate !== 'object') throw new Error('invalid structure pack')
     const pack = candidate as Partial<StructurePack>
+    validateAxisLocks(pack.axisLocks)
     if (
       typeof pack.id !== 'string'
       || typeof pack.name !== 'string'
@@ -20,6 +25,7 @@ export function normalizeStructurePacks(value: unknown, room: RoomConfig): Struc
     const surfaces = pack.surfaces.map((surfaceCandidate) => {
       if (!surfaceCandidate || typeof surfaceCandidate !== 'object') throw new Error('invalid structure surface')
       const surface = surfaceCandidate as Partial<StructureSurface>
+      validateAxisLocks(surface.axisLocks)
       const validWall = surface.wall === 'north' || surface.wall === 'east' || surface.wall === 'south' || surface.wall === 'west'
       const defaultSurface = ['floor', 'ceiling', 'wall-north', 'wall-east', 'wall-south', 'wall-west'].includes(surface.id ?? '')
         ? createStructureSurface(room, surface.id as StructureSurfaceKey)
@@ -50,11 +56,22 @@ export function normalizeStructurePacks(value: unknown, room: RoomConfig): Struc
         rotation: surface.rotation ?? 0,
       } as StructureSurface
     })
-    return { ...pack, surfaces } as StructurePack
+    const normalized = { ...pack, surfaces } as StructurePack
+    const doorError = structureDoorError(normalized) || structureWindowError(normalized)
+    if (doorError) throw new Error(doorError)
+    return normalized
   })
 }
 
 export function normalizeDesignRoom(data: PersistedDesign): RoomConfig {
+  const doorError = structureDoorError(rootDoorPack(data.room))
+  if (doorError) throw new Error(doorError)
+  validateAxisLocks(data.room.door.axisLocks)
+  validateWallPosition(data.room.door.wallPosition)
+  data.room.windows.forEach((window) => {
+    validateAxisLocks(window.axisLocks); validateFreeWallPosition(window.freePosition); validateWallPosition(window.wallPosition)
+    if (window.freePosition && window.wallPosition) throw new Error('Anclaje de ventana ambiguo.')
+  })
   const validName = (name: unknown) => typeof name === 'string' && name.trim() && name.trim().length <= 80 ? name.trim() : undefined
   const { name: doorName, ...door } = data.room.door
   return {

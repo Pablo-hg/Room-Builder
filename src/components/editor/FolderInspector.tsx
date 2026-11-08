@@ -48,8 +48,8 @@ export function FolderInspector({ folder }: { folder: ElementFolder }) {
         </div>
       </div>
       <div className="object-actions" aria-label="Orden de la carpeta">
-        <button type="button" disabled={folderIndex <= 0} onClick={() => reorderSceneElement(folderId, siblings[folderIndex - 1], 'before')}>Subir carpeta</button>
-        <button type="button" disabled={folderIndex < 0 || folderIndex >= siblings.length - 1} onClick={() => reorderSceneElement(folderId, siblings[folderIndex + 1], 'after')}>Bajar carpeta</button>
+        <button type="button" disabled={folderIndex <= 0} onClick={() => reorderSceneElement(folderId, siblings[folderIndex - 1], 'before')}>Subir</button>
+        <button type="button" disabled={folderIndex < 0 || folderIndex >= siblings.length - 1} onClick={() => reorderSceneElement(folderId, siblings[folderIndex + 1], 'after')}>Bajar</button>
       </div>
       <label className="element-name-control">
         <span>Ubicación de la carpeta</span>

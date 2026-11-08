@@ -1,15 +1,17 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { MeasurementControl } from './MeasurementControl'
 import { ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from '../../domain/constants'
-import type { StructureSurface, WallSide } from '../../domain/types'
+import type { AxisLocks, PositionAxis, StructureSurface, WallSide } from '../../domain/types'
 import { structureDimensionMinimum } from '../../domain/structureRules'
 import { OpeningIcon } from '../iconCatalog'
 import { useRoomStore } from '../../state/useRoomStore'
+import { focusedRoom } from '../../domain/roomEditing'
+import { AXIS_COLORS } from '../../scene/axisColors'
 
 export function DimensionControl({ field, label }: { field: 'width' | 'depth' | 'height'; label: string }) {
-  const room = useRoomStore((state) => state.room)
-  const setDimension = useRoomStore((state) => state.setDimension)
-  return <MeasurementControl label={label} value={room[field]} min={field === 'width' ? ROOM_LIMITS.minWidth : field === 'depth' ? ROOM_LIMITS.minDepth : ROOM_LIMITS.minHeight} max={field === 'width' ? ROOM_LIMITS.maxWidth : field === 'depth' ? ROOM_LIMITS.maxDepth : ROOM_LIMITS.maxHeight} onChange={(value) => setDimension(field, value)} />
+  const state = useRoomStore()
+  const target = focusedRoom(state)
+  return <MeasurementControl label={label} value={target.size[field]} disabled={!target.editable} min={field === 'width' ? ROOM_LIMITS.minWidth : field === 'depth' ? ROOM_LIMITS.minDepth : ROOM_LIMITS.minHeight} max={field === 'width' ? ROOM_LIMITS.maxWidth : field === 'depth' ? ROOM_LIMITS.maxDepth : ROOM_LIMITS.maxHeight} onChange={(value) => state.setFocusedRoomDimension(field, value)} />
 }
 
 export function ColorControl({ label, value, onChange, disabled = false }: { label: string; value: string; onChange: (color: string) => void; disabled?: boolean }) {
@@ -24,9 +26,20 @@ export function ColorControl({ label, value, onChange, disabled = false }: { lab
   )
 }
 
-export function PositionControl({ label, value, min, max, disabled = false, onChange }: { label: string; value: number; min: number; max: number; step: number; disabled?: boolean; onChange: (value: number) => void }) {
+export function PositionControl({ label, value, min, max, disabled = false, onChange, axis }: { label: string; value: number; min: number; max: number; step: number; disabled?: boolean; axis?: PositionAxis; onChange: (value: number) => void }) {
   const inputLabel = `Introducir ${label.replace(/^Posición /, '').replace(/^Desplazamiento /, '').replace(/^Mover pack /, '')} en metros`
-  return <MeasurementControl label={label} inputLabel={inputLabel} value={value} min={min} max={max} disabled={disabled} onChange={onChange} />
+  return <MeasurementControl label={label} inputLabel={inputLabel} value={value} min={min} max={max} disabled={disabled} onChange={onChange} textColor={axis ? AXIS_COLORS[axis].normal : undefined} />
+}
+
+export function AxisPositionControl({ id, axis, locked, disabled = false, unavailable = false, ...props }: {
+  id: string; axis: PositionAxis; locked: boolean; disabled?: boolean; unavailable?: boolean
+  label: string; value: number; min: number; max: number; step: number; onChange: (value: number) => void
+}) {
+  const setElementAxisLock = useRoomStore((state) => state.setElementAxisLock)
+  return <div className="axis-position-control">
+    <label className="axis-position-lock" style={{ color: AXIS_COLORS[axis].normal }}><input type="checkbox" style={{ accentColor: AXIS_COLORS[axis].normal }} aria-label={`Bloquear eje ${axis.toUpperCase()}`} checked={locked || unavailable} disabled={disabled || unavailable} onChange={(event) => setElementAxisLock(id, axis, event.target.checked)} /> Bloquear {axis.toUpperCase()}</label>
+    <PositionControl {...props} axis={axis} disabled={disabled || locked || unavailable} />
+  </div>
 }
 
 export function StructurePositionControls({
@@ -34,17 +47,22 @@ export function StructurePositionControls({
   position,
   onChange,
   disabled = false,
+  elementId,
+  axisLocks,
 }: {
   label: string
   position: { x: number; y: number; z: number }
   onChange: (axis: 'x' | 'y' | 'z', value: number) => void
   disabled?: boolean
+  elementId?: string
+  axisLocks?: AxisLocks
 }) {
   return (
     <>
       {(['x', 'y', 'z'] as const).map((axis) => {
         const step = ROOM_LIMITS.placementStep
-        return <PositionControl key={axis} label={`${label} ${axis.toUpperCase()}`} min={Math.floor(Math.min(-10, position[axis]) / step) * step} max={Math.ceil(Math.max(10, position[axis]) / step) * step} step={step} value={position[axis]} disabled={disabled} onChange={(value) => onChange(axis, value)} />
+        const props = { label: `${label} ${axis.toUpperCase()}`, min: Math.floor(Math.min(-10, position[axis]) / step) * step, max: Math.ceil(Math.max(10, position[axis]) / step) * step, step, value: position[axis], disabled, onChange: (value: number) => onChange(axis, value) }
+        return elementId ? <AxisPositionControl key={axis} {...props} id={elementId} axis={axis} locked={axisLocks?.[axis] ?? false} /> : <PositionControl key={axis} {...props} axis={axis} />
       })}
     </>
   )

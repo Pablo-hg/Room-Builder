@@ -10,7 +10,8 @@ import { recordSceneInteraction } from './sceneInteraction'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
 import { AXIS_COLORS } from './axisColors'
 import { AxisAnchor } from './AxisAnchor'
-import { canElevateFurniture } from '../domain/objectCatalog'
+import { canElevateFurniture, furnitureVisualYOffset } from '../domain/objectCatalog'
+import { furnitureAxisLocks } from '../domain/axisLocks'
 
 type FloorMoveAxis = 'x' | 'y' | 'z'
 
@@ -19,7 +20,8 @@ export function RotationHandle({ item }: { item: FurnitureItem }) {
   const setFurnitureRotation = useRoomStore((state) => state.setFurnitureRotation)
   const [dragging, setDragging] = useState(false)
   const [hovered, setHovered] = useState(false)
-  const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
+  const visualY = useRoomStore((state) => item.y + furnitureVisualYOffset(item, state))
+  const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), -visualY), [visualY])
   const point = useMemo(() => new THREE.Vector3(), [])
   const lastPointerAngle = useRef(0)
   const targetRotation = useRef(item.rotation)
@@ -250,7 +252,8 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
   const { camera, size } = useThree()
   const [draggingAxis, setDraggingAxis] = useState<FloorMoveAxis | null>(null)
   const [hoveredAxis, setHoveredAxis] = useState<FloorMoveAxis | null>(null)
-  const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
+  const visualY = useRoomStore((state) => item.y + furnitureVisualYOffset(item, state))
+  const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), -visualY), [visualY])
   const point = useMemo(() => new THREE.Vector3(), [])
   const dragOffset = useRef(0)
   const dragOrigin = useRef({ x: item.x, z: item.z })
@@ -357,7 +360,7 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
 
   return (
     <AxisAnchor center={[0, item.height / 2, 0]} dimensions={[item.width, item.height, item.depth]}>
-      {hideAxis !== 'x' && <group {...axisEvents('x')}>
+      {hideAxis !== 'x' && !furnitureAxisLocks(item).x && <group {...axisEvents('x')}>
         {([-1, 1] as const).map((direction) => (
           <group key={direction}>
             <mesh position={[direction * shaftLength / 2, 0, 0]} renderOrder={8}>
@@ -376,7 +379,7 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
           </group>
         ))}
       </group>}
-      {hideAxis !== 'z' && <group {...axisEvents('z')}>
+      {hideAxis !== 'z' && !furnitureAxisLocks(item).z && <group {...axisEvents('z')}>
         {([-1, 1] as const).map((direction) => (
           <group key={direction}>
             <mesh position={[0, 0, direction * shaftLength / 2]} renderOrder={8}>
@@ -559,7 +562,7 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
   return (
     <group position={[0, item.height / 2, 0]} rotation={planeRotation}>
       <AxisAnchor center={[0, 0, 0]} dimensions={[item.width, item.height, item.depth]}>
-      {renderAxis('horizontal')}
+      {!furnitureAxisLocks(item)[horizontalAxis] && renderAxis('horizontal')}
       {canMoveVertically && renderAxis('vertical')}
       </AxisAnchor>
     </group>

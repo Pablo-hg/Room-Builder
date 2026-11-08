@@ -73,7 +73,7 @@ test('resuelve todos los muebles, packs y superficies sin interpretar sus IDs an
     const selected = deriveSelection(state, id).selectedSurface
     assert.equal(selected?.pack, pack)
     assert.equal(selected?.surface, surface)
-    assert.equal(elementName(state, id), `${pack.name} · ${surface.name}`)
+    assert.equal(elementName(state, id), surface.name)
     const restored = JSON.parse(JSON.stringify({ ...state, hiddenElementIds: [id] }))
     assert.equal(deriveSelection(restored, restored.hiddenElementIds[0]).selectedSurface?.surface.id, surface.id)
   }
@@ -85,7 +85,7 @@ test('mantiene selecciones vacías o desconocidas y la precedencia de nombres', 
   for (const id of [null, '', 'unknown-legacy-id', 'structure-surface:missing:floor']) {
     assert.deepEqual(deriveSelection(state, id), {
       selectedPack: undefined, selectedSurface: undefined, selectedFurniture: undefined,
-      selectedWindow: undefined, selectedOpening: null,
+      selectedWindow: undefined, selectedOpening: null, selectedStructureDoor: undefined,
     })
     assert.equal(elementName(state, id), id || null)
   }

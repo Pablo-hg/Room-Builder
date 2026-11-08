@@ -1,4 +1,6 @@
 import type { ElementFolder, FurnitureKind, GridSurface, StructurePack, WallSide, WindowShape } from './types'
+import { validateAxisLocks } from './axisLocks'
+import { validateFreeWallPosition, validateWallPosition } from './freeWallPosition'
 
 /**
  * Contrato candidato Project/Room/Layout (R4).
@@ -54,6 +56,9 @@ export interface WallV2 {
 }
 
 export interface OpeningV2 {
+  wallPosition?: import('./types').WindowConfig['wallPosition']
+  freePosition?: import('./types').WindowConfig['freePosition']
+  axisLocks?: import('./types').AxisLocks
   id: string
   name?: string
   wallId: string
@@ -80,6 +85,7 @@ export interface FurnitureDefinitionV2 {
 }
 
 export interface FurnitureInstanceV2 {
+  axisLocks?: import('./types').AxisLocks
   attachmentPolicy?: 'by-type'
   id: string
   roomId: string
@@ -120,7 +126,7 @@ export interface ProjectMetadataV2 {
   createdAt: string
   updatedAt: string
   source: 'v1-design' | 'new'
-  migratedFromVersion?: 1 | 2 | 3 | 4 | 5
+  migratedFromVersion?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
 }
 
 export interface ProjectV2 {
@@ -290,6 +296,8 @@ function normalizedStructure(project: Pick<ProjectV2, 'floors' | 'rooms' | 'wall
       bottom: round(opening.bottom),
       color: opening.color,
       rotation: round(opening.rotation ?? 0),
+      ...(opening.freePosition ? { freePosition: { ...opening.freePosition } } : {}),
+      ...(opening.wallPosition ? { wallPosition: { ...opening.wallPosition } } : {}),
     })),
     legacyStructurePacks: project.legacyStructurePacks
       ? byId(project.legacyStructurePacks).map((pack) => ({
@@ -299,6 +307,8 @@ function normalizedStructure(project: Pick<ProjectV2, 'floors' | 'rooms' | 'wall
         y: round(pack.y),
         z: round(pack.z),
         surfaces: [...pack.surfaces].sort((a, b) => a.id.localeCompare(b.id)),
+        ...(pack.doors ? { doors: byId(pack.doors) } : {}),
+        ...(pack.windows ? { windows: byId(pack.windows) } : {}),
       }))
       : null,
   }
@@ -422,6 +432,8 @@ export function validateProject(project: ProjectV2): ProjectValidationIssue[] {
 
   const openingIds = new Set<string>()
   for (const [index, opening] of project.openings.entries()) {
+    try { validateAxisLocks(opening.axisLocks) }
+    catch { add('invalid-schema', `openings[${index}].axisLocks`, 'Bloqueos de posición inválidos.') }
     const path = `openings[${index}]`
     if (!isNonEmptyString(opening.id)) add('invalid-opening', `${path}.id`, 'Identificador de abertura vacío.')
     else if (openingIds.has(opening.id)) add('duplicate-id', `${path}.id`, `Abertura duplicada: ${opening.id}.`)
@@ -438,6 +450,16 @@ export function validateProject(project: ProjectV2): ProjectValidationIssue[] {
     if (!isFiniteNumber(opening.offset)) add('invalid-opening', `${path}.offset`, 'Posición de abertura inválida.')
     if (typeof opening.color !== 'string') add('invalid-opening', `${path}.color`, 'Color de abertura inválido.')
     if (opening.rotation !== undefined && !isFiniteNumber(opening.rotation)) add('invalid-opening', `${path}.rotation`, 'Rotación de abertura inválida.')
+    if (opening.wallPosition !== undefined) {
+      try { validateWallPosition(opening.wallPosition) } catch { add('invalid-opening', `${path}.wallPosition`, 'Anclaje a paredes conectadas inválido.') }
+      if (opening.freePosition) add('invalid-opening', path, 'Anclaje de abertura ambiguo.')
+      continue
+    }
+    if (opening.freePosition !== undefined) {
+      try { validateFreeWallPosition(opening.freePosition) } catch { add('invalid-opening', `${path}.freePosition`, 'Posición mural libre inválida.') }
+      if (opening.kind !== 'window') add('invalid-opening', `${path}.freePosition`, 'Una puerta debe permanecer en su pared.')
+      continue
+    }
     if (isFiniteNumber(opening.offset) && isPositive(opening.width)) {
       const halfLength = wallLength(wall) / 2
       if (Math.abs(opening.offset) + opening.width / 2 > halfLength + EPSILON) {
@@ -454,6 +476,7 @@ export function validateProject(project: ProjectV2): ProjectValidationIssue[] {
   // convivir con otra a distinta altura o distinto tramo.
   const openingsByWall = new Map<string, OpeningV2[]>()
   for (const opening of project.openings) {
+    if (opening.freePosition || opening.wallPosition) continue
     if (!openingIds.has(opening.id)) continue
     if (!isFiniteNumber(opening.offset) || !isPositive(opening.width) || !isPositive(opening.height) || !isNonNegative(opening.bottom)) continue
     const list = openingsByWall.get(opening.wallId)
@@ -504,6 +527,8 @@ export function validateProject(project: ProjectV2): ProjectValidationIssue[] {
     const furnitureIds = new Set<string>()
     for (const [furnitureIndex, item] of layout.furniture.entries()) {
       const itemPath = `${path}.furniture[${furnitureIndex}]`
+      try { validateAxisLocks(item.axisLocks) }
+      catch { add('invalid-furniture', `${itemPath}.axisLocks`, 'Bloqueos de posición inválidos.') }
       if (!isNonEmptyString(item.id)) add('invalid-furniture', `${itemPath}.id`, 'Identificador de mueble vacío.')
       else if (furnitureIds.has(item.id)) add('duplicate-id', `${itemPath}.id`, `Mueble duplicado en la variante: ${item.id}.`)
       else furnitureIds.add(item.id)

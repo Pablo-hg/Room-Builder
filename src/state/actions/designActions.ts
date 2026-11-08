@@ -7,6 +7,7 @@ import { normalizeDesignPreferences } from '../../domain/normalizeDesignV1'
 import { makeId } from '../../domain/elementIds'
 import type { PersistedDesign } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
+import { failDiagnosticAction } from '../../diagnostics/actionScope'
 import { cloneRoom } from '../defaults'
 import type { RoomActionContext, RoomState } from '../types'
 
@@ -49,6 +50,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
         const savedDesigns = repository.read()
         set({ savedDesigns, selectedSavedDesignId: '' })
       } catch (error) {
+        failDiagnosticAction('storage.read-failed')
         const detail = error instanceof Error && error.message.includes('no coincide') ? ` ${error.message}` : ''
         set({ notice: `No se pudieron leer los diseños guardados.${detail}` })
       }
@@ -98,6 +100,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
         // El envoltorio de set marca como no guardado un lienzo sin diseño activo; se corrige aquí.
         set({ hasUnsavedChanges: false })
       } catch {
+        failDiagnosticAction('storage.delete-failed')
         set({ notice: 'No se pudo eliminar el diseño guardado.' })
       }
     },
@@ -145,6 +148,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           notice: mode === 'blank' ? 'Diseño nuevo creado en blanco.' : 'Copia del diseño creada.',
         })
       } catch {
+        failDiagnosticAction('storage.create-failed')
         set({ notice: 'No se pudo crear el diseño en el almacenamiento local.' })
       }
     },
@@ -162,6 +166,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
         })
         set({ savedDesigns, notice: 'Nombre del diseño actualizado.' })
       } catch {
+        failDiagnosticAction('storage.rename-failed')
         set({ notice: 'No se pudo cambiar el nombre del diseño.' })
       }
     },
@@ -198,6 +203,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           notice: activeDesign ? 'Cambios guardados en el diseño actual.' : 'Diseño guardado en este navegador.',
         })
       } catch {
+        failDiagnosticAction('storage.save-failed')
         set({ notice: 'No se pudo acceder al almacenamiento local.' })
       }
     },
@@ -215,6 +221,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
         recordInteraction('state.design.imported', { view: state.view, selectedId: state.selectedId, details: { id } })
         return null
       } catch {
+        failDiagnosticAction('storage.import-failed')
         return 'No se pudo guardar el diseño importado en este navegador.'
       }
     },
@@ -239,6 +246,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           notice: 'Diseño recuperado.',
         })
       } catch (error) {
+        failDiagnosticAction('design.load-failed')
         const detail = error instanceof Error && error.message.includes('no coincide') ? ` ${error.message}` : ''
         set({ notice: `El diseño guardado no es válido.${detail}` })
       }

@@ -1,6 +1,8 @@
 export type ViewMode = 'isometric' | 'top' | 'front' | 'pov' | 'free'
 export type WallSide = 'north' | 'east' | 'south' | 'west'
 export type GridSurface = 'floor' | WallSide
+export type PositionAxis = 'x' | 'y' | 'z'
+export type AxisLocks = Record<PositionAxis, boolean>
 export type FurnitureKind =
   | 'armchair'
   | 'sofa'
@@ -37,6 +39,9 @@ export interface ElementFolder {
 }
 
 export interface DoorConfig {
+  /** v10: one logical opening, independently of its original physical wall. */
+  wallPosition?: { x: number; y: number; z: number; yaw: number; supportId?: string; depth?: number }
+  axisLocks?: AxisLocks
   name?: string
   wall: WallSide
   offset: number
@@ -47,6 +52,11 @@ export interface DoorConfig {
 }
 
 export interface WindowConfig {
+  /** v10: attached world-space base centre. freePosition remains detached. */
+  wallPosition?: { x: number; y: number; z: number; yaw: number; supportId?: string; depth?: number }
+  /** v9: detached world-space base centre and wall yaw; absent preserves legacy support. */
+  freePosition?: { x: number; y: number; z: number; yaw: number }
+  axisLocks?: AxisLocks
   name?: string
   id: string
   shape: WindowShape
@@ -60,6 +70,7 @@ export interface WindowConfig {
 }
 
 export interface RoomConfig {
+  extraDoors?: Array<DoorConfig & { id: string }>
   width: number
   depth: number
   height: number
@@ -71,6 +82,7 @@ export interface RoomConfig {
 }
 
 export interface FurnitureItem {
+  axisLocks?: AxisLocks
   /** Ausente en objetos antiguos: conserva su libertad de movimiento previa. */
   attachmentPolicy?: 'by-type'
   id: string
@@ -90,6 +102,7 @@ export type StructureSurfaceKind = 'wall' | 'floor' | 'ceiling'
 export type StructureSurfaceKey = 'floor' | 'ceiling' | `wall-${WallSide}`
 
 export interface StructureSurface {
+  axisLocks?: AxisLocks
   id: StructureSurfaceKey
   kind: StructureSurfaceKind
   name: string
@@ -105,6 +118,10 @@ export interface StructureSurface {
 }
 
 export interface StructurePack {
+  axisLocks?: AxisLocks
+  doors?: Array<DoorConfig & { id: string }>
+  /** Windows and wall-mounted decorations belonging to this room (legacy root uses RoomConfig.windows). */
+  windows?: WindowConfig[]
   id: string
   name: string
   x: number

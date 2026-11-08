@@ -160,7 +160,7 @@ test('Ctrl, Meta y Mayús seleccionan y alternan un mueble pulsando en la vista'
   await page.goto('/')
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
-  await page.getByRole('button', { name: /Puerta Seleccionar/ }).click()
+  await page.getByRole('button', { name: /Puerta Apertura/ }).click()
   const canvas = await page.locator('.scene-panel canvas').first().boundingBox()
   if (!canvas) throw new Error('Canvas no disponible')
   const x = canvas.x + canvas.width / 2 + 12
@@ -185,7 +185,7 @@ test('Ctrl selecciona una superficie independiente sin perder la selección ante
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   await page.getByRole('button', { name: /Suelo.*Objeto independiente/ }).click()
-  await page.getByRole('button', { name: /Puerta Seleccionar/ }).click()
+  await page.getByRole('button', { name: /Puerta Apertura/ }).click()
   const canvas = await page.locator('.scene-panel canvas').first().boundingBox()
   if (!canvas) throw new Error('Canvas no disponible')
   await page.keyboard.down('Control')
@@ -310,19 +310,21 @@ test('resuelve la selección del inspector para muebles, aperturas, packs y supe
 
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   await expect(inspector.getByRole('heading', { name: 'Sillón', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: /Puerta Seleccionar/ }).click()
+  await page.getByRole('button', { name: /Puerta Apertura/ }).click()
   await expect(inspector.getByRole('heading', { name: 'Puerta', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Ventana ＋ Añadir', exact: true }).click()
   await expect(inspector.getByRole('heading', { name: 'Ventana', exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
-  await expect(inspector.getByText('Pack de construcción', { exact: true })).toBeVisible()
-  await inspector.getByRole('button', { name: 'Suelo · Editar', exact: true }).click()
+  const space = inspector.locator('.room-section')
+  await expect(space.getByRole('heading', { name: 'Posición de la habitación' })).toBeVisible()
+  await space.getByRole('button', { name: 'Suelo · Editar', exact: true }).click()
   await expect(inspector.getByText('Superficie de construcción', { exact: true })).toBeVisible()
   await expect(inspector.getByRole('heading', { name: 'Suelo', exact: true })).toBeVisible()
   await inspector.getByRole('button', { name: 'Seleccionar pack completo', exact: true }).click()
-  await expect(inspector.getByText('Pack de construcción', { exact: true })).toBeVisible()
+  await expect(space.getByRole('heading', { name: 'Posición de la habitación' })).toBeVisible()
+  await expect(inspector.getByText('Pack de construcción', { exact: true })).toHaveCount(0)
 })
 
 test('sitúa catálogo a la izquierda e inspector a la derecha y permite plegarlos', async ({ page }) => {

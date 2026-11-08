@@ -4,6 +4,7 @@ import { furnitureAttachment, FURNITURE_PRESETS, isWindowShape, OPENING_CATALOG 
 import { clampFurnitureElevation, validateOpenings } from '../domain/geometry'
 import type { PersistedDesign, SavedDesign } from '../domain/designV1'
 import { normalizeDesign } from './designMigrations'
+import { validateAxisLocks } from '../domain/axisLocks'
 
 export const DESIGN_FILE_MAX_BYTES = 2 * 1024 * 1024
 const FORMAT = 'room-builder-design'
@@ -15,9 +16,10 @@ export interface DesignFilePreview { design: SavedDesign; sourceVersion: number;
 /** Omite únicamente referencias a elementos que ya no existen; no modifica el diseño abierto. */
 export function cleanExportReferences(input: PersistedDesign): { data: PersistedDesign; omitted: number } {
   const data = structuredClone(input)
-  const valid = new Set<string>(['door', ...BASE_ROOM_SURFACE_IDS, ...data.furniture.map((item) => item.id), ...data.room.windows.map((item) => item.id)])
+  const valid = new Set<string>(['door', ...BASE_ROOM_SURFACE_IDS, ...data.furniture.map((item) => item.id), ...data.room.windows.map((item) => item.id), ...(data.room.extraDoors ?? []).map((door) => door.id)])
   for (const pack of data.structurePacks ?? []) {
     valid.add(pack.id)
+    pack.doors?.forEach((door) => valid.add(door.id))
     for (const surface of pack.surfaces) {
       valid.add(structureSurfaceElementId(pack.id, surface.id))
       valid.add(structureGridElementId(pack.id, surface.id))
@@ -86,13 +88,14 @@ function validateFurniture(value: unknown, room: RecordValue, occupied: Set<stri
       || (item.attachmentPolicy !== undefined && item.attachmentPolicy !== 'by-type')) invalid('Hay un mueble con datos o identificador no válidos.')
     ids.add((item as RecordValue).id as string)
     const furniture = item as unknown as PersistedDesign['furniture'][number]
+    validateAxisLocks(furniture.axisLocks)
     const attachment = furnitureAttachment(furniture)
     if ((attachment === 'floor' || attachment === 'ceiling') && Math.abs(furniture.y - clampFurnitureElevation(furniture, room as unknown as PersistedDesign['room'], false)) > 1e-9) invalid('Un mueble no respeta su anclaje.')
   }
 }
 
 function validateData(value: unknown): { data: PersistedDesign; sourceVersion: number; removedVariants: number } {
-  if (!object(value) || ![1, 2, 3, 4, 5].includes(Number(value.version)) || typeof value.version !== 'number') invalid('La versión del diseño no es compatible.')
+  if (!object(value) || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(Number(value.version)) || typeof value.version !== 'number') invalid('La versión del diseño no es compatible.')
   const source = value as RecordValue
   if (!object(source.room)) invalid('Falta la habitación.')
   const room = source.room as RecordValue
@@ -111,6 +114,13 @@ function validateData(value: unknown): { data: PersistedDesign; sourceVersion: n
     if (object(opening) && (opening.shape === 'circular' || opening.shape === 'mirrorCircular') && opening.width !== opening.height) invalid('Una apertura circular tiene medidas incompatibles.')
     occupied.add((opening as RecordValue).id as string)
   }
+  if (room.extraDoors !== undefined) {
+    if (!Array.isArray(room.extraDoors)) invalid('Puertas adicionales inválidas.')
+    for (const extra of room.extraDoors as unknown[]) {
+      if (!object(extra) || !text(extra.id) || occupied.has(extra.id)) invalid('Identificador de puerta inválido o duplicado.')
+      occupied.add((extra as RecordValue).id as string)
+    }
+  }
   const packs = source.structurePacks === undefined ? [] : source.structurePacks
   if (!Array.isArray(packs)) invalid('La estructura no es válida.')
   for (const pack of packs as unknown[]) {
@@ -118,6 +128,13 @@ function validateData(value: unknown): { data: PersistedDesign; sourceVersion: n
       || ![pack.x, pack.y, pack.z].every(finite) || !Array.isArray(pack.surfaces)) invalid('Hay una estructura no válida.')
     const p = pack as RecordValue
     occupied.add(p.id as string)
+    if (p.doors !== undefined) {
+      if (!Array.isArray(p.doors)) invalid('Puertas de habitación inválidas.')
+      for (const door of p.doors as unknown[]) {
+        if (!object(door) || !text(door.id) || occupied.has(door.id)) invalid('Identificador de puerta inválido o duplicado.')
+        occupied.add((door as RecordValue).id as string)
+      }
+    }
     const surfaceIds = new Set<string>()
     for (const surface of p.surfaces as unknown[]) {
       if (!object(surface) || !text(surface.id) || surfaceIds.has(surface.id) || !text(surface.name) || typeof surface.color !== 'string'

@@ -353,3 +353,19 @@ test('conserva los solapamientos anteriores y permite separar los elementos', ()
   store.getState().undo()
   assert.equal(store.getState().furniture[0].y, 1)
 })
+
+test('borrar una superficie independiente elimina también su contenedor interno y permite deshacer', () => {
+  for (const kind of ['floor', 'wall'] as const) {
+    const store = createRoomStore()
+    store.getState().addStructureObject(kind)
+    assert.equal(store.getState().structurePacks.length, 1)
+    const pack = store.getState().structurePacks[0]
+    store.getState().removeSelected()
+    assert.equal(store.getState().structurePacks.length, 0)
+    assert.equal(store.getState().elementFolderAssignments[pack.id], undefined)
+    store.getState().undo()
+    assert.equal(store.getState().structurePacks.length, 1)
+    store.getState().removeStructureSurface(pack.id, pack.surfaces[0].id)
+    assert.equal(store.getState().structurePacks.length, 0)
+  }
+})

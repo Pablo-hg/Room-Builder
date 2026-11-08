@@ -1,5 +1,19 @@
 # Datos, unidades, guardado e interoperabilidad
 
+## Anclajes a paredes conectadas — v10 (08/11/2026)
+
+**Implementado localmente; pendiente de validación funcional.** `DoorConfig` y `WindowConfig` admiten `wallPosition?: { x, y, z, yaw, supportId?, depth? }`. X/Y/Z son el centro de la base en metros mundiales, yaw está en radianes, depth conserva el grosor de referencia y supportId identifica el soporte de origen. Este ID es una referencia geométrica de mejor esfuerzo: puede faltar tras borrar una pared, sin invalidar ni duplicar el objeto. La carpeta/colección original sigue siendo su contenedor lógico, incluso cuando el objeto recorre otro tramo físico. Offset/sill mantienen las coordenadas de edición relativas; el render, selección y recortes usan el anclaje mundial.
+
+- Los documentos v1–v9 se validan con sus reglas históricas y mantienen sus posiciones. Al abrirlos en el editor se calculan anclajes equivalentes en memoria; el archivo guardado original no se reescribe. Al guardar el diseño actualizado, `persistedDesign` emite v10. Un documento que declare v1–v9 e incluya anclajes v10 se rechaza.
+- `freePosition` (v9) continúa representando exclusivamente un elemento despegado: es incompatible con `wallPosition`. Despegar retira los recortes y conserva solo X/Y/Z/yaw. Las puertas mantienen Y no editable individualmente.
+- Posiciones, referencias y grosores se validan. Un anclaje huérfano tras una edición constructiva puede guardarse, recargarse y corregirse; se muestra como **sin soporte**, no como un objeto libre ni como un hueco en el vacío.
+- JSON y el puente ProjectV2 conservan el campo y lo incluyen en su huella estructural. Los packs siguen viajando en `legacyStructurePacks`; no se presenta ese puente como implementación del contrato de vivienda de #51.
+- Las conexiones, componentes, límites de recorrido y polígonos recortados son derivados. No se persisten copias de aperturas ni una segunda lista de huecos. Borrar una pared propietaria conserva sus aperturas reales en la raíz, con el mismo ID y pose mundial. Las restantes paredes conservan sus propiedades.
+
+Las aplicaciones antiguas que admiten como máximo v9 no pueden abrir diseños v10. Pruebas de compatibilidad, JSON/ProjectV2 y edición preparadas; no ejecutadas en la rama de desarrollo.
+
+> **Ampliación local 08/11/2026, solicitada por el propietario:** ventanas/decoración mural admiten `WindowConfig.freePosition?: { x, y, z, yaw }`. Son coordenadas mundiales de la base en metros y orientación alrededor de Y en radianes. Ausencia conserva el anclaje histórico; presencia despega el elemento y excluye su hueco de la pared. Los diseños que usan este campo se escriben como **v9**; los lectores conservan v1–v8 y rechazan posiciones libres en versiones anteriores. JSON, normalización y el round-trip candidato ProjectV2 conservan y validan el campo. No se convierten posiciones históricas. Versiones anteriores de la aplicación que solo admiten hasta v8 no pueden abrir diseños v9. Implementación local con tipado verificado; migraciones/round-trips y E2E preparados pero sin ejecutar. Véase la continuación del informe [F0](progress/F0_REFACTOR_AUDIT.md).
+
 > **VIGENCIA ACTUAL 04/11/2026:** el MVP comprometido incluye un contrato versionado de **casa con plantas y habitaciones** (#51–#53) y nuevos datos de cotas (#38), materiales (#39), cámaras (#40), plantillas (#41), importación de plano (#45) y objetos modulares (#47). **Todavía no están implementados**. R5.3 sí implementa JSON editable de una habitación (certificación #25). El selector A/B se retiró por RB-040; v5 se lee por compatibilidad. Plan canónico: [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md). Los párrafos R3/R4/R5 inferiores son fotografías históricas.
 
 
@@ -87,6 +101,43 @@ Mantener espacio/estructura común para las variantes de mobiliario cuando se co
 - No servicios externos obligatorios ni analítica invasiva. **#45 importa planos reales solo localmente**, sin subirlos a servidor; cuidar su privacidad, límites y portabilidad. El registro local de interacciones de desarrollo debe permanecer limitado a desarrollo, no almacenar información personal innecesaria y no enviarse a terceros.
 
 ## Estado de formato
+
+### Candados XYZ (petición del propietario, 07/11/2026)
+
+**Última continuación del 07/11/2026:** `RoomConfig.extraDoors` permite puertas
+adicionales en raíz sin reemplazar `room.door`. Sus entradas usan el mismo
+contrato de puerta con ID estable. Estos diseños se guardan como v8; lectura
+v1–v7 mantenida. Las puertas adicionales se conservan como aberturas en R4 y en
+JSON, con selección, candados, historial y referencias. La puerta principal
+mantiene su ID `door`. El catálogo usa la habitación enfocada en la cámara para
+añadir, independiente de la selección de objetos.
+
+**Continuación del 07/11/2026:** `data.version: 7` cuando un pack contiene
+`doors?: (DoorConfig & { id: string })[]`. La pared se identifica por su lado
+en el pack y conserva un hueco geométrico real; la puerta sigue sus movimientos.
+Se validan IDs únicos, medidas, pared existente, límites y solapes. Se rechazan
+puertas en paredes coincidentes hasta resolver medianeras únicas (#51/#52).
+El borrado de pared/pack elimina sus puertas y referencias en el mismo historial.
+Se sigue leyendo v1–v6; el contenedor JSON mantiene `schemaVersion: 5`.
+Las dimensiones independientes de packs se expresan mediante las medidas y
+desplazamientos de sus superficies existentes, sin añadir un segundo contrato
+de vivienda. Cambiar la raíz compensa esos desplazamientos para conservar los
+otros packs. Documentación de implementación local, pendiente de pruebas en main.
+
+Extensión de un diseño individual: **data.version = 6** cuando muebles, puerta,
+ventanas, packs o superficies tienen `axisLocks: { x: boolean, y: boolean,
+z: boolean }`. Las tres claves son obligatorias cuando existe la propiedad.
+Ausencia: comportamiento heredado. No cambia IDs, unidades ni claves locales;
+se conserva lectura v1–v5, incluyendo aplanado de variantes v5.
+
+Un candado explícito congela la coordenada y no implica fijación al suelo/techo.
+La primera edición de candados de un mueble materializa su base visible como Y
+absoluta. Volver a bloquear Y no recoloca el objeto. Los objetos antiguos
+mantienen sus coordenadas al cargar; las alfombras apoyadas en losas corrigen
+solo su desfase visual. El JSON de intercambio mantiene `schemaVersion: 5`,
+con `design.data.version: 6`. El prototipo R4 conserva los candados en ida y
+vuelta. Implementación local pendiente de ejecución de pruebas en main y de
+validación visual; no representa el contrato de vivienda de #51.
 El contrato R4 sigue siendo un prototipo puro; el **JSON editable de una habitación existe** con formato R5.3, pendiente de E2E final. El formato de **proyecto completo** aún no está implementado ni validado; no declararlo público/estable hasta #51–#54.
 
 

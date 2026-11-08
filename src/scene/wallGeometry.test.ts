@@ -20,10 +20,10 @@ test('recorta los huecos en los bordes de la pared sin cambiar los interiores', 
   const polygon = openingPolygon(opening)
   assert.deepEqual(clipPolygonToWall(polygon, 4, 3), polygon)
   const clipped = clipPolygonToWall(openingPolygon({ ...opening, offset: 2 }), 4, 3)
-  assert.ok(Math.abs(area(clipped) - 0.9995) < 1e-10)
+  assert.ok(Math.abs(area(clipped) - 1) < 1e-10)
   for (const [x, y] of clipped) {
-    assert.ok(x >= -1.9995 && x <= 1.9995)
-    assert.ok(y >= 0.0005 && y <= 2.9995)
+    assert.ok(x >= -2 && x <= 2)
+    assert.ok(y >= 0 && y <= 3)
   }
   assert.deepEqual(clipPolygonToWall(openingPolygon({ ...opening, offset: 5 }), 4, 3), [])
 })
