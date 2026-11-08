@@ -563,7 +563,5 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
-.diagnostic-help { position: relative; font-size: .8rem; }
-.diagnostic-help summary { cursor: pointer; padding: .5rem; }
-.diagnostic-help__content { position: absolute; z-index: 60; right: 0; top: 100%; width: min(340px, calc(100vw - 2rem)); padding: 1rem; border: 1px solid #d1cec6; border-radius: 12px; background: #fffdf8; color: #353b38; box-shadow: 0 8px 24px #0002; }
-.diagnostic-help__content button { display: block; margin: .5rem 0; }
+.diagnostic-export-section { padding-block: 14px; }
+.diagnostic-export__button { width: 100%; }

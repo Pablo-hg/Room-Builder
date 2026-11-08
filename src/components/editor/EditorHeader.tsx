@@ -3,7 +3,6 @@ import { useShallow } from 'zustand/react/shallow'
 import { selectEditorHeader } from '../../state/selectors'
 import { VIEW_OPTIONS } from './viewOptions'
 import { SavedDesignsMenu } from './SavedDesignsMenu'
-import { DiagnosticHelp } from './DiagnosticHelp'
 
 export function EditorHeader({ exportMode, onExport }: {
   exportMode: boolean
@@ -25,7 +24,6 @@ export function EditorHeader({ exportMode, onExport }: {
           ))}
         </nav>
         <div className="save-actions">
-          <DiagnosticHelp />
           <button
             type="button"
             className="secondary-button undo-button"

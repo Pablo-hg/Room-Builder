@@ -1,6 +1,6 @@
 ﻿# Diagnósticos locales del editor
 
-**#34, 08/11/2026. Implementado en rama; certificación pendiente de main.** La consulta para desarrolladores está en archivos del proyecto y terminal de VS Code. No hay visor técnico en la web ni opción de compartir. Ayuda conserva únicamente **Exportar diagnóstico**.
+**#34, 08/11/2026. Implementado en rama; certificación pendiente de main.** La consulta habitual está en archivos internos de VS Code, generados automáticamente durante el uso del editor, sin ejecutar comandos adicionales. No hay visor técnico en la web ni opción de compartir. El botón **Exportar diagnóstico** está debajo de **Atajos de teclado** en el panel de configuración; no existe selector de Ayuda.
 
 ## Leer en VS Code
 
@@ -25,9 +25,9 @@ Referencia: #12 · operación op7 · sesión s-ejemplo
 
 El JSONL conserva códigos/detalles que la representación humana resume. Los legibles son copias derivadas y regenerables, no un segundo origen de eventos. Si falla su escritura, el JSONL se conserva y el escritor intenta reconstruir la lectura; ese fallo no provoca reenvíos del evento canónico.
 
-## Lector interno: terminal integrada
+## Lector interno opcional (herramienta de mantenimiento)
 
-Usa `tsx`, ya instalado en el proyecto; no abre servidor ni interfaz web:
+No es necesario usarlo para generar ni consultar las lecturas habituales: Vite las actualiza automáticamente. Para mantenimiento o consulta puntual de otros archivos existe esta herramienta con `tsx`, ya instalado; no abre servidor ni interfaz web:
 
 ```powershell
 npm run diagnostics
@@ -47,7 +47,7 @@ El lector y el formateador están en `tools/diagnostics/`; no se importan desde 
 
 ## Exportar desde la web
 
-Ayuda → **Exportar diagnóstico** descarga un JSON indentado que el lector interno puede abrir. Incluye formato/versiones, fecha UTC, familia general del navegador y registros disponibles. El contenido se obtiene al pulsar exportar. No abre selectores de compartir ni envía información automáticamente. La confirmación indica solicitud de descarga, no escritura física confirmada por el sistema operativo.
+Panel de configuración → debajo de **Atajos de teclado** → **Exportar diagnóstico** descarga directamente un JSON indentado. El botón sigue disponible aunque se pliegue la lista de atajos. Incluye formato/versiones, fecha UTC, familia general del navegador y registros disponibles. El contenido se obtiene al pulsar exportar. No abre un menú de Ayuda ni selectores de compartir y no envía información automáticamente. La confirmación indica solicitud de descarga, no escritura física confirmada por el sistema operativo.
 
 ## Arquitectura y límites
 

@@ -4,6 +4,7 @@ import { useRoomStore } from '../../state/useRoomStore'
 import { ColorControl, DimensionControl } from './Controls'
 import { SelectionInspector } from './SelectionInspector'
 import { focusedRoom } from '../../domain/roomEditing'
+import { DiagnosticExportButton } from './DiagnosticExportButton'
 
 export function SettingsPanel() {
   const state = useRoomStore()
@@ -112,6 +113,9 @@ export function SettingsPanel() {
             </dl>
             <p className="shortcut-guide__hint">Copia, pega y duplica con un elemento seleccionado.</p>
           </div>
+        </section>
+        <section className="panel-section diagnostic-export-section" aria-label="Diagnóstico local">
+          <DiagnosticExportButton />
         </section>
       </div>
     </aside>

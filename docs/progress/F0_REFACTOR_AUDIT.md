@@ -296,3 +296,7 @@ Archivos nuevos: `domain/{buildingVolume,freeWallPosition,wallObjectPlacement}.t
 Guía vigente y comandos: [DIAGNOSTICS.md](../DIAGNOSTICS.md).
 
 **Comprobación de esta continuación:** TypeScript sin emisión para aplicación y herramientas Node correcto. Se ejecutó el lector interno sobre los JSONL reales del propietario con `--regenerar --salida logs/diagnostics/LECTURA.log`: se generaron las copias legibles por categoría y la lectura conjunta, comprobadas por lectura de sus archivos. Los JSONL fuente y el histórico no se modificaron. Esto verifica la conversión/consulta local, no la actualización en vivo de Vite, la interfaz en navegador ni las suites, que siguen pendientes.
+
+## Exportación directa bajo los atajos — 08/11/2026
+
+Nueva indicación del propietario: no exigir comandos para generar lecturas. Se mantiene la generación automática JSONL/lectura de Vite como recorrido habitual; el lector de terminal existente queda como utilidad opcional de mantenimiento. Se retira el selector Ayuda de la cabecera y se sustituye por el botón directo **Exportar diagnóstico**, debajo de la sección **Atajos de teclado** del panel de configuración, independiente de su plegado. Conserva aviso de privacidad, estado de preparación/descarga y errores de almacenamiento. Se elimina el CSS del desplegable y se adapta el E2E existente, sin ejecutar suites/build/CI. Validación visual pendiente.
