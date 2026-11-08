@@ -14,7 +14,7 @@ export function SceneCollisionPanel({ collisions }: { collisions: readonly Scene
   }
 
   return (
-    <aside className="scene-collision-panel" aria-label="Colisiones en la escena">
+    <aside className="scene-collision-panel" aria-label="Colisiones en la escena" onWheel={(event) => event.stopPropagation()}>
       <div className="scene-collision-panel__heading">
         <strong>Objetos en colisión</strong>
         <span>{collisions.length} {collisions.length === 1 ? 'intersección' : 'intersecciones'}</span>
