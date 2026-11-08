@@ -5,7 +5,7 @@ import type { ViewMode, WallSide } from './domain/types'
 import RoomScene, { FreeCameraCompass3D, RoomCompass3D } from './components/RoomScene'
 import InteractionLogger from './components/InteractionLogger'
 import { useRoomStore } from './state/useRoomStore'
-import { collisionElementIds, detectSceneCollisions } from './domain/sceneCollisions'
+import { collisionElementIds, detectOutsideRoom, detectSceneCollisions } from './domain/sceneCollisions'
 import { SceneCollisionPanel } from './components/editor/SceneCollisionPanel'
 import { useShallow } from 'zustand/react/shallow'
 import { selectActiveDesignName, selectEditorScene } from './state/selectors'
@@ -62,6 +62,8 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
   const hiddenElementIds = useRoomStore((current) => current.hiddenElementIds)
   const collisions = useMemo(() => detectSceneCollisions({ room: state.room, furniture: state.furniture, structurePacks: state.structurePacks, hiddenElementIds }), [state.room, state.furniture, state.structurePacks, hiddenElementIds])
   const collisionIds = useMemo(() => collisionElementIds(collisions), [collisions])
+  const outside = useMemo(() => detectOutsideRoom({ room: state.room, furniture: state.furniture, structurePacks: state.structurePacks, hiddenElementIds }), [state.room, state.furniture, state.structurePacks, hiddenElementIds])
+  const spatialIssueIds = useMemo(() => new Set([...collisionIds, ...outside.map((item) => item.id)]), [collisionIds, outside])
   const activeRoomId = useRoomStore((current) => current.activeRoomId)
   const focusedPack = state.structurePacks.find((pack) => pack.id === activeRoomId && pack.id.startsWith('floor-pack-'))
   const roomSize = focusedPack && packRoomBox(focusedPack, state.room) || state.room
@@ -231,13 +233,13 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
             gridVisibility={state.gridVisibility}
             furniture={state.furniture}
             structurePacks={state.structurePacks}
-            collisionIds={collisionIds}
+            collisionIds={spatialIssueIds}
             exportMode={exportMode}
             exportRequest={exportRequest}
             onExportComplete={onExportComplete}
             exportDesignName={exportDesignName}
           />
-          {!exportMode && <SceneCollisionPanel collisions={collisions} />}
+          {!exportMode && <SceneCollisionPanel collisions={collisions} outside={outside} />}
           {!hasPlacedSceneContent && state.view !== 'pov' && (
             <div className="empty-scene"><span>✦</span><strong>La habitación está lista</strong><small>Añade tu primera pieza desde el catálogo</small></div>
           )}
