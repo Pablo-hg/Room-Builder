@@ -62,3 +62,38 @@ Los archivos `ObjectCatalogSection` y `GridVisibilitySection` **no introducen de
 - Si todos los flujos manuales están bien, integrar en `dev` cuando lo decida el propietario. **#34 y #24 siguen pendientes de certificación automática final en `main`**.
 
 **Criterio de cierre de la refactorización conservadora:** inventario documentado, alcance de extracciones justificado, revisión manual completada y pruebas definitivas de `main` verificadas. No dar por completada la certificación antes de eso.
+
+## Seguimiento de la revisión manual (08/11/2026)
+
+El propietario ha confirmado sin anomalías las comprobaciones anteriores **3, 5, 6, 7 y 8**, además de la creación de objetos de la comprobación 2 y el uso general de carpetas/cuadrículas en la 4. Se han identificado **tres ajustes complementarios**, expresamente solicitados tras la revisión. Son correcciones de UX/funcionalidad, no refactorizaciones en sentido estricto, y se mantienen en commits independientes para poder revertirlas sin afectar a la extracción:
+
+1. **Paneles laterales:** transición de 240 ms sobre la rejilla de escritorio; sin animación entre layouts apilados por debajo de 1000 px y respetando la regla existente `prefers-reduced-motion`.
+2. **Cambio de pared en puertas/ventanas:** el desplazamiento previo podía quedar fuera del nuevo muro o chocar con otra apertura aunque existiese un hueco. Se incorpora búsqueda determinista de centímetros próximos mediante `findAvailableOpeningOffset`, validando cada candidato con las reglas preexistentes. Se aplica a puerta principal, ventanas, puertas adicionales de la raíz y puertas de packs; **no** se relajan márgenes/solapes ni se saltan bloqueos. Los offsets que el usuario introduce expresamente siguen validándose sin recolocación automática. Se han añadido pruebas de regresión, **no ejecutadas**.
+3. **Carpeta raíz:** se muestra el cubo de habitación en el árbol y un contorno verde 3D no interactivo alrededor de la habitación base al seleccionarla (sin controles de traslado). Requiere verificación visual en las distintas vistas.
+
+Las dos capturas del usuario muestran un ejemplo en el que una pared aparentemente libre rechaza una apertura con el mensaje de quedar fuera de la pared `west`. El análisis de `roomForWindowUpdate` y `roomForDoorUpdate` confirma que antes se aplicaba la pared nueva conservando el `offset` anterior. **La hipótesis de causa está respaldada por código, pero el resultado del parche todavía no está probado en navegador.** En el caso de muros físicamente coincidentes, se conserva expresamente el rechazo hasta disponer de medianera única.
+
+## Auditoría de logs de interacción — alcance añadido por el propietario
+
+**Fase 1, inventario estático realizado el 08/11/2026.** No existen en el repositorio muestras de `logs/interactions.log` (están ignoradas por Git) y no se ha ejecutado una sesión instrumentada. No inventar tasas de eventos, CPU, memoria o latencias ni marcar los nuevos criterios de aceptación hasta recogerlas.
+
+| Aspecto | Evidencia de código | Evaluación actual |
+| --- | --- | --- |
+| Origen y activación | `src/debug/interactionLog.ts`: `recordInteraction` sale inmediatamente salvo `import.meta.env.DEV === true`; `sceneInteraction.ts` añade vista/selección | **Sin telemetría desde el bundle estándar de producción**; no se ha auditado un despliegue externo |
+| Coalescencia | `coalesceKey` reemplaza el evento pendiente, espera 1200 ms; cambiar de clave obliga a vaciarlo; el grupo de medidas suprime eventos con clave | Posible ráfaga si se intercalan acciones distintas; requiere medición de un arrastre y cambios de medida |
+| Envío | `delivery = delivery.then(fetch(...keepalive: true))`; error de red capturado y descartado, sin reintento ni timeout explícito | Si una solicitud se bloquea puede retrasar todas las posteriores; se ignoran respuestas HTTP no-2xx. No se altera todavía sin reproducciones |
+| Cierre | `beforeunload` hace `flush` y registra fin de sesión, pero los envíos están encadenados | El final de sesión puede no terminar de enviarse antes de salir; comprobar pérdidas reales en sesiones cortas |
+| Receptor | `vite.config.ts` instala middleware también en el Vite preview local, acepta POST hasta ~64 k caracteres y serializa escrituras en `logs/interactions.log` | Revisar exposición local (red/LAN) y respuesta a peticiones grandes; la ruta no es un backend de Cloudflare |
+| Almacenamiento | `mkdir` + `appendFile` a un único archivo local; `.gitignore` excluye `logs/*.log` | No existe limpieza/rotación: posible crecimiento indefinido. No modificar o truncar los logs del propietario sin autorización |
+| Privacidad | `describeInteraction` puede interpolar nombres de muebles, IDs y detalles en texto humano | **Datos potencialmente sensibles en logs locales**; no subir logs ni compartirlos íntegros, evitar introducirlos en informes o issues |
+| Coste de cálculo | Serializa JSON al enviar y da formato textual en el plugin | No hay profiling o medición real de CPU/memoria. No inferir impacto en FPS únicamente del código |
+
+**Medición agregada local preparada:** `scripts/audit-interaction-log.mjs` analiza el archivo sin imprimir mensajes, nombres, identificadores ni contenido. Devuelve tamaño del archivo, número de eventos/sesiones, bytes medios y máximos por línea, pico de entradas por segundo, repeticiones consecutivas de descripciones y categorías aproximadas. La clasificación por idioma es orientativa, no sustituye la estructura original.
+
+Para completar la auditoría sin ejecutar pruebas automatizadas en ramas de trabajo:
+1. Arrancar la web **local de desarrollo** (`npm run dev`; no usar la web pública) y realizar unos minutos de arrastres, selección, cambios de cámara, medidas y guardado.
+2. Desde la raíz del repositorio ejecutar `node scripts/audit-interaction-log.mjs`. Si no existe el archivo, comprobar que el servidor de desarrollo recibió eventos; no crear datos ficticios.
+3. Conservar los logs originales solo localmente y **compartir únicamente el JSON agregado** que imprime el script.
+4. Con esa evidencia decidir si conviene limitar cola de envíos, responder a HTTP fallidos, rotar el archivo o añadir niveles `error/warn/debug`, y comparar con otra muestra. Las medidas de FPS/CPU y seguridad de acceso remoto del receptor requieren comprobación aparte y no están automatizadas aquí.
+
+**Pendiente para cerrar #34:** obtener muestra real y evaluarla, verificar el comportamiento de las tres correcciones en la web y certificar la suite global al integrar F0 en `main`.
