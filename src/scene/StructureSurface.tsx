@@ -1,4 +1,6 @@
 import * as THREE from 'three'
+import { useMemo, useRef } from 'react'
+import { useThree } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { RoomConfig, StructureSurface } from '../domain/types'
 import { useRoomStore } from '../state/useRoomStore'
@@ -13,6 +15,10 @@ import { structureDoorOpenings } from '../domain/structureDoors'
 import { WallBody } from './Walls'
 import { OpeningDetail } from './Openings'
 import { surfacePosition } from '../domain/roomEditing'
+import { useHistoryGesture } from '../state/useHistoryGesture'
+import { releasePointer, usePointerCancellation } from './usePointerCancellation'
+import { cameraAwareShiftDrag } from './cameraAwareShiftDrag'
+import { moveFromOrigin } from '../domain/measurements'
 
 export function StructureSurfaceObject({
   room,
@@ -56,6 +62,47 @@ export function StructureSurfaceObject({
   const selectedId = useRoomStore((state) => state.selectedId)
   const hiddenIds = useRoomStore((state) => state.hiddenElementIds)
   const openings = pack ? structureDoorOpenings(pack, surface) : []
+  const isIndependent = packId.startsWith('floor-object-') || packId.startsWith('wall-object-')
+  const view = useRoomStore((state) => state.view)
+  const { camera, size } = useThree()
+  const gesture = useHistoryGesture(surfaceId)
+  const groundPlane = useMemo(() => new THREE.Plane(), [])
+  const pointerPoint = useMemo(() => new THREE.Vector3(), [])
+  const dragStart = useRef<{
+    clientX: number; clientY: number
+    x: number; y: number; z: number
+    worldX: number; worldZ: number
+  } | null>(null)
+  const cancelDirectDrag = () => {
+    if (!dragStart.current) return
+    dragStart.current = null
+    gesture.cancel()
+    document.body.classList.remove('can-grab')
+  }
+  const captureDirectDrag = usePointerCancellation(cancelDirectDrag)
+  const directMove = (event: ThreeEvent<PointerEvent>) => {
+    const start = dragStart.current
+    if (!start || !gesture.isActive()) return
+    event.stopPropagation()
+    if (event.nativeEvent.shiftKey || view === 'front') {
+      const target = cameraAwareShiftDrag(camera, size, { clientX: start.clientX, clientY: start.clientY, position: { x: start.x, y: start.y, z: start.z } }, event.nativeEvent)
+      moveStructureSurface(packId, surface.id, target.axis, moveFromOrigin(target[target.axis], start[target.axis]))
+      moveStructureSurface(packId, surface.id, 'y', moveFromOrigin(target.y, start.y))
+      return
+    }
+    if (event.ray.intersectPlane(groundPlane, pointerPoint)) {
+      moveStructureSurface(packId, surface.id, 'x', moveFromOrigin(start.x + pointerPoint.x - start.worldX, start.x))
+      moveStructureSurface(packId, surface.id, 'z', moveFromOrigin(start.z + pointerPoint.z - start.worldZ, start.z))
+    }
+  }
+  const endDirectDrag = (event: ThreeEvent<PointerEvent>) => {
+    if (!dragStart.current) return
+    event.stopPropagation()
+    dragStart.current = null
+    gesture.commit()
+    document.body.classList.remove('can-grab')
+    releasePointer(event)
+  }
   if (hidden) return null
   const selectSurface = (event: ThreeEvent<PointerEvent>) => {
     if (selected && event.intersections.some(({ object }) => {
@@ -73,14 +120,29 @@ export function StructureSurfaceObject({
       kind: surface.kind,
       selectedBefore,
     })
-    if (event.nativeEvent.ctrlKey || event.nativeEvent.metaKey || event.nativeEvent.shiftKey) {
+    if (event.nativeEvent.ctrlKey || event.nativeEvent.metaKey || (event.nativeEvent.shiftKey && !isIndependent)) {
       selectSceneObject(clickedSurfaceId, event.nativeEvent)
       return
     }
     if (!selectedBefore) onSelect()
+    if (!isIndependent || locked || (event.nativeEvent.button !== 0 && event.nativeEvent.pointerType !== 'touch')) return
+    const worldY = (pack?.y ?? 0) + position[1]
+    groundPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, worldY, 0))
+    const hasIntersection = event.ray.intersectPlane(groundPlane, pointerPoint) !== null
+    if (!hasIntersection && view !== 'front' && !event.nativeEvent.shiftKey) return
+    dragStart.current = {
+      clientX: event.nativeEvent.clientX,
+      clientY: event.nativeEvent.clientY,
+      x: surface.x, y: surface.y, z: surface.z,
+      worldX: hasIntersection ? pointerPoint.x : (pack?.x ?? 0) + position[0],
+      worldZ: hasIntersection ? pointerPoint.z : (pack?.z ?? 0) + position[2],
+    }
+    gesture.begin()
+    document.body.classList.add('can-grab')
+    captureDirectDrag(event)
   }
   return (
-    <>
+    <group onPointerMove={directMove} onPointerUp={endDirectDrag} onPointerCancel={cancelDirectDrag}>
       {openings.length ? <group position={position} rotation={[0, baseRotation + surface.rotation, 0]}>
         <group position={[0, -surface.height / 2, 0]}>
           <WallBody length={surface.width} height={surface.height} openings={openings} color={surface.color} depth={surface.depth} onPointerDown={selectSurface} />
@@ -127,7 +189,7 @@ export function StructureSurfaceObject({
           rotate={setStructureSurfaceRotation}
         />
       )}
-    </>
+    </group>
   )
 }
 
