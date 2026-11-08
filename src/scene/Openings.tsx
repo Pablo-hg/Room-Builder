@@ -615,7 +615,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked }: { room:
   )
 }
 
-export function PlanOpening({ room, opening, wall, groupSelected = false }: { room: RoomConfig; opening: WallOpening; wall: WallSide; groupSelected?: boolean }) {
+export function PlanOpening({ room, opening, wall, groupSelected = false, colliding = false }: { room: RoomConfig; opening: WallOpening; wall: WallSide; groupSelected?: boolean; colliding?: boolean }) {
   const selectedId = useRoomStore((state) => state.selectedId)
   const outlined = useRoomStore((state) => state.selectedIds.includes(opening.id))
   const locked = useRoomStore((state) => state.lockedElementIds.includes(opening.id))
@@ -635,7 +635,7 @@ export function PlanOpening({ room, opening, wall, groupSelected = false }: { ro
         <boxGeometry args={[opening.width, selected ? 0.09 : 0.055, selected ? 0.16 : 0.1]} />
         <meshBasicMaterial color={color} />
       </mesh>
-      {outlined && !groupSelected && <SelectionBounds width={opening.width} height={selected ? 0.09 : 0.055} depth={selected ? 0.16 : 0.1} />}
+      {((outlined && !groupSelected) || colliding) && <SelectionBounds width={opening.width} height={selected ? 0.09 : 0.055} depth={selected ? 0.16 : 0.1} collision={colliding} />}
       {selected && !locked && (
         <OpeningMoveGizmo opening={opening} dragEventsForAxis={interaction.dragEventsForAxis} horizontal={canMoveHorizontal} planView />
       )}
