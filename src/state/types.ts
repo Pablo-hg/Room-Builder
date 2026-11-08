@@ -115,6 +115,7 @@ export interface RoomState {
   copySelected: () => boolean
   pasteSelected: () => boolean
   toggleGridVisibility: (surface: GridSurface) => void
+  setGridGroupVisibility: (scope: 'focused' | 'all', visible: boolean) => void
   toggleElementVisibility: (id: string) => void
   toggleElementLock: (id: string) => void
   createElementFolder: (name: string, elementId?: string, parentId?: string) => void

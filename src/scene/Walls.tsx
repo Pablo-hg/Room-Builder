@@ -40,7 +40,7 @@ export function WallBody({ length, height, openings, color, onPointerDown, depth
   useEffect(() => () => geometry.dispose(), [geometry])
 
   return (
-    <mesh geometry={geometry} position={[0, 0, skinFaces && frame ? 0 : -depth / 2]} castShadow receiveShadow userData={{ freeOrbitSurface: true, wallId }} onPointerDown={onPointerDown}>
+    <mesh geometry={geometry} position={[0, 0, skinFaces && frame ? 0 : -depth / 2]} castShadow receiveShadow userData={{ wallId }} onPointerDown={onPointerDown}>
       <meshStandardMaterial color={color} roughness={0.92} />
     </mesh>
   )

@@ -5,6 +5,7 @@ import { ROOM_LIMITS } from '../../domain/constants'
 import { isFolderSelectionId, withoutFolderAssignments } from '../../domain/elementFolders'
 import { canPlaceFurniture, clampFurnitureElevation, findAvailableOpeningOffset, findFreeFurniturePosition, validateOpenings, wallLength } from '../../domain/geometry'
 import { snapMeasurement } from '../../domain/measurements'
+import { setGridGroup } from '../../domain/gridGroups'
 import { canElevateFurniture } from '../../domain/objectCatalog'
 import { BASE_ROOM_SURFACE_IDS } from '../../domain/elementFolders'
 import type { FurnitureItem } from '../../domain/types'
@@ -21,6 +22,7 @@ type SelectionActions = Pick<
   | 'copySelected'
   | 'pasteSelected'
   | 'toggleGridVisibility'
+  | 'setGridGroupVisibility'
   | 'toggleElementVisibility'
   | 'toggleElementLock'
   | 'clearNotice'
@@ -330,6 +332,14 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
         details: { surface, visible },
       })
       return { gridVisibility: { ...state.gridVisibility, [surface]: visible } }
+    }),
+    setGridGroupVisibility: (scope, visible) => set((state) => {
+      recordInteraction('state.grid.visibility-group', {
+        view: state.view,
+        selectedId: state.selectedId,
+        details: { scope, visible },
+      })
+      return setGridGroup(state, scope, visible)
     }),
     toggleElementVisibility: (id) => set((state) => {
       const isHidden = state.hiddenElementIds.includes(id)

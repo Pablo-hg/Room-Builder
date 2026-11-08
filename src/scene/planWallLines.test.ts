@@ -54,3 +54,10 @@ test('una pared independiente coloreada se ve en Plano sin añadir otras líneas
   assert.ok(strips[0].x !== 0)
   assert.ok(strips[0].thickness > 0.13)
 })
+
+// The new plan trace keeps a stable underlying surface ID for click selection.
+test('los trazos de Plano conservan el identificador real de la pared para seleccionarla', () => {
+  const walls = planWallStrips({ room: DEFAULT_ROOM, structurePacks: [] }, new Set(['room-wall:north']))
+  assert.ok(walls.length)
+  assert.ok(walls.every((strip) => strip.wallId === 'room-wall:north'))
+})

@@ -26,10 +26,13 @@ export function OrbitPointerController({ view }: { view: 'isometric' | 'free' | 
         .intersectObjects(scene.children, true)
         .find(({ object }) => !(object instanceof THREE.Line))
       let hitOrbitSurface = firstVisibleHit?.object.userData.freeOrbitSurface === true
+      let hitWall = typeof firstVisibleHit?.object.userData.wallId === 'string'
       firstVisibleHit?.object.traverseAncestors((ancestor) => {
         if (ancestor.userData.freeOrbitSurface === true) hitOrbitSurface = true
+        if (typeof ancestor.userData.wallId === 'string') hitWall = true
       })
-      if (firstVisibleHit && !hitOrbitSurface) return
+      // Wall interaction always wins over camera orbit, even on long press.
+      if (hitWall || (firstVisibleHit && !hitOrbitSurface)) return
 
       const state = useRoomStore.getState()
       drag = {

@@ -2,6 +2,7 @@ import { WALL_LABELS } from '../../domain/constants'
 import { visibleWallsForView } from './viewHelpers'
 import { structureGridElementId } from '../../domain/elementIds'
 import { ROOT_ROOM_FOLDER } from '../../domain/elementFolders'
+import { gridGroupStatus } from '../../domain/gridGroups'
 import { useRoomStore } from '../../state/useRoomStore'
 
 // Visibilidad de las cuadrículas: conserva IDs y estado del store original.
@@ -14,12 +15,17 @@ export function GridVisibilitySection() {
   const gridVisibility = useRoomStore((state) => state.gridVisibility)
   const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
   const elementFolders = useRoomStore((state) => state.elementFolders)
+  const elementFolderAssignments = useRoomStore((state) => state.elementFolderAssignments)
   const structurePacks = useRoomStore((state) => state.structurePacks)
   const toggleGridVisibility = useRoomStore((state) => state.toggleGridVisibility)
+  const setGridGroupVisibility = useRoomStore((state) => state.setGridGroupVisibility)
   const toggleElementVisibility = useRoomStore((state) => state.toggleElementVisibility)
 
   const visibleGridWalls = visibleWallsForView(view, isoOrientation, wallView, freeAzimuth)
   const activeRoom = structurePacks.find((pack) => pack.id === activeRoomId && pack.id.startsWith('floor-pack-'))
+  const groups = { activeRoomId, gridVisibility, hiddenElementIds, structurePacks, elementFolderAssignments, elementFolders }
+  const focusedStatus = gridGroupStatus(groups, 'focused')
+  const allStatus = gridGroupStatus(groups, 'all')
   const gridControls = [
     { id: 'floor' as const, label: 'Suelo' },
     ...visibleGridWalls.map((wall) => ({ id: wall, label: `Pared ${WALL_LABELS[wall]}` })),
@@ -32,6 +38,18 @@ export function GridVisibilitySection() {
           <span><strong id="grid-heading">Cuadrículas visibles</strong><small>{activeRoom?.name ?? elementFolders.find((folder) => folder.id === ROOT_ROOM_FOLDER)?.name ?? 'Habitación principal'} · cuadrados de 25 cm</small></span>
         </div>
         <div className="grid-visibility-list">
+          <label className="grid-visibility-row grid-visibility-row--global">
+            <span>Todas las cuadrículas de esta habitación{focusedStatus.partial ? ' (parcial)' : ''}</span>
+            <input type="checkbox" checked={focusedStatus.visible}
+              aria-label="Mostrar todas las cuadrículas de la habitación enfocada"
+              onChange={(event) => setGridGroupVisibility('focused', event.currentTarget.checked)} />
+          </label>
+          <label className="grid-visibility-row grid-visibility-row--global">
+            <span>Todas las cuadrículas de las habitaciones{allStatus.partial ? ' (parcial)' : ''}</span>
+            <input type="checkbox" checked={allStatus.visible}
+              aria-label="Mostrar todas las cuadrículas de todas las habitaciones"
+              onChange={(event) => setGridGroupVisibility('all', event.currentTarget.checked)} />
+          </label>
           {gridControls.map((surface) => {
             const roomSurface = activeRoom?.surfaces.find((item) => surface.id === 'floor' ? item.kind === 'floor' : item.kind === 'wall' && item.wall === surface.id)
             const gridId = activeRoom && roomSurface ? structureGridElementId(activeRoom.id, roomSurface.id) : null

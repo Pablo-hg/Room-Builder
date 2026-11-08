@@ -52,14 +52,14 @@ export function WallObjectGizmo({ id, position, anchor = position, height, locks
       <group key={axis} onPointerDown={(event) => start(axis, event)} onPointerMove={moving} onPointerUp={end} onPointerCancel={(event) => { gesture.cancel(); end(event) }}>
         {([-1, 1] as const).map((sign) => (
           <group key={sign}>
-            <mesh position={vectors[axis].clone().multiplyScalar(sign * 0.3)} renderOrder={8}>
+            <mesh position={vectors[axis].clone().multiplyScalar(sign * 0.3)} renderOrder={15}>
               <boxGeometry args={axis === 'x' ? [0.6, 0.025, 0.025] : axis === 'y' ? [0.025, 0.6, 0.025] : [0.025, 0.025, 0.6]} />
               <meshBasicMaterial color={AXIS_COLORS[axis].normal} depthTest={false} depthWrite={false} toneMapped={false} />
             </mesh>
             <mesh
               position={vectors[axis].clone().multiplyScalar(sign * 0.6)}
               rotation={axis === 'x' ? [0, 0, -sign * Math.PI / 2] : axis === 'z' ? [sign * Math.PI / 2, 0, 0] : sign === 1 ? [0, 0, 0] : [Math.PI, 0, 0]}
-              renderOrder={8}
+              renderOrder={15}
             >
               <coneGeometry args={[0.07, 0.16, 12]} />
               <meshBasicMaterial color={AXIS_COLORS[axis].normal} depthTest={false} depthWrite={false} toneMapped={false} />

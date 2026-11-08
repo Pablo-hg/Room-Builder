@@ -445,6 +445,9 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .grid-section small { color: #90948f; font-size: 10px; }
 .grid-visibility-list { display: grid; gap: 6px; }
 .grid-visibility-row { display: flex; align-items: center; justify-content: space-between; min-height: 34px; padding: 0 9px 0 11px; border: 1px solid #e3dfd7; border-radius: 8px; background: #faf8f4; color: #4a514c; font-size: 11px; font-weight: 700; }
+.grid-visibility-row--global { background: #eef3ee; border-color: #cbd9ce; cursor: pointer; }
+.grid-visibility-row--global input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--forest); cursor: pointer; }
+.grid-visibility-row--global > span { padding-right: 8px; }
 .grid-snap-note { line-height: 1.4; }
 .switch { position: relative; width: 34px; height: 19px; padding: 0; border: 0; border-radius: 11px; background: #cacdc8; cursor: pointer; transition: background .18s; }
 .switch span { position: absolute; width: 13px; height: 13px; left: 3px; top: 3px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,.22); transition: transform .18s; }

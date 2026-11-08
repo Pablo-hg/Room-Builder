@@ -71,3 +71,17 @@ test('una pared inclinada que cruza los dos muros adyacentes puede cerrar un pol
   const world = { room: DEFAULT_ROOM, structurePacks: [inner] }
   assert.equal(boxOutsideBuilding(world, { ...box, x: DEFAULT_ROOM.width, z: 0 }), false)
 })
+
+// Contact between solid wall volumes closes a room even when their centre-lines
+// no longer meet. A real air gap must still be reported as open.
+test('un muro exterior más grueso cierra el recinto por contacto entre sólidos, sin cruce de ejes centrales', () => {
+  const roomPack = pack('east', DEFAULT_ROOM.width)
+  const wall = roomPack.surfaces.find((surface) => surface.id === 'wall-east')!
+  wall.x += 0.28
+  wall.depth = 0.85
+  const world = { room: DEFAULT_ROOM, structurePacks: [roomPack] }
+  assert.equal(boxOutsideBuilding(world, { ...box, x: DEFAULT_ROOM.width, z: 0 }), false)
+  const disconnected = { ...roomPack, surfaces: roomPack.surfaces.map((surface) =>
+    surface.id === 'wall-east' ? { ...surface, x: surface.x + 1.1 } : surface) }
+  assert.equal(boxOutsideBuilding({ room: DEFAULT_ROOM, structurePacks: [disconnected] }, { ...box, x: DEFAULT_ROOM.width, z: 0 }), true)
+})

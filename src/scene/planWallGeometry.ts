@@ -5,6 +5,7 @@ import { openingPolygon, polygonInterval, visibleLineIntervals } from './wallGeo
 
 export interface PlanWallStrip {
   id: string
+  wallId: string
   x: number
   y: number
   z: number
@@ -37,6 +38,7 @@ export function planWallStrips(world: WallWorld, visibleIds: ReadonlySet<string>
       const centre = (start + end) / 2
       return {
         id: `${wall.id}:${index}`,
+        wallId: wall.id,
         x: wall.x + centre * Math.cos(wall.yaw),
         y: wall.y + wall.height + 0.035,
         z: wall.z - centre * Math.sin(wall.yaw),
