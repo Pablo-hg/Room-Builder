@@ -1,4 +1,5 @@
 import { OPENING_CATALOG } from '../../domain/objectCatalog'
+import { rejectDiagnosticAction } from '../../diagnostics/actionScope'
 import { WALL_SIDES } from '../../domain/constants'
 import { makeId, structureSurfaceElementId } from '../../domain/elementIds'
 import { withoutFolderAssignments } from '../../domain/elementFolders'
@@ -40,7 +41,7 @@ export function createStructureDoorActions({ set }: RoomActionContext): Pick<Roo
     setStructureDoor: (id, partial) => set((state) => {
       const rootDoor = state.room.extraDoors?.find((door) => door.id === id)
       if (rootDoor) {
-        if (state.lockedElementIds.includes(id) || state.lockedElementIds.includes(`room-wall:${rootDoor.wall}`) || !openingMovementAllowed(rootDoor, partial)) return {}
+        if (state.lockedElementIds.includes(id) || state.lockedElementIds.includes(`room-wall:${rootDoor.wall}`) || !openingMovementAllowed(rootDoor, partial)) { rejectDiagnosticAction('door-or-axis-locked'); return {} }
         const next = { ...rootDoor, ...partial, ...(partial.offset === undefined ? {} : { offset: snapMeasurement(partial.offset) }) }
         if (state.lockedElementIds.includes(`room-wall:${next.wall}`)) return {}
         const withOffset = (offset: number) => ({ ...state.room, extraDoors: state.room.extraDoors!.map((door) => door.id === id ? { ...next, offset } : door) })
@@ -61,7 +62,7 @@ export function createStructureDoorActions({ set }: RoomActionContext): Pick<Roo
       const pack = state.structurePacks.find((candidate) => candidate.doors?.some((door) => door.id === id))
       const door = pack?.doors?.find((candidate) => candidate.id === id)
       if (!pack || !door) return {}
-      if (state.lockedElementIds.includes(id) || state.lockedElementIds.includes(pack.id) || !openingMovementAllowed(door, partial)) return {}
+      if (state.lockedElementIds.includes(id) || state.lockedElementIds.includes(pack.id) || !openingMovementAllowed(door, partial)) { rejectDiagnosticAction('door-or-axis-locked'); return {} }
       let nextDoor = { ...door, ...partial, ...(partial.offset === undefined ? {} : { offset: snapMeasurement(partial.offset) }) }
       const currentWall = pack.surfaces.find((surface) => surface.wall === door.wall)
       const wall = pack.surfaces.find((surface) => surface.wall === nextDoor.wall)
@@ -74,7 +75,7 @@ export function createStructureDoorActions({ set }: RoomActionContext): Pick<Roo
       }
       const before = structureDoorPosition(state.room, pack, door)!
       const after = structureDoorPosition(state.room, pack, nextDoor)!
-      if ((['x', 'y', 'z'] as const).some((axis) => door.axisLocks?.[axis] && Math.abs(before[axis] - after[axis]) > 1e-9)) return {}
+      if ((['x', 'y', 'z'] as const).some((axis) => door.axisLocks?.[axis] && Math.abs(before[axis] - after[axis]) > 1e-9)) { rejectDiagnosticAction('door-axis-locked'); return {} }
       if (hasCoincidentWall(state.room, state.structurePacks, pack, wall)) return { notice: 'Esta pared necesita una medianera única para abrir un paso real.' }
       const next = packWithDoor(nextDoor)
       const error = structureDoorError(next)

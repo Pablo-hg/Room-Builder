@@ -53,16 +53,19 @@ export function openingsForWall(room: RoomConfig, wall: WallSide): WallOpening[]
   return openings
 }
 
-export function validateOpenings(room: RoomConfig): string | null {
+export interface OpeningConflict { rule: 'opening-bounds' | 'opening-height' | 'opening-gap'; objectIds: string[]; wall: WallSide; requiredGap?: number }
+export function validateOpenings(room: RoomConfig, onConflict?: (conflict: OpeningConflict) => void): string | null {
   for (const wall of ['north', 'east', 'south', 'west'] as WallSide[]) {
     const length = wallLength(room, wall)
     const items = openingsForWall(room, wall)
     for (const item of items) {
       const [start, end] = openingInterval(item.offset, item.width)
       if (start < -length / 2 + ROOM_LIMITS.edgeMargin || end > length / 2 - ROOM_LIMITS.edgeMargin) {
+        onConflict?.({ rule: 'opening-bounds', objectIds: [item.id], wall })
         return `${item.kind === 'door' ? 'La puerta' : 'Una ventana'} queda fuera de la pared ${WALL_LABELS[wall]}.`
       }
       if (item.bottom < 0 || item.bottom + item.height > room.height - 0.08) {
+        onConflict?.({ rule: 'opening-height', objectIds: [item.id], wall })
         return `Una apertura supera la altura disponible.`
       }
     }
@@ -74,7 +77,10 @@ export function validateOpenings(room: RoomConfig): string | null {
         const aTop = items[index].bottom + items[index].height
         const bTop = items[next].bottom + items[next].height
         const separatedVertically = aTop + ROOM_LIMITS.openingGap <= items[next].bottom || bTop + ROOM_LIMITS.openingGap <= items[index].bottom
-        if (!separatedHorizontally && !separatedVertically) return `Dos aperturas de la pared ${WALL_LABELS[wall]} se solapan.`
+        if (!separatedHorizontally && !separatedVertically) {
+          onConflict?.({ rule: 'opening-gap', objectIds: [items[index].id, items[next].id], wall, requiredGap: ROOM_LIMITS.openingGap })
+          return `Dos aperturas de la pared ${WALL_LABELS[wall]} se solapan.`
+        }
       }
     }
   }

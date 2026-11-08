@@ -1,3 +1,4 @@
+import { rejectDiagnosticAction } from '../../diagnostics/actionScope'
 import { finishHistoryTransaction } from '../historyTransactions'
 import { applyFurnitureRotation, elevatedFurniture, movedFurniture } from '../../domain/editingRules'
 import { makeId } from '../../domain/elementIds'
@@ -40,7 +41,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
   const { set, get, runtime } = context
   return {
     setElementAxisLock: (id, axis, locked) => set((state) => {
-      if (state.lockedElementIds.includes(id)) return {}
+      if (state.lockedElementIds.includes(id)) { rejectDiagnosticAction('element-locked'); return {} }
       const item = state.furniture.find((candidate) => candidate.id === id)
       if (item) {
         const locks = furnitureAxisLocks(item)
@@ -134,6 +135,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
         const localPosition = findFreeFurniturePosition(item, { ...state.room, ...(activeBox ? { width: activeBox.width, depth: activeBox.depth } : {}) }, localFurniture)
         const position = localPosition && { x: localPosition.x + (activePack?.x ?? 0), z: localPosition.z + (activePack?.z ?? 0) }
         if (!position) {
+          rejectDiagnosticAction('no-free-position')
           recordInteraction('state.furniture.add-rejected', {
             view: state.view,
             selectedId: state.selectedId,
@@ -173,11 +175,12 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       else finishHistoryTransaction(runtime)
     },
     moveFurniture: (id, x, z) => set((state) => {
-      if (state.lockedElementIds.includes(id)) return {}
+      if (state.lockedElementIds.includes(id)) { rejectDiagnosticAction('element-locked'); return {} }
       const item = state.furniture.find((candidate) => candidate.id === id)
       if (!item) return {}
       const moved = movedFurniture(state, item, x, z)
-      if (!moved) return {}
+      if (!moved) { rejectDiagnosticAction('position-not-applicable'); return {} }
+      if (moved.x === item.x && moved.z === item.z && (x !== item.x || z !== item.z) && (item.axisLocks?.x || item.axisLocks?.z)) rejectDiagnosticAction('furniture-axis-locked')
       recordInteraction('state.furniture.moved', {
         view: state.view,
         selectedId: state.selectedId,
@@ -187,11 +190,11 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       return { furniture: state.furniture.map((candidate) => candidate.id === id ? moved : candidate) }
     }),
     moveFurnitureVertically: (id, y) => set((state) => {
-      if (state.lockedElementIds.includes(id)) return {}
+      if (state.lockedElementIds.includes(id)) { rejectDiagnosticAction('element-locked'); return {} }
       const item = state.furniture.find((candidate) => candidate.id === id)
       if (!item) return {}
       const moved = elevatedFurniture(state, item, y)
-      if (!moved) return {}
+      if (!moved) { rejectDiagnosticAction('position-not-applicable'); return {} }
       recordInteraction('state.furniture.elevation-changed', {
         view: state.view,
         selectedId: state.selectedId,
@@ -217,7 +220,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       }
     }),
     setFurnitureRotation: (id, rotation) => set((state) => {
-      if (state.lockedElementIds.includes(id)) return {}
+      if (state.lockedElementIds.includes(id)) { rejectDiagnosticAction('element-locked'); return {} }
       const item = state.furniture.find((candidate) => candidate.id === id)
       if (!item) return {}
       const update = applyFurnitureRotation(state, item, rotation)

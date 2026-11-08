@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { instrumentActions } from '../diagnostics/instrumentActions'
+import { rejectDiagnosticAction } from '../diagnostics/actionScope'
 import { DEFAULT_ROOM } from '../domain/constants'
 import { DEFAULT_GRID_VISIBILITY, persistedDesign, persistedDesignSignature } from '../domain/designV1'
 import { createLocalDesignRepository, type DesignRepository } from '../persistence/localDesignRepository'
@@ -37,6 +39,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
   const set = (update: RoomUpdate) => {
     let current = get()
     const rawUpdate = typeof update === 'function' ? update(current) : update
+    if (Object.keys(rawUpdate).length === 1 && rawUpdate.notice) rejectDiagnosticAction('rule-rejected')
     const interruptsGesture = runtime.activeGesture && ['selectedId', 'selectedIds', 'view'].some((key) => Object.prototype.hasOwnProperty.call(rawUpdate, key))
     if (interruptsGesture) {
       const restore = finishHistoryTransaction(runtime, undefined, persistedDesign(current))
@@ -104,11 +107,11 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
           if (!nextPack || !nextDoor) continue
           const before = structureDoorPosition(current.room, pack, door)
           const after = structureDoorPosition(nextState.room, nextPack, nextDoor)
-          if (before && after && (['x', 'y', 'z'] as const).some((axis) => (door.axisLocks?.[axis] || current.lockedElementIds.includes(door.id)) && Math.abs(before[axis] - after[axis]) > 1e-9)) { storeSet({ notice: 'El movimiento desplazaría un eje bloqueado de una puerta.' }); return }
+          if (before && after && (['x', 'y', 'z'] as const).some((axis) => (door.axisLocks?.[axis] || current.lockedElementIds.includes(door.id)) && Math.abs(before[axis] - after[axis]) > 1e-9)) { rejectDiagnosticAction('door-axis-locked'); storeSet({ notice: 'El movimiento desplazaría un eje bloqueado de una puerta.' }); return }
         }
       }
       const error = structureDoorsWorldError(nextState.room, nextState.structurePacks)
-      if (error) { storeSet({ notice: error }); return }
+      if (error) { rejectDiagnosticAction('structure-door-invalid'); storeSet({ notice: error }); return }
     }
     roomFocusHistory = nextFocusHistory
     const designChanged = persistedDesignSignature(persistedDesign(current)) !== persistedDesignSignature(persistedDesign(nextState))
@@ -133,7 +136,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
 
   const context: RoomActionContext = { set, get, runtime, repository }
 
-  return {
+  return instrumentActions({
     room: cloneRoom(),
     furniture: [],
     structurePacks: [],
@@ -185,7 +188,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     ...createHistoryActions(context),
     ...createDesignActions(context),
     ...createResizeActions(context),
-  }
+  }, get, runtime)
 })
 
 export const useRoomStore = createRoomStore()

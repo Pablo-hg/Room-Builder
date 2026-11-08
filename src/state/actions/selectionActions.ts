@@ -1,3 +1,4 @@
+import { rejectDiagnosticAction } from '../../diagnostics/actionScope'
 import { makeId, structureGridElementId, structureSurfaceElementId } from '../../domain/elementIds'
 import { elementName } from '../../domain/selection'
 import { ROOM_LIMITS } from '../../domain/constants'
@@ -256,6 +257,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
             .find((candidate) => canPlaceFurniture({ ...item, ...candidate }, state.furniture))
             ?? findFreeFurniturePosition(item, state.room, state.furniture)
           if (!position) {
+          rejectDiagnosticAction('no-free-position')
             return { notice: `No queda espacio libre para duplicar ${item.name.toLowerCase()}.` }
           }
           const pasted = {

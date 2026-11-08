@@ -1,3 +1,5 @@
+import { rejectDiagnosticAction } from '../../diagnostics/actionScope'
+import { reportOpeningConflict } from '../../diagnostics/openingConflict'
 import { finishHistoryTransaction } from '../historyTransactions'
 import { clampRoomDimension, roomForDoorUpdate, roomForWindowUpdate, safeRoomUpdate } from '../../domain/editingRules'
 import { createStructureSurface, structureDimensionMinimum } from '../../domain/structureRules'
@@ -87,7 +89,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
         coalesceKey: `room-${key}`,
         details: { dimension: key === 'width' ? 'la anchura' : key === 'depth' ? 'la profundidad' : 'la altura', value: next },
       })
-      const update = safeRoomUpdate(state, { ...state.room, [key]: next })
+      const update = safeRoomUpdate(state, { ...state.room, [key]: next }, reportOpeningConflict)
       if (update.furniture) {
         const otherRooms = worldRoomBoxes(state.room, state.structurePacks).slice(1)
         update.furniture = update.furniture.map((item, index) => {
@@ -205,11 +207,11 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       }
     }),
     moveStructurePack: (id, axis, value) => set((state) => {
-      if (state.lockedElementIds.includes(id)) return {}
+      if (state.lockedElementIds.includes(id)) { rejectDiagnosticAction('element-locked'); return {} }
       const pack = state.structurePacks.find((candidate) => candidate.id === id)
       if (!pack || !Number.isFinite(value)) return {}
       if (pack.doors?.some((door) => door.axisLocks?.[axis] || state.lockedElementIds.includes(door.id))) return {}
-      if (pack.axisLocks?.[axis] || pack.surfaces.some((surface) => surface.axisLocks?.[axis] || state.lockedElementIds.includes(structureSurfaceElementId(pack.id, surface.id)))) return {}
+      if (pack.axisLocks?.[axis] || pack.surfaces.some((surface) => surface.axisLocks?.[axis] || state.lockedElementIds.includes(structureSurfaceElementId(pack.id, surface.id)))) { rejectDiagnosticAction('pack-axis-locked'); return {} }
       if (pack[axis] === value) return {}
       const next = snapMeasurement(value)
       if (pack[axis] === next) return {}
@@ -229,7 +231,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       const pack = state.structurePacks.find((candidate) => candidate.id === packId)
       const surface = pack?.surfaces.find((item) => item.id === surfaceId)
       if (!pack || !surface || !Number.isFinite(value)) return {}
-      if (pack.axisLocks?.[axis] || surface.axisLocks?.[axis] || state.lockedElementIds.includes(pack.id)) return {}
+      if (pack.axisLocks?.[axis] || surface.axisLocks?.[axis] || state.lockedElementIds.includes(pack.id)) { rejectDiagnosticAction('surface-axis-locked'); return {} }
       if (surface[axis] === value) return {}
       const next = snapMeasurement(value)
       if (surface[axis] === next) return {}
@@ -385,11 +387,11 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       else finishHistoryTransaction(runtime)
     },
     setDoor: (partial) => set((state) => {
-      if (!openingMovementAllowed(state.room.door, partial)) return {}
+      if (!openingMovementAllowed(state.room.door, partial)) { rejectDiagnosticAction('opening-axis-locked'); return {} }
       if (state.lockedElementIds.includes('door') && (partial.wall !== undefined || partial.offset !== undefined)) return {}
       const candidate = roomForDoorUpdate(state.room, partial)
       if (!openingMovementAllowed(state.room.door, candidate.door)) return {}
-      const update = safeRoomUpdate(state, candidate)
+      const update = safeRoomUpdate(state, candidate, reportOpeningConflict)
       if (update.room) {
         recordInteraction('state.opening.updated', {
           view: state.view,
@@ -440,7 +442,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       const structureSource = packWindowById(state.structurePacks, id)
       if (structureSource) {
         const { pack, window: currentWindow } = structureSource
-        if (!openingMovementAllowed(currentWindow, partial)) return {}
+        if (!openingMovementAllowed(currentWindow, partial)) { rejectDiagnosticAction('opening-axis-locked'); return {} }
         const adjusted = { ...partial,
           ...(partial.offset === undefined ? {} : { offset: snapMeasurement(partial.offset) }),
           ...(partial.sill === undefined ? {} : { sill: snapMeasurement(partial.sill) }),
@@ -471,11 +473,11 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       }
       const currentWindow = state.room.windows.find((window) => window.id === id)
       if (!currentWindow) return {}
-      if (!openingMovementAllowed(currentWindow, partial)) return {}
+      if (!openingMovementAllowed(currentWindow, partial)) { rejectDiagnosticAction('opening-axis-locked'); return {} }
       const candidate = roomForWindowUpdate(state.room, currentWindow, partial)
       const candidateWindow = candidate.windows.find((window) => window.id === id)
       if (candidateWindow && (!openingMovementAllowed(currentWindow, candidateWindow) || !wallObjectLocksAllow(state.room, currentWindow, candidateWindow))) return { notice: 'El cambio movería un eje bloqueado.' }
-      const update = safeRoomUpdate(state, candidate)
+      const update = safeRoomUpdate(state, candidate, reportOpeningConflict)
       const nextWindow = candidate.windows.find((window) => window.id === id)
       if (update.room && nextWindow) {
         recordInteraction('state.opening.updated', {

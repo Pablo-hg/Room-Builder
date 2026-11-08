@@ -1,6 +1,7 @@
 import { rehomeFreeWallObjects, wallObjectAvailableAxes, wallObjectLocksAllow, wallObjectPosition, wallObjects } from '../../domain/wallObjectPlacement'
 import { spatialRoomFolder } from '../../domain/spatialFolderPlacement'
 import { snapMeasurement } from '../../domain/measurements'
+import { rejectDiagnosticAction } from '../../diagnostics/actionScope'
 import { structureSurfaceElementId } from '../../domain/elementIds'
 import { baseWallId } from '../../domain/elementFolders'
 import { validateOpenings } from '../../domain/geometry'
@@ -32,16 +33,16 @@ export function createWallObjectActions({ set, get }: RoomActionContext): Pick<R
     moveWallObject: (id, axis, value) => {
       const current = get()
       const attached = movementSource(current, id)
-      if (!attached || !Number.isFinite(value) || attached.window.axisLocks?.[axis]) return
+      if (!attached || !Number.isFinite(value) || attached.window.axisLocks?.[axis]) { rejectDiagnosticAction('wall-object-position-restricted'); return }
       if (!attached.window.freePosition) {
-        if (!wallObjectAvailableAxes(current.room, attached.window, attached.pack)[axis]) return
+        if (!wallObjectAvailableAxes(current.room, attached.window, attached.pack)[axis]) { rejectDiagnosticAction('wall-object-axis-unavailable'); return }
         const position = wallObjectPosition(current.room, attached.window, attached.pack)
         const next = snapMeasurement(value)
         const delta = next - position[axis]
         if (Math.abs(delta) < 1e-9) return
         const changed = { ...attached.window, ...(axis === 'y' ? { sill: attached.window.sill + delta }
           : { offset: attached.window.offset + delta * (axis === 'x' ? Math.cos(position.yaw) : -Math.sin(position.yaw)) }) }
-        if (!wallObjectLocksAllow(current.room, attached.window, changed, attached.pack)) return
+        if (!wallObjectLocksAllow(current.room, attached.window, changed, attached.pack)) { rejectDiagnosticAction('wall-object-axis-locked'); return }
         const room = { ...current.room, windows: current.room.windows.map((window) => window.id === id ? changed : window) }
         const pack = attached.pack && { ...attached.pack, windows: attached.pack.windows!.map((window) => window.id === id ? changed : window) }
         const error = pack ? structureWindowError(pack) : validateOpenings(room)

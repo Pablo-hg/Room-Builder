@@ -2,6 +2,7 @@ import { ROOM_LIMITS } from './constants'
 import { canPlaceFurniture, clampFurniture, clampFurnitureElevation, findAvailableOpeningOffset, findFreeFurniturePosition, validateOpenings, wallLength, withDoor, withWindow } from './geometry'
 import { canElevateFurniture, furnitureAttachment, FURNITURE_PRESETS, isCeilingMountedFurniture, isFloorBoundFurniture } from './objectCatalog'
 import type { FurnitureItem, RoomConfig, WindowConfig } from './types'
+import type { OpeningConflict } from './geometry'
 import { snapMeasurement } from './measurements'
 import { furnitureAxisLocks } from './axisLocks'
 
@@ -14,8 +15,8 @@ export interface RoomEditingData {
 type RoomRuleUpdate = Partial<{ room: RoomConfig; furniture: FurnitureItem[]; notice: string }>
 type FurnitureRuleUpdate = Partial<{ furniture: FurnitureItem[]; notice: string }>
 
-export function safeRoomUpdate(current: RoomEditingData, candidate: RoomConfig): RoomRuleUpdate {
-  const error = validateOpenings(candidate)
+export function safeRoomUpdate(current: RoomEditingData, candidate: RoomConfig, onConflict?: (conflict: OpeningConflict) => void): RoomRuleUpdate {
+  const error = validateOpenings(candidate, onConflict)
   if (error) return { notice: error }
   const furniture = current.furniture.map((item) => {
     if (item.axisLocks) return { ...item }
