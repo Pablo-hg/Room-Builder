@@ -457,6 +457,10 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .scene-collision-panel ul { margin: 0; padding-left: 16px; overflow-wrap: anywhere; }
 .scene-collision-panel li + li { margin-top: 5px; }
 .scene-collision-panel li::marker { color: #c15a4b; }
+.scene-collision-panel__object { appearance: none; border: 0; padding: 0; background: transparent; color: #7e302a; font: inherit; font-weight: 800; text-align: left; cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 2px; }
+.scene-collision-panel__object:hover { text-decoration-color: currentColor; }
+.scene-collision-panel__object:focus-visible { outline: 2px solid #9a322d; outline-offset: 3px; border-radius: 2px; }
+
 @container (max-width: 680px) {
   .scene-collision-panel { top: 8px; left: 8px; width: min(300px, calc(100% - 16px)); max-height: 35%; padding: 8px 10px; }
 }
