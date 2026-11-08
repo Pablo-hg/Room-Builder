@@ -45,3 +45,19 @@ test('interaction types distinguish selection, movement, rotation, dimensions an
   assert.equal(interactionType(engine.emit({ action: 'editor.selectElement', data: { after: { selectedIds: [] } } })!), 'DESELECCIÓN')
   assert.equal(interactionType(engine.emit({ action: 'editor.selectSceneListItem', data: { after: { selectedIds: ['obj-a', 'obj-b'] } } })!), 'SELECCIÓN MÚLTIPLE')
 })
+test('large creation is summarized in readable log while structured details retain their IDs', () => {
+  const engine = new DiagnosticEngine()
+  const created = Object.fromEntries(Array.from({ length: 5 }, (_, i) => [
+    `obj-${i}`, { kind: i === 0 ? 'floor' : 'wall', x: 0, y: 0, z: 0, width: 5, height: 2.7, depth: 4 },
+  ]))
+  const event = engine.emit({
+    action: 'editor.addStructurePack', result: 'completed', objectIds: Object.keys(created),
+    data: { before: {}, after: created },
+  })!
+  const readable = readableEvent(event)
+  assert.match(readable, /Resumen:/)
+  assert.match(readable, /paredes/)
+  assert.match(readable, /Dimensiones del suelo:/)
+  assert.doesNotMatch(readable, /Referencia:|operación op/)
+  assert.equal(Object.keys(event.data.after as object).length, 5)
+})

@@ -19,7 +19,9 @@ export function instrumentActions(state: RoomState, get: () => RoomState, runtim
     const bulk = /^(loadDesign|createDesign|importDesign|initializeSavedDesigns|deleteSavedDesign)$/.test(action)
     const summary = summarizeChange(before, after, !bulk)
     const outcome = result ?? scope.result ?? 'completed'
-    if (!summary.changed && !scope.result && !result && action !== 'copySelected' && !bulk) return
+    // Do not claim successful editing where nothing changed; keep actual replacements and failures.
+    if (!summary.changed && !(bulk && summary.geometryChanged) && !scope.result
+      && (!result || result === 'completed') && action !== 'copySelected') return
     const snapshots = (side: 'before' | 'after') => Object.fromEntries(summary.changes.map((change) => [String(change.id ?? change.field), change[side]]))
     const input = { action: `editor.${action}`, operationId, result: outcome,
       category: outcome === 'failed' ? 'errors' as const : 'interactions' as const,
@@ -59,8 +61,6 @@ export function instrumentActions(state: RoomState, get: () => RoomState, runtim
             if (gesture) record(gesture.action, gesture.before, before, {}, gesture.operationId, 'completed')
             diagnostics.flush()
             gesture = { before, operationId: diagnostics.nextOperation(), action: 'gesture', reasons: new Set() }
-            diagnostics.emit({ action: 'editor.gesture', phase: 'started', operationId: gesture.operationId,
-              objectIds: runtime.activeGesture.targetId ? [diagnostics.objectId(runtime.activeGesture.targetId)] : [] })
           }
           if (gesture && !runtime.activeGesture) {
             const explicitEnd = gestureAction.test(action)

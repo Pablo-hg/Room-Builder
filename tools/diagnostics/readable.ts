@@ -90,6 +90,7 @@ function changes(before: unknown, after: unknown, path = ''): string[] {
     if (JSON.stringify(a) === JSON.stringify(b)) return []
     const name = `${path}${field.startsWith('obj-') ? `Objeto ${field}` : labels[field] ?? field}`
     if ((a && typeof a === 'object' && !Array.isArray(a) || b && typeof b === 'object' && !Array.isArray(b)) && !Array.isArray(a) && !Array.isArray(b)) return changes(a, b, `${name} / `)
+    if (valueText(a, field) === valueText(b, field)) return [] // Formatting precision hides this change.
     return [`  · ${name}: ${valueText(a, field)} → ${valueText(b, field)}`]
   })
 }
@@ -133,19 +134,42 @@ export function readableEvent(event: DiagnosticEvent): string {
   const lines = [`[${date.format(new Date(event.timestamp))}] ${labels[event.level]} · ${labels[event.category]}`, `Tipo: ${type}`, `${title} — ${labels[outcome] ?? outcome}`]
   if (event.data.view) lines.push(`Vista: ${valueText(event.data.view, 'view')}`)
   if (event.data.appVersion) lines.push(`Versión de la aplicación: ${event.data.appVersion}`)
-  if (event.objectIds.length) lines.push(`Elementos: ${event.objectIds.join(', ')}`)
+  const before = record(event.data.before), after = record(event.data.after)
+  const details = changes(before, after)
+  const compactCreation = type === 'CREACIÓN' && details.length > 16
+  if (event.objectIds.length) lines.push(compactCreation
+    ? `Elementos: ${event.objectIds.length} afectados (identificadores en el diagnóstico exportado)`
+    : `Elementos: ${event.objectIds.join(', ')}`)
   const effects: Record<string, string> = { blocking: 'bloquea la operación', warning: 'avisa; no bloquea', allowed: 'superposición permitida' }
   if (event.data.disposition) lines.push(`Efecto: ${effects[String(event.data.disposition)] ?? String(event.data.disposition)}`)
   const reason = event.data.reason ?? event.data.rule
   if (reason) lines.push(`Motivo: ${labels[String(reason)] ?? reason}`)
   if (event.data.requiredGap !== undefined) lines.push(`Separación mínima: ${valueText(event.data.requiredGap, 'width')}`)
-  const diff = changes(event.data.before, event.data.after)
-  if (diff.length) lines.push('Cambios:', ...diff)
+  if (compactCreation) {
+    const fresh = Object.entries(after).filter(([id, value]) => id.startsWith('obj-') && !(id in before) && value && typeof value === 'object')
+    const kinds = fresh.map(([, value]) => String(record(value).kind ?? ''))
+    const count = (kind: string) => kinds.filter((value) => value === kind).length
+    const parts = [
+      count('wall') ? `${count('wall')} paredes` : '',
+      count('floor') ? `${count('floor')} suelos` : '',
+      count('ceiling') ? `${count('ceiling')} techos` : '',
+    ].filter(Boolean)
+    const other = fresh.length - count('wall') - count('floor') - count('ceiling')
+    if (other > 0) parts.push(`${other} elementos adicionales`)
+    lines.push(`Resumen: ${parts.join(', ') || `${fresh.length || event.objectIds.length} elementos afectados`}.`)
+    const floor = fresh.find(([, value]) => record(value).kind === 'floor')
+    if (floor) {
+      const surface = record(floor[1])
+      if (typeof surface.width === 'number' && typeof surface.depth === 'number')
+        lines.push(`Dimensiones del suelo: ${valueText(surface.width, 'width')} × ${valueText(surface.depth, 'depth')}.`)
+    }
+    lines.push('Detalles técnicos disponibles en el diagnóstico exportado.')
+  } else if (details.length) lines.push('Cambios:', ...details)
   if (event.result === 'cancelled') lines.push(event.data.changesApplied ? 'Cancelación: conserva los cambios ya aceptados.' : 'Cancelación: sin cambios aplicados.')
   else if (event.data.changesApplied === false) lines.push('Sin cambios efectivos.')
   if (event.data.sceneReplaced !== undefined) lines.push(`Escena sustituida: ${valueText(event.data.sceneReplaced, '')}. Muebles: ${event.data.furnitureCount ?? '?'}. Habitaciones adicionales: ${event.data.packCount ?? '?'}.`)
   if (event.data.truncated) lines.push('AVISO: detalles recortados por el límite de tamaño.')
   if (event.data.dropped) lines.push(`AVISO: ${event.data.dropped} eventos perdidos.`)
-  lines.push(`Referencia: #${event.seq}${event.operationId ? ` · operación ${event.operationId.split(':').pop()}` : ''} · sesión ${event.sessionId}`, '')
+  lines.push('')
   return lines.join('\n') + '\n'
 }

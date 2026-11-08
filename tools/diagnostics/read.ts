@@ -15,7 +15,7 @@ export function filterEvents(events: DiagnosticEvent[], filters: Filters) {
 }
 const HELP = `Diagnósticos internos de Room Builder (sin interfaz web)
 Uso: npm run diagnostics -- [archivo.json|archivo.jsonl|historico.log|carpeta] [opciones]
-Por defecto: logs/diagnostics/LECTURA.log (archivo activo, ya legible).
+Por defecto: logs/LECTURA.log (archivo activo, ya legible).
 Los filtros estructurados requieren un JSON/JSONL histórico o exportado.
   --categoria interactions|collisions|errors|system
   --nivel debug|info|warn|error
@@ -29,7 +29,7 @@ Los filtros estructurados requieren un JSON/JSONL histórico o exportado.
 export async function main(args: string[]) {
   if (args.includes('--help') || args.includes('--ayuda')) { process.stdout.write(HELP); return }
   const values: Record<string, string> = {}, switches = new Set<string>()
-  let source = 'logs/diagnostics/LECTURA.log'
+  let source = 'logs/LECTURA.log'
   let positional = false
   for (let index = 0; index < args.length; index++) {
     const option = args[index]

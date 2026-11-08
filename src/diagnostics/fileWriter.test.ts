@@ -24,9 +24,10 @@ test('file writer recovers after filesystem failure, deduplicates retries and pr
     const readable = await readFile(writer.file, 'utf8')
     assert.match(readable, /DIAGNÓSTICO DEL EDITOR/)
     assert.match(readable, /Completada/)
-    assert.equal(readable.split(`Referencia: #${event.seq} · sesión ${event.sessionId}`).length - 1, 1)
+    assert.equal(readable.split('create — Completada').length - 1, 1)
+    assert.doesNotMatch(readable, /Referencia:|sesión s-/)
     const reopened = new DiagnosticFileWriter(directory, 8192)
-    await reopened.append([event])
+    await reopened.initialize()
     assert.equal(await readFile(writer.file, 'utf8'), readable)
     await writeFile(writer.file, '')
     await reopened.append([event])
@@ -45,8 +46,8 @@ test('one active file combines all categories and trims complete old entries wit
     for (let index = 0; index < 20; index++) await writer.append([engine.emit({ action: 'editor.moveFurniture', result: 'completed' })!])
     const bounded = await readFile(writer.file, 'utf8')
     assert.ok(Buffer.byteLength(bounded) <= 1600)
-    assert.ok(bounded.includes('Referencia: #24 '))
-    assert.ok(!bounded.includes('Referencia: #1 '))
+    assert.ok(bounded.includes('Mover mueble'))
+    assert.ok(!bounded.includes('Referencia:'))
     assert.ok(bounded.endsWith('\n\n'))
     assert.deepEqual(await readdir(root), ['LECTURA.log'])
   } finally { await rm(root, { recursive: true, force: true }) }
@@ -55,4 +56,37 @@ test('legacy reader retains original text without inventing operation outcomes',
   const entries = parseLegacy('[08/11/2026, 14:00:00.000] [old-session] Se mueve un objeto.\n')
   assert.equal(entries[0].description, 'Se mueve un objeto.')
   assert.equal('result' in entries[0], false)
+})
+test('old nested reading migrates intact to logs/LECTURA.log without visible reference lines', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'room-builder-log-migrate-'))
+  try {
+    const oldDir = join(root, 'diagnostics')
+    await mkdir(oldDir)
+    const old = 'ROOM BUILDER · DIAGNÓSTICO DEL EDITOR\n\n[08/11/2026, 21:17:25,660] INFO · INTERACCIÓN\nMover mueble — Completada\nReferencia: #10 · operación op7 · sesión s-test\n\n'
+    await writeFile(join(oldDir, 'LECTURA.log'), old)
+    const writer = new DiagnosticFileWriter(root, 8192)
+    await writer.initialize()
+    const migrated = await readFile(join(root, 'LECTURA.log'), 'utf8')
+    assert.match(migrated, /Mover mueble — Completada/)
+    assert.doesNotMatch(migrated, /Referencia:/)
+    assert.deepEqual(await readdir(root), ['LECTURA.log'])
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+test('repeated collision transitions in a single operation are summarized only in the reading', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'room-builder-log-collisions-'))
+  try {
+    const writer = new DiagnosticFileWriter(root)
+    const engine = new DiagnosticEngine()
+    const events = Array.from({ length: 8 }, (_, i) => engine.emit({
+      action: i % 2 ? 'spatial.left' : 'spatial.entered', category: 'collisions',
+      operationId: 'operation-1', objectIds: ['obj-a', 'obj-b'], data: { rule: 'oriented-box-overlap' },
+    })!)
+    await writer.append(events)
+    const contents = await readFile(writer.file, 'utf8')
+    assert.equal(contents.split('Aparece un conflicto espacial').length - 1, 1)
+    assert.equal(contents.split('Deja de detectarse un conflicto espacial').length - 1, 1)
+    assert.equal(engine.snapshot().length, 8)
+    await writer.append([events[0]])
+    assert.equal(await readFile(writer.file, 'utf8'), contents)
+  } finally { await rm(root, { recursive: true, force: true }) }
 })
