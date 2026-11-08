@@ -18,6 +18,29 @@ export function openingInterval(offset: number, width: number): [number, number]
   return [offset - width / 2, offset + width / 2]
 }
 
+/**
+ * Encuentra la posición en centímetros más cercana a la posición preferida.
+ * Se utiliza al cambiar de pared: el offset anterior puede quedar fuera del
+ * nuevo muro o colisionar con otra apertura aunque existan huecos libres.
+ * No sustituye la validación: cada candidato se comprueba con el validador real.
+ */
+export function findAvailableOpeningOffset(length: number, width: number, preferred: number, isValid: (offset: number) => boolean, edgeMargin = ROOM_LIMITS.edgeMargin): number | null {
+  if (![length, width, preferred, edgeMargin].every(Number.isFinite)) return null
+  const maximumCm = Math.floor(((length - width) / 2 - edgeMargin) * 100 + 1e-7)
+  if (maximumCm < 0) return null
+  const preferredCm = Math.max(-maximumCm, Math.min(maximumCm, Math.round(preferred * 100)))
+  for (let distance = 0; distance <= maximumCm * 2; distance += 1) {
+    // Desempate estable: primero hacia la izquierda, después a la derecha.
+    const candidates = distance === 0 ? [preferredCm] : [preferredCm - distance, preferredCm + distance]
+    for (const cm of candidates) {
+      if (cm < -maximumCm || cm > maximumCm) continue
+      const offset = cm / 100
+      if (isValid(offset)) return offset
+    }
+  }
+  return null
+}
+
 export function openingsForWall(room: RoomConfig, wall: WallSide): WallOpening[] {
   const openings: WallOpening[] = []
   if (room.door.wall === wall) {
