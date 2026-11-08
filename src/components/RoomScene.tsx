@@ -23,7 +23,7 @@ import { FreeCameraKeyboard } from '../scene/FreeCameraKeyboard'
 import { baseWallId, folderSelectionId, ROOT_ROOM_FOLDER } from '../domain/elementFolders'
 import { packRoomBox } from '../domain/roomEditing'
 
-function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null> }) {
+function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null>; collisionIds: ReadonlySet<string> }) {
   const selectedId = useRoomStore((state) => state.selectedId)
   const selectedIds = useRoomStore((state) => state.selectedIds)
   const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
@@ -66,6 +66,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
             showGrid={gridWalls.includes(wall) && props.gridVisibility[wall]}
             exportMode={props.exportMode}
             groupSelected={groupSelected}
+            collisionIds={props.collisionIds}
           />
         ))}
         {showBase && !activeRoom && !props.exportMode && labeledWalls.filter((wall) => !hiddenElementIds.includes(baseWallId(wall))).map((wall) => <WallIdentityLabel key={`base-label-${wall}`} room={props.room} wall={wall} view={props.view} wallView={props.wallView} />)}
@@ -87,9 +88,11 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
                   locked={lockedElementIds.includes(surfaceId)}
                   showGrid={!props.exportMode && (independentSurface || pack.id.startsWith('floor-pack-'))}
                   showCollision={!props.exportMode}
+                  colliding={!props.exportMode && props.collisionIds.has(surfaceId)}
+                  collisionIds={props.collisionIds}
                   onSelect={() => selectElement(surfaceId)}
                 />
-                {!props.exportMode && props.view === 'top' && !hiddenElementIds.includes(surfaceId) && <StructureDoorPlan room={props.room} packId={pack.id} surface={surface} />}
+                {!props.exportMode && props.view === 'top' && !hiddenElementIds.includes(surfaceId) && <StructureDoorPlan room={props.room} packId={pack.id} surface={surface} collisionIds={props.collisionIds} />}
                 {pack.id === activeRoom?.id && !props.exportMode && surface.kind === 'wall' && surface.wall && labeledWalls.includes(surface.wall) && !hiddenElementIds.includes(surfaceId) && <group position={[surface.x, surface.y, surface.z]}><WallIdentityLabel room={props.room} wall={surface.wall} view={props.view} wallView={props.wallView} /></group>}
                 </group>
               )
@@ -99,7 +102,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
         {showBase && !props.exportMode && props.view === 'top' && WALL_SIDES.flatMap((wall) =>
           openingsForWall(props.room, wall)
             .filter((opening) => !hiddenElementIds.includes(opening.id))
-            .map((opening) => <PlanOpening key={`${wall}-${opening.id}`} room={props.room} opening={opening} wall={wall} groupSelected={groupSelected} />),
+            .map((opening) => <PlanOpening key={`${wall}-${opening.id}`} room={props.room} opening={opening} wall={wall} groupSelected={groupSelected} colliding={props.collisionIds.has(opening.id)} />),
         )}
         {props.furniture.filter((item) => !hiddenElementIds.includes(item.id) && (!focusedView || (item.y >= level - 0.01 && item.y < level + levelHeight))).map((item) => (
           <FurnitureObject
@@ -110,6 +113,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
             canDrag={props.view !== 'pov' && !lockedElementIds.includes(item.id)}
             planView={props.view === 'top'}
             showCollision={!props.exportMode}
+            colliding={!props.exportMode && props.collisionIds.has(item.id)}
             frontWall={props.view === 'front' ? props.wallView ?? 'north' : null}
           />
         ))}
@@ -119,7 +123,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
   )
 }
 
-export default function RoomScene(props: SceneProps) {
+export default function RoomScene(props: SceneProps & { collisionIds: ReadonlySet<string> }) {
   const perspective = props.view === 'pov' || props.view === 'free'
   const selectElement = useRoomStore((state) => state.selectElement)
   const modelRootRef = useRef<THREE.Group>(null)
