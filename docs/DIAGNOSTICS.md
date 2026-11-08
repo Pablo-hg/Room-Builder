@@ -1,44 +1,67 @@
-# Diagnósticos locales del editor
+﻿# Diagnósticos locales del editor
 
-Implementación de #34, 08/11/2026. **Implementado en la rama de trabajo; pendiente de certificación en main.** No sustituye el historial de deshacer ni modifica los formatos de diseños o las reglas de colisión.
+**#34, 08/11/2026. Implementado en rama; certificación pendiente de main.** La consulta para desarrolladores está en archivos del proyecto y terminal de VS Code. No hay visor técnico en la web ni opción de compartir. Ayuda conserva únicamente **Exportar diagnóstico**.
 
-## Uso
+## Leer en VS Code
 
-- **Web y desarrollo:** Ayuda, en la cabecera, ofrece Exportar diagnóstico y Compartir diagnóstico. Exportar crea un JSON portátil de los registros locales disponibles. Compartir usa el selector nativo de archivos; si no es compatible o falla, solicita una descarga. Cancelar el selector no descarga nada. No hay envío automático a servidores.
-- El archivo para compartir se prepara al abrir Ayuda para conservar la activación de usuario exigida por algunos navegadores; cerrar y reabrir Ayuda lo actualiza. Exportar obtiene los registros en ese momento. Los mensajes confirman la solicitud de descarga, no que el sistema operativo haya guardado el archivo.
-- **VS Code:** ejecutar `npm run dev` como de costumbre. Abrir `logs/diagnostics/`; aparecen archivos `<fecha-UTC>-<sesion-hash>-<categoria>-<segmento>.jsonl` mientras se utiliza la aplicación. Un POST por lote copia eventos ya identificados, sin crear acciones nuevas. El adaptador no existe en preview ni en la web publicada.
-- **Visor de desarrollo:** botón «Diagnósticos · desarrollo», abajo a la izquierda. Muestra eventos locales y permite filtrar fecha UTC, nivel, categoría, sesión, operación y objeto. Seleccionar una entrada abre sus detalles. Importar acepta el JSON exportado, JSONL o el histórico `.log`. Los eventos importados se consultan aislados: no se insertan en IndexedDB ni en el diseño. «Volver al registro local» vuelve al directo. El histórico conserva texto y fechas originales; no se inventan categorías o resultados.
-- **Retención:** el visor permite configurar 1–30 días y 1–20 MiB, guardados en la base de diagnóstico. Por defecto, siete días y 5 MiB aproximadamente de JSON de eventos. El coste físico de IndexedDB puede ser mayor. Los eventos caducados se eliminan; para el límite de espacio se descartan primero debug/info y después warn/error, empezando por los más antiguos de cada prioridad.
+Al ejecutar `npm run dev`, `logs/diagnostics/` contiene dos representaciones de los mismos eventos:
 
-## Estructura y responsabilidades
+- `<fecha>-<sesion>-<categoria>-00001.jsonl`: datos estructurados originales.
+- `<fecha>-<sesion>-<categoria>-00001.lectura.log`: lectura en español actualizada durante el uso del editor.
 
-`src/diagnostics/contract.ts` define el sobre versionado y sanea datos; `engine.ts` asigna sesión/eventos/operaciones y agrupa actualizaciones continuas. `instrumentActions.ts` observa resultados de acciones síncronas después del setter validado; `stateSummary.ts` obtiene cambios efectivos mínimos. `actionScope.ts` transmite rechazos y errores controlados sin alterar retornos ni excepciones. `debug/interactionLog.ts` conserva la API anterior y evita emitir otra copia de los eventos de estado.
+Categorías: `interactions` (interacciones), `collisions` (conflictos espaciales), `errors` (errores y advertencias), `system` (sistema). Los archivos legibles muestran hora de Madrid, acción y resultado, vista, objetos, cambios antes/después, motivos y referencias de operación/sesión. Las posiciones se expresan en metros, el zoom en porcentaje y los giros en grados. Cancelación con cambios aceptados se explica explícitamente.
 
-`indexedDb.ts`, `queue.ts` y `runtime.ts` gestionan el almacenamiento canónico por origen/navegador, independiente de red y Vite. Base `room-builder-diagnostics`, versión 1, stores `events` y `meta`; índices por fecha y prioridad. Escrituras por lotes, IDs idempotentes, retención transaccional y reapertura tras fallos. La cola y el búfer temporal se limitan a 1000 eventos/1 MiB cada uno; hay hasta 32 grupos continuos pendientes y 16 KiB por evento. Un evento demasiado grande queda marcado como truncado.
+Ejemplo ilustrativo de formato; no es una evidencia de prueba:
 
-`dev/fileMirror.ts` es un consumidor opcional de desarrollo. Usa lotes de hasta 48 KiB, timeout de 3 segundos y tres reintentos adicionales con los mismos IDs. `tools/diagnosticsPlugin.ts` valida lotes de hasta 64 KiB/100 eventos y limita a 32 solicitudes simultáneas. La cadena de escritura se recupera después de errores. Deduplicación en memoria de los últimos 10 000 IDs del proceso. Los archivos se segmentan a 1 MiB y se limpian por siete días o 50 MiB totales. La limpieza se comprueba al escribir, como máximo una vez por minuto, exclusivamente dentro de `logs/diagnostics/`. El histórico `logs/interactions.log` no se escribe, migra ni elimina. No hay un archivo por evento.
+```text
+[08/11/2026, 19:09:06,959] INFO · INTERACCIÓN
+Mover mueble — Completada
+Vista: Isométrica
+Elementos: obj-123
+Cambios:
+  · Objeto obj-123 / Posición X: 0 m → 0,5 m
+Referencia: #12 · operación op7 · sesión s-ejemplo
+```
 
-`portable.ts` define `room-builder-diagnostics`, versión 1, con fecha UTC, versión de aplicación, familia general de navegador, aviso de almacenamiento limitado y eventos. `export.ts` descarga/comparte. `dev/DiagnosticViewer.tsx` y su CSS/importador se cargan mediante un guard literal `import.meta.env.DEV`. El build ejecuta `scripts/verify-diagnostics-bundle.mjs` después de Vite para comprobar que el visor, su CSS y el endpoint no se incluyen en artefactos públicos. Esta comprobación **aún no se ha ejecutado**, porque el build se reserva a main.
+El JSONL conserva códigos/detalles que la representación humana resume. Los legibles son copias derivadas y regenerables, no un segundo origen de eventos. Si falla su escritura, el JSONL se conserva y el escritor intenta reconstruir la lectura; ese fallo no provoca reenvíos del evento canónico.
 
-## Significado de los registros
+## Lector interno: terminal integrada
 
-Cada evento tiene `schemaVersion`, `eventId`, `sessionId`, secuencia, `timestamp` UTC, categoría, nivel, acción, fase, IDs de objeto y datos mínimos; `operationId` y resultado cuando corresponden. Categorías: `interactions`, `collisions`, `errors`, `system`. Un evento tiene un solo destino, aunque su nivel sea warn/error.
+Usa `tsx`, ya instalado en el proyecto; no abre servidor ni interfaz web:
 
-Los gestos emiten inicio y resultado final; las actualizaciones intermedias aceptadas se acumulan. Cancelar conserva la última posición aceptada, como antes, y registra `cancelled` junto con `changesApplied`. Cámara y medidas no se suprimen mutuamente. Las selecciones sin cambio se omiten. Las repeticiones legítimas reciben IDs diferentes; no se deduplican frases iguales. Los resultados reales se consultan después de validación/mutación; errores de repositorio controlados y validaciones pueden declarar failed/rejected. La exportación de diseños JSON/GLB registra sus etapas y la solicitud de descarga.
+```powershell
+npm run diagnostics
+npm run diagnostics -- --categoria collisions --nivel warn
+npm run diagnostics -- --fecha 2026-11-08 --objeto obj-123
+npm run diagnostics -- --sesion s-codigo --operacion op7
+npm run diagnostics -- --seguir
+npm run diagnostics -- --salida logs/diagnostics/LECTURA.log --seguir
+npm run diagnostics -- --regenerar --salida logs/diagnostics/LECTURA.log
+npm run diagnostics -- "C:\ruta\room-builder-diagnostico.json"
+npm run diagnostics -- logs/interactions.log
+```
 
-`spatial.ts` consume los detectores existentes y registra entrada/salida de parejas y salida de habitación; no introduce un motor físico ni modifica bloqueos. Durante gestos se agrupa a 150 ms y se fuerza el estado final. Los avisos geométricos llevan `disposition: warning`, detector de cajas orientadas y precisión aproximada. El callback opcional de `validateOpenings`, también puro, informa del par y la regla real de bloqueo (`opening-gap`, altura o límites). La separación de 15 cm sigue siendo una restricción, no prueba de intersección física. Contactos de soporte y solapes explícitamente excluidos por el detector no se elevan a error ni se registran por frame. Los motivos más generales de validadores sin diagnóstico estructurado quedan como `rule-rejected`, sin inventar parejas ni interpretar mensajes.
+Sin argumentos consulta los últimos 200 eventos, ordenados cronológicamente y deduplicados por ID, en `logs/diagnostics/`. `--limite` admite hasta 10000. `--fecha` filtra UTC; las horas se muestran en Madrid. `--seguir` refresca archivos modificados cada segundo; Ctrl+C termina. `--salida` crea una lectura conjunta para abrir en VS Code. `--regenerar` crea lecturas por segmento existente sin modificar los JSONL. Se pueden consultar JSON portátil exportado, JSONL o texto histórico. Los filtros estructurados no se aplican al texto histórico, que conserva sus frases/fecha originales, sin inventar resultados. Los archivos incompletos por un append activo se releen en la siguiente actualización.
 
-## Privacidad y límites conocidos
+El lector y el formateador están en `tools/diagnostics/`; no se importan desde la aplicación. No se insertan registros leídos en IndexedDB ni se modifican diseños. `scripts/audit-interaction-log.mjs` conserva su función agregada auxiliar para histórico/JSONL; no es el lector principal.
 
-- No se guardan nombres, notas, rutas, contenido importado ni copias completas de diseños. Los IDs se sustituyen por códigos estables dentro de la sesión. Se conservan tipo, campos geométricos que cambian, selección/cámara y metadatos mínimos. Cargar/reemplazar un diseño registra cantidades y contexto, no toda su geometría. El seudónimo usa hash no criptográfico y no permite localizar directamente el ID original; no es garantía de anonimato frente a alguien que conozca el diseño.
-- El logger funciona offline con la app ya cargada. No añade caché/PWA ni garantiza poder reabrir la web sin conexión.
-- IndexedDB puede fallar o ser borrado por el usuario/navegador. Ante fallos queda una copia temporal acotada, reintentos y un aviso en consola/Ayuda/visor; las pérdidas de cola se indican. El diagnóstico nunca es requisito para guardar/editar diseños.
-- Cierre abrupto puede perder eventos pendientes. `pagehide`/visibilidad intentan vaciar, sin afirmar fin de sesión confirmado. Un append de archivo no implica `fsync` ni persistencia física garantizada. Tras reiniciar Vite puede repetirse un evento previamente escrito cuya confirmación se perdió; el importador deduplica IDs.
-- El muestreo espacial de 150 ms puede omitir un cruce que aparece y desaparece completamente entre muestras; se conserva el resultado final, no una reproducción física completa. No se mide rendimiento/FPS ni se certifica precisión de mallas por esta implementación.
-- Los snapshots de eventos/grupos se acotan: operaciones masivas pueden llevar `truncated`; no se garantiza una reproducción exacta del diseño a partir del diagnóstico. Los archivos son locales y pueden contener coordenadas y acciones; compartirlos sigue siendo una decisión del usuario.
+## Exportar desde la web
 
-## Verificación pendiente
+Ayuda → **Exportar diagnóstico** descarga un JSON indentado que el lector interno puede abrir. Incluye formato/versiones, fecha UTC, familia general del navegador y registros disponibles. El contenido se obtiene al pulsar exportar. No abre selectores de compartir ni envía información automáticamente. La confirmación indica solicitud de descarga, no escritura física confirmada por el sistema operativo.
 
-Preparadas pruebas de contrato, privacidad, agrupación multieje, ruido, memoria, colas, recuperación de disco, histórico, rechazo por separación y resultados/cancelación del store. E2E con IndexedDB real: caducidad/tamaño/prioridad, deduplicación, registro offline, exportación/importación y cancelación de compartir. El script agregado existente acepta histórico y JSONL estructurado, distinguiendo repetición de texto y repetición de IDs.
+## Arquitectura y límites
 
-Ejecutar **solo tras integración autorizada en main**: `npm ci`, `npm test`, `npm run build` (incluye la inspección del bundle) y `npm run test:e2e`. Revisar también manualmente móvil/tablet, teclado, selector nativo de compartir y fallback, selector/medidas/candados, apertura del visor y cambios de sesión. Validar cuotas/IndexedDB denegado, interrupción/reinicio de Vite y CPU/memoria con escenas representativas. Estas verificaciones no se presentan como aprobadas; #34 permanece abierta.
+- `src/diagnostics/contract.ts`, `engine.ts`: contrato v1, sesión/eventos/operaciones, categorías, resultados y agrupación. `instrumentActions.ts` y `stateSummary.ts`: resultados después de validación efectiva y cambios mínimos. `actionScope.ts` y callbacks de validación aportan rechazos sin cambiar reglas. La fachada `debug/interactionLog.ts` evita duplicados de estado/escena.
+- `indexedDb.ts`, `queue.ts`, `runtime.ts`: almacenamiento canónico por origen/navegador en `room-builder-diagnostics`, stores `events` y `meta`. Retención inicial **7 días y 5 MiB de JSON** (el uso físico puede ser mayor); conservación prioritaria warn/error. Parámetros configurables en el módulo/API de retención, sin controles técnicos en la web. No utiliza ni modifica el historial undo/redo.
+- Búfer temporal y cola: 1000 eventos/1 MiB cada uno; hasta 32 grupos continuos y 16 KiB por evento. Los detalles recortados se señalan. IndexedDB puede ser denegado o borrado: copia temporal limitada, reintentos y aviso en consola/Ayuda.
+- `dev/fileMirror.ts`: copia opcional, activada en Vite dev, por lotes de 48 KiB, timeout de tres segundos y hasta tres reintentos adicionales. Ausente de producción y preview. `tools/diagnosticsPlugin.ts`: receptor validado (64 KiB/100 eventos, 32 solicitudes simultáneas) y escritor recuperable; deduplicación de últimos 10000 IDs del proceso.
+- Segmentos JSONL de 1 MiB con lectura asociada; esta puede ocupar más espacio que el JSONL, pero tiene el mismo conjunto acotado de eventos. Retención de archivos **7 días o 50 MiB entre originales y copias**; comprobación al escribir, como máximo una vez por minuto. Limpieza por parejas solo de los segmentos generados. `LECTURA.log` de terminal es una salida manual no rotada: limitar la consulta o regenerarla según necesidad. `logs/interactions.log` histórico permanece intacto. Los logs están ignorados por Git.
+- `spatial.ts`: avisos de los detectores actuales, agrupados a 150 ms durante gestos y con estado final forzado; puede omitir cruces fugaces. Bloqueos de aperturas incluyen pareja y regla real (p. ej. separación de 15 cm), sin confundir proximidad con colisión física. Precisión de cajas orientadas, no de mallas. Reglas sin detalle conservan un motivo genérico; no se inventan parejas.
+- No se guardan nombres, notas, rutas, contenido importado ni diseños completos. IDs seudónimos estables dentro de una sesión; hash no criptográfico, sin garantía de anonimato frente a alguien que conozca el diseño. Se conservan campos geométricos que cambian y contexto mínimo.
+- Funciona sin conexión con la app ya cargada; no añade PWA/caché para reabrirla offline. Cierre abrupto puede perder eventos pendientes. `pagehide` y visibilidad intentan vaciar, sin garantizar entrega. Un reinicio de Vite puede repetir IDs previamente escritos sin confirmación; el lector los deduplica. Los archivos no prometen `fsync`.
+
+## Validación
+
+Preparadas pruebas de contrato, privacidad, agrupación, store/cancelación, colas, recuperación de disco y lectura, histórico, conflictos, filtros de terminal y representación humana. E2E preparados para receptor, IndexedDB real, retención/recuperación, offline, exportación y ausencia de controles de desarrollo/compartir.
+
+TypeScript sin emisión, sintaxis y diff son revisión estática. **No se ejecutan unitarias, E2E, build ni CI en esta rama.** Tras integración autorizada en main: `npm ci`, `npm test`, `npm run build`, `npm run test:e2e`. El build incluye `scripts/verify-diagnostics-bundle.mjs` para detectar herramientas internas o compartir en artefactos públicos; esa comprobación sigue pendiente. Comprobar también legibilidad y actualización en VS Code, móvil/teclado, exportación, fallos de almacenamiento y CPU/memoria. #34 permanece abierta.

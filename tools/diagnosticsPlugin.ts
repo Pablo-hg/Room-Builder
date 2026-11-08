@@ -1,13 +1,16 @@
-import { appendFile, mkdir, readdir, stat, unlink } from 'node:fs/promises'
+import { appendFile, mkdir, readdir, stat, unlink, readFile, writeFile, rename } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { resolve } from 'node:path'
 import type { Plugin } from 'vite'
 import { byteSize, parseEvent, type DiagnosticEvent } from '../src/diagnostics/contract'
+import { READABLE_HEADER, readableEvent } from './diagnostics/readable'
 
 export class DiagnosticFileWriter {
   private chain = Promise.resolve()
   private seen = new Set<string>()
   private cleaned = 0
+  private readableDirty = new Set<string>()
+  private warnedReadable = false
   constructor(private directory: string, private segmentBytes = 1024 * 1024, private totalBytes = 50 * 1024 * 1024) {}
   append(batch: DiagnosticEvent[]) {
     const work = this.chain.then(() => this.write(batch))
@@ -30,15 +33,42 @@ export class DiagnosticFileWriter {
       await appendFile(file, line, 'utf8')
       this.seen.add(event.eventId)
       if (this.seen.size > 10000) this.seen.delete(this.seen.values().next().value!)
+      const readable = file.replace(/\.jsonl$/, '.lectura.log')
+      try {
+        const exists = await stat(readable).then(() => true).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return false; throw error })
+        if (!exists) this.readableDirty.add(file)
+        else if (!this.readableDirty.has(file)) await appendFile(readable, readableEvent(event), 'utf8')
+      } catch { this.readableDirty.add(file) }
     }
+    for (const file of this.readableDirty) {
+      const readable = file.replace(/\.jsonl$/, '.lectura.log')
+      try {
+        const events = (await readFile(file, 'utf8')).split(/\r?\n/).filter(Boolean).map((line) => parseEvent(JSON.parse(line)))
+        await writeFile(`${readable}.tmp`, READABLE_HEADER + events.map(readableEvent).join(''), 'utf8')
+        await rename(`${readable}.tmp`, readable)
+        this.readableDirty.delete(file)
+      } catch {
+        if (!this.warnedReadable) console.warn('[Room Builder] No se pudo actualizar una copia legible; el JSONL conserva los eventos.')
+        this.warnedReadable = true
+      }
+    }
+    if (!this.readableDirty.size) this.warnedReadable = false
     if (Date.now() - this.cleaned > 60_000) { await this.cleanup(); this.cleaned = Date.now() }
     return batch.map((event) => event.eventId)
   }
   private async cleanup() {
-    const files = await Promise.all((await readdir(this.directory)).filter((name) => /^\d{4}-\d{2}-\d{2}-[a-f0-9]{16}-(interactions|collisions|errors|system)-\d{5}\.jsonl$/.test(name)).map(async (name) => ({ file: resolve(this.directory, name), info: await stat(resolve(this.directory, name)) })))
+    const files = await Promise.all((await readdir(this.directory)).filter((name) => /^\d{4}-\d{2}-\d{2}-[a-f0-9]{16}-(interactions|collisions|errors|system)-\d{5}\.jsonl$/.test(name)).map(async (name) => {
+      const file = resolve(this.directory, name), info = await stat(file)
+      const readable = file.replace(/\.jsonl$/, '.lectura.log')
+      const readableSize = await stat(readable).then((value) => value.size).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return 0; throw error })
+      return { file, readable, info, bytes: info.size + readableSize }
+    }))
     files.sort((a, b) => a.info.mtimeMs - b.info.mtimeMs)
-    let total = files.reduce((sum, item) => sum + item.info.size, 0)
-    for (const { file, info } of files) if (info.mtimeMs < Date.now() - 7 * 86400000 || total > this.totalBytes) { await unlink(file); total -= info.size }
+    let total = files.reduce((sum, item) => sum + item.bytes, 0)
+    for (const { file, readable, info, bytes } of files) if (info.mtimeMs < Date.now() - 7 * 86400000 || total > this.totalBytes) {
+      await unlink(readable).catch((error: NodeJS.ErrnoException) => { if (error.code !== 'ENOENT') throw error })
+      await unlink(file); total -= bytes; this.readableDirty.delete(file)
+    }
   }
 }
 

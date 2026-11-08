@@ -9,5 +9,5 @@
     "strict": true,
     "noEmit": true
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "tools/diagnosticsPlugin.ts", "src/diagnostics/contract.ts"]
+  "include": ["vite.config.ts", "playwright.config.ts", "tools/**/*.ts", "src/diagnostics/contract.ts", "src/diagnostics/portable.ts", "src/diagnostics/dev/legacy.ts"]
 }

@@ -284,3 +284,15 @@ Archivos nuevos: `domain/{buildingVolume,freeWallPosition,wallObjectPlacement}.t
 **Límites y pendientes:** [DIAGNOSTICS.md](../DIAGNOSTICS.md). El cierre es de mejor esfuerzo; IndexedDB puede perderse por borrado del navegador. La deduplicación de copia es por proceso/ventana acotada y un reinicio puede repetir IDs; el lector los deduplica. El muestreo espacial a 150 ms puede omitir contactos fugaces, y las cajas no representan mallas exactas. Validadores sin detalle estructurado conservan motivos genéricos. Exportar/compartir nativo, móvil/teclado, accesibilidad y consumo requieren validación real. Mantener #34 abierta hasta ejecutar las suites y build en main tras autorización de integración.
 
 **Consulta manual prevista:** `npm run dev` → registros JSONL en `logs/diagnostics/`; botón «Diagnósticos · desarrollo» → directo/filtros/importar; Ayuda → Exportar diagnóstico o Compartir diagnóstico. Cancelar compartir no descarga; si no hay soporte se solicita descarga. Cerrar/reabrir Ayuda refresca el archivo preparado para compartir. Estas instrucciones son un recorrido pendiente de comprobación, no evidencia de éxito visual.
+
+## Consulta de diagnósticos en archivos internos — rectificación del propietario
+
+**08/11/2026, continuación de #34.** Sustituye el visor web de la entrega anterior y retira Compartir diagnóstico. Se elimina el componente del visor y su CSS, incluida su carga en DEV; el logger sigue sin interfaz. Ayuda conserva exportar y el JSON descargado se indenta. No cambian motor, IndexedDB, historial, privacidad ni política de colisiones.
+
+- `tools/diagnostics/readable.ts`: lectura en español con acción/resultado, hora de Madrid, valores efectivos antes/después, metros/porcentajes/grados, motivos y referencias. El escritor Vite genera `.lectura.log` junto a cada JSONL y puede reconstruirlo si falla la proyección. La limpieza contabiliza originales y copias por parejas; no toca el histórico.
+- `tools/diagnostics/read.ts` y `npm run diagnostics`: consulta interna en terminal/archivos de VS Code, filtros, seguimiento, salida conjunta, regeneración de lecturas existentes y apertura de diagnósticos exportados/histórico. No se monta visor en la web ni se incorporan registros al diseño.
+- Pruebas preparadas/adaptadas de formato humano, filtros, escritura legible y ausencia de controles de compartir/desarrollo. Las pruebas automáticas, build/CI y validación visual siguen pendientes según la política de main. No se alteran las evidencias históricas superiores.
+
+Guía vigente y comandos: [DIAGNOSTICS.md](../DIAGNOSTICS.md).
+
+**Comprobación de esta continuación:** TypeScript sin emisión para aplicación y herramientas Node correcto. Se ejecutó el lector interno sobre los JSONL reales del propietario con `--regenerar --salida logs/diagnostics/LECTURA.log`: se generaron las copias legibles por categoría y la lectura conjunta, comprobadas por lectura de sus archivos. Los JSONL fuente y el histórico no se modificaron. Esto verifica la conversión/consulta local, no la actualización en vivo de Vite, la interfaz en navegador ni las suites, que siguen pendientes.
