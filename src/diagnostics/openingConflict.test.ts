@@ -8,10 +8,12 @@ test('diagnostic callback reports only blocking bounds, not overlapping objects'
   room.extraDoors = [{ ...room.door, id: 'extra', offset: room.door.offset }]
   const issues: OpeningConflict[] = []
   assert.equal(validateOpenings(room, (conflict) => issues.push(conflict)), null)
-  assert.deepEqual(issues, [])
+  // Comparing with [] using deepEqual narrows the array to never[] in TypeScript.
+  assert.equal(issues.length, 0)
 
   room.extraDoors[0].offset = 30
   assert.match(validateOpenings(room, (conflict) => issues.push(conflict)) ?? '', /fuera/)
+  assert.equal(issues.length, 1)
   assert.equal(issues[0].rule, 'opening-bounds')
   assert.deepEqual(issues[0].objectIds, ['extra'])
 })
