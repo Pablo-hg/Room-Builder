@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { DEFAULT_ROOM } from './constants'
-import { detectSceneCollisions, collisionElementIds } from './sceneCollisions'
+import { detectOutsideRoom, detectSceneCollisions, collisionElementIds } from './sceneCollisions'
 import { FURNITURE_PRESETS } from './objectCatalog'
 import { createStructureSurface } from './structureRules'
 import type { FurnitureItem, RoomConfig, StructurePack } from './types'
@@ -53,4 +53,35 @@ test('las puertas de otra planta no colisionan con las de la planta inferior', (
     doors: [{ id: 'upper-door', name: 'Puerta superior', wall: 'south', offset: 0, width: 1, height: 2.1, rotation: 0 }],
   }
   assert.equal(detectSceneCollisions({ room: DEFAULT_ROOM, furniture: [], structurePacks: [pack] }).length, 0)
+})
+
+test('avisa de un objeto que sale de una habitación aunque no choque con otros', () => {
+  const inside = chair('Interior', 0, 0)
+  const outside = chair('Fuera', DEFAULT_ROOM.width + 1, 0)
+  const world = { room: DEFAULT_ROOM, furniture: [inside, outside], structurePacks: [] }
+  assert.deepEqual(detectOutsideRoom(world), [{ id: 'Fuera', name: 'Fuera' }])
+  assert.equal(detectSceneCollisions(world).length, 0)
+  assert.deepEqual(detectOutsideRoom({ ...world, hiddenElementIds: ['Fuera'] }), [])
+})
+
+test('muestra superficies independientes fuera de la habitación y respeta su nombre', () => {
+  const floor = createStructureSurface(DEFAULT_ROOM, 'floor')
+  const pack: StructurePack = { id: 'floor-object-test', name: 'Suelo personalizado', x: 10, y: 0, z: 0, surfaces: [{ ...floor, name: 'Tarima nueva', width: 1, depth: 1, y: 1 }] }
+  const world = { room: DEFAULT_ROOM, furniture: [], structurePacks: [pack] }
+  assert.deepEqual(detectOutsideRoom(world), [{ id: 'structure-surface:floor-object-test:floor', name: 'Tarima nueva' }])
+  assert.deepEqual(detectOutsideRoom({ ...world, hiddenElementIds: [pack.id] }), [])
+})
+
+test('los suelos y paredes independientes también producen incidencias al atravesarse', () => {
+  const floor = createStructureSurface(DEFAULT_ROOM, 'floor')
+  const wall = createStructureSurface(DEFAULT_ROOM, 'wall-north')
+  const floorPack: StructurePack = { id: 'floor-object-one', name: 'Suelo', x: 0, y: 0, z: 0,
+    surfaces: [{ ...floor, width: 1, depth: 1, y: DEFAULT_ROOM.height / 2 }] }
+  const wallPack: StructurePack = { id: 'wall-object-one', name: 'Pared', x: 0, y: 0, z: 0,
+    surfaces: [{ ...wall, width: 1, height: 1, z: DEFAULT_ROOM.depth / 2, y: 0 }] }
+  const collisions = detectSceneCollisions({ room: DEFAULT_ROOM, furniture: [], structurePacks: [floorPack, wallPack] })
+  assert.equal(collisions.length, 1)
+  assert.deepEqual(collisionElementIds(collisions), new Set([
+    'structure-surface:floor-object-one:floor', 'structure-surface:wall-object-one:wall-north',
+  ]))
 })
