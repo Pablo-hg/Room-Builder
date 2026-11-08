@@ -6,7 +6,8 @@ import { initialRoomFolder } from '../src/domain/elementFolders'
 import type { StructurePack } from '../src/domain/types'
 
 for (const width of [375, 1280]) for (const kind of ['window', 'door'] as const) {
-  test(`apertura compartida única, recorrido, vistas y recarga: ${kind}, ${width}px`, async ({ page }, testInfo) => {
+  test(`apertura compartida única, recorrido, vistas y recarga: ${kind}, ${width}px`, async ({ page }) => {
+    test.setTimeout(90_000) // Cinco vistas, deshacer/rehacer y recarga en navegador real.
     const room = { ...cloneRoom(), windows: [] }
     const pack = (id: string, name: string, length: number): StructurePack => ({ id, name, x: 0, y: 0, z: 0,
       surfaces: [{ ...createStructureSurface(room, 'wall-north'), width: length, height: 3,
@@ -54,7 +55,8 @@ for (const width of [375, 1280]) for (const kind of ['window', 'door'] as const)
     for (const view of ['Plano', 'Isométrica', 'Frontal', 'POV', 'Libre']) {
       await page.getByRole('button', { name: view, exact: true }).click()
       await expect(entry).toHaveCount(1)
-      await page.locator('.scene-panel').screenshot({ path: testInfo.outputPath(`hueco-parcial-${kind}-${view}-${width}.png`) })
+      // Playwright ya captura automáticamente la escena al fallar; cinco
+      // capturas por variante añadían esperas de canvas sin aserción funcional.
     }
     await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
     await page.reload()

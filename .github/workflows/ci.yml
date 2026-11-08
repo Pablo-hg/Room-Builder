@@ -37,9 +37,13 @@ jobs:
         run: npm run build
 
   e2e-chromium:
-    name: E2E funcional — Chromium (suite completa tests/)
+    name: E2E Chromium (fragmento ${{ matrix.shard }}/4)
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,17 +54,17 @@ jobs:
         run: npm ci
       - name: Instalar Chromium y dependencias del sistema
         run: npx playwright install --with-deps chromium
-      - name: Inventario de la suite real
+      - name: Inventario de la suite del fragmento
         run: |
           npx playwright --version
-          npx playwright test --list
-      - name: Ejecutar TODA la suite funcional (sin filtros)
-        run: npm run test:e2e -- --workers=2
+          npx playwright test --list --shard=${{ matrix.shard }}/4
+      - name: Ejecutar el fragmento completo de E2E (sin filtros)
+        run: npm run test:e2e -- --workers=2 --shard=${{ matrix.shard }}/4
       - name: Conservar trazas y capturas de fallos
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: room-builder-e2e-failures
+          name: room-builder-e2e-failures-${{ matrix.shard }}-de-4
           path: |
             test-results/
             playwright-report/

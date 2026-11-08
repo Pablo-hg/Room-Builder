@@ -527,6 +527,17 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
   .view-switcher button { flex: 1; justify-content: center; gap: 3px; padding-inline: 4px; font-size: 10px; }
 }
 
+@media (max-width: 375px) {
+  /* La barra de guardado y los botones de vista no caben en una fila de 320 px.
+     Envolverlos evita ensanchar el documento sin ocultar controles. */
+  .topbar { min-width: 0; }
+  .save-actions { min-width: 0; flex-wrap: wrap; justify-content: flex-start; }
+  .saved-design-select { flex: 1 1 100%; width: 100%; min-width: 0; }
+  .save-actions button { flex-shrink: 0; }
+  .view-switcher { min-width: 0; flex-wrap: wrap; }
+  .view-switcher button { flex: 1 1 20%; min-width: 0; }
+}
+
 @media (max-width: 640px) {
   .workspace { display: flex; flex-direction: column; }
   .scene-panel { order: 0; height: 78vh; min-height: 620px; }

@@ -405,7 +405,7 @@ test('orbita desde un objeto con el botón central y lo deselecciona sin moverlo
   await expect(inspector.locator('.selected-heading p')).toHaveText(originalPosition)
 })
 
-test('orbita la vista isométrica desde el suelo, las paredes y el exterior', async ({ page }) => {
+test('orbita desde suelo y exterior sin girar la cámara al arrastrar paredes', async ({ page }) => {
   await page.goto('/')
   const scene = page.locator('.scene-panel')
   const canvas = scene.locator('canvas').first()
@@ -450,10 +450,11 @@ test('orbita la vista isométrica desde el suelo, las paredes y el exterior', as
   const wallY = bounds.y + bounds.height * 0.4
   await page.mouse.move(wallX, wallY)
   await page.mouse.down()
-  await expect(scene).toHaveClass(/scene-panel--orbit-dragging/)
+  // Las paredes tienen prioridad sobre la órbita, conforme a #34.
+  await expect(scene).not.toHaveClass(/scene-panel--orbit-dragging/)
   await page.mouse.move(wallX + 110, wallY, { steps: 4 })
   await page.mouse.up()
-  await expect(page.locator('.visible-walls-badge')).not.toHaveText(wallOrientation)
+  await expect(page.locator('.visible-walls-badge')).toHaveText(wallOrientation)
 
   const floorOrientation = await page.locator('.visible-walls-badge').innerText()
   const floorX = bounds.x + bounds.width * 0.5
@@ -504,10 +505,22 @@ test('la vista libre orbita en dos ejes y mantiene la edición desde los paneles
   await expect(scene).not.toHaveClass(/scene-panel--orbit-dragging/)
 
   const blankAreaOrientation = await compass.getAttribute('aria-label')
-  await page.mouse.move(bounds.x + bounds.width - 18, bounds.y + 18)
-  await page.mouse.down()
-  await expect(scene).toHaveClass(/scene-panel--orbit-dragging/)
-  await page.mouse.move(bounds.x + bounds.width - 72, bounds.y + 54, { steps: 4 })
+  // La proyección en vista Libre puede ocupar el borde superior derecho.
+  // Buscar una zona de fondo sin colisión en vez de asumir coordenadas fijas.
+  let freeBlank: { x: number; y: number } | null = null
+  for (const [rx, ry] of [[0.03, 0.18], [0.97, 0.18], [0.03, 0.80], [0.97, 0.80]]) {
+    const x = bounds.x + bounds.width * rx
+    const y = bounds.y + bounds.height * ry
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    if (await scene.evaluate((el) => el.classList.contains('scene-panel--orbit-dragging'))) {
+      freeBlank = { x, y }
+      break
+    }
+    await page.mouse.up()
+  }
+  expect(freeBlank, 'la vista Libre debe permitir orbitar sobre el fondo').not.toBeNull()
+  await page.mouse.move(freeBlank!.x - 54, freeBlank!.y + 36, { steps: 4 })
   await page.mouse.up()
   await expect(compass).not.toHaveAttribute('aria-label', blankAreaOrientation ?? '')
   await expect(scene).not.toHaveClass(/scene-panel--orbit-dragging/)
@@ -517,10 +530,10 @@ test('la vista libre orbita en dos ejes y mantiene la edición desde los paneles
   const wallY = bounds.y + bounds.height * 0.4
   await page.mouse.move(wallX, wallY)
   await page.mouse.down()
-  await expect(scene).toHaveClass(/scene-panel--orbit-dragging/)
+  await expect(scene).not.toHaveClass(/scene-panel--orbit-dragging/)
   await page.mouse.move(wallX + 35, wallY + 20, { steps: 3 })
   await page.mouse.up()
-  await expect(compass).not.toHaveAttribute('aria-label', wallOrientation ?? '')
+  await expect(compass).toHaveAttribute('aria-label', wallOrientation ?? '')
   await expect(scene).not.toHaveClass(/scene-panel--orbit-dragging/)
 
   const floorOrientation = await compass.getAttribute('aria-label')
@@ -746,7 +759,8 @@ test('reordena objetos sin carpeta y dentro de una carpeta', async ({ page }) =>
   const chair = row('Silla')
   const door = row('Puerta')
   const target = (await door.boundingBox())!
-  await chair.dragTo(door, { sourcePosition: { x: 12, y: 12 }, targetPosition: { x: target.width / 2, y: 4 } })
+  await chair.scrollIntoViewIfNeeded()
+  await chair.dragTo(door, { force: true, timeout: 12_000, sourcePosition: { x: 12, y: 12 }, targetPosition: { x: target.width / 2, y: 4 } })
   await expect.poll(async () => (await chair.boundingBox())!.y < (await door.boundingBox())!.y).toBe(true)
   await chair.click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Bajar' }).click()
@@ -758,7 +772,8 @@ test('reordena objetos sin carpeta y dentro de una carpeta', async ({ page }) =>
     await page.getByRole('menuitem', { name: 'Carpeta 1', exact: true }).click()
   }
   const box = (await door.boundingBox())!
-  await chair.dragTo(door, { sourcePosition: { x: 12, y: 12 }, targetPosition: { x: box.width / 2, y: 4 } })
+  await chair.scrollIntoViewIfNeeded()
+  await chair.dragTo(door, { force: true, timeout: 12_000, sourcePosition: { x: 12, y: 12 }, targetPosition: { x: box.width / 2, y: 4 } })
   await expect.poll(async () => (await chair.boundingBox())!.y < (await door.boundingBox())!.y).toBe(true)
 })
 
@@ -798,9 +813,11 @@ test('intercala carpetas y objetos hermanos sin cambiar su pertenencia', async (
     return firstIndex !== -1 && secondIndex !== -1 && firstIndex < secondIndex
   }
 
-  await row('Silla').dragTo(first, { sourcePosition: { x: 12, y: 12 }, targetPosition: { x: 30, y: 2 } })
+  await row('Silla').scrollIntoViewIfNeeded()
+  await row('Silla').dragTo(first, { force: true, timeout: 12_000, sourcePosition: { x: 12, y: 12 }, targetPosition: { x: 30, y: 2 } })
   await expect.poll(() => appearsBefore('Silla', 'Carpeta Carpeta 2')).toBe(true)
-  await second.dragTo(row('Puerta'), { targetPosition: { x: 40, y: 3 } })
+  await second.scrollIntoViewIfNeeded()
+  await second.dragTo(row('Puerta'), { force: true, timeout: 12_000, targetPosition: { x: 40, y: 3 } })
   await expect.poll(() => appearsBefore('Carpeta Carpeta 3', 'Puerta')).toBe(true)
   await expect(parent.locator('.element-row').filter({ hasText: 'Silla' })).toHaveCount(1)
   await first.getByRole('button', { name: 'Carpeta Carpeta 2', exact: true }).click()

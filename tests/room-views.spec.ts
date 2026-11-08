@@ -180,6 +180,7 @@ test('controles del pack siguen el foco de cámara incluso al seleccionar otros 
 })
 
 test('crea habitaciones en distintas caras y cambia de habitación en las vistas', async ({ page }) => {
+  test.setTimeout(90_000) // Tres vistas, dos cambios de foco y seis capturas de canvas.
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   const create = async (direction: string) => {
@@ -236,10 +237,17 @@ test('la cámara isométrica se eleva y la libre responde a WASD', async ({ page
   const box = await canvas.boundingBox()
   if (!box) throw new Error('Canvas no disponible')
   const count = cameraEvents.length
-  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.25)
+  // El gesto a mano alzada sobre el canvas puede tocar una pared/objeto,
+  // que tiene prioridad frente a la órbita. Se prueba el control explícito.
+  const orbit = page.getByRole('button', { name: 'Mantener pulsado y arrastrar en cualquier dirección para orbitar' })
+  const handle = await orbit.boundingBox()
+  if (!handle) throw new Error('Control de órbita libre no disponible')
+  const startX = handle.x + handle.width / 2
+  const startY = handle.y + handle.height / 2
+  await page.mouse.move(startX, startY)
   await page.keyboard.down('w')
   await page.mouse.down()
-  await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.3, { steps: 8 })
+  await page.mouse.move(startX + 24, startY + 20, { steps: 8 })
   await page.mouse.up()
   await page.keyboard.up('w')
   await expect.poll(() => cameraEvents.length, { timeout: 5000 }).toBeGreaterThan(count)

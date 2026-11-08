@@ -46,8 +46,12 @@ test('el suelo del plano desplaza la cámara y el botón restablece posición y 
   await expect(page.getByRole('status')).toContainText('100%')
   await page.mouse.move(0, 0)
   await page.waitForTimeout(500)
-  const reset = await canvas.screenshot()
-  expect(initial.equals(reset)).toBe(true)
+  // La cámara usa interpolación; comprobar la imagen tras estabilizar
+  // en lugar de exigir igualdad en un único frame inmediatamente.
+  await expect(async () => {
+    const reset = await canvas.screenshot({ animations: 'disabled' })
+    expect(initial.equals(reset)).toBe(true)
+  }).toPass({ timeout: 5_000 })
 })
 
 test('el aro de giro de una pared tiene prioridad sobre un suelo que lo tapa', async ({ page }) => {
