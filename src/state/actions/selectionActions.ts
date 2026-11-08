@@ -109,14 +109,17 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
         const surface = pack.surfaces.find((candidate) => structureSurfaceElementId(pack.id, candidate.id) === state.selectedId)
         if (surface) {
           const surfaceId = structureSurfaceElementId(pack.id, surface.id)
+          const removeIndependentPack = (pack.id.startsWith('floor-object-') || pack.id.startsWith('wall-object-')) && pack.surfaces.length === 1
           return {
-            structurePacks: state.structurePacks.map((candidate) => candidate.id !== pack.id ? candidate : {
-              ...candidate,
-              surfaces: candidate.surfaces.filter((item) => item.id !== surface.id),
-            }),
-            hiddenElementIds: state.hiddenElementIds.filter((id) => id !== surfaceId && id !== structureGridElementId(pack.id, surface.id)),
-            lockedElementIds: state.lockedElementIds.filter((id) => id !== surfaceId),
-            elementFolderAssignments: withoutFolderAssignments(state.elementFolderAssignments, [surfaceId]),
+            structurePacks: removeIndependentPack
+              ? state.structurePacks.filter((candidate) => candidate.id !== pack.id)
+              : state.structurePacks.map((candidate) => candidate.id !== pack.id ? candidate : {
+                ...candidate,
+                surfaces: candidate.surfaces.filter((item) => item.id !== surface.id),
+              }),
+            hiddenElementIds: state.hiddenElementIds.filter((id) => id !== surfaceId && id !== structureGridElementId(pack.id, surface.id) && (!removeIndependentPack || id !== pack.id)),
+            lockedElementIds: state.lockedElementIds.filter((id) => id !== surfaceId && (!removeIndependentPack || id !== pack.id)),
+            elementFolderAssignments: withoutFolderAssignments(state.elementFolderAssignments, removeIndependentPack ? [surfaceId, pack.id] : [surfaceId]),
             selectedId: null,
             notice: 'Superficie eliminada.',
           }
