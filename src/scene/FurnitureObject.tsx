@@ -31,6 +31,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
   const point = useMemo(() => new THREE.Vector3(), [])
   const dragOffset = useRef({ x: 0, z: 0 })
   const dragOrigin = useRef({ x: item.x, z: item.z })
+  const shiftClickPending = useRef(false)
   const frontDragStart = useRef({ clientX: 0, clientY: 0, x: item.x, y: item.y, z: item.z })
 
   const cancelDrag = () => {
@@ -38,6 +39,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
       recordSceneInteraction('furniture.drag-cancel', { id: item.id, name: item.name })
       gesture.cancel()
     }
+    shiftClickPending.current = false
     setDragging(false)
   }
 
@@ -57,8 +59,13 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
       x: Math.round(event.nativeEvent.clientX),
       y: Math.round(event.nativeEvent.clientY),
     })
-    if (selectSceneObject(item.id, event.nativeEvent, { allowShiftDrag: true })) return
-    if (!canDrag) return
+    shiftClickPending.current = event.nativeEvent.shiftKey && !event.nativeEvent.ctrlKey && !event.nativeEvent.metaKey
+    if (!shiftClickPending.current && selectSceneObject(item.id, event.nativeEvent)) return
+    if (!canDrag) {
+      if (shiftClickPending.current) selectSceneObject(item.id, event.nativeEvent)
+      shiftClickPending.current = false
+      return
+    }
     frontDragStart.current = { clientX: event.nativeEvent.clientX, clientY: event.nativeEvent.clientY, x: item.x, y: item.y, z: item.z }
     if (frontWall !== null) {
       frontDragStart.current = {
@@ -73,7 +80,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
       capturePointer(event)
       return
     }
-    if (!event.ray.intersectPlane(floorPlane, point)) return
+    if (!event.ray.intersectPlane(floorPlane, point) && !shiftClickPending.current) return
     dragOffset.current = { x: point.x - item.x, z: point.z - item.z }
     dragOrigin.current = { x: item.x, z: item.z }
     gesture.begin()
@@ -83,6 +90,12 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
   const handleMove = (event: ThreeEvent<PointerEvent>) => {
     if (!dragging || !canDrag || !gesture.isActive()) return
     event.stopPropagation()
+    if (shiftClickPending.current) {
+      const start = frontDragStart.current
+      if (Math.hypot(event.nativeEvent.clientX - start.clientX, event.nativeEvent.clientY - start.clientY) < 4) return
+      shiftClickPending.current = false
+      useRoomStore.getState().selectElement(item.id)
+    }
     if (event.nativeEvent.shiftKey) {
       const start = frontDragStart.current
       const projected = cameraAwareShiftDrag(camera, size, { clientX: start.clientX, clientY: start.clientY, position: { x: start.x, y: start.y, z: start.z } }, event.nativeEvent)
@@ -117,6 +130,9 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
   const handleUp = (event: ThreeEvent<PointerEvent>) => {
     if (!dragging) return
     event.stopPropagation()
+    const shiftClick = shiftClickPending.current
+    shiftClickPending.current = false
+    if (shiftClick) useRoomStore.getState().selectSceneListItem(item.id, 'toggle', [item.id])
     const finalItem = useRoomStore.getState().furniture.find((candidate) => candidate.id === item.id)
     recordSceneInteraction('furniture.drag-end', {
       id: item.id,
