@@ -49,13 +49,7 @@ export function structureWindowError(pack: StructurePack): string | null {
       || window.sill < 0 || window.sill + window.height > surface.height - 0.08) {
       return `Una ventana queda fuera de la pared ${WALL_LABELS[window.wall]}.`
     }
-    const entries = structurePackOpenings(pack, surface).filter((opening) => opening.id !== window.id)
-    for (const other of entries) {
-      const horizontal = Math.abs(window.offset - other.offset) < (window.width + other.width) / 2 + ROOM_LIMITS.openingGap
-      const vertical = window.sill < other.bottom + other.height + ROOM_LIMITS.openingGap
-        && other.bottom < window.sill + window.height + ROOM_LIMITS.openingGap
-      if (horizontal && vertical) return `Dos aperturas de la pared ${WALL_LABELS[window.wall]} se solapan.`
-    }
+    // Otra ventana/puerta puede compartir espacio: se marca en rojo, no se rechaza.
   }
   return null
 }

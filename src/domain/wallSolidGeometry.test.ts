@@ -100,3 +100,14 @@ test('dos paredes iguales de caras opuestas conservan una sola piel en ambos lad
   world.structurePacks[1].surfaces[0].rotation = Math.PI
   assert.ok(Math.abs(surfaceArea(skins(world)) - 20.4) < 1e-6)
 })
+
+test('dos ventanas superpuestas abren un solo volumen de hueco sin duplicar caras', () => {
+  const world = fixture(true)
+  const window = world.structurePacks[0].windows![0]
+  world.structurePacks[1].windows = [{ ...window, id: 'another-window', wallPosition: { ...window.wallPosition! } }]
+  const faces = skins(world)
+  assert.equal(rayHits(faces, 0, 1.5), 0)
+  assert.ok(rayHits(faces, 1, 1.5) >= 2)
+  assert.ok(Math.abs(surfaceArea(faces) - 51.2) < 1e-6)
+  assert.ok(faces.every((face) => face.points.flat().every(Number.isFinite)))
+})

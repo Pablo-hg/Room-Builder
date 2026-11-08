@@ -122,22 +122,36 @@ export function connectedOpeningError(world: WallWorld, ids?: ReadonlySet<string
     if (![opening.position.x, opening.position.y, opening.position.z, opening.position.yaw, opening.width, opening.height, opening.rotation, opening.object.offset].every(Number.isFinite)
       || opening.width <= 0 || opening.height <= 0) return 'Datos de apertura inválidos.'
     if (!openingHasSupport(world, opening)) return 'La apertura excede el soporte de las paredes conectadas.'
-    const run = new Set(openingWallRun(world, opening).map((wall) => wall.id))
-    const polygon = aperturePolygon(opening)
-    const left = Math.min(...polygon.map(([x]) => x)), right = Math.max(...polygon.map(([x]) => x))
-    const bottom = opening.position.y + Math.min(...polygon.map(([, y]) => y))
-    const top = opening.position.y + Math.max(...polygon.map(([, y]) => y))
-    for (const other of openings) {
-      if (other.id === opening.id || !openingWallRun(world, other).some((wall) => run.has(wall.id))) continue
-      const distance = localX(other.position, opening.position)
-      const otherPolygon = aperturePolygon(other)
-      const otherLeft = distance + Math.min(...otherPolygon.map(([x]) => x)), otherRight = distance + Math.max(...otherPolygon.map(([x]) => x))
-      const otherBottom = other.position.y + Math.min(...otherPolygon.map(([, y]) => y)), otherTop = other.position.y + Math.max(...otherPolygon.map(([, y]) => y))
-      if (left < otherRight + ROOM_LIMITS.openingGap - epsilon && otherLeft < right + ROOM_LIMITS.openingGap - epsilon
-        && bottom < otherTop + ROOM_LIMITS.openingGap - epsilon && otherBottom < top + ROOM_LIMITS.openingGap - epsilon) return 'Dos aperturas de las paredes conectadas se solapan.'
-    }
+    // Las colisiones entre objetos/aperturas son avisos visuales. Los huecos
+    // se recortan por la unión de polígonos en wallSolidGeometry; solo los
+    // límites físicos y la geometría inválida bloquean la transformación.
   }
   return null
+}
+
+/**
+ * Prioridad de colocación inicial: intenta un hueco que no esté ocupado.
+ * No es una restricción de edición: el usuario puede superponer aperturas
+ * y el detector de escena mostrará la colisión en rojo.
+ * Funciona tanto con huecos reales como con cuadros, espejos y estanterías.
+ */
+export function openingOverlapsExisting(world: WallWorld, id: string): boolean {
+  const openings = worldOpenings(world)
+  const current = openings.find((opening) => opening.id === id)
+  if (!current || current.object.freePosition) return false
+  const run = new Set(openingWallRun(world, current).map((wall) => wall.id))
+  const polygon = aperturePolygon(current)
+  for (const other of openings) {
+    if (other.id === id || other.object.freePosition
+      || !openingWallRun(world, other).some((wall) => run.has(wall.id))) continue
+    const direction = Math.cos(other.position.yaw - current.position.yaw) < 0 ? -1 : 1
+    const deltaX = localX(other.position, current.position)
+    const deltaY = other.position.y - current.position.y
+    const otherPolygon = aperturePolygon(other)
+      .map(([x, y]): [number, number] => [deltaX + direction * x, deltaY + y])
+    if (polygonArea(intersectPolygon(polygon, otherPolygon)) > 1e-8) return true
+  }
+  return false
 }
 
 export function aperturePolygon(opening: Pick<WorldOpening, 'width' | 'height' | 'rotation' | 'shape'>): WallPolygon {

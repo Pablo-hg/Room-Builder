@@ -71,7 +71,12 @@ export function detectSceneCollisions(world: SceneWorld): SceneCollision[] {
         if (wallsConnected(firstWall, secondWall) || roomWall(firstWall.packId) && roomWall(secondWall.packId)) continue
       }
       if (surface?.support === 'wall' && other.kind === 'opening') {
-        const opening = worldOpenings(world).find((item) => item.id === other.id)
+        const opening = openings.get(other.id)
+        // Una ventana, cuadro o espejo ANCLADO forma parte de la pared.
+        // No es una colisión estructural aunque dos paredes se toquen o
+        // se superpongan; los objetos separados de la pared sí colisionan.
+        if (opening?.kind === 'window' && !opening.object.freePosition) continue
+        // Las puertas conservan la comprobación de paredes sin paso real.
         if (opening && openingWallRun(world, opening).some((wall) => wall.id === surface.id)) continue
       }
       if (surface?.support === 'floor' && other.floorY !== undefined && other.floorY >= surface.box.y - 1e-6) continue

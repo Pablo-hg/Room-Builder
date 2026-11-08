@@ -73,20 +73,7 @@ export function validateOpenings(room: RoomConfig, onConflict?: (conflict: Openi
         return `Una apertura supera la altura disponible.`
       }
     }
-    for (let index = 0; index < items.length; index += 1) {
-      for (let next = index + 1; next < items.length; next += 1) {
-        const [a0, a1] = openingInterval(items[index].offset, items[index].width)
-        const [b0, b1] = openingInterval(items[next].offset, items[next].width)
-        const separatedHorizontally = a1 + ROOM_LIMITS.openingGap <= b0 || b1 + ROOM_LIMITS.openingGap <= a0
-        const aTop = items[index].bottom + items[index].height
-        const bTop = items[next].bottom + items[next].height
-        const separatedVertically = aTop + ROOM_LIMITS.openingGap <= items[next].bottom || bTop + ROOM_LIMITS.openingGap <= items[index].bottom
-        if (!separatedHorizontally && !separatedVertically) {
-          onConflict?.({ rule: 'opening-gap', objectIds: [items[index].id, items[next].id], wall, requiredGap: ROOM_LIMITS.openingGap })
-          return `Dos aperturas de la pared ${WALL_LABELS[wall]} se solapan.`
-        }
-      }
-    }
+    // Solapamientos: aviso en la escena, no error de validación.
   }
   return null
 }

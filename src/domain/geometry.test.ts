@@ -136,11 +136,11 @@ describe('buildWallSegments', () => {
 
 describe('validateOpenings', () => {
   for (const wall of WALL_SIDES) {
-    it(`muestra la letra ${WALL_LABELS[wall]} en límites y solapes sin cambiar el ID ${wall}`, () => {
+    it(`muestra la letra ${WALL_LABELS[wall]} al validar límites y conserva el ID ${wall}`, () => {
       const room: RoomConfig = { ...DEFAULT_ROOM, windows: [], door: { ...DEFAULT_ROOM.door, wall, offset: 20 } }
       assert.equal(validateOpenings(room), `La puerta queda fuera de la pared ${WALL_LABELS[wall]}.`)
       const overlapping: RoomConfig = { ...room, door: { ...room.door, offset: 0 }, windows: [{ ...DEFAULT_ROOM.windows[0], wall, offset: 0 }] }
-      assert.equal(validateOpenings(overlapping), `Dos aperturas de la pared ${WALL_LABELS[wall]} se solapan.`)
+      assert.equal(validateOpenings(overlapping), null)
       assert.equal(room.door.wall, wall)
     })
   }
@@ -154,13 +154,13 @@ describe('validateOpenings', () => {
     assert.match(validateOpenings(room) ?? '', /fuera/)
   })
 
-  it('rechaza aperturas solapadas en la misma pared', () => {
+  it('permite aperturas superpuestas en la misma pared', () => {
     const room: RoomConfig = {
       ...DEFAULT_ROOM,
       door: { ...DEFAULT_ROOM.door, wall: 'north', offset: 0 },
       windows: [{ ...DEFAULT_ROOM.windows[0], wall: 'north', offset: 0, sill: 0.8 }],
     }
-    assert.match(validateOpenings(room) ?? '', /solapan/)
+    assert.equal(validateOpenings(room), null)
   })
 
   it('permite desplazar una ventana en vertical sin salir de la pared', () => {

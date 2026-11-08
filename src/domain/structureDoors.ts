@@ -38,7 +38,7 @@ export function structureDoorError(pack: StructurePack): string | null {
     if (door.wallPosition) continue
     const wall = pack.surfaces.find((surface) => surface.kind === 'wall' && surface.wall === door.wall)
     if (!wall || Math.abs(door.offset) + door.width / 2 > wall.width / 2 - 0.12 || door.height > wall.height - 0.08) return 'La puerta no cabe en su pared.'
-    if (pack.doors.some((other) => other !== door && other.wall === door.wall && Math.abs(other.offset - door.offset) < (other.width + door.width) / 2 + 0.12)) return 'Las puertas de la pared se solapan.'
+    // Una segunda puerta en el mismo tramo se considera colisión visual.
   }
   return null
 }

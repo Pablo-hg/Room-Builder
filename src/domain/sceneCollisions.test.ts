@@ -85,3 +85,34 @@ test('los suelos y paredes independientes también producen incidencias al atrav
     'structure-surface:floor-object-one:floor', 'structure-surface:wall-object-one:wall-north',
   ]))
 })
+
+test('cuadro y ventana anclados no se marcan por atravesar su soporte o una pared cercana', () => {
+  const room: RoomConfig = { ...DEFAULT_ROOM, windows: [
+    { ...DEFAULT_ROOM.windows[0], id: 'cuadro', shape: 'pictureMedium', wall: 'north', offset: 0,
+      width: 1.25, height: 0.75, sill: 1.15 },
+    { ...DEFAULT_ROOM.windows[0], id: 'ventana', wall: 'north', offset: 0, sill: 1.1 },
+  ] }
+  // Pared independiente perpendicular que cruza la posición del cuadro;
+  // las paredes no tienen por qué formar una medianera conectada.
+  const wallPack: StructurePack = { id: 'wall-object-cross', name: 'Pared transversal',
+    x: -room.width / 2, y: 0, z: -room.depth / 2,
+    surfaces: [createStructureSurface(room, 'wall-east')] }
+  const world = { room, furniture: [], structurePacks: [wallPack] }
+  const collisions = detectSceneCollisions(world)
+  const wallId = 'structure-surface:wall-object-cross:wall-east'
+  assert.equal(collisions.some(({ firstId, secondId }) =>
+    [firstId, secondId].includes(wallId) && (['cuadro', 'ventana'].includes(firstId) || ['cuadro', 'ventana'].includes(secondId))), false)
+  // Colisión real entre objetos murales: ambos aparecen en el panel rojo.
+  assert.ok(collisions.some(({ firstId, secondId }) =>
+    [firstId, secondId].includes('cuadro') && [firstId, secondId].includes('ventana')))
+})
+
+test('objetos murales libres sí se notifican al penetrar una pared', () => {
+  const room: RoomConfig = { ...DEFAULT_ROOM, windows: [
+    { ...DEFAULT_ROOM.windows[0], id: 'cuadro-libre', shape: 'pictureMedium',
+      width: 1.25, height: 0.75, freePosition: { x: 0, y: 1.2, z: -DEFAULT_ROOM.depth / 2, yaw: 0 } },
+  ] }
+  const collisions = detectSceneCollisions({ room, furniture: [], structurePacks: [] })
+  assert.ok(collisions.some(({ firstId, secondId }) =>
+    [firstId, secondId].includes('cuadro-libre') && [firstId, secondId].includes('room-wall:north')))
+})

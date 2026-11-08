@@ -19,7 +19,7 @@ import { openingCreationPack, windowPlacementWalls } from '../../domain/windowPl
 import { wallObjectLocksAllow } from '../../domain/wallObjectPlacement'
 import { BASE_ROOM_SURFACE_IDS } from '../../domain/elementFolders'
 import { structureDoorError, structureDoorPosition } from '../../domain/structureDoors'
-import { anchorWallOpenings, connectedOpeningError, openingRunBounds } from '../../domain/wallConnections'
+import { anchorWallOpenings, connectedOpeningError, openingOverlapsExisting, openingRunBounds } from '../../domain/wallConnections'
 import type { StructurePack, StructureSurfaceKey, WallSide, WindowConfig } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
 import type { RoomActionContext, RoomState } from '../types'
@@ -417,17 +417,20 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
           color: isWallPictureShape(shape) ? FURNITURE_PRESETS[shape].color
             : isWallMirrorShape(shape) ? '#9a8067' : shape === 'wallSconce' ? '#d3a755' : '#c88f58',
         })
-        const validOffset = (offset: number) => {
+        const validOffset = (offset: number, avoidOverlap: boolean) => {
           const world = focusedPack ? { room: state.room, structurePacks: state.structurePacks.map((pack) => pack.id === focusedPack.id ? { ...pack, windows: [...(pack.windows ?? []), buildWindow(offset)] } : pack) }
             : { room: { ...state.room, windows: [...state.room.windows, buildWindow(offset)] }, structurePacks: state.structurePacks }
-          return !connectedOpeningError(anchorWallOpenings(world), new Set([windowId]))
+          const anchored = anchorWallOpenings(world)
+          return !connectedOpeningError(anchored, new Set([windowId]))
+            && (!avoidOverlap || !openingOverlapsExisting(anchored, windowId))
         }
         const initialWorld = focusedPack ? { room: state.room, structurePacks: state.structurePacks.map((pack) => pack.id === focusedPack.id ? { ...pack, windows: [...(pack.windows ?? []), buildWindow(0)] } : pack) }
           : { room: { ...state.room, windows: [...state.room.windows, buildWindow(0)] }, structurePacks: state.structurePacks }
         const bounds = openingRunBounds(initialWorld, windowId)
         const searchLength = bounds ? 2 * (Math.max(Math.abs(bounds.min), Math.abs(bounds.max)) + definition.width / 2 + 0.25)
           : wallSurface?.width ?? wallLength(state.room, wall)
-        const offset = findAvailableOpeningOffset(searchLength, definition.width, 0, validOffset)
+        const offset = findAvailableOpeningOffset(searchLength, definition.width, 0, (value) => validOffset(value, true))
+          ?? findAvailableOpeningOffset(searchLength, definition.width, 0, (value) => validOffset(value, false))
         if (offset === null) continue
         const window = buildWindow(offset)
         recordInteraction('state.window.added', { view: state.view, selectedId: state.selectedId,

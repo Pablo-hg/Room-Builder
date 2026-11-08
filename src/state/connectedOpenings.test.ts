@@ -110,17 +110,21 @@ test('separar o acortar una pared produce una incidencia de soporte recuperable'
   assert.equal(openingHasSupport(store.getState(), opening(store)), true)
 })
 
-test('dos aperturas en propietarios distintos se validan en el mismo espacio físico', () => {
+test('dos aperturas en propietarios distintos se superponen y generan aviso, sin bloqueo', () => {
   const store = fixture()
   const second = { ...store.getState().structurePacks[0].windows![0], id: 'other', offset: 2.5,
     wallPosition: { ...opening(store).position, x: 2.5, supportId: 'structure-surface:wall-object-long:wall-north' } }
   store.setState((state) => ({ structurePacks: state.structurePacks.map((pack) => pack.id === 'wall-object-long' ? { ...pack, windows: [second] } : pack) }))
   const count = store.getState().undoCount
   store.getState().moveWallObject('connected', 'x', 2.5)
+  assert.equal(opening(store).position.x, 2.5)
+  assert.equal(store.getState().notice, '')
+  assert.ok(store.getState().undoCount >= count)
+  const collisions = detectSceneCollisions(store.getState())
+  assert.ok(collisions.some(({ firstId, secondId }) => [firstId, secondId].includes('connected') && [firstId, secondId].includes('other')))
+  assert.equal(collisions.some((collision) => collision.firstId === 'connected' && collision.secondId.startsWith('structure-surface:')), false)
+  store.getState().undo()
   assert.equal(opening(store).position.x, 0)
-  assert.equal(store.getState().undoCount, count)
-  assert.match(store.getState().notice, /solapan/)
-  assert.equal(detectSceneCollisions(store.getState()).some((collision) => collision.firstId === 'connected' && collision.secondId.startsWith('structure-surface:')), false)
 })
 
 test('las paredes conservan propiedades; borrar la apertura cierra todos sus huecos', () => {

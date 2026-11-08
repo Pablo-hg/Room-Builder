@@ -4,7 +4,7 @@ import { WALL_SIDES } from '../../domain/constants'
 import { makeId, structureSurfaceElementId } from '../../domain/elementIds'
 import { withoutFolderAssignments } from '../../domain/elementFolders'
 import { rootDoorPack, structureDoorError, structureDoorPosition } from '../../domain/structureDoors'
-import { anchorWallOpenings, connectedOpeningError, openingRunBounds } from '../../domain/wallConnections'
+import { anchorWallOpenings, connectedOpeningError, openingOverlapsExisting, openingRunBounds } from '../../domain/wallConnections'
 import { openingCreationPack } from '../../domain/windowPlacement'
 import { focusedCreationTarget, focusedRoom } from '../../domain/roomEditing'
 import { findAvailableOpeningOffset, validateOpenings, wallLength } from '../../domain/geometry'
@@ -31,7 +31,11 @@ export function createStructureDoorActions({ set }: RoomActionContext): Pick<Roo
         })
         const bounds = openingRunBounds(worldAtOffset(0), door.id)
         const length = bounds ? 2 * (Math.max(Math.abs(bounds.min), Math.abs(bounds.max)) + door.width / 2 + 0.12) : surface.width
-        const offset = findAvailableOpeningOffset(length, door.width, 0, (value) => !connectedOpeningError(worldAtOffset(value), new Set([door.id])), 0.12)
+        const offset = findAvailableOpeningOffset(length, door.width, 0, (value) => {
+          const world = worldAtOffset(value)
+          return !connectedOpeningError(world, new Set([door.id])) && !openingOverlapsExisting(world, door.id)
+        }, 0.12) ?? findAvailableOpeningOffset(length, door.width, 0,
+          (value) => !connectedOpeningError(worldAtOffset(value), new Set([door.id])), 0.12)
         if (offset === null) continue
         const world = worldAtOffset(offset)
         return { ...world, elementFolderAssignments: folderId ? { ...state.elementFolderAssignments, [door.id]: folderId } : state.elementFolderAssignments,

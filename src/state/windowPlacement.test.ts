@@ -6,6 +6,7 @@ import { wallObjectSelectionFrame } from '../domain/wallObjectPlacement'
 import { structureWindowFrame } from '../domain/structureWindows'
 import { structureSurfaceElementId } from '../domain/elementIds'
 import { WALL_SIDES } from '../domain/constants'
+import { detectSceneCollisions } from '../domain/sceneCollisions'
 
 for (const secondary of [false, true]) {
   test(`crear ventana prioriza pared visible B al girar la vista: ${secondary ? 'pack' : 'raíz'}`, () => {
@@ -89,4 +90,21 @@ test('una ventana libre conserva su posición frente al antiguo soporte y a los 
   assert.deepEqual(frame.position, window.freePosition)
   assert.equal(frame.handleBase.y, 3.1)
   assert.equal(frame.position.y + frame.localCenter[1], 3.1 + window.height / 2)
+})
+
+test('al crear, busca primero un hueco libre; al mover, permite superponer dos ventanas con aviso', () => {
+  const store = createRoomStore()
+  store.getState().lookAtWall('north')
+  const original = store.getState().room.windows[0]
+  store.getState().addWindow('rectangular')
+  const added = store.getState().room.windows.find((window) => window.id === store.getState().selectedId)!
+  assert.ok(added)
+  assert.equal(added.wall, 'north')
+  assert.ok(Math.abs(added.offset - original.offset) >= (added.width + original.width) / 2 - 0.001)
+  store.getState().updateWindow(added.id, { offset: original.offset })
+  assert.equal(store.getState().room.windows.find((window) => window.id === added.id)?.offset, original.offset)
+  const pairs = detectSceneCollisions(store.getState())
+  assert.ok(pairs.some(({ firstId, secondId }) => [firstId, secondId].includes(original.id) && [firstId, secondId].includes(added.id)))
+  store.getState().undo()
+  assert.ok(store.getState().room.windows.find((window) => window.id === added.id)?.offset !== original.offset)
 })

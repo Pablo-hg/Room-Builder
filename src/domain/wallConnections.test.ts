@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { cloneRoom } from '../state/defaults'
 import { createStructureSurface } from './structureRules'
-import { aperturePolygon, anchorWallOpenings, connectedOpeningError, openingHasSupport, openingRunBounds, openingTranslationSupported, physicalWalls, wallDerivedOpenings, wallIntersectionIsCut, wallsConnected, worldOpenings, type WallWorld } from './wallConnections'
+import { aperturePolygon, anchorWallOpenings, connectedOpeningError, openingHasSupport, openingOverlapsExisting, openingRunBounds, openingTranslationSupported, physicalWalls, wallDerivedOpenings, wallIntersectionIsCut, wallsConnected, worldOpenings, type WallWorld } from './wallConnections'
 import { polygonArea, uncoveredPolygons, wallRectangle } from './connectedWallGeometry'
 import type { StructurePack, WindowConfig } from './types'
 
@@ -176,4 +176,27 @@ test('puerta con suelo elevado conserva Y y no atraviesa vacío por debajo del s
   door.offset = 3; door.wallPosition!.x = 3
   assert.match(connectedOpeningError(anchored, new Set([door.id]))!, /soporte/)
   assert.equal(door.wallPosition!.y, 0)
+})
+
+test('los huecos reales superpuestos se validan como una unión y siguen siendo dos objetos', () => {
+  const original = connectedFixture()
+  const world = structuredClone(original)
+  const source = world.structurePacks[0].windows![0]
+  world.structurePacks[1].windows = [{ ...source, id: 'segunda', wallPosition: { ...source.wallPosition! } }]
+  assert.equal(connectedOpeningError(world), null)
+  const large = physicalWalls(world).find((wall) => wall.packId === 'wall-object-long')!
+  assert.deepEqual(wallDerivedOpenings(world, large).map((cut) => cut.id).sort(), ['connected-window', 'segunda'])
+  assert.equal(wallIntersectionIsCut(world, large.id, { x: 0, y: 1.5, z: -10, width: 0.1, height: 0.1, depth: 0.2, rotation: 0 }), true)
+  assert.equal(worldOpenings(world).filter((opening) => ['connected-window', 'segunda'].includes(opening.id)).length, 2)
+})
+
+test('la colocación inicial distingue huecos libres de solapamientos permitidos', () => {
+  const world = connectedFixture('pictureMedium')
+  const other = { ...world.structurePacks[0].windows![0], id: 'segundo-cuadro' }
+  world.structurePacks[1].windows = [other]
+  assert.equal(openingOverlapsExisting(world, 'segundo-cuadro'), true)
+  const separated = structuredClone(world)
+  separated.structurePacks[1].windows![0].offset = 3
+  separated.structurePacks[1].windows![0].wallPosition = { ...other.wallPosition!, x: 3 }
+  assert.equal(openingOverlapsExisting(separated, 'segundo-cuadro'), false)
 })

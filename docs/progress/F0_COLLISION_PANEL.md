@@ -55,3 +55,12 @@ Se incorpora lo siguiente en la rama #34, todavía **sin pruebas automatizadas e
 7. Revisar el panel y los arrastres con ventanas estrechas y móvil: el panel no debe tapar brújula/controles y debe permitir scroll sin zoom involuntario.
 
 **Pruebas preparadas, no ejecutadas:** nuevas comprobaciones en `sceneCollisions.test.ts`, `independentSurfaces.test.ts` y `cameraAwareShiftDrag.test.ts`. La certificación de estos commits se hará exclusivamente con el CI de `main`. No dar por aprobado el build de la rama sin ejecutarlo en ese momento.
+
+## Corrección posterior: objetos murales superpuestos (08/11/2026)
+
+- Los objetos de pared anclados (cuadros, espejos, estanterías, apliques, ventanas) no generan incidencia **contra las paredes** que atraviesan para su montaje. Las puertas conservan la detección de paredes sin paso real; los elementos murales `freePosition` sí pueden colisionar con paredes.
+- Se elimina exclusivamente la prohibición de **superponer aperturas y decoraciones murales**, tanto en validadores históricos (`validateOpenings`, `structureWindowError`, `structureDoorError`) como en las paredes conectadas (`connectedOpeningError`). Se mantienen comprobaciones de soporte, altura, datos finitos, dimensiones y bloqueos de ejes.
+- La geometría de las paredes ya utiliza `uncoveredPolygons` para calcular la **unión de las áreas recortadas**, sin duplicar ventanas ni puertas. El detector de escena conserva los pares únicos de intersección y sus contornos rojos.
+- Al crear aperturas se **prefiere un hueco libre**, usando `openingOverlapsExisting`. Si todos los huecos válidos están ocupados, se permite crear sobre otra apertura, dejando visible la colisión.
+- Preparadas pruebas de regresión en `sceneCollisions.test.ts`, `wallConnections.test.ts`, `connectedOpenings.test.ts`, `geometry.test.ts` y `openingConflict.test.ts`. No ejecutadas en esta rama (CI solamente en `main`).
+- Verificación manual: arrastrar un cuadro entre paredes y comprobar que no aparece «colisiona con Pared B»; superponer dos cuadros, cuadro+ventana, dos ventanas y puerta+ventana, comprobar contornos rojos y lista. Confirmar que dos huecos superpuestos no dañan la geometría en Isométrica, Plano, Frontal ni GLB.
