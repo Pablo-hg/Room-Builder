@@ -5,6 +5,7 @@ import type { FurnitureKind } from '../../domain/types'
 import { FurnitureIcon, StructurePackIcon, StructureSurfaceIcon } from '../iconCatalog'
 import { useRoomStore } from '../../state/useRoomStore'
 import { OpeningSwatch } from './Controls'
+import { planRoomCreation } from '../../domain/roomCreation'
 
 // Catálogo: estado de las familias y acciones de alta, independiente del árbol
 // de escena para que la jerarquía/selección no controle el estado de expansión.
@@ -17,6 +18,12 @@ export function ObjectCatalogSection() {
   const addStructureDoor = useRoomStore((state) => state.addStructureDoor)
   const addStructurePack = useRoomStore((state) => state.addStructurePack)
   const addStructureObject = useRoomStore((state) => state.addStructureObject)
+  const room = useRoomStore((state) => state.room)
+  const structurePacks = useRoomStore((state) => state.structurePacks)
+  const selectedId = useRoomStore((state) => state.selectedId)
+  const activeRoomId = useRoomStore((state) => state.activeRoomId)
+  const elementFolderAssignments = useRoomStore((state) => state.elementFolderAssignments)
+  const creationState = { room, structurePacks, selectedId, activeRoomId, elementFolderAssignments }
   const toggleCategory = (category: string) => {
     setCollapsedCategories((current) => ({ ...current, [category]: !current[category] }))
   }
@@ -61,7 +68,10 @@ export function ObjectCatalogSection() {
               </button>
               {choosingRoomPosition && <div className="room-position-choices" aria-label="Ubicación de la nueva habitación">
                 <strong>¿Dónde crearla?</strong>
-                {([['up', 'Encima'], ['down', 'Debajo'], ['north', `Pared ${WALL_LABELS.north}`], ['east', `Pared ${WALL_LABELS.east}`], ['south', `Pared ${WALL_LABELS.south}`], ['west', `Pared ${WALL_LABELS.west}`]] as const).map(([direction, label]) => <button type="button" key={direction} onClick={() => { addStructurePack(direction); setChoosingRoomPosition(false) }}>{label}</button>)}
+                {([['up', 'Encima'], ['down', 'Debajo'], ['north', `Pared ${WALL_LABELS.north}`], ['east', `Pared ${WALL_LABELS.east}`], ['south', `Pared ${WALL_LABELS.south}`], ['west', `Pared ${WALL_LABELS.west}`]] as const).map(([direction, label]) => {
+                  const occupied = planRoomCreation(creationState, direction).occupied
+                  return <button type="button" key={direction} disabled={occupied} title={occupied ? 'Otra habitación ya ocupa ese espacio.' : undefined} onClick={() => { addStructurePack(direction); setChoosingRoomPosition(false) }}>{label}{occupied && <small> · Ocupado</small>}</button>
+                })}
               </div>}
               <button type="button" className="catalog-card" onClick={() => addStructureObject('floor')}>
                 <StructureSurfaceIcon kind="floor" />

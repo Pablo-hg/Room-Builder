@@ -3,6 +3,7 @@ import { useRoomStore } from '../../state/useRoomStore'
 import { structureSurfaceElementId } from '../../domain/elementIds'
 import type { StructureSurfaceKey } from '../../domain/types'
 import { StructurePositionControls } from './Controls'
+import { structureSurfaceName } from '../../domain/selection'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
 
@@ -43,11 +44,11 @@ export function PackInspector({ selectedPack }: { selectedPack: RoomState['struc
         const id = structureSurfaceElementId(selectedPack.id, surface.id)
         return (
           <div className="structure-surface-visibility" key={surface.id}>
-            <label title={`Mostrar u ocultar ${surface.name}`}>
+            <label title={`Mostrar u ocultar ${structureSurfaceName(surface)}`}>
               <input type="checkbox" checked={!hiddenElementIds.includes(id)} onChange={() => toggleElementVisibility(id)} />
               <small>{hiddenElementIds.includes(id) ? 'Oculta' : 'Visible'}</small>
             </label>
-            <button type="button" onClick={() => selectElement(id)}>{surface.name} · Editar</button>
+            <button type="button" onClick={() => selectElement(id)}>{structureSurfaceName(surface)} · Editar</button>
           </div>
         )
       })}

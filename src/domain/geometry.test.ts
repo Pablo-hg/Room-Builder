@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { DEFAULT_ROOM, ROOM_LIMITS } from './constants'
+import { DEFAULT_ROOM, ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from './constants'
 import { FURNITURE_PRESETS, OBJECT_CATALOG, OPENING_CATALOG } from './objectCatalog'
 import {
   buildWallSegments,
@@ -135,6 +135,16 @@ describe('buildWallSegments', () => {
 })
 
 describe('validateOpenings', () => {
+  for (const wall of WALL_SIDES) {
+    it(`muestra la letra ${WALL_LABELS[wall]} en límites y solapes sin cambiar el ID ${wall}`, () => {
+      const room: RoomConfig = { ...DEFAULT_ROOM, windows: [], door: { ...DEFAULT_ROOM.door, wall, offset: 20 } }
+      assert.equal(validateOpenings(room), `La puerta queda fuera de la pared ${WALL_LABELS[wall]}.`)
+      const overlapping: RoomConfig = { ...room, door: { ...room.door, offset: 0 }, windows: [{ ...DEFAULT_ROOM.windows[0], wall, offset: 0 }] }
+      assert.equal(validateOpenings(overlapping), `Dos aperturas de la pared ${WALL_LABELS[wall]} se solapan.`)
+      assert.equal(room.door.wall, wall)
+    })
+  }
+
   it('acepta la habitación inicial', () => {
     assert.equal(validateOpenings(DEFAULT_ROOM), null)
   })

@@ -4,7 +4,7 @@ import { FURNITURE_CATALOG, FURNITURE_FAMILIES, isWallPictureShape, isWallMirror
 import { FurnitureIcon, StructurePackIcon, StructureSurfaceIcon } from '../iconCatalog'
 import { useRoomStore } from '../../state/useRoomStore'
 import { structureSurfaceElementId } from '../../domain/elementIds'
-import { deriveSelection, elementName } from '../../domain/selection'
+import { deriveSelection, elementName, structureSurfaceName } from '../../domain/selection'
 import { BASE_FLOOR_ID, baseWallId, canMoveFolder, folderElementIds, folderIdFromSelection, folderRoomPack, folderSelectionId, orderedSceneIds, ROOT_ROOM_FOLDER, sceneEntryParent } from '../../domain/elementFolders'
 import { OpeningSwatch } from './Controls'
 import { EyeIcon, FolderIcon, LockIcon, RoomPackIcon } from './ElementIcons'
@@ -69,7 +69,7 @@ export function ObjectsPanel() {
       { id: pack.id, name: pack.name, kind: 'Pack de construcción', icon: <StructurePackIcon /> },
       ...pack.surfaces.map((surface) => ({
         id: structureSurfaceElementId(pack.id, surface.id),
-        name: surface.name,
+        name: structureSurfaceName(surface),
         kind: 'Superficie de construcción',
         icon: <StructureSurfaceIcon kind={surface.kind === 'ceiling' ? 'wall' : surface.kind} />,
       })),

@@ -11,6 +11,7 @@ import { validateOpenings } from '../../domain/geometry'
 import { snapMeasurement } from '../../domain/measurements'
 import { openingMovementAllowed } from '../../domain/axisLocks'
 import { focusedRoom, packRoomBox, rebasePack, resizedRoomPack, selectedEditableRoom, worldRoomBoxes } from '../../domain/roomEditing'
+import { planRoomCreation } from '../../domain/roomCreation'
 import { BASE_ROOM_SURFACE_IDS } from '../../domain/elementFolders'
 import { structureDoorError, structureDoorPosition } from '../../domain/structureDoors'
 import type { StructurePack, StructureSurfaceKey, WallSide, WindowConfig } from '../../domain/types'
@@ -138,26 +139,13 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       return { room: { ...state.room, floorColor }, notice: '' }
     }),
     addStructurePack: (direction) => set((state) => {
+      const placement = planRoomCreation(state, direction)
+      if (placement.occupied) return { notice: 'No se puede crear la habitación: otra habitación ya ocupa ese espacio.' }
       const id = makeId('floor-pack')
       const folderId = makeId('folder')
-      const nextY = Math.max(...worldRoomBoxes(state.room, state.structurePacks).map((box) => box.y + box.height))
-      const selectedFolder = state.selectedId?.startsWith('folder:') ? state.selectedId.slice('folder:'.length) : null
-      const reference = state.structurePacks.find((pack) => pack.id.startsWith('floor-pack-') && (pack.id === state.selectedId || pack.surfaces.some((surface) => structureSurfaceElementId(pack.id, surface.id) === state.selectedId) || (selectedFolder !== null && state.elementFolderAssignments[pack.id] === selectedFolder)))
-        ?? state.structurePacks.find((pack) => pack.id === state.activeRoomId && pack.id.startsWith('floor-pack-'))
-      const referenceBox = reference && packRoomBox(reference, state.room)
-      const template = { ...state.room, ...(referenceBox ? { width: referenceBox.width, depth: referenceBox.depth, height: referenceBox.height } : {}) }
-      const origin = reference ? { x: reference.x + (referenceBox?.x ?? 0), y: reference.y + (referenceBox?.y ?? 0), z: reference.z + (referenceBox?.z ?? 0) } : { x: 0, y: 0, z: 0 }
       let floorNumber = 2
       while (state.structurePacks.some((pack) => pack.name === `Habitación ${floorNumber}`)) floorNumber += 1
-      const surfaceIds: StructureSurfaceKey[] = ['floor', 'ceiling', 'wall-north', 'wall-east', 'wall-south', 'wall-west']
-      const pack: StructurePack = rebasePack({
-        id,
-        name: `Habitación ${floorNumber}`,
-        x: origin.x + (direction === 'east' ? template.width : direction === 'west' ? -template.width : 0),
-        y: direction ? origin.y + (direction === 'up' ? template.height : direction === 'down' ? -template.height : 0) : nextY,
-        z: origin.z + (direction === 'south' ? template.depth : direction === 'north' ? -template.depth : 0),
-        surfaces: surfaceIds.map((surfaceId) => createStructureSurface(template, surfaceId)),
-      }, template, state.room)
+      const pack: StructurePack = { ...placement.pack, id, name: `Habitación ${floorNumber}` }
       recordInteraction('state.structure-pack.added', {
         view: state.view,
         selectedId: state.selectedId,
@@ -252,6 +240,9 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       const minimum = structureDimensionMinimum(surface.kind, dimension)
       const next = Math.max(minimum, Math.min(20, snapMeasurement(value)))
       if (surface[dimension] === next) return {}
+      const box = surface.kind === 'ceiling' && dimension === 'height' ? packRoomBox(pack, state.room) : null
+      const topAnchored = box && Math.abs(state.room.height + surface.y + surface.height / 2 - box.y - box.height) < 1e-6
+      if (topAnchored && (pack.axisLocks?.y || surface.axisLocks?.y)) return { notice: 'Desbloquea el eje Y para cambiar el grosor del techo manteniendo su cara superior.' }
       recordInteraction('state.structure-surface.resized', {
         view: state.view,
         selectedId: state.selectedId,
@@ -261,7 +252,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       return {
         structurePacks: state.structurePacks.map((pack) => pack.id !== packId ? pack : {
           ...pack,
-          surfaces: pack.surfaces.map((item) => item.id === surfaceId ? { ...item, [dimension]: next } : item),
+          surfaces: pack.surfaces.map((item) => item.id === surfaceId ? { ...item, [dimension]: next, ...(topAnchored ? { y: item.y - (next - item.height) / 2 } : {}) } : item),
         }),
         notice: '',
       }

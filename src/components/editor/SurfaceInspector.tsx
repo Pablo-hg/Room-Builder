@@ -1,4 +1,5 @@
 import { structureSurfaceElementId } from '../../domain/elementIds'
+import { structureSurfaceName } from '../../domain/selection'
 import { useInspectorGesture } from './useInspectorGesture'
 import { useRoomStore } from '../../state/useRoomStore'
 import { ColorControl, StructurePositionControls, StructureSizeControls } from './Controls'
@@ -18,7 +19,7 @@ export function SurfaceInspector({ selectedSurface }: { selectedSurface: { pack:
   return (
     <section className="panel-section selection-section selection-section--inspector" {...gesture.events}>
       <span className="eyebrow">Superficie de construcción</span>
-      <h2>{surface.name}</h2>
+      <h2>{structureSurfaceName(surface)}</h2>
       <p className="section-copy">{pack.name} · posición independiente respecto al pack.</p>
       <StructurePositionControls
         label="Desplazamiento"

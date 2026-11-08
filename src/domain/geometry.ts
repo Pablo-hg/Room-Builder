@@ -1,4 +1,4 @@
-import { ROOM_LIMITS, WALL_SIDES } from './constants'
+import { ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from './constants'
 import { DEFAULT_ROTATION_STEP, furnitureAttachment } from './objectCatalog'
 import type { DoorConfig, FurnitureItem, RoomConfig, WallOpening, WallSegment, WallSide, WindowConfig } from './types'
 
@@ -60,7 +60,7 @@ export function validateOpenings(room: RoomConfig): string | null {
     for (const item of items) {
       const [start, end] = openingInterval(item.offset, item.width)
       if (start < -length / 2 + ROOM_LIMITS.edgeMargin || end > length / 2 - ROOM_LIMITS.edgeMargin) {
-        return `${item.kind === 'door' ? 'La puerta' : 'Una ventana'} queda fuera de la pared ${wall}.`
+        return `${item.kind === 'door' ? 'La puerta' : 'Una ventana'} queda fuera de la pared ${WALL_LABELS[wall]}.`
       }
       if (item.bottom < 0 || item.bottom + item.height > room.height - 0.08) {
         return `Una apertura supera la altura disponible.`
@@ -74,7 +74,7 @@ export function validateOpenings(room: RoomConfig): string | null {
         const aTop = items[index].bottom + items[index].height
         const bTop = items[next].bottom + items[next].height
         const separatedVertically = aTop + ROOM_LIMITS.openingGap <= items[next].bottom || bTop + ROOM_LIMITS.openingGap <= items[index].bottom
-        if (!separatedHorizontally && !separatedVertically) return `Dos aperturas de la pared ${wall} se solapan.`
+        if (!separatedHorizontally && !separatedVertically) return `Dos aperturas de la pared ${WALL_LABELS[wall]} se solapan.`
       }
     }
   }

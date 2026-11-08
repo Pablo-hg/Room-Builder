@@ -232,6 +232,7 @@ body.can-grab .scene-panel canvas { cursor: grabbing; }
 .room-position-choices { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 5px; padding: 8px; border: 1px solid #d8ded6; border-radius: 9px; }
 .room-position-choices strong { width: 100%; font-size: 12px; }
 .room-position-choices button { padding: 6px 8px; border: 1px solid #d8ded6; border-radius: 6px; background: #fffdf9; cursor: pointer; }
+.room-position-choices button:disabled { opacity: .55; cursor: not-allowed; }
 .iso-height-control { position: absolute; z-index: 3; left: 18px; bottom: 20px; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 9px 11px; border-radius: 11px; color: #55675c; background: rgba(255,253,249,.94); font-size: 11px; font-weight: 700; }
 .iso-height-control input { grid-column: 1 / -1; width: 150px; }
 .room-view-selector { position: absolute; z-index: 3; right: 18px; top: 78px; display: grid; gap: 4px; padding: 8px 10px; border-radius: 9px; background: rgba(255,253,249,.95); color: #405748; font-size: 11px; font-weight: 700; }

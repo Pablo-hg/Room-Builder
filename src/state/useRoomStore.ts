@@ -17,10 +17,13 @@ import { normalizeDesign } from '../persistence/designMigrations'
 import { createResizeActions } from './actions/resizeActions'
 import { createStructureDoorActions } from './actions/structureDoorActions'
 import { rootDoorPack, structureDoorsWorldError, structureDoorPosition } from '../domain/structureDoors'
+import { packRoomBox } from '../domain/roomEditing'
 
 export { structureSurfaceElementId } from '../domain/elementIds'
 
 export const createRoomStore = (repository: DesignRepository = createLocalDesignRepository()) => create<RoomState>((storeSet, get) => {
+  // Camera navigation is session state, never part of a saved design or undo entry.
+  let roomFocusHistory: Array<string | null> = [null]
   const runtime: RoomRuntime = {
     undoHistory: [],
     redoHistory: [],
@@ -63,6 +66,20 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
         ...(removed.has(nextUpdate.selectedId ?? current.selectedId ?? '') ? { selectedId: null, selectedIds: [], selectionAnchor: null } : {}),
       }
     }
+    const packs = nextUpdate.structurePacks ?? current.structurePacks
+    const validFocus = (id: string | null) => id === null || packs.some((pack) => pack.id === id && pack.id.startsWith('floor-pack-'))
+    const replacingDesign = Object.hasOwn(rawUpdate, 'room') && Object.hasOwn(rawUpdate, 'selectedSavedDesignId')
+    let nextFocusHistory = replacingDesign ? [null] : roomFocusHistory.filter(validFocus)
+    const requestedFocus = replacingDesign ? null : nextUpdate.activeRoomId === undefined ? current.activeRoomId : nextUpdate.activeRoomId
+    const activeRoomId = validFocus(requestedFocus) ? requestedFocus : [...nextFocusHistory].reverse().find(validFocus) ?? null
+    if (activeRoomId !== current.activeRoomId || activeRoomId !== requestedFocus || replacingDesign) {
+      const pack = packs.find((candidate) => candidate.id === activeRoomId)
+      const box = pack && packRoomBox(pack, nextUpdate.room ?? current.room)
+      const origin = { x: (pack?.x ?? 0) + (box?.x ?? 0), y: (pack?.y ?? 0) + (box?.y ?? 0), z: (pack?.z ?? 0) + (box?.z ?? 0) }
+      nextUpdate = { ...nextUpdate, activeRoomId, isoCameraHeight: origin.y,
+        topCameraX: 0, topCameraZ: 0, freeCameraOffset: origin, freeCameraNavigated: false }
+      nextFocusHistory = [...nextFocusHistory.filter((id) => id !== activeRoomId), activeRoomId]
+    }
     const nextState = { ...current, ...nextUpdate }
     if (Object.hasOwn(rawUpdate, 'room') || Object.hasOwn(rawUpdate, 'structurePacks')) {
       if (!runtime.isUndoing && !Object.hasOwn(rawUpdate, 'selectedSavedDesignId')) {
@@ -78,6 +95,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
       const error = structureDoorsWorldError(nextState.room, nextState.structurePacks)
       if (error) { storeSet({ notice: error }); return }
     }
+    roomFocusHistory = nextFocusHistory
     const designChanged = persistedDesignSignature(persistedDesign(current)) !== persistedDesignSignature(persistedDesign(nextState))
     if (designChanged) {
       recordHistoryChange(runtime, persistedDesign(current))
@@ -113,7 +131,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     topCameraX: 0,
     topCameraZ: 0,
     activeRoomId: null,
-    setActiveRoomId: (activeRoomId) => set((state) => ({ activeRoomId, ...(state.view === 'isometric' ? { isoCameraHeight: state.structurePacks.find((pack) => pack.id === activeRoomId)?.y ?? 0 } : {}) })),
+    setActiveRoomId: (activeRoomId) => set({ activeRoomId }),
     isoAngle: ISO_BASE_ANGLE,
     isoCameraHeight: 0,
     setIsoCameraHeight: (isoCameraHeight) => set({ isoCameraHeight }),

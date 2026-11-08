@@ -4,6 +4,12 @@ import type { WallSide } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
 import { cameraZoomLimits, ISO_BASE_ANGLE, ISO_QUARTER_TURN } from '../defaults'
 import type { RoomActionContext, RoomState } from '../types'
+import { packRoomBox } from '../../domain/roomEditing'
+
+const focusedElevation = (state: RoomState) => {
+  const pack = state.structurePacks.find((candidate) => candidate.id === state.activeRoomId)
+  return pack ? pack.y + (packRoomBox(pack, state.room)?.y ?? 0) : 0
+}
 
 const normalizeIsoAngle = (angle: number) => {
   const fullTurn = Math.PI * 2
@@ -72,7 +78,7 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
         : frontWallForOrientation(orientation)
       return {
         view,
-        ...(view === 'isometric' && state.view !== 'isometric' ? { isoCameraHeight: state.structurePacks.find((pack) => pack.id === state.activeRoomId)?.y ?? 0 } : {}),
+        ...(view === 'isometric' && state.view !== 'isometric' ? { isoCameraHeight: focusedElevation(state) } : {}),
         topOrientation: view === 'top' ? orientation : state.topOrientation,
         wallView: view === 'front' || view === 'top' ? frontWall : null,
         isIsoOrbitDragging: false,
@@ -107,7 +113,7 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
       })
       return {
         view: 'isometric',
-        ...(state.view !== 'isometric' ? { isoCameraHeight: state.structurePacks.find((pack) => pack.id === state.activeRoomId)?.y ?? 0 } : {}),
+        ...(state.view !== 'isometric' ? { isoCameraHeight: focusedElevation(state) } : {}),
         isoOrientation: normalizedOrientation,
         isoAngle: normalizeIsoAngle(ISO_BASE_ANGLE + normalizedOrientation * ISO_QUARTER_TURN),
         isIsoOrbitDragging: false,

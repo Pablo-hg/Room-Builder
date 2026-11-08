@@ -11,6 +11,12 @@ export interface SelectionSource {
   structurePacks: StructurePack[]
 }
 
+/** Display old generated compass names without rewriting saved/custom names. */
+export function structureSurfaceName(surface: StructureSurface) {
+  return surface.kind === 'wall' && surface.wall && surface.name === `Pared ${surface.wall.toUpperCase()}`
+    ? `Pared ${WALL_LABELS[surface.wall]}` : surface.name
+}
+
 export function deriveSelection(state: SelectionSource, id: string | null) {
   const selectedPack = state.structurePacks.find((pack) => pack.id === id)
   let selectedSurface: { pack: StructurePack; surface: StructureSurface } | undefined
@@ -49,6 +55,6 @@ export function elementName(state: SelectionSource, id: string | null) {
   const { selectedPack, selectedSurface, selectedFurniture, selectedStructureDoor } = deriveSelection(state, id)
   if (selectedStructureDoor) return selectedStructureDoor.door.name || 'Puerta'
   if (selectedPack) return selectedPack.name
-  if (selectedSurface) return selectedSurface.surface.name
+  if (selectedSurface) return structureSurfaceName(selectedSurface.surface)
   return selectedFurniture?.name ?? id
 }

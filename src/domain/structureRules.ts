@@ -1,4 +1,4 @@
-import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, ROOM_LIMITS } from './constants'
+import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, ROOM_LIMITS, WALL_LABELS } from './constants'
 import type { RoomConfig, StructureSurface, StructureSurfaceKey, WallSide } from './types'
 
 const DEFAULT_SURFACE_THICKNESS = 0.13
@@ -20,7 +20,7 @@ export function createStructureSurface(room: RoomConfig, id: StructureSurfaceKey
     id,
     kind: 'wall',
     wall,
-    name: `Pared ${wall.toUpperCase()}`,
+    name: `Pared ${WALL_LABELS[wall]}`,
     x: 0,
     y: 0,
     z: 0,

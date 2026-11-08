@@ -6,6 +6,7 @@ import type { ViewMode, WallSide } from '../domain/types'
 import type { SceneProps } from './types'
 import { useRoomStore } from '../state/useRoomStore'
 import { shouldOrbitFront } from './cameraTransitions'
+import { packRoomBox } from '../domain/roomEditing'
 
 const ISOMETRIC_CAMERA_TARGET_HEIGHT = 0.8
 
@@ -17,9 +18,14 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
   const freeCameraOffset = useRoomStore((state) => state.freeCameraOffset)
   const activeRoomId = useRoomStore((state) => state.activeRoomId)
   const activeRoom = useRoomStore((state) => state.structurePacks.find((pack) => pack.id === activeRoomId && pack.id.startsWith('floor-pack-')))
+  const anchorRoom = useRoomStore((state) => state.room)
+  const activeBox = activeRoom && packRoomBox(activeRoom, anchorRoom)
+  const roomX = (activeRoom?.x ?? 0) + (activeBox?.x ?? 0)
+  const roomY = (activeRoom?.y ?? 0) + (activeBox?.y ?? 0)
+  const roomZ = (activeRoom?.z ?? 0) + (activeBox?.z ?? 0)
   const hasFloors = useRoomStore((state) => state.structurePacks.some((pack) => pack.id.startsWith('floor-pack-')))
   const initialized = useRef(false)
-  const previousMode = useRef({ view, wallView, activeRoomId, roomX: activeRoom?.x ?? 0, roomY: activeRoom?.y ?? 0, roomZ: activeRoom?.z ?? 0, isoCameraHeight })
+  const previousMode = useRef({ view, wallView, activeRoomId, roomX, roomY, roomZ, isoCameraHeight })
   const previousFreeOffset = useRef(freeCameraOffset)
   const [reduceMotion, setReduceMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   const animation = useRef<{
@@ -76,11 +82,8 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
     const previous = previousMode.current
     const freeMoved = previousFreeOffset.current !== freeCameraOffset
     previousFreeOffset.current = freeCameraOffset
-    previousMode.current = { view, wallView, activeRoomId, roomX: activeRoom?.x ?? 0, roomY: activeRoom?.y ?? 0, roomZ: activeRoom?.z ?? 0, isoCameraHeight }
+    previousMode.current = { view, wallView, activeRoomId, roomX, roomY, roomZ, isoCameraHeight }
     const targetCamera = camera.clone()
-    const roomX = activeRoom?.x ?? 0
-    const roomY = activeRoom?.y ?? 0
-    const roomZ = activeRoom?.z ?? 0
     const frontLookHeight = roomY + room.height / 2
     let targetZoom = 1
 
@@ -223,7 +226,7 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
       camera.aspect = targetCamera.aspect
       camera.updateProjectionMatrix()
     }
-  }, [camera, cameraZoom, freeAzimuth, freeElevation, frontCameraHeight, isoAngle, isFreeOrbitDragging, isIsoOrbitDragging, orientation, povYaw, reduceMotion, room, size, view, wallView, topCameraX, topCameraZ, isoCameraHeight, freeCameraOffset, activeRoom, hasFloors])
+  }, [camera, cameraZoom, freeAzimuth, freeElevation, frontCameraHeight, isoAngle, isFreeOrbitDragging, isIsoOrbitDragging, orientation, povYaw, reduceMotion, room, size, view, wallView, topCameraX, topCameraZ, isoCameraHeight, freeCameraOffset, activeRoom, hasFloors, roomX, roomY, roomZ])
 
   useFrame((_, delta) => {
     const transition = animation.current
