@@ -62,7 +62,7 @@ function sceneSources(world: SceneWorld): Source[] {
   const independent = independentSceneBoxes(world)
   for (const box of independent) {
     const pack = world.structurePacks.find((item) => item.surfaces.some((surface) => structureSurfaceElementId(item.id, surface.id) === box.id))
-    const surface = pack?.surfaces.find((item) => structureSurfaceElementId(pack.id, item.id) === box.id)
+    const surface = pack ? pack.surfaces.find((item) => structureSurfaceElementId(pack.id, item.id) === box.id) : undefined
     if (!pack || !surface || hidden.has(pack.id) || hidden.has(box.id)) continue
     sources.push({ id: box.id, name: surface.name || pack.name, kind: 'surface', support: surface.kind, box })
   }
