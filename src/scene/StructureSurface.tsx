@@ -68,6 +68,7 @@ export function StructureSurfaceObject({
   const gesture = useHistoryGesture(surfaceId)
   const groundPlane = useMemo(() => new THREE.Plane(), [])
   const pointerPoint = useMemo(() => new THREE.Vector3(), [])
+  const shiftClickPending = useRef(false)
   const dragStart = useRef<{
     clientX: number; clientY: number
     x: number; y: number; z: number
@@ -76,6 +77,7 @@ export function StructureSurfaceObject({
   const cancelDirectDrag = () => {
     if (!dragStart.current) return
     dragStart.current = null
+    shiftClickPending.current = false
     gesture.cancel()
     document.body.classList.remove('can-grab')
   }
@@ -84,6 +86,11 @@ export function StructureSurfaceObject({
     const start = dragStart.current
     if (!start || !gesture.isActive()) return
     event.stopPropagation()
+    if (shiftClickPending.current) {
+      if (Math.hypot(event.nativeEvent.clientX - start.clientX, event.nativeEvent.clientY - start.clientY) < 4) return
+      shiftClickPending.current = false
+      useRoomStore.getState().selectElement(surfaceId)
+    }
     if (event.nativeEvent.shiftKey || view === 'front') {
       const target = cameraAwareShiftDrag(camera, size, { clientX: start.clientX, clientY: start.clientY, position: { x: start.x, y: start.y, z: start.z } }, event.nativeEvent)
       moveStructureSurface(packId, surface.id, target.axis, moveFromOrigin(target[target.axis], start[target.axis]))
@@ -98,7 +105,10 @@ export function StructureSurfaceObject({
   const endDirectDrag = (event: ThreeEvent<PointerEvent>) => {
     if (!dragStart.current) return
     event.stopPropagation()
+    const shiftClick = shiftClickPending.current
+    shiftClickPending.current = false
     dragStart.current = null
+    if (shiftClick) useRoomStore.getState().selectSceneListItem(surfaceId, 'toggle', [surfaceId])
     gesture.commit()
     document.body.classList.remove('can-grab')
     releasePointer(event)
@@ -120,12 +130,17 @@ export function StructureSurfaceObject({
       kind: surface.kind,
       selectedBefore,
     })
-    if (event.nativeEvent.ctrlKey || event.nativeEvent.metaKey || (event.nativeEvent.shiftKey && !isIndependent)) {
+    shiftClickPending.current = isIndependent && !locked && event.nativeEvent.shiftKey && !event.nativeEvent.ctrlKey && !event.nativeEvent.metaKey
+    if (event.nativeEvent.ctrlKey || event.nativeEvent.metaKey || (event.nativeEvent.shiftKey && !shiftClickPending.current)) {
       selectSceneObject(clickedSurfaceId, event.nativeEvent)
       return
     }
-    if (!selectedBefore) onSelect()
-    if (!isIndependent || locked || (event.nativeEvent.button !== 0 && event.nativeEvent.pointerType !== 'touch')) return
+    if (!shiftClickPending.current && !selectedBefore) onSelect()
+    if (!isIndependent || locked || (event.nativeEvent.button !== 0 && event.nativeEvent.pointerType !== 'touch')) {
+      if (shiftClickPending.current) selectSceneObject(clickedSurfaceId, event.nativeEvent)
+      shiftClickPending.current = false
+      return
+    }
     const worldY = (pack?.y ?? 0) + position[1]
     groundPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, worldY, 0))
     const hasIntersection = event.ray.intersectPlane(groundPlane, pointerPoint) !== null
