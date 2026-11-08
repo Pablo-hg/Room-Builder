@@ -52,7 +52,7 @@ export function WallBody({ length, height, openings, color, onPointerDown, depth
   )
 }
 
-export function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exportMode, groupSelected }: { room: RoomConfig; wall: WallSide; hidden: boolean; showOpeningDetails: boolean; showGrid: boolean; exportMode: boolean; groupSelected: boolean }) {
+export function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exportMode, groupSelected, collisionIds }: { room: RoomConfig; wall: WallSide; hidden: boolean; showOpeningDetails: boolean; showGrid: boolean; exportMode: boolean; groupSelected: boolean; collisionIds: ReadonlySet<string> }) {
   const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
   const lockedElementIds = useRoomStore((state) => state.lockedElementIds)
   const selectedId = useRoomStore((state) => state.selectedId)
@@ -83,8 +83,8 @@ export function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exp
       {openings.map((opening) => (
         <group key={opening.id} visible={showOpeningDetails && !hiddenElementIds.includes(opening.id)}>
           <OpeningDetail room={room} wall={wall} opening={opening} selected={!exportMode && selectedId === opening.id} locked={lockedElementIds.includes(opening.id)} />
-          {!exportMode && !groupSelected && selectedIds.includes(opening.id) && <group position={[opening.offset, opening.bottom + opening.height / 2, opening.shape === 'wallShelf' ? 0.2 : 0.05]} rotation={[0, 0, opening.rotation]}>
-            <SelectionBounds width={opening.width} height={opening.height} depth={opening.shape === 'wallShelf' ? 0.3 : 0.18} />
+          {!exportMode && ((selectedIds.includes(opening.id) && !groupSelected) || collisionIds.has(opening.id)) && <group position={[opening.offset, opening.bottom + opening.height / 2, opening.shape === 'wallShelf' ? 0.2 : 0.05]} rotation={[0, 0, opening.rotation]}>
+            <SelectionBounds width={opening.width} height={opening.height} depth={opening.shape === 'wallShelf' ? 0.3 : 0.18} collision={collisionIds.has(opening.id)} />
           </group>}
         </group>
       ))}
