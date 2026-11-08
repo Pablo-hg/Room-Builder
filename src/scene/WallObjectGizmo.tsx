@@ -50,17 +50,26 @@ export function WallObjectGizmo({ id, position, anchor = position, height, locks
   return <group position={[anchor.x, anchor.y + height / 2, anchor.z]} userData={{ selectionGizmo: true }}>
     {(['x', 'y', 'z'] as const).filter((axis) => !locks?.[axis] && Math.abs(direction.dot(vectors[axis])) < 0.98).map((axis) =>
       <group key={axis} onPointerDown={(event) => start(axis, event)} onPointerMove={moving} onPointerUp={end} onPointerCancel={(event) => { gesture.cancel(); end(event) }}>
-        <mesh position={vectors[axis].clone().multiplyScalar(0.3)} renderOrder={8}>
-          <boxGeometry args={axis === 'x' ? [0.6, 0.025, 0.025] : axis === 'y' ? [0.025, 0.6, 0.025] : [0.025, 0.025, 0.6]} />
-          <meshBasicMaterial color={AXIS_COLORS[axis].normal} depthTest={false} depthWrite={false} />
-        </mesh>
-        <mesh position={vectors[axis].clone().multiplyScalar(0.6)} rotation={axis === 'x' ? [0, 0, -Math.PI / 2] : axis === 'z' ? [Math.PI / 2, 0, 0] : [0, 0, 0]} renderOrder={8}>
-          <coneGeometry args={[0.07, 0.16, 12]} /><meshBasicMaterial color={AXIS_COLORS[axis].normal} depthTest={false} depthWrite={false} />
-        </mesh>
-        <mesh position={vectors[axis].clone().multiplyScalar(0.35)}>
-          <boxGeometry args={axis === 'x' ? [0.7, 0.16, 0.16] : axis === 'y' ? [0.16, 0.7, 0.16] : [0.16, 0.16, 0.7]} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-        </mesh>
+        {([-1, 1] as const).map((sign) => (
+          <group key={sign}>
+            <mesh position={vectors[axis].clone().multiplyScalar(sign * 0.3)} renderOrder={8}>
+              <boxGeometry args={axis === 'x' ? [0.6, 0.025, 0.025] : axis === 'y' ? [0.025, 0.6, 0.025] : [0.025, 0.025, 0.6]} />
+              <meshBasicMaterial color={AXIS_COLORS[axis].normal} depthTest={false} depthWrite={false} toneMapped={false} />
+            </mesh>
+            <mesh
+              position={vectors[axis].clone().multiplyScalar(sign * 0.6)}
+              rotation={axis === 'x' ? [0, 0, -sign * Math.PI / 2] : axis === 'z' ? [sign * Math.PI / 2, 0, 0] : sign === 1 ? [0, 0, 0] : [Math.PI, 0, 0]}
+              renderOrder={8}
+            >
+              <coneGeometry args={[0.07, 0.16, 12]} />
+              <meshBasicMaterial color={AXIS_COLORS[axis].normal} depthTest={false} depthWrite={false} toneMapped={false} />
+            </mesh>
+            <mesh position={vectors[axis].clone().multiplyScalar(sign * 0.35)}>
+              <boxGeometry args={axis === 'x' ? [0.7, 0.16, 0.16] : axis === 'y' ? [0.16, 0.7, 0.16] : [0.16, 0.16, 0.7]} />
+              <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+            </mesh>
+          </group>
+        ))}
       </group>)}
   </group>
 }
