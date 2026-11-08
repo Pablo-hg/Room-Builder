@@ -139,9 +139,12 @@ export function StructureDoorPlan({ room, packId, surface, collisionIds }: { roo
   const [x, y, z] = surfacePosition(room, surface)
   const angle = { north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 }[surface.wall] + surface.rotation
   return <group position={[x, y - surface.height / 2 + 0.05, z]} rotation={[0, angle, 0]}>
-    {structureDoorOpenings(pack, surface).filter((door) => !hiddenIds.includes(door.id)).map((door) => <mesh key={door.id} position={[door.offset, 0, 0]} onPointerDown={(event) => { event.stopPropagation(); selectSceneObject(door.id, event.nativeEvent) }}>
-      <boxGeometry args={[door.width, 0.06, surface.depth + 0.08]} /><meshBasicMaterial color={selectedId === door.id ? '#ea6f4c' : '#e9895b'} />
-    </mesh>)}
+    {structureDoorOpenings(pack, surface).filter((door) => !hiddenIds.includes(door.id)).map((door) => <group key={door.id} position={[door.offset, 0, 0]}>
+      <mesh onPointerDown={(event) => { event.stopPropagation(); selectSceneObject(door.id, event.nativeEvent) }}>
+        <boxGeometry args={[door.width, 0.06, surface.depth + 0.08]} /><meshBasicMaterial color={selectedId === door.id ? '#ea6f4c' : '#e9895b'} />
+      </mesh>
+      {collisionIds.has(door.id) && <SelectionBounds width={door.width} height={0.08} depth={surface.depth + 0.08} collision />}
+    </group>)}
   </group>
 }
 
