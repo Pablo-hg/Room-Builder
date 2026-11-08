@@ -24,3 +24,20 @@ test('store diagnostics describe accepted changes, rejection and cancellation wi
     assert.ok(diagnostics.snapshot().some((event) => event.action === 'editor.setDimension'))
   } finally { Reflect.deleteProperty(globalThis, 'window') }
 })
+
+test('a gesture with no effective changes is not reported as completed', async () => {
+  Object.defineProperty(globalThis, 'window', { value: {}, configurable: true })
+  try {
+    const { createRoomStore } = await import('../state/useRoomStore')
+    const { diagnostics } = await import('./engine')
+    const store = createRoomStore({ read: () => [], write: () => undefined })
+    store.getState().addFurniture('chair')
+    const id = store.getState().furniture[0].id
+    const before = diagnostics.snapshot().length
+    const token = store.getState().beginHistoryGesture(id)
+    store.getState().cancelHistoryGesture(token)
+    diagnostics.flush()
+    const events = diagnostics.snapshot().slice(before)
+    assert.equal(events.filter((event) => event.action === 'editor.gesture' && event.result === 'completed').length, 0)
+  } finally { Reflect.deleteProperty(globalThis, 'window') }
+})
