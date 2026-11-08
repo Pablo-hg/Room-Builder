@@ -10,14 +10,14 @@ test('en plano el trazo es más ancho que el grosor raíz y el color neutro se m
   const strips = planWallStrips({ room: DEFAULT_ROOM, structurePacks: [] }, new Set([wallId]))
   assert.equal(strips.length, 1)
   assert.ok(strips[0].thickness > 0.12)
-  assert.equal(strips[0].color, '#6e7d73')
+  assert.equal(strips[0].color, DEFAULT_WALL_COLOR)
 })
 
 test('un color propio de pared raíz se refleja directamente en su línea', () => {
   const room = { ...DEFAULT_ROOM, wallColors: { ...(DEFAULT_ROOM.wallColors ?? {}), east: '#1954a6' } }
   const strips = planWallStrips({ room, structurePacks: [] }, new Set(['room-wall:east']))
   assert.equal(strips[0].color, '#1954a6')
-  assert.equal(planWallStrips({ room: { ...room, wallColors: { east: DEFAULT_WALL_COLOR } }, structurePacks: [] }, new Set(['room-wall:east']))[0].color, '#6e7d73')
+  assert.equal(planWallStrips({ room: { ...room, wallColors: { east: DEFAULT_WALL_COLOR } }, structurePacks: [] }, new Set(['room-wall:east']))[0].color, DEFAULT_WALL_COLOR)
 })
 
 test('los packs y paredes independientes conservan su color propio sin cambiar el objeto', () => {

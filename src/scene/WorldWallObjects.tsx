@@ -7,6 +7,7 @@ import type { RoomConfig, StructurePack, WindowConfig } from '../domain/types'
 import { moveFromOrigin } from '../domain/measurements'
 import { useRoomStore } from '../state/useRoomStore'
 import { OpeningDetail } from './Openings'
+import { PlanWallSymbol } from './PlanWallSymbol'
 import { SelectionBounds } from './SelectionBounds'
 import { WallObjectGizmo } from './WallObjectGizmo'
 import { useHistoryGesture } from '../state/useHistoryGesture'
@@ -80,7 +81,8 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode, kin
   const outside = !!window.freePosition && boxOutsideBuilding({ room, structurePacks: packs }, wallObjectBox(room, window, pack))
   return <>
     <group position={[position.x, position.y, position.z]} rotation={[0, position.yaw, 0]} onPointerDown={start} onPointerMove={moving} onPointerUp={end} onPointerCancel={(event) => { gesture.cancel(); end(event) }}>
-      {view === 'top' && !exportMode ? <mesh position={[0, window.height / 2, 0.05]}><boxGeometry args={[window.width, 0.04, window.shape === 'wallShelf' ? 0.3 : 0.18]} /><meshBasicMaterial color={window.color ?? '#c88f58'} /></mesh>
+      {view === 'top' && !exportMode
+        ? <PlanWallSymbol kind={kind} width={window.width} height={window.height} shape={window.shape} color={window.color ?? '#c88f58'} />
         : <OpeningDetail room={room} opening={{ ...window, kind, offset: 0, bottom: 0, color: window.color ?? '#c88f58' }} wall={window.wall} selected={false} locked interactive={false} />}
       {!exportMode && <mesh position={[0, window.height / 2, 0]}><boxGeometry args={[window.width, window.height, 0.16]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>}
       {!exportMode && (selected || collision || outside) && <group position={selectionFrame.localCenter} rotation={[0, 0, window.rotation]}><SelectionBounds width={window.width} height={window.height} depth={selectionFrame.depth} collision={collision || outside} /></group>}

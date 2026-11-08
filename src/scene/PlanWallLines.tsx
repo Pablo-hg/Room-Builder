@@ -1,4 +1,4 @@
-import type { PlanWallStrip } from './planWallLines'
+import type { PlanWallStrip } from './planWallGeometry'
 
 /** Render-only top-view strips; never pickable and excluded from 3D exports. */
 export function PlanWallLines({ strips }: { strips: readonly PlanWallStrip[] }) {

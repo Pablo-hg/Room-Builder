@@ -42,3 +42,32 @@ test('una superficie independiente no crea una habitación ficticia en el vacío
   const independent = { ...pack('free', 30), id: 'wall-object-free' }
   assert.equal(boxOutsideBuilding({ room: DEFAULT_ROOM, structurePacks: [independent] }, { ...box, x: 30 }), true)
 })
+
+test('mover una pared dentro de las otras mantiene la habitación cerrada, con cualquier grosor', () => {
+  const inner = pack('east', DEFAULT_ROOM.width)
+  const wall = inner.surfaces.find((surface) => surface.id === 'wall-east')!
+  const world = { room: DEFAULT_ROOM, structurePacks: [inner] }
+  const inside = { ...box, x: DEFAULT_ROOM.width, z: 0 }
+  assert.equal(boxOutsideBuilding(world, inside), false)
+  wall.x -= 0.35
+  for (const thickness of [0.01, 0.13, 1.4]) {
+    wall.depth = thickness
+    assert.equal(boxOutsideBuilding({ ...world, structurePacks: [{ ...inner, surfaces: [...inner.surfaces] }] }, inside), false)
+  }
+})
+
+test('si las paredes no llegan a tocarse, no se inventa una habitación cerrada', () => {
+  const inner = pack('east', DEFAULT_ROOM.width)
+  inner.surfaces.find((surface) => surface.id === 'wall-north')!.x = -3
+  const world = { room: DEFAULT_ROOM, structurePacks: [inner] }
+  assert.equal(boxOutsideBuilding(world, { ...box, x: DEFAULT_ROOM.width, z: 0 }), true)
+})
+
+test('una pared inclinada que cruza los dos muros adyacentes puede cerrar un polígono', () => {
+  const inner = pack('east', DEFAULT_ROOM.width)
+  const wall = inner.surfaces.find((surface) => surface.id === 'wall-east')!
+  wall.x -= 0.5
+  wall.rotation = 0.10
+  const world = { room: DEFAULT_ROOM, structurePacks: [inner] }
+  assert.equal(boxOutsideBuilding(world, { ...box, x: DEFAULT_ROOM.width, z: 0 }), false)
+})

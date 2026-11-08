@@ -18,14 +18,14 @@ export interface PlanWallStrip {
 export function planWallStrips(world: WallWorld, visibleIds: ReadonlySet<string>): PlanWallStrip[] {
   const rootColor = (side: 'north' | 'east' | 'south' | 'west') =>
     world.room.wallColors?.[side] ?? world.room.wallColor ?? DEFAULT_WALL_COLOR
-  const DEFAULT_PLAN_LINE_COLOR = '#6e7d73'
   return physicalWalls(world).filter((wall) => visibleIds.has(wall.id)).flatMap((wall) => {
     const surfaceColor = wall.packId
       ? world.structurePacks.find((pack) => pack.id === wall.packId)?.surfaces.find((surface) =>
         surface.kind === 'wall' && surface.wall === wall.side
         && `structure-surface:${wall.packId}:${surface.id}` === wall.id)?.color ?? DEFAULT_WALL_COLOR
       : rootColor(wall.side)
-    const color = surfaceColor.toLowerCase() === DEFAULT_WALL_COLOR ? DEFAULT_PLAN_LINE_COLOR : surfaceColor
+    // A plan wall must use the *actual* wall material, including the default.
+    const color = surfaceColor
     // A conventional plan cut through the lower part of the wall, so doors
     // and ordinary-height windows leave a visible gap in the trace.
     const sliceHeight = Math.min(wall.height * 0.5, 1.25)
