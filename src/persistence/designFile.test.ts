@@ -18,6 +18,20 @@ test('exportar e importar conserva el diseño editable sin modificar el original
   assert.deepEqual(design, original)
 })
 
+test('un diseño con ventana de pack conserva las referencias y se puede importar', () => {
+  const store = createRoomStore()
+  store.getState().addStructurePack('up')
+  store.getState().addWindow('rectangular')
+  const id = store.getState().selectedId!
+  assert.ok(store.getState().structurePacks[0].windows?.some((window) => window.id === id))
+  const design: SavedDesign = { ...makeDesign(), data: persistedDesign(store.getState()) }
+  const cleaned = cleanExportReferences(design.data)
+  assert.equal(cleaned.omitted, 0)
+  assert.equal(cleaned.data.elementFolderAssignments?.[id], design.data.elementFolderAssignments?.[id])
+  const loaded = parseDesignFile(serializeDesignFile({ ...design, data: cleaned.data }))
+  assert.ok(loaded.design.data.structurePacks?.[0].windows?.some((window) => window.id === id))
+})
+
 test('admite diseños históricos v1–v5 y conserva la variante activa de v5', () => {
   for (const path of ['persistence-v1/valid-complete', 'persisted-designs/valid-v2', 'persisted-designs/valid-v3', 'persisted-designs/valid-v4', 'persisted-designs/valid-v5']) {
     const data = JSON.parse(readFileSync(new URL(`../../tests/fixtures/${path}.json`, import.meta.url), 'utf8'))

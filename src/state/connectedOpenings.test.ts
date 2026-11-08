@@ -40,11 +40,12 @@ for (const kind of ['door', 'window'] as const) {
     assert.equal(opening(store).position.x, 3)
     store.getState().redo()
     assert.equal(opening(store).position.x, 1.5)
+    const previousNotice = store.getState().notice
     const count = store.getState().undoCount
     store.getState().moveWallObject('connected', 'x', 4)
     assert.equal(opening(store).position.x, 1.5)
     assert.equal(store.getState().undoCount, count)
-    assert.equal(store.getState().notice, '')
+    assert.equal(store.getState().notice, previousNotice)
   })
 
   test(`${kind}: borrar la pared propietaria conserva ID, posición, color y hueco restante`, () => {

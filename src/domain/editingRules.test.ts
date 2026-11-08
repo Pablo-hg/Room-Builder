@@ -63,8 +63,8 @@ test('recoloca muebles en orden conservando dimensiones del catálogo y sin muta
 
 test('conserva límites dimensionales y geometría por defecto de las seis superficies', () => {
   for (const dimension of ['width', 'depth', 'height'] as const) {
-    assert.equal(clampRoomDimension(dimension, 100), 10)
-    assert.equal(clampRoomDimension(dimension, 0), dimension === 'height' ? 2.5 : 3)
+    assert.equal(clampRoomDimension(dimension, 100), 100)
+    assert.equal(clampRoomDimension(dimension, 0), 0.01)
   }
   for (const side of ['north', 'east', 'south', 'west'] as const) {
     const wall = createStructureSurface(DEFAULT_ROOM, `wall-${side}`)

@@ -72,7 +72,9 @@ for (const wall of WALL_SIDES) {
     const state = store.getState()
     const original = state.structurePacks[0]
     const pack = { ...original, x: 7, y: -3, z: 9, surfaces: original.surfaces.map((surface) => ({ ...surface, y: surface.y + 0.2 })) }
-    const window = { ...state.room.windows[0], wall, offset: 0.6, sill: 1.2 }
+    // Una ventana del pack usa su marco local. La ventana de raíz de la
+    // configuración inicial ya posee anclaje global v10 y no es un buen fixture.
+    const window = { ...state.room.windows[0], wallPosition: undefined, wall, offset: 0.6, sill: 1.2 }
     const wallFrame = structureWindowFrame(state.room, pack, wall)!
     const selection = wallObjectSelectionFrame(state.room, window, pack)
     assert.ok(Math.abs(selection.position.y - (pack.y + 0.2 + window.sill)) < 1e-9)

@@ -20,6 +20,7 @@ export function cleanExportReferences(input: PersistedDesign): { data: Persisted
   for (const pack of data.structurePacks ?? []) {
     valid.add(pack.id)
     pack.doors?.forEach((door) => valid.add(door.id))
+    pack.windows?.forEach((window) => valid.add(window.id))
     for (const surface of pack.surfaces) {
       valid.add(structureSurfaceElementId(pack.id, surface.id))
       valid.add(structureGridElementId(pack.id, surface.id))
@@ -133,6 +134,13 @@ function validateData(value: unknown): { data: PersistedDesign; sourceVersion: n
       for (const door of p.doors as unknown[]) {
         if (!object(door) || !text(door.id) || occupied.has(door.id)) invalid('Identificador de puerta inválido o duplicado.')
         occupied.add((door as RecordValue).id as string)
+      }
+    }
+    if (p.windows !== undefined) {
+      if (!Array.isArray(p.windows)) invalid('Ventanas de habitación inválidas.')
+      for (const window of p.windows as unknown[]) {
+        if (!object(window) || !text(window.id) || occupied.has(window.id)) invalid('Identificador de ventana inválido o duplicado.')
+        occupied.add((window as RecordValue).id as string)
       }
     }
     const surfaceIds = new Set<string>()
