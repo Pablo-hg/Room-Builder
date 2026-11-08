@@ -23,7 +23,7 @@ const sessions = new Set()
 let lines = 0
 let invalid = 0
 let duplicates = 0
-let lastLine = ''
+let lastDescription = ''
 let totalLineBytes = 0
 let largestLineBytes = 0
 
@@ -37,28 +37,29 @@ try {
     const bytes = Buffer.byteLength(line, 'utf8')
     totalLineBytes += bytes
     largestLineBytes = Math.max(largestLineBytes, bytes)
-    if (line === lastLine) duplicates += 1
-    lastLine = line
     const match = pattern.exec(line)
     if (!match) {
       invalid += 1
       continue
     }
     const [, date, second, session, description] = match
+    if (description === lastDescription) duplicates += 1
+    lastDescription = description
     sessions.add(session)
     const bucket = `${date} ${second}`
     bursts.set(bucket, (bursts.get(bucket) ?? 0) + 1)
     const type = eventTypes.find(([, regex]) => regex.test(description))?.[0] ?? 'otros'
     counts.set(type, (counts.get(type) ?? 0) + 1)
   }
-  const peak = Math.max(0, ...bursts.values())
+  let peak = 0
+  for (const count of bursts.values()) peak = Math.max(peak, count)
   const secondsWithEvents = bursts.size
   const report = {
     fileBytes: info.size,
     entries: lines,
     sessions: sessions.size,
     entriesWithUnrecognizedFormat: invalid,
-    identicalConsecutiveLines: duplicates,
+    consecutiveRepeatedDescriptions: duplicates,
     averageLineBytes: lines ? Math.round(totalLineBytes / lines) : 0,
     maxLineBytes: largestLineBytes,
     maxEntriesInOneSecond: peak,
