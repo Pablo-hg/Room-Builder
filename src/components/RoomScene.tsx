@@ -23,6 +23,8 @@ import { packRoomBox } from '../domain/roomEditing'
 import { WorldWallObjects } from '../scene/WorldWallObjects'
 import { physicalWalls } from '../domain/wallConnections'
 import { wallUnionFaces } from '../domain/wallSolidGeometry'
+import { planWallStrips } from '../scene/planWallLines'
+import { PlanWallLines } from '../scene/PlanWallLines'
 
 function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null>; collisionIds: ReadonlySet<string> }) {
   const selectedId = useRoomStore((state) => state.selectedId)
@@ -58,6 +60,16 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
   }).map((wall) => wall.id))
   const visibleSignature = JSON.stringify([...visibleWallIds].sort())
   const wallSkins = useMemo(() => wallUnionFaces({ room: props.room, structurePacks: props.structurePacks }, visibleWallIds), [props.room, props.structurePacks, visibleSignature])
+  // In top view the 3D walls are intentionally hidden. Their plan traces
+  // must therefore use physical visibility, not wallVisibility.hidden.
+  const planVisibleWallIds = new Set(physicalWalls({ room: props.room, structurePacks: props.structurePacks }).filter((wall) => {
+    if (hiddenElementIds.includes(wall.id)) return false
+    return wall.packId ? renderedPackIds.has(wall.packId) : showBase
+  }).map((wall) => wall.id))
+  const planSignature = JSON.stringify([...planVisibleWallIds].sort())
+  const planStrips = useMemo(() => props.view === 'top' && !props.exportMode
+    ? planWallStrips({ room: props.room, structurePacks: props.structurePacks }, planVisibleWallIds)
+    : [], [props.room, props.structurePacks, props.view, props.exportMode, planSignature])
 
   return (
     <>
@@ -112,6 +124,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
             })}
           </group>
         ))}
+        {props.view === 'top' && !props.exportMode && <PlanWallLines strips={planStrips} />}
         <WorldWallObjects room={props.room} structurePacks={props.structurePacks} collisionIds={props.collisionIds} exportMode={props.exportMode} level={level} levelHeight={levelHeight} focusedView={focusedView} />
         {props.furniture.filter((item) => !hiddenElementIds.includes(item.id) && (!focusedView || (item.y >= level - 0.01 && item.y < level + levelHeight))).map((item) => (
           <FurnitureObject

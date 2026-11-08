@@ -3,7 +3,6 @@ import { deriveSelection } from '../../domain/selection'
 import { BASE_FLOOR_ID, BASE_ROOM_SURFACE_IDS, folderIdFromSelection, folderRoomPack, ROOT_ROOM_FOLDER } from '../../domain/elementFolders'
 import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, WALL_LABELS } from '../../domain/constants'
 import type { WallSide } from '../../domain/types'
-import { PackInspector } from './PackInspector'
 import { SurfaceInspector } from './SurfaceInspector'
 import { FurnitureInspector } from './FurnitureInspector'
 import { OpeningInspector } from './OpeningInspector'
@@ -78,7 +77,9 @@ export function SelectionInspector() {
 
   const multiItems = multiSelectionItems({ room, furniture, structurePacks, elementFolders, elementFolderAssignments: assignments, selectedIds })
   const folderPack = selectedFolder && folderRoomPack(elementFolders, assignments, structurePacks, selectedFolder.id)
-  if (folderPack && selectedIds.length === 1) return <PackInspector selectedPack={folderPack} />
+  // Los controles del pack están siempre en «Espacio» de la habitación enfocada.
+  // Seleccionarlo en el árbol no debe generar un segundo inspector independiente.
+  if (folderPack && selectedIds.length === 1) return null
   if (selectedFolder?.id === ROOT_ROOM_FOLDER && selectedIds.length === 1) return <FolderInspector folder={selectedFolder} />
   if (selectedIds.length === 1 && selectedId && BASE_ROOM_SURFACE_IDS.includes(selectedId)) {
     const wall = selectedId === BASE_FLOOR_ID ? null : selectedId.slice('room-wall:'.length) as WallSide
@@ -92,7 +93,7 @@ export function SelectionInspector() {
     <p className="empty-selection">La edición conjunta está disponible para selecciones de muebles. Las selecciones que incluyen aperturas, superficies o carpetas todavía no admiten transformaciones conjuntas.</p>
   </section>
   if (selectedFolder) return <FolderInspector folder={selectedFolder} />
-  if (selectedPack) return <PackInspector selectedPack={selectedPack} />
+  if (selectedPack) return null
   if (selectedSurface) return <SurfaceInspector selectedSurface={selectedSurface} />
   if (selectedStructureDoor) return <OpeningInspector selectedOpening={{ ...selectedStructureDoor.door, kind: 'door', sill: 0 }} />
   if (selectedFurniture) return <FurnitureInspector selectedFurniture={selectedFurniture} />

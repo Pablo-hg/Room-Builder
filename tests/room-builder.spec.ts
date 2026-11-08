@@ -673,7 +673,7 @@ test('permite seleccionar un pack y editar una de sus superficies', async ({ pag
   await page.goto('/')
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
-  await expect(page.getByText('Pack de construcción', { exact: true }).first()).toBeVisible()
+  await expect(page.locator('.room-section').getByRole('heading', { name: 'Posición de la habitación' })).toBeVisible()
   await page.getByRole('button', { name: /Suelo · Editar/ }).click()
   await expect(page.getByText('Superficie de construcción', { exact: true }).first()).toBeVisible()
   await expect(page.getByLabel('Desplazamiento X', { exact: true })).toBeVisible()

@@ -26,10 +26,9 @@ export function PackInspector({ selectedPack }: { selectedPack: RoomState['struc
     { id: 'wall-west', label: 'Pared oeste' },
   ]
   return (
-    <section className="panel-section selection-section selection-section--inspector" {...gesture.events}>
-      <span className="eyebrow">Pack de construcción</span>
-      <h2>{selectedPack.name}</h2>
-      <p className="section-copy">Mueve el pack completo; selecciona una superficie en la escena o en la lista para editarla por separado.</p>
+    <div className="room-pack-controls" aria-label="Controles de la habitación enfocada" {...gesture.events}>
+      <h3>Posición de la habitación</h3>
+      <p className="section-copy">Mueve la habitación completa; selecciona una superficie en la escena o en la lista para editarla por separado.</p>
       <StructurePositionControls
         label="Mover pack"
         position={selectedPack}
@@ -52,14 +51,17 @@ export function PackInspector({ selectedPack }: { selectedPack: RoomState['struc
           </div>
         )
       })}
-      <h3>Añadir superficie</h3>
-      {availableSurfaces.filter((surface) => !existingSurfaces.has(surface.id)).map((surface) => (
-        <button type="button" className="text-button" key={surface.id} onClick={() => addStructureSurface(selectedPack.id, surface.id)}>
-          ＋ Añadir {surface.label.toLowerCase()}
-        </button>
-      ))}
+      {availableSurfaces.some((surface) => !existingSurfaces.has(surface.id)) && (
+        <>
+          <h3>Añadir superficie</h3>
+          {availableSurfaces.filter((surface) => !existingSurfaces.has(surface.id)).map((surface) => (
+            <button type="button" className="text-button" key={surface.id} onClick={() => addStructureSurface(selectedPack.id, surface.id)}>
+              ＋ Añadir {surface.label.toLowerCase()}
+            </button>
+          ))}
+        </>
+      )}
       <button type="button" className="text-button danger" onClick={() => removeStructurePack(selectedPack.id)}>Eliminar habitación completa</button>
-    </section>
+    </div>
   )
-
 }

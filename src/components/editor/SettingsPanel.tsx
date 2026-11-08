@@ -3,6 +3,7 @@ import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, WALL_LABELS, WALL_SIDES } from
 import { useRoomStore } from '../../state/useRoomStore'
 import { ColorControl, DimensionControl } from './Controls'
 import { SelectionInspector } from './SelectionInspector'
+import { PackInspector } from './PackInspector'
 import { focusedRoom } from '../../domain/roomEditing'
 import { DiagnosticExportButton } from './DiagnosticExportButton'
 
@@ -80,6 +81,7 @@ export function SettingsPanel() {
                 />
               ))}
             </div>
+            {pack && <PackInspector key={pack.id} selectedPack={pack} />}
           </div>
         </section>
         <section className="panel-section shortcut-guide">
