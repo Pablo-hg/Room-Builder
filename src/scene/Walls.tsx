@@ -80,7 +80,7 @@ export function SoftWall({ room, wall, hidden, showOpeningDetails, showGrid, exp
         {showGrid && <WallGrid length={length} height={room.height} openings={openings} />}
         {!exportMode && selectedIds.includes(baseWallId(wall)) && <group position={[0, room.height / 2, 0]}><SelectionBounds width={length} height={room.height} depth={0.12} /></group>}
       </group>}
-      {openings.map((opening) => (
+      {openings.filter((opening) => opening.kind === 'door').map((opening) => (
         <group key={opening.id} visible={showOpeningDetails && !hiddenElementIds.includes(opening.id)}>
           <OpeningDetail room={room} wall={wall} opening={opening} selected={!exportMode && selectedId === opening.id} locked={lockedElementIds.includes(opening.id)} />
           {!exportMode && ((selectedIds.includes(opening.id) && !groupSelected) || collisionIds.has(opening.id)) && <group position={[opening.offset, opening.bottom + opening.height / 2, opening.shape === 'wallShelf' ? 0.2 : 0.05]} rotation={[0, 0, opening.rotation]}>

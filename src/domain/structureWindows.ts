@@ -2,6 +2,7 @@ import { ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from './constants'
 import { isWindowShape } from './objectCatalog'
 import { surfacePosition } from './roomEditing'
 import { validateAxisLocks } from './axisLocks'
+import { validateFreeWallPosition } from './freeWallPosition'
 import type { RoomConfig, StructurePack, StructureSurface, WallOpening, WallSide, WindowConfig } from './types'
 
 /** Apertures are local to the corresponding wall; root windows remain in RoomConfig. */
@@ -9,7 +10,7 @@ export function structurePackOpenings(pack: StructurePack, surface: StructureSur
   if (surface.kind !== 'wall' || !surface.wall) return []
   const doors: WallOpening[] = (pack.doors ?? []).filter((door) => door.wall === surface.wall)
     .map((door) => ({ id: door.id, kind: 'door', offset: door.offset, bottom: 0, width: door.width, height: door.height, rotation: 0, color: door.color ?? '#ac704b' }))
-  const windows: WallOpening[] = (pack.windows ?? []).filter((window) => window.wall === surface.wall)
+  const windows: WallOpening[] = (pack.windows ?? []).filter((window) => window.wall === surface.wall && !window.freePosition)
     .map((window) => ({ id: window.id, kind: 'window', shape: window.shape, offset: window.offset, bottom: window.sill, width: window.width, height: window.height, rotation: window.rotation, color: window.color ?? '#c88f58' }))
   return [...doors, ...windows]
 }
@@ -39,8 +40,9 @@ export function structureWindowError(pack: StructurePack): string | null {
       || window.width <= 0 || window.height <= 0
       || (window.name !== undefined && (typeof window.name !== 'string' || !window.name.trim() || window.name.length > 80))
       || (window.color !== undefined && typeof window.color !== 'string')) return 'Ventanas de habitación inválidas.'
-    try { validateAxisLocks(window.axisLocks) } catch { return 'Bloqueos de ventana inválidos.' }
+    try { validateAxisLocks(window.axisLocks); validateFreeWallPosition(window.freePosition) } catch { return 'Bloqueos o posición de ventana inválidos.' }
     ids.add(window.id)
+    if (window.freePosition) continue
     const surface = pack.surfaces.find((wall) => wall.kind === 'wall' && wall.wall === window.wall)
     if (!surface || Math.abs(window.offset) + window.width / 2 > surface.width / 2 - ROOM_LIMITS.edgeMargin + 1e-8
       || window.sill < 0 || window.sill + window.height > surface.height - 0.08) {

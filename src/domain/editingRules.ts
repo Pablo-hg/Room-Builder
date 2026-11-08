@@ -106,6 +106,15 @@ export function roomForWindowUpdate(room: RoomConfig, currentWindow: WindowConfi
     }),
   }
   const candidate = withWindow(room, currentWindow.id, adjusted)
+  if (currentWindow.freePosition) {
+    if (partial.wall !== undefined) {
+      candidate.windows = candidate.windows.map((window) => {
+        if (window.id !== currentWindow.id) return window
+        const { freePosition: _freePosition, ...attached } = window
+        return attached
+      })
+    } else return candidate
+  }
   if (partial.wall === undefined || partial.wall === currentWindow.wall || partial.offset !== undefined || !validateOpenings(candidate)) return candidate
   const offset = findAvailableOpeningOffset(wallLength(room, partial.wall), currentWindow.width, currentWindow.offset, (value) =>
     !validateOpenings(withWindow(room, currentWindow.id, { ...adjusted, offset: value })),

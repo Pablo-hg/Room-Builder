@@ -13,6 +13,8 @@ import { snapMeasurement } from '../../domain/measurements'
 import { openingMovementAllowed } from '../../domain/axisLocks'
 import { focusedCreationTarget, focusedRoom, packRoomBox, rebasePack, resizedRoomPack, selectedEditableRoom, worldRoomBoxes } from '../../domain/roomEditing'
 import { planRoomCreation } from '../../domain/roomCreation'
+import { windowPlacementWalls } from '../../domain/windowPlacement'
+import { wallObjectLocksAllow } from '../../domain/wallObjectPlacement'
 import { BASE_ROOM_SURFACE_IDS } from '../../domain/elementFolders'
 import { hasCoincidentWall, structureDoorError, structureDoorPosition } from '../../domain/structureDoors'
 import type { StructurePack, StructureSurfaceKey, WallSide, WindowConfig } from '../../domain/types'
@@ -401,9 +403,9 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
     addWindow: (shape = 'rectangular') => set((state) => {
       const definition = OPENING_CATALOG[openingKindForShape(shape)]
       const focusedPack = state.structurePacks.find((pack) => pack.id === state.activeRoomId && pack.id.startsWith('floor-pack-'))
-      const walls: WallSide[] = ['north', 'east', 'south', 'west']
+      const walls = windowPlacementWalls(state)
       const windowId = makeId('window')
-      for (const wall of walls) {
+      for (const { wall, visible } of walls) {
         const wallSurface = focusedPack?.surfaces.find((surface) => surface.kind === 'wall' && surface.wall === wall)
         if (focusedPack && (!wallSurface || hasCoincidentWall(state.room, state.structurePacks, focusedPack, wallSurface))) continue
         const buildWindow = (offset: number): WindowConfig => ({
@@ -428,7 +430,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
               ? { ...pack, windows: [...(pack.windows ?? []), window] } : pack),
           } : { room: { ...state.room, windows: [...state.room.windows, window] } }),
           ...(folderId ? { elementFolderAssignments: { ...state.elementFolderAssignments, [window.id]: folderId } } : {}),
-          selectedId: window.id, notice: `${definition.name} añadida.`,
+          selectedId: window.id, notice: visible ? `${definition.name} añadida.` : `${definition.name} añadida en una pared oculta: no había espacio válido en las visibles.`,
         }
       }
       return { notice: `No queda espacio válido para colocar ${definition.name.toLowerCase()} en la habitación enfocada.` }
@@ -445,6 +447,10 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
         }
         const replaceWindow = (window: WindowConfig) => ({ ...pack, windows: pack.windows!.map((item) => item.id === id ? window : item) })
         let nextWindow = { ...currentWindow, ...adjusted }
+        if (currentWindow.freePosition && partial.wall !== undefined) {
+          const { freePosition: _freePosition, ...attached } = nextWindow
+          nextWindow = attached
+        }
         let candidatePack = replaceWindow(nextWindow)
         let error = structureWindowError(candidatePack)
         if (error && partial.wall !== undefined && partial.wall !== currentWindow.wall && partial.offset === undefined) {
@@ -458,7 +464,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
           }
         }
         if (error) return { notice: error }
-        if (!openingMovementAllowed(currentWindow, nextWindow)) return {}
+        if (!openingMovementAllowed(currentWindow, nextWindow) || !wallObjectLocksAllow(state.room, currentWindow, nextWindow, pack)) return { notice: 'El cambio movería un eje bloqueado.' }
         recordInteraction('state.opening.updated', { view: state.view, selectedId: state.selectedId,
           coalesceKey: `opening-${id}`, details: { ...nextWindow, name: elementName(state, id) } })
         return { structurePacks: state.structurePacks.map((item) => item.id === pack.id ? candidatePack : item), notice: '' }
@@ -468,7 +474,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       if (!openingMovementAllowed(currentWindow, partial)) return {}
       const candidate = roomForWindowUpdate(state.room, currentWindow, partial)
       const candidateWindow = candidate.windows.find((window) => window.id === id)
-      if (candidateWindow && !openingMovementAllowed(currentWindow, candidateWindow)) return {}
+      if (candidateWindow && (!openingMovementAllowed(currentWindow, candidateWindow) || !wallObjectLocksAllow(state.room, currentWindow, candidateWindow))) return { notice: 'El cambio movería un eje bloqueado.' }
       const update = safeRoomUpdate(state, candidate)
       const nextWindow = candidate.windows.find((window) => window.id === id)
       if (update.room && nextWindow) {

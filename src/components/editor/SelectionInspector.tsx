@@ -49,7 +49,7 @@ function MultiFurnitureInspector({ items }: { items: MultiItem[] }) {
     {(['x', 'y', 'z'] as const).map((axis) => {
       const min = Math.min(-10, bounds.center[axis])
       const max = Math.max(10, bounds.center[axis], axis === 'y' ? room.height : 0)
-      return <PositionControl key={axis} label={`Posición ${axis.toUpperCase()} del conjunto`} min={min} max={max} step={0.125} value={bounds.center[axis]} disabled={locked || items.some((item) => !item.axes.includes(axis))} onChange={(value) => move(axis, value - bounds.center[axis])} />
+      return <PositionControl key={axis} axis={axis} label={`Posición ${axis.toUpperCase()} del conjunto`} min={min} max={max} step={0.125} value={bounds.center[axis]} disabled={locked || items.some((item) => !item.axes.includes(axis))} onChange={(value) => move(axis, value - bounds.center[axis])} />
     })}
     <ul className="multi-color-list" aria-label="Colores de los elementos">{items.map((item) => <li key={item.id}><ColorControl label={`Color de ${item.name}`} value={item.color} onChange={(color) => setItemColor(item, color)} /></li>)}</ul>
     <div className="object-actions"><button type="button" onClick={rotate} disabled={locked || !canRotate}>↻ Girar conjunto 90°</button></div>

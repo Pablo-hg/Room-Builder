@@ -3,6 +3,7 @@ import { DEFAULT_GRID_VISIBILITY, type PersistedDesign } from './designV1'
 import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, isWindowShape, OPENING_CATALOG, openingKindForShape } from './objectCatalog'
 import { createStructureSurface } from './structureRules'
 import { validateAxisLocks } from './axisLocks'
+import { validateFreeWallPosition } from './freeWallPosition'
 import { rootDoorPack, structureDoorError } from './structureDoors'
 import { structureWindowError } from './structureWindows'
 import type { GridSurface, RoomConfig, StructurePack, StructureSurface, StructureSurfaceKey } from './types'
@@ -66,7 +67,7 @@ export function normalizeDesignRoom(data: PersistedDesign): RoomConfig {
   const doorError = structureDoorError(rootDoorPack(data.room))
   if (doorError) throw new Error(doorError)
   validateAxisLocks(data.room.door.axisLocks)
-  data.room.windows.forEach((window) => validateAxisLocks(window.axisLocks))
+  data.room.windows.forEach((window) => { validateAxisLocks(window.axisLocks); validateFreeWallPosition(window.freePosition) })
   const validName = (name: unknown) => typeof name === 'string' && name.trim() && name.trim().length <= 80 ? name.trim() : undefined
   const { name: doorName, ...door } = data.room.door
   return {

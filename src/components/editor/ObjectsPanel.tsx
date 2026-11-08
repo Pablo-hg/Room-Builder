@@ -61,7 +61,7 @@ export function ObjectsPanel() {
       const icon = isWallPictureShape(window.shape)
         ? <FurnitureIcon kind={window.shape} color={window.color} />
         : <OpeningSwatch kind={openingKindForShape(window.shape) as 'window' | 'circularWindow' | 'wallShelf' | 'mirrorRectangular' | 'mirrorCircular' | 'wallSconce'} color={window.color} />
-      return { id: window.id, name: window.name || `${name} ${index + 1}`, kind: `${family} · pared ${WALL_LABELS[window.wall]}`, icon }
+      return { id: window.id, name: window.name || `${name} ${index + 1}`, kind: `${family} · ${window.freePosition ? 'libre' : `pared ${WALL_LABELS[window.wall]}`}`, icon }
     }),
     ...furniture.map((item) => ({ id: item.id, name: item.name, kind: FURNITURE_FAMILIES.find((family) => family.id === FURNITURE_CATALOG[item.kind].family)?.label ?? 'Mueble', icon: <FurnitureIcon kind={item.kind} color={item.color} /> })),
     ...structurePacks.flatMap((pack) => [
@@ -73,7 +73,7 @@ export function ObjectsPanel() {
         const icon = isWallPictureShape(window.shape)
           ? <FurnitureIcon kind={window.shape} color={window.color} />
           : <OpeningSwatch kind={openingKindForShape(window.shape) as 'window' | 'circularWindow' | 'wallShelf' | 'mirrorRectangular' | 'mirrorCircular' | 'wallSconce'} color={window.color} />
-        return { id: window.id, name: window.name || label, kind: `${family} · pared ${WALL_LABELS[window.wall]}`, icon }
+        return { id: window.id, name: window.name || label, kind: `${family} · ${window.freePosition ? 'libre' : `pared ${WALL_LABELS[window.wall]}`}`, icon }
       }),
       ...(!pack.id.startsWith('floor-object-') && !pack.id.startsWith('wall-object-') ? [{ id: pack.id, name: pack.name, kind: 'Pack de construcción', icon: <StructurePackIcon /> }] : []),
       ...pack.surfaces.map((surface) => ({

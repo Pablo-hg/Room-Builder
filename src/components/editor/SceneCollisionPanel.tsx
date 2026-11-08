@@ -34,7 +34,7 @@ export function SceneCollisionPanel({ collisions, outside }: { collisions: reado
           ))}.</li>
         ))}
         {outside.map(({ id, name }) => (
-          <li key={`outside-${id}`}>{objectButton(id, name)} está fuera de una habitación.</li>
+          <li key={`outside-${id}`}>{objectButton(id, name)} está fuera de la vivienda, en el vacío.</li>
         ))}
       </ul>
     </aside>

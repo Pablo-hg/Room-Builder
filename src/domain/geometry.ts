@@ -1,6 +1,6 @@
 import { ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from './constants'
 import { DEFAULT_ROTATION_STEP, furnitureAttachment } from './objectCatalog'
-import type { DoorConfig, FurnitureItem, RoomConfig, WallOpening, WallSegment, WallSide, WindowConfig } from './types'
+import type { DoorConfig, FurnitureItem, RoomConfig, ViewMode, WallOpening, WallSegment, WallSide, WindowConfig } from './types'
 
 export const wallLength = (room: RoomConfig, wall: WallSide) =>
   wall === 'north' || wall === 'south' ? room.width : room.depth
@@ -24,7 +24,7 @@ export function openingInterval(offset: number, width: number): [number, number]
  * nuevo muro o colisionar con otra apertura aunque existan huecos libres.
  * No sustituye la validación: cada candidato se comprueba con el validador real.
  */
-export function findAvailableOpeningOffset(length: number, width: number, preferred: number, isValid: (offset: number) => boolean, edgeMargin = ROOM_LIMITS.edgeMargin): number | null {
+export function findAvailableOpeningOffset(length: number, width: number, preferred: number, isValid: (offset: number) => boolean, edgeMargin: number = ROOM_LIMITS.edgeMargin): number | null {
   if (![length, width, preferred, edgeMargin].every(Number.isFinite)) return null
   const maximumCm = Math.floor(((length - width) / 2 - edgeMargin) * 100 + 1e-7)
   if (maximumCm < 0) return null
@@ -47,7 +47,7 @@ export function openingsForWall(room: RoomConfig, wall: WallSide): WallOpening[]
     openings.push({ id: 'door', kind: 'door', offset: room.door.offset, width: room.door.width, bottom: 0, height: room.door.height, rotation: room.door.rotation, color: room.door.color ?? '#ac704b' })
   }
   for (const door of room.extraDoors ?? []) if (door.wall === wall) openings.push({ id: door.id, kind: 'door', offset: door.offset, width: door.width, bottom: 0, height: door.height, rotation: door.rotation, color: door.color ?? '#ac704b' })
-  room.windows.filter((window) => window.wall === wall).forEach((window) => {
+  room.windows.filter((window) => window.wall === wall && !window.freePosition).forEach((window) => {
     openings.push({ id: window.id, kind: 'window', shape: window.shape, offset: window.offset, width: window.width, bottom: window.sill, height: window.height, rotation: window.rotation, color: window.color ?? '#c88f58' })
   })
   return openings
@@ -164,6 +164,16 @@ export const hiddenWallForCardinalTarget = (targetWall: WallSide): WallSide => {
     west: 'east',
   }
   return opposite[targetWall]
+}
+
+/** Shared visibility policy for rendering and placing elements in the current view. */
+export function hiddenWallsForView(view: ViewMode, orientation: number, wallView: WallSide | null, freeAzimuth: number, exportMode = false): WallSide[] {
+  if (exportMode) return []
+  if (view === 'top') return [...WALL_SIDES]
+  if (view === 'front') return [hiddenWallForCardinalTarget(wallView ?? 'north')]
+  if (view === 'isometric') return hiddenWallsForOrientation(orientation)
+  if (view === 'free') return hiddenWallsForOrientation(orientationForAzimuth(freeAzimuth))
+  return []
 }
 
 export function shortestAngleDelta(from: number, to: number) {

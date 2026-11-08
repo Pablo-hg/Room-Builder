@@ -6,6 +6,16 @@
 
 ## Hallazgos y condición de parada
 
+### Ampliación solicitada: volumen de vivienda y elementos murales libres
+
+El propietario solicita que el aviso de exterior se base en el conjunto de volúmenes 3D de la vivienda y que ventanas/decoración mural puedan abandonar su pared y pasar a otras habitaciones. Aclara que las puertas conservan su bloqueo vertical. Para esta ampliación se conserva el comportamiento de puertas y se añade movimiento mundial XYZ a ventanas y decoración.
+
+Diseño de implementación: comprobar cobertura por la unión de cuerpos de habitaciones, incluyendo sus apoyos, sin rellenar patios o huecos con una caja global. Para ventanas/decoración, añadir `freePosition?: { x, y, z, yaw }` en metros/radianes; ausencia conserva exactamente el anclaje histórico. Al mover un elemento por XYZ se despega, deja de recortar su pared y conserva su modelo/orientación. Su centro permite cambiar de habitación/carpeta con el movimiento, sin recolocación. Elegir una pared explícitamente vuelve a usar las reglas constructivas de anclaje, límites y huecos; no se abren huecos en paredes ambiguas automáticamente.
+
+Los diseños que usen posiciones libres se guardarán como **v9**, conservando lectores v1–v8. Normalización, JSON y el round-trip ProjectV2 deben validar y conservar el campo; no se migran coordenadas de diseños históricos. El estado de implementación y verificación de esta continuación se registra en el informe F0. Se preparan pruebas sin ejecutarlas en esta rama.
+
+**Aclaración posterior del propietario:** mientras un elemento esté fijado, sus ejes mundiales perpendiculares a la pared quedan deshabilitados/ocultos y deslizarlo mantiene el hueco. La libertad XYZ anterior se activa explícitamente con **Despegar de la pared**, conservando posición y candados. Cambiar de pared o reanclar actualiza X/Z automáticamente; los elementos ya libres conservan su estado. Véase la última continuación del informe F0.
+
 - `geometry.validateOpenings` bloquea parejas en la misma pared usando intervalos y `openingGap` de 15 cm. Es una restricción de separación, no un detector de intersección física: también rechaza proximidad. `structureDoorError` mantiene otro rechazo para puertas adicionales/packs.
 - `structureCollisions` y `geometry.furnitureItemsOverlap` reutilizan SAT sobre cajas orientadas en XZ y prueba de altura. Sirven para volúmenes de mobiliario, pero no ofrecen una lista común de parejas. Los booleanos de advertencia incluyen salida de habitación y superficies; no deben convertirse directamente en entradas de un panel de colisiones.
 - La detección actual no representa ventanas/puertas de forma homogénea. Las paredes de packs se consideran macizas en ciertos avisos aunque el render tenga huecos; la raíz tampoco sigue exactamente el mismo recorrido. Decoraciones, ventanas circulares, giros de aperturas y partes huecas de muebles necesitan una fase geométrica más precisa si se promete intersección real.

@@ -34,6 +34,7 @@ export function resizedWallObject(room: RoomConfig, item: WindowConfig, dimensio
   if (!result.value) return { error: result.error! }
   // Se conserva offset/sill: son el centro horizontal y la base sobre la pared.
   const next = { ...room, windows: room.windows.map((candidate) => candidate.id === item.id ? result.value! : candidate) }
+  if (item.freePosition) return { value: next }
   const error = validateOpenings(next)
   if (error) return { error }
   if (item.shape === 'rectangular' || item.shape === 'circular') {

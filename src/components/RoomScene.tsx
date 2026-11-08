@@ -22,6 +22,7 @@ import { prioritizeTransformControls } from '../scene/interactionPriority'
 import { FreeCameraKeyboard } from '../scene/FreeCameraKeyboard'
 import { baseWallId, folderSelectionId, ROOT_ROOM_FOLDER } from '../domain/elementFolders'
 import { packRoomBox } from '../domain/roomEditing'
+import { WorldWallObjects } from '../scene/WorldWallObjects'
 
 function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null>; collisionIds: ReadonlySet<string> }) {
   const selectedId = useRoomStore((state) => state.selectedId)
@@ -101,9 +102,10 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
         ))}
         {showBase && !props.exportMode && props.view === 'top' && WALL_SIDES.flatMap((wall) =>
           openingsForWall(props.room, wall)
-            .filter((opening) => !hiddenElementIds.includes(opening.id))
+            .filter((opening) => opening.kind === 'door' && !hiddenElementIds.includes(opening.id))
             .map((opening) => <PlanOpening key={`${wall}-${opening.id}`} room={props.room} opening={opening} wall={wall} groupSelected={groupSelected} colliding={props.collisionIds.has(opening.id)} />),
         )}
+        <WorldWallObjects room={props.room} structurePacks={props.structurePacks} collisionIds={props.collisionIds} exportMode={props.exportMode} level={level} levelHeight={levelHeight} focusedView={focusedView} />
         {props.furniture.filter((item) => !hiddenElementIds.includes(item.id) && (!focusedView || (item.y >= level - 0.01 && item.y < level + levelHeight))).map((item) => (
           <FurnitureObject
             key={item.id}

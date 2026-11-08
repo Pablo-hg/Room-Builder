@@ -200,6 +200,17 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
             } else {
               const id = makeId('window')
               const owner = packWindowById(state.structurePacks, copy.id)
+              if (copy.freePosition) {
+                const pasted = { ...copy, id, freePosition: { ...copy.freePosition, x: snapMeasurement(copy.freePosition.x + 0.5), z: snapMeasurement(copy.freePosition.z + 0.5) } }
+                if (owner) {
+                  structurePacks = structurePacks.map((pack) => pack.id === owner.pack.id ? { ...pack, windows: [...(pack.windows ?? []), pasted] } : pack)
+                  changedPacks = true
+                } else windows.push(pasted)
+                pastedIds.push(id)
+                const folder = state.elementFolderAssignments[copy.id]
+                if (folder) assignments[id] = folder
+                continue
+              }
               if (owner) {
                 const pack = structurePacks.find((candidate) => candidate.id === owner.pack.id)!
                 const offset = findAvailableOpeningOffset(
@@ -259,6 +270,15 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
           return { furniture: [...state.furniture, pasted], selectedId: pasted.id, notice: `${pasted.name} pegado.` }
         }
   
+        if (copy.freePosition) {
+          const id = makeId('window')
+          const pasted = { ...copy, id, freePosition: { ...copy.freePosition, x: snapMeasurement(copy.freePosition.x + 0.5), z: snapMeasurement(copy.freePosition.z + 0.5) } }
+          const owner = packWindowById(state.structurePacks, copy.id)
+          const folder = state.elementFolderAssignments[copy.id]
+          return { ...(owner ? { structurePacks: state.structurePacks.map((pack) => pack.id === owner.pack.id ? { ...pack, windows: [...(pack.windows ?? []), pasted] } : pack) }
+            : { room: { ...state.room, windows: [...state.room.windows, pasted] } }),
+            ...(folder ? { elementFolderAssignments: { ...state.elementFolderAssignments, [id]: folder } } : {}), selectedId: id, notice: 'Elemento mural pegado.' }
+        }
         const packSource = packWindowById(state.structurePacks, copy.id)
         if (packSource) {
           const { pack, window } = packSource

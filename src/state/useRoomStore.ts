@@ -16,6 +16,7 @@ import { initialRoomFolder } from '../domain/elementFolders'
 import { normalizeDesign } from '../persistence/designMigrations'
 import { createResizeActions } from './actions/resizeActions'
 import { createStructureDoorActions } from './actions/structureDoorActions'
+import { createWallObjectActions } from './actions/wallObjectActions'
 import { rootDoorPack, structureDoorsWorldError, structureDoorPosition } from '../domain/structureDoors'
 import { packRoomBox } from '../domain/roomEditing'
 import { movedSceneFolderAssignments } from '../domain/spatialFolderPlacement'
@@ -55,11 +56,11 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
         const removedWalls = old?.surfaces.filter((surface) => surface.kind === 'wall' && !pack.surfaces.some((candidate) => candidate.id === surface.id)).map((surface) => surface.wall) ?? []
         return removedWalls.length ? { ...pack,
           ...(pack.doors ? { doors: pack.doors.filter((door) => !removedWalls.includes(door.wall)) } : {}),
-          ...(pack.windows ? { windows: pack.windows.filter((window) => !removedWalls.includes(window.wall)) } : {}),
+          ...(pack.windows ? { windows: pack.windows.filter((window) => window.freePosition || !removedWalls.includes(window.wall)) } : {}),
         } : pack
       })
-      const remaining = new Set([...((nextUpdate.room ?? current.room).extraDoors ?? []).map((door) => door.id), ...structurePacks.flatMap((pack) => [...(pack.doors ?? []).map((door) => door.id), ...(pack.windows ?? []).map((window) => window.id)])])
-      const removed = new Set([...(current.room.extraDoors ?? []).map((door) => door.id), ...current.structurePacks.flatMap((pack) => [...(pack.doors ?? []).map((door) => door.id), ...(pack.windows ?? []).map((window) => window.id)])].filter((id) => !remaining.has(id)))
+      const remaining = new Set([...(nextUpdate.room ?? current.room).windows.map((window) => window.id), ...((nextUpdate.room ?? current.room).extraDoors ?? []).map((door) => door.id), ...structurePacks.flatMap((pack) => [...(pack.doors ?? []).map((door) => door.id), ...(pack.windows ?? []).map((window) => window.id)])])
+      const removed = new Set([...current.room.windows.map((window) => window.id), ...(current.room.extraDoors ?? []).map((door) => door.id), ...current.structurePacks.flatMap((pack) => [...(pack.doors ?? []).map((door) => door.id), ...(pack.windows ?? []).map((window) => window.id)])].filter((id) => !remaining.has(id)))
       nextUpdate = { ...nextUpdate, structurePacks }
       if (removed.size) nextUpdate = { ...nextUpdate,
         hiddenElementIds: (nextUpdate.hiddenElementIds ?? current.hiddenElementIds).filter((id) => !removed.has(id)),
@@ -87,7 +88,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     // An element entering another room's 3D volume moves into that room's
     // scene folder in the SAME history entry as its geometry. Undo/redo restore
     // persisted assignments verbatim, without a second automatic reparenting.
-    if (!runtime.isUndoing && !replacingDesign && (Object.hasOwn(rawUpdate, 'furniture') || Object.hasOwn(rawUpdate, 'structurePacks'))) {
+    if (!runtime.isUndoing && !replacingDesign && (Object.hasOwn(rawUpdate, 'furniture') || Object.hasOwn(rawUpdate, 'structurePacks') || Object.hasOwn(rawUpdate, 'room'))) {
       const movedAssignments = movedSceneFolderAssignments(
         current, { ...current, ...nextUpdate },
         Object.hasOwn(rawUpdate, 'furniture'), Object.hasOwn(rawUpdate, 'structurePacks'),
@@ -177,6 +178,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     ...createCameraActions(context),
     ...createConstructionActions(context),
     ...createStructureDoorActions(context),
+    ...createWallObjectActions(context),
     ...createFurnitureActions(context),
     ...createSelectionActions(context),
     ...createFolderActions(context),

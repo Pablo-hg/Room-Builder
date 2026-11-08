@@ -1,5 +1,7 @@
 # Datos, unidades, guardado e interoperabilidad
 
+> **Ampliación local 08/11/2026, solicitada por el propietario:** ventanas/decoración mural admiten `WindowConfig.freePosition?: { x, y, z, yaw }`. Son coordenadas mundiales de la base en metros y orientación alrededor de Y en radianes. Ausencia conserva el anclaje histórico; presencia despega el elemento y excluye su hueco de la pared. Los diseños que usan este campo se escriben como **v9**; los lectores conservan v1–v8 y rechazan posiciones libres en versiones anteriores. JSON, normalización y el round-trip candidato ProjectV2 conservan y validan el campo. No se convierten posiciones históricas. Versiones anteriores de la aplicación que solo admiten hasta v8 no pueden abrir diseños v9. Implementación local con tipado verificado; migraciones/round-trips y E2E preparados pero sin ejecutar. Véase la continuación del informe [F0](progress/F0_REFACTOR_AUDIT.md).
+
 > **VIGENCIA ACTUAL 04/11/2026:** el MVP comprometido incluye un contrato versionado de **casa con plantas y habitaciones** (#51–#53) y nuevos datos de cotas (#38), materiales (#39), cámaras (#40), plantillas (#41), importación de plano (#45) y objetos modulares (#47). **Todavía no están implementados**. R5.3 sí implementa JSON editable de una habitación (certificación #25). El selector A/B se retiró por RB-040; v5 se lee por compatibilidad. Plan canónico: [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md). Los párrafos R3/R4/R5 inferiores son fotografías históricas.
 
 

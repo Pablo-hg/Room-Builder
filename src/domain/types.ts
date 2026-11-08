@@ -50,6 +50,8 @@ export interface DoorConfig {
 }
 
 export interface WindowConfig {
+  /** v9: detached world-space base centre and wall yaw; absent preserves legacy support. */
+  freePosition?: { x: number; y: number; z: number; yaw: number }
   axisLocks?: AxisLocks
   name?: string
   id: string

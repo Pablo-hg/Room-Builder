@@ -163,9 +163,9 @@ export function StructureSurfaceObject({
       {openings.length ? <group position={position} rotation={[0, baseRotation + surface.rotation, 0]}>
         <group position={[0, -surface.height / 2, 0]}>
           <WallBody length={surface.width} height={surface.height} openings={openings} color={surface.color} depth={surface.depth} onPointerDown={selectSurface} />
-          {openings.filter((opening) => !hiddenIds.includes(opening.id)).map((opening) => <group key={opening.id}>
+          {openings.filter((opening) => opening.kind === 'door' && !hiddenIds.includes(opening.id)).map((opening) => <group key={opening.id}>
             <OpeningDetail room={room} wall={wall} opening={opening} selected={selectedId === opening.id} locked={openingLockedIds.includes(opening.id)} frame={frame ?? undefined} />
-            {showCollision && (selectedId === opening.id || collisionIds.has(opening.id)) && <group position={[opening.offset, opening.height / 2, 0]}><SelectionBounds width={opening.width} height={opening.height} depth={surface.depth + 0.08} collision={collisionIds.has(opening.id)} /></group>}
+            {showCollision && (selectedId === opening.id || collisionIds.has(opening.id)) && <group position={[opening.offset, opening.bottom + opening.height / 2, 0]}><SelectionBounds width={opening.width} height={opening.height} depth={surface.depth + 0.08} collision={collisionIds.has(opening.id)} /></group>}
           </group>)}
         </group>
       </group> : <mesh
@@ -218,7 +218,7 @@ export function StructureDoorPlan({ room, packId, surface, collisionIds }: { roo
   const [x, y, z] = surfacePosition(room, surface)
   const angle = { north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 }[surface.wall] + surface.rotation
   return <group position={[x, y - surface.height / 2 + 0.05, z]} rotation={[0, angle, 0]}>
-    {structurePackOpenings(pack, surface).filter((door) => !hiddenIds.includes(door.id)).map((door) => <group key={door.id} position={[door.offset, 0, 0]}>
+    {structurePackOpenings(pack, surface).filter((door) => door.kind === 'door' && !hiddenIds.includes(door.id)).map((door) => <group key={door.id} position={[door.offset, 0, 0]}>
       <mesh onPointerDown={(event) => { event.stopPropagation(); selectSceneObject(door.id, event.nativeEvent) }}>
         <boxGeometry args={[door.width, 0.06, surface.depth + 0.08]} /><meshBasicMaterial color={selectedId === door.id ? '#ea6f4c' : door.kind === 'window' ? '#e9b87d' : '#e9895b'} />
       </mesh>

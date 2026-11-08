@@ -1,5 +1,7 @@
 # Registro de decisiones — Room Builder
 
+> **Petición posterior del propietario, 08/11/2026 (rama #34):** ventanas y decoración mural pueden despegarse y moverse en XYZ mundial; las puertas conservan Y bloqueada y anclaje constructivo. La representación opcional `freePosition` se guarda en v9, sin migrar posiciones históricas; despegar una ventana retira el hueco y volver a abrirlo exige colocación explícita válida. El aviso de exterior se basa en la unión de cuerpos de habitaciones, no en contención en una sola. Amplía el anclaje mural de RB-035/RB-041 para esos elementos; no autoriza medianeras duplicadas ni huecos superpuestos. Implementación local y verificación pendiente en [F0](progress/F0_REFACTOR_AUDIT.md).
+
 > **Última decisión RB-052 (04/11/2026):** el MVP final incluye **vivienda por plantas**, editor de vértices, POV WASD y las siete funciones RB-045–RB-051. v0.2 (#33) queda como checkpoint, **gate final #54**. RB-040 mantiene retirada A/B; RB-039/RB-041 permiten solapes de muebles. **Lecturas anteriores que llamen «futuro» a casas/POV son históricas**, superadas por RB-052. Plan canónico: [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md). Workshop/IA/monetización permanecen en [FUTURE_IMPROVEMENTS.md](FUTURE_IMPROVEMENTS.md).
 
 **Fecha base:** 26/10/2026. Este registro pertenece exclusivamente a Room Builder. NO modifica el registro global de Pablo Web 2.0.

@@ -2,6 +2,7 @@ import { structureSurfaceElementId } from './elementIds'
 import { ROOT_ROOM_FOLDER } from './elementFolders'
 import { surfacePosition, worldRoomBoxes } from './roomEditing'
 import type { RoomState } from '../state/types'
+import { wallObjectPosition, wallObjects } from './wallObjectPlacement'
 
 type SpatialState = Pick<RoomState, 'room' | 'structurePacks' | 'furniture' | 'elementFolderAssignments' | 'elementFolders'>
 type Point = { x: number; y: number; z: number }
@@ -54,6 +55,16 @@ export function movedSceneFolderAssignments(
     for (const item of after.furniture) {
       const old = previous.get(item.id)
       if (old) setFolder(item.id, furnitureCenter(old), furnitureCenter(item))
+    }
+  }
+  if (before.room !== after.room || packsChanged) {
+    const previousWindows = new Map(wallObjects(before).map((source) => [source.window.id, source]))
+    for (const { window, pack } of wallObjects(after)) {
+      const old = previousWindows.get(window.id)
+      if (!old) continue
+      const from = wallObjectPosition(before.room, old.window, old.pack), to = wallObjectPosition(after.room, window, pack)
+      if (from.x === to.x && from.y === to.y && from.z === to.z) continue
+      setFolder(window.id, { ...from, y: from.y + old.window.height / 2 }, { ...to, y: to.y + window.height / 2 })
     }
   }
   if (packsChanged) {

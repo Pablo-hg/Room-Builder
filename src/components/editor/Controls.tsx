@@ -6,6 +6,7 @@ import { structureDimensionMinimum } from '../../domain/structureRules'
 import { OpeningIcon } from '../iconCatalog'
 import { useRoomStore } from '../../state/useRoomStore'
 import { focusedRoom } from '../../domain/roomEditing'
+import { AXIS_COLORS } from '../../scene/axisColors'
 
 export function DimensionControl({ field, label }: { field: 'width' | 'depth' | 'height'; label: string }) {
   const state = useRoomStore()
@@ -25,9 +26,9 @@ export function ColorControl({ label, value, onChange, disabled = false }: { lab
   )
 }
 
-export function PositionControl({ label, value, min, max, disabled = false, onChange }: { label: string; value: number; min: number; max: number; step: number; disabled?: boolean; onChange: (value: number) => void }) {
+export function PositionControl({ label, value, min, max, disabled = false, onChange, axis }: { label: string; value: number; min: number; max: number; step: number; disabled?: boolean; axis?: PositionAxis; onChange: (value: number) => void }) {
   const inputLabel = `Introducir ${label.replace(/^Posición /, '').replace(/^Desplazamiento /, '').replace(/^Mover pack /, '')} en metros`
-  return <MeasurementControl label={label} inputLabel={inputLabel} value={value} min={min} max={max} disabled={disabled} onChange={onChange} />
+  return <MeasurementControl label={label} inputLabel={inputLabel} value={value} min={min} max={max} disabled={disabled} onChange={onChange} textColor={axis ? AXIS_COLORS[axis].normal : undefined} />
 }
 
 export function AxisPositionControl({ id, axis, locked, disabled = false, unavailable = false, ...props }: {
@@ -36,8 +37,8 @@ export function AxisPositionControl({ id, axis, locked, disabled = false, unavai
 }) {
   const setElementAxisLock = useRoomStore((state) => state.setElementAxisLock)
   return <div className="axis-position-control">
-    <label className="axis-position-lock"><input type="checkbox" aria-label={`Bloquear eje ${axis.toUpperCase()}`} checked={locked || unavailable} disabled={disabled || unavailable} onChange={(event) => setElementAxisLock(id, axis, event.target.checked)} /> Bloquear {axis.toUpperCase()}</label>
-    <PositionControl {...props} disabled={disabled || locked || unavailable} />
+    <label className="axis-position-lock" style={{ color: AXIS_COLORS[axis].normal }}><input type="checkbox" style={{ accentColor: AXIS_COLORS[axis].normal }} aria-label={`Bloquear eje ${axis.toUpperCase()}`} checked={locked || unavailable} disabled={disabled || unavailable} onChange={(event) => setElementAxisLock(id, axis, event.target.checked)} /> Bloquear {axis.toUpperCase()}</label>
+    <PositionControl {...props} axis={axis} disabled={disabled || locked || unavailable} />
   </div>
 }
 
@@ -61,7 +62,7 @@ export function StructurePositionControls({
       {(['x', 'y', 'z'] as const).map((axis) => {
         const step = ROOM_LIMITS.placementStep
         const props = { label: `${label} ${axis.toUpperCase()}`, min: Math.floor(Math.min(-10, position[axis]) / step) * step, max: Math.ceil(Math.max(10, position[axis]) / step) * step, step, value: position[axis], disabled, onChange: (value: number) => onChange(axis, value) }
-        return elementId ? <AxisPositionControl key={axis} {...props} id={elementId} axis={axis} locked={axisLocks?.[axis] ?? false} /> : <PositionControl key={axis} {...props} />
+        return elementId ? <AxisPositionControl key={axis} {...props} id={elementId} axis={axis} locked={axisLocks?.[axis] ?? false} /> : <PositionControl key={axis} {...props} axis={axis} />
       })}
     </>
   )

@@ -4,6 +4,7 @@ import { validateOpenings } from '../domain/geometry'
 import { normalizeDesignPreferences, normalizeStructurePacks } from '../domain/normalizeDesignV1'
 import { FURNITURE_PRESETS, isWindowShape } from '../domain/objectCatalog'
 import { validateAxisLocks } from '../domain/axisLocks'
+import { validateFreeWallPosition } from '../domain/freeWallPosition'
 import { rootDoorPack, structureDoorError } from '../domain/structureDoors'
 import {
   PROJECT_SCHEMA_VERSION,
@@ -37,6 +38,7 @@ function assertMigratableDesign(data: PersistedDesign): void {
   }
   if (!Array.isArray(room.windows)) throw new Error('invalid windows')
   for (const window of room.windows) {
+    validateFreeWallPosition(window.freePosition)
     validateAxisLocks(window?.axisLocks)
     if (
       !window
@@ -72,6 +74,7 @@ function assertMigratableDesign(data: PersistedDesign): void {
     ) throw new Error('invalid furniture')
   }
   if (data.structurePacks !== undefined) normalizeStructurePacks(data.structurePacks, room)
+  if (data.version < 9 && [...room.windows, ...(data.structurePacks ?? []).flatMap((pack) => pack.windows ?? [])].some((window) => window.freePosition !== undefined)) throw new Error('Las posiciones libres requieren v9.')
 }
 
 function canonicalWalls(projectId: string, room: RoomConfig, roomId: string): WallV2[] {
@@ -112,6 +115,7 @@ function doorOpening(projectId: string, roomId: string, door: DoorConfig, id = `
 
 function windowOpening(projectId: string, window: WindowConfig): OpeningV2 {
   return {
+    ...(window.freePosition ? { freePosition: { ...window.freePosition } } : {}),
     ...(window.axisLocks ? { axisLocks: { ...window.axisLocks } } : {}),
     id: window.id,
     ...(window.name ? { name: window.name } : {}),
@@ -282,6 +286,7 @@ export function projectToPersistedDesignV1(project: ProjectV2, layoutId = projec
       ...(opening.name ? { name: opening.name } : {}),
       id: opening.id,
       shape: opening.shape ?? 'rectangular',
+      ...(opening.freePosition ? { freePosition: { ...opening.freePosition } } : {}),
       wall: wallSides.get(opening.wallId)!,
       offset: opening.offset,
       width: opening.width,

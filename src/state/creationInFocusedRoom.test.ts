@@ -49,7 +49,7 @@ for (const direction of ['up', 'east'] as const) {
     }
     assert.equal(store.getState().activeRoomId, focusedPack.id)
     const persisted = persistedDesign(store.getState())
-    assert.equal(persisted.elementFolderAssignments[chairId], target.folderId)
+    assert.equal(persisted.elementFolderAssignments![chairId], target.folderId)
   })
 }
 

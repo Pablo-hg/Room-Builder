@@ -40,6 +40,9 @@ export function normalizeDesign(value: unknown): PersistedDesign {
   const room = normalizeDesignRoom(source)
   if (![room.width, room.depth, room.height].every((value) => Number.isFinite(value) && value > 0)) throw new Error('Las dimensiones de la habitación no son válidas.')
   const structurePacks = normalizeStructurePacks(source.structurePacks, room)
+  if (source.version < 9 && [...room.windows, ...structurePacks.flatMap((pack) => pack.windows ?? [])].some((window) => window.freePosition !== undefined)) {
+    throw new Error('Las posiciones murales libres requieren un diseño v9.')
+  }
   const doorError = structureDoorsWorldError(room, structurePacks)
   if (doorError) throw new Error(doorError)
   const usedIds = new Set(['door', ...BASE_ROOM_SURFACE_IDS, ...room.windows.map((window) => window.id), ...source.furniture.map((item) => item?.id),

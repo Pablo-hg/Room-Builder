@@ -385,8 +385,9 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
   )
 }
 
-export function OpeningDetail({ room, opening, wall, selected, locked, frame }: { room: RoomConfig; opening: WallOpening; wall: WallSide; selected: boolean; locked: boolean; frame?: PackWindowFrame }) {
+export function OpeningDetail({ room, opening, wall, selected, locked, frame, interactive = true }: { room: RoomConfig; opening: WallOpening; wall: WallSide; selected: boolean; locked: boolean; frame?: PackWindowFrame; interactive?: boolean }) {
   const interaction = useOpeningInteraction(room, opening, wall, false, locked, frame)
+  const detailEvents = interactive ? interaction.events : {}
   const capabilities = openingCapabilities(opening.kind)
   const canMoveHorizontal = capabilities.translation.includes('wall-horizontal')
   const canMoveVertical = capabilities.translation.includes('wall-vertical')
@@ -396,7 +397,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame }: 
   if (opening.kind === 'door') {
     const frameWidth = 0.07
     return (
-      <group position={[opening.offset, 0, 0.02]} {...interaction.events}>
+      <group position={[opening.offset, 0, 0.02]} {...detailEvents}>
         {selected && !locked && (
           <group position={[0, opening.height / 2, 0]}>
             <OpeningMoveGizmo
@@ -429,7 +430,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame }: 
     const shelfDepth = 0.25
     const shelfColor = baseColor
     return (
-      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.08]} {...interaction.events}>
+      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.08]} {...detailEvents}>
         {selected && !locked && (
           <>
             {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
@@ -457,7 +458,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame }: 
     const circular = opening.shape === 'mirrorCircular'
     const radius = Math.min(opening.width, opening.height) / 2
     return (
-      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.07]} {...interaction.events}>
+      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.07]} {...detailEvents}>
         {selected && !locked && (
           <>
             {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
@@ -490,7 +491,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame }: 
   }
   if (opening.shape === 'wallSconce') {
     return (
-      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.075]} {...interaction.events}>
+      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.075]} {...detailEvents}>
         {selected && !locked && (
           <>
             {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
@@ -516,7 +517,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame }: 
     const frameWidth = Math.min(0.07, opening.width * 0.12, opening.height * 0.12)
     const accent = colorTone(baseColor, -0.08)
     return (
-      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.07]} {...interaction.events}>
+      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.07]} {...detailEvents}>
         {selected && !locked && (
           <>
             {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
@@ -556,7 +557,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame }: 
   if (opening.shape === 'circular') {
     const radius = Math.min(opening.width, opening.height) / 2
     return (
-      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.01]} {...interaction.events}>
+      <group position={[opening.offset, opening.bottom + opening.height / 2, 0.01]} {...detailEvents}>
         {selected && !locked && (
           <>
             {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
@@ -590,7 +591,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame }: 
     )
   }
   return (
-    <group position={[opening.offset, opening.bottom + opening.height / 2, 0.01]} {...interaction.events}>
+    <group position={[opening.offset, opening.bottom + opening.height / 2, 0.01]} {...detailEvents}>
       {selected && !locked && (
         <>
           {capabilities.rotation.enabled && <OpeningSelectionRing opening={opening} wall={wall} />}
