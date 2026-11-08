@@ -28,8 +28,13 @@ jobs:
           npm --version
           git rev-parse HEAD
       - run: npm ci
-      - run: npm test
-      - run: npm run build
+      - name: Pruebas unitarias
+        run: npm test
+      # El build es una comprobación independiente: no omitirlo si fallan tests.
+      # GitHub Actions evalúa !cancelled() incluso si una etapa anterior falló.
+      - name: Compilación de producción
+        if: ${{ !cancelled() }}
+        run: npm run build
 
   e2e-chromium:
     name: E2E funcional — Chromium (suite completa tests/)

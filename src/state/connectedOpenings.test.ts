@@ -18,8 +18,13 @@ function fixture(kind: 'door' | 'window' = 'window') {
   const small = pack('wall-object-short', 3), large = pack('wall-object-long', 8)
   if (kind === 'window') small.windows = [{ id: 'connected', name: 'Ventana compartida', shape: 'rectangular', wall: 'north', offset: 0, width: 1, height: 1, sill: 1, rotation: 0, color: '#abcdef' }]
   else small.doors = [{ id: 'connected', name: 'Puerta compartida', wall: 'north', offset: 0, width: 1, height: 2.1, rotation: 0, color: '#abcdef' }]
+  // La habitación del fixture elimina sus ventanas iniciales. Quitamos también
+  // sus referencias de carpetas, igual que haría una acción real del editor.
+  // No hay que relajar la validación del archivo para aceptar referencias huérfanas.
+  const elementFolderAssignments = { ...store.getState().elementFolderAssignments }
+  for (const removedWindow of store.getState().room.windows) delete elementFolderAssignments[removedWindow.id]
   store.setState({ ...anchorWallOpenings({ room, structurePacks: [small, large] }),
-    elementFolderAssignments: { ...store.getState().elementFolderAssignments, connected: 'room-root' } })
+    elementFolderAssignments: { ...elementFolderAssignments, connected: 'room-root' } })
   return store
 }
 const opening = (store: ReturnType<typeof fixture>) => worldOpenings(store.getState()).find((item) => item.id === 'connected')!
