@@ -165,6 +165,15 @@ function surfaceOverlapsFurniture(surface: StructureSurface, box: Box, item: Fur
   return overlaps(furnitureBox(item, world), box)
 }
 
+/**
+ * Geometría compartida con el listado de intersecciones de la escena.
+ * Reutiliza la misma prueba SAT que los contornos de advertencia existentes.
+ */
+export type SceneCollisionBox = Box
+export const furnitureSceneBox = furnitureBox
+export const independentSceneBoxes = independentSurfaces
+export const sceneBoxesOverlap = overlaps
+
 /** Visual warning only: contacts with floors and walls do not prevent placement. */
 export function furnitureHasSpatialWarning(world: World, item: FurnitureItem) {
   const box = furnitureBox(item, world)
