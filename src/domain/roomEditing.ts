@@ -1,4 +1,4 @@
-import { BASE_ROOM_SURFACE_IDS, folderElementIds, folderIdFromSelection } from './elementFolders'
+import { BASE_ROOM_SURFACE_IDS, folderElementIds, folderIdFromSelection, ROOT_ROOM_FOLDER } from './elementFolders'
 import { structureSurfaceElementId } from './elementIds'
 import { ROOT_FLOOR_THICKNESS, ROOT_PLATFORM_THICKNESS, ROOT_PLATFORM_Y, WALL_SIDES } from './constants'
 import type { RoomState } from '../state/types'
@@ -74,6 +74,22 @@ export function resizedRoomPack(pack: StructurePack, room: RoomConfig, size: Pic
       y: box.y + (size.height - room.height) / 2,
       z: box.z + (surface.wall === 'south' ? (size.depth - room.depth) / 2 : surface.wall === 'north' ? (room.depth - size.depth) / 2 : 0) }
   }) }
+}
+
+/** Camera focus is the source of truth for where new scene elements belong.
+ * World-space centre and visible tree folder always refer to the same room.
+ * Never infer the creation room from the currently selected object.
+ */
+export function focusedCreationTarget(state: Pick<RoomState, 'room' | 'structurePacks' | 'activeRoomId' | 'elementFolderAssignments' | 'elementFolders'>) {
+  const pack = state.structurePacks.find((candidate) => candidate.id === state.activeRoomId && candidate.id.startsWith('floor-pack-'))
+  const box = pack && packRoomBox(pack, state.room)
+  const candidateFolder = pack ? state.elementFolderAssignments[pack.id] : ROOT_ROOM_FOLDER
+  const folderId = candidateFolder && state.elementFolders.some((folder) => folder.id === candidateFolder) ? candidateFolder : null
+  return {
+    folderId,
+    center: { x: (pack?.x ?? 0) + (box?.x ?? 0), y: (pack?.y ?? 0) + (box?.y ?? 0), z: (pack?.z ?? 0) + (box?.z ?? 0) },
+    size: { width: box?.width ?? state.room.width, height: box?.height ?? state.room.height, depth: box?.depth ?? state.room.depth },
+  }
 }
 
 export function focusedRoom(state: RoomSelectionState & Pick<RoomState, 'activeRoomId'>) {

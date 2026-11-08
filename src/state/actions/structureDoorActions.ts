@@ -3,7 +3,7 @@ import { WALL_SIDES } from '../../domain/constants'
 import { makeId, structureSurfaceElementId } from '../../domain/elementIds'
 import { withoutFolderAssignments } from '../../domain/elementFolders'
 import { hasCoincidentWall, rootDoorPack, structureDoorError, structureDoorPosition } from '../../domain/structureDoors'
-import { focusedRoom } from '../../domain/roomEditing'
+import { focusedCreationTarget, focusedRoom } from '../../domain/roomEditing'
 import { findAvailableOpeningOffset, validateOpenings, wallLength } from '../../domain/geometry'
 import { openingMovementAllowed } from '../../domain/axisLocks'
 import { snapMeasurement } from '../../domain/measurements'
@@ -13,6 +13,7 @@ export function createStructureDoorActions({ set }: RoomActionContext): Pick<Roo
   return {
     addStructureDoor: () => set((state) => {
       const target = focusedRoom(state)
+      const folderId = focusedCreationTarget(state).folderId
       const isRoot = target.kind === 'root'
       const pack = isRoot ? rootDoorPack(state.room) : state.structurePacks.find((candidate) => candidate.id === target.packId)!
       const walls = WALL_SIDES
@@ -27,12 +28,10 @@ export function createStructureDoorActions({ set }: RoomActionContext): Pick<Roo
             if (state.lockedElementIds.includes(`room-wall:${wall}`)) continue
             const room = { ...state.room, extraDoors: next.doors }
             if (validateOpenings(room)) continue
-            const parent = state.elementFolderAssignments.door
-            return { room, elementFolderAssignments: parent ? { ...state.elementFolderAssignments, [door.id]: parent } : state.elementFolderAssignments, selectedId: door.id, notice: 'Puerta añadida a la habitación enfocada.' }
+            return { room, elementFolderAssignments: folderId ? { ...state.elementFolderAssignments, [door.id]: folderId } : state.elementFolderAssignments, selectedId: door.id, notice: 'Puerta añadida a la habitación enfocada.' }
           }
-          const parent = state.elementFolderAssignments[pack.id]
           return { structurePacks: state.structurePacks.map((candidate) => candidate.id === pack.id ? next : candidate),
-            elementFolderAssignments: parent ? { ...state.elementFolderAssignments, [door.id]: parent } : state.elementFolderAssignments,
+            elementFolderAssignments: folderId ? { ...state.elementFolderAssignments, [door.id]: folderId } : state.elementFolderAssignments,
             selectedId: door.id, notice: 'Puerta añadida con un hueco real en su pared.' }
         }
       }

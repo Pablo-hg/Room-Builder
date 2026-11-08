@@ -6,7 +6,7 @@ import { elementName } from '../../domain/selection'
 import { FURNITURE_PRESETS, furnitureVisualYOffset, isCeilingMountedFurniture, isWallPictureKind } from '../../domain/objectCatalog'
 import { furnitureAxisLocks, unlockedAxes } from '../../domain/axisLocks'
 import { supportingFloorTop } from '../../domain/furniturePlacement'
-import { packRoomBox } from '../../domain/roomEditing'
+import { focusedCreationTarget, packRoomBox } from '../../domain/roomEditing'
 import { structureSurfaceElementId } from '../../domain/elementIds'
 import { findFreeFurniturePosition, validateOpenings } from '../../domain/geometry'
 import { snapMeasurement } from '../../domain/measurements'
@@ -142,7 +142,13 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
             placed.y = ceiling ? activePack.y + state.room.height + ceiling.y - ceiling.height / 2 - placed.height : activePack.y + (activeBox?.y ?? 0) + (activeBox?.height ?? state.room.height) - placed.height
           }
         }
-        return { furniture: [...state.furniture, placed], selectedId: id, notice: `${preset.name} añadido.` }
+        const { folderId } = focusedCreationTarget(state)
+        return {
+          furniture: [...state.furniture, placed],
+          ...(folderId ? { elementFolderAssignments: { ...state.elementFolderAssignments, [id]: folderId } } : {}),
+          selectedId: id,
+          notice: `${preset.name} añadido.`,
+        }
       })
     },
     beginFurnitureMove: () => {

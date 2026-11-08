@@ -213,6 +213,12 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
         while (current && foldersToRemove.has(current) && !seen.has(current)) { seen.add(current); current = state.elementFolders.find((folder) => folder.id === current)?.parentId }
         return current
       }
+      // Independent surfaces have no visible parent pack. Removing their
+      // entry from a folder must also remove the now-empty internal pack.
+      for (const pack of state.structurePacks) {
+        if ((pack.id.startsWith('floor-object-') || pack.id.startsWith('wall-object-'))
+          && pack.surfaces.every((surface) => deletedIds.has(structureSurfaceElementId(pack.id, surface.id)))) deletedIds.add(pack.id)
+      }
       for (const pack of state.structurePacks) if (deletedIds.has(pack.id)) for (const surface of pack.surfaces) {
         deletedIds.add(structureSurfaceElementId(pack.id, surface.id)); deletedIds.add(structureGridElementId(pack.id, surface.id))
       }

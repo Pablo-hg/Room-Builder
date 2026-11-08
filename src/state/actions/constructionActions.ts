@@ -10,7 +10,7 @@ import { FURNITURE_PRESETS, isWallMirrorShape, isWallPictureShape, OPENING_CATAL
 import { validateOpenings } from '../../domain/geometry'
 import { snapMeasurement } from '../../domain/measurements'
 import { openingMovementAllowed } from '../../domain/axisLocks'
-import { focusedRoom, packRoomBox, rebasePack, resizedRoomPack, selectedEditableRoom, worldRoomBoxes } from '../../domain/roomEditing'
+import { focusedCreationTarget, focusedRoom, packRoomBox, rebasePack, resizedRoomPack, selectedEditableRoom, worldRoomBoxes } from '../../domain/roomEditing'
 import { planRoomCreation } from '../../domain/roomCreation'
 import { BASE_ROOM_SURFACE_IDS } from '../../domain/elementFolders'
 import { structureDoorError, structureDoorPosition } from '../../domain/structureDoors'
@@ -165,17 +165,28 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
     addStructureObject: (kind) => set((state) => {
       const id = makeId(kind === 'floor' ? 'floor-object' : 'wall-object')
       const surfaceId: StructureSurfaceKey = kind === 'floor' ? 'floor' : 'wall-north'
+      const target = focusedCreationTarget(state)
       const surface = createStructureSurface(state.room, surfaceId)
       surface.name = kind === 'floor' ? 'Suelo independiente' : 'Pared independiente'
-      if (kind === 'floor') surface.y = state.room.height / 2
-      else surface.z = state.room.depth / 2
+      // The surface keeps its local coordinates, but its hidden pack is placed
+      // at the world-space centre of the focused room (including other floors).
+      if (kind === 'floor') {
+        surface.width = target.size.width
+        surface.depth = target.size.depth
+        surface.y = target.size.height / 2
+      } else {
+        surface.width = target.size.width
+        surface.height = target.size.height
+        surface.y = (target.size.height - state.room.height) / 2
+        surface.z = state.room.depth / 2 // Cancel root-north wall offset
+      }
       const ordinal = state.structurePacks.filter((pack) => pack.surfaces.some((item) => item.kind === kind)).length + 1
       const pack: StructurePack = {
         id,
         name: kind === 'floor' ? `Suelo ${ordinal}` : `Pared ${ordinal}`,
-        x: 0,
-        y: 0,
-        z: 0,
+        x: target.center.x,
+        y: target.center.y,
+        z: target.center.z,
         surfaces: [surface],
       }
       recordInteraction(`state.structure-object.${kind}-added`, {
@@ -185,6 +196,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       })
       return {
         structurePacks: [...state.structurePacks, pack],
+        ...(target.folderId ? { elementFolderAssignments: { ...state.elementFolderAssignments, [structureSurfaceElementId(id, surfaceId)]: target.folderId } } : {}),
         selectedId: structureSurfaceElementId(id, surfaceId),
         notice: `${pack.name} añadido.`,
       }
@@ -414,7 +426,10 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
               selectedId: state.selectedId,
               details: { id: window.id, name: `${definition.name} ${state.room.windows.length + 1}`, wall, offset, selectedAfter: window.id },
             })
-            return { room: candidate, selectedId: window.id, notice: `${definition.name} añadida.` }
+            const { folderId } = focusedCreationTarget({ ...state, activeRoomId: null })
+            return { room: candidate,
+              ...(folderId ? { elementFolderAssignments: { ...state.elementFolderAssignments, [window.id]: folderId } } : {}),
+              selectedId: window.id, notice: `${definition.name} añadida.` }
           }
         }
       }
