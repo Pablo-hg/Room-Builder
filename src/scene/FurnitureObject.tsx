@@ -14,11 +14,12 @@ import { AxisMoveGizmo, FrontAxisMoveGizmo, RotationHandle, FrontRotationHandle 
 import { SelectionBounds } from './SelectionBounds'
 import { furnitureHasSpatialWarning } from '../domain/structureCollisions'
 
-export function FurnitureObject({ item, selected, outlined, canDrag, planView, frontWall, showCollision = true }: { item: FurnitureItem; selected: boolean; outlined: boolean; canDrag: boolean; planView: boolean; frontWall: WallSide | null; showCollision?: boolean }) {
+export function FurnitureObject({ item, selected, outlined, canDrag, planView, frontWall, showCollision = true, colliding = false }: { item: FurnitureItem; selected: boolean; outlined: boolean; canDrag: boolean; planView: boolean; frontWall: WallSide | null; showCollision?: boolean; colliding?: boolean }) {
   const gesture = useHistoryGesture(item.id)
   const moveFurniture = useRoomStore((state) => state.moveFurniture)
   const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
-  const collision = useRoomStore((state) => showCollision && furnitureHasSpatialWarning(state, item))
+  const spatialWarning = useRoomStore((state) => showCollision && furnitureHasSpatialWarning(state, item))
+  const collision = spatialWarning || colliding
   const { camera, size } = useThree()
   const [dragging, setDragging] = useState(false)
   const canMoveVertically = canElevateFurniture(item)
