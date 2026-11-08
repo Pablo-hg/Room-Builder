@@ -4,7 +4,7 @@ import { makeId, structureSurfaceElementId } from '../../domain/elementIds'
 import { withoutFolderAssignments } from '../../domain/elementFolders'
 import { hasCoincidentWall, rootDoorPack, structureDoorError, structureDoorPosition } from '../../domain/structureDoors'
 import { focusedRoom } from '../../domain/roomEditing'
-import { validateOpenings } from '../../domain/geometry'
+import { findAvailableOpeningOffset, validateOpenings, wallLength } from '../../domain/geometry'
 import { openingMovementAllowed } from '../../domain/axisLocks'
 import { snapMeasurement } from '../../domain/measurements'
 import type { RoomActionContext, RoomState } from '../types'
@@ -44,23 +44,40 @@ export function createStructureDoorActions({ set }: RoomActionContext): Pick<Roo
         if (state.lockedElementIds.includes(id) || state.lockedElementIds.includes(`room-wall:${rootDoor.wall}`) || !openingMovementAllowed(rootDoor, partial)) return {}
         const next = { ...rootDoor, ...partial, ...(partial.offset === undefined ? {} : { offset: snapMeasurement(partial.offset) }) }
         if (state.lockedElementIds.includes(`room-wall:${next.wall}`)) return {}
-        const room = { ...state.room, extraDoors: state.room.extraDoors!.map((door) => door.id === id ? next : door) }
-        const error = structureDoorError(rootDoorPack(room)) || validateOpenings(room)
+        const withOffset = (offset: number) => ({ ...state.room, extraDoors: state.room.extraDoors!.map((door) => door.id === id ? { ...next, offset } : door) })
+        let room = withOffset(next.offset)
+        let error = structureDoorError(rootDoorPack(room)) || validateOpenings(room)
+        if (error && partial.wall !== undefined && partial.wall !== rootDoor.wall && partial.offset === undefined) {
+          const offset = findAvailableOpeningOffset(wallLength(state.room, next.wall), next.width, rootDoor.offset, (value) => {
+            const candidate = withOffset(value)
+            return !structureDoorError(rootDoorPack(candidate)) && !validateOpenings(candidate)
+          }, 0.12)
+          if (offset !== null) {
+            room = withOffset(offset)
+            error = null
+          }
+        }
         return error ? { notice: error } : { room, notice: '' }
       }
       const pack = state.structurePacks.find((candidate) => candidate.doors?.some((door) => door.id === id))
       const door = pack?.doors?.find((candidate) => candidate.id === id)
       if (!pack || !door) return {}
       if (state.lockedElementIds.includes(id) || state.lockedElementIds.includes(pack.id) || !openingMovementAllowed(door, partial)) return {}
-      const nextDoor = { ...door, ...partial, ...(partial.offset === undefined ? {} : { offset: snapMeasurement(partial.offset) }) }
+      let nextDoor = { ...door, ...partial, ...(partial.offset === undefined ? {} : { offset: snapMeasurement(partial.offset) }) }
       const currentWall = pack.surfaces.find((surface) => surface.wall === door.wall)
       const wall = pack.surfaces.find((surface) => surface.wall === nextDoor.wall)
       if (!wall || !currentWall || state.lockedElementIds.includes(structureSurfaceElementId(pack.id, currentWall.id)) || state.lockedElementIds.includes(structureSurfaceElementId(pack.id, wall.id))) return {}
+      const packWithDoor = (value: typeof nextDoor) => ({ ...pack, doors: pack.doors!.map((candidate) => candidate.id === id ? value : candidate) })
+      if (partial.wall !== undefined && partial.wall !== door.wall && partial.offset === undefined && structureDoorError(packWithDoor(nextDoor))) {
+        const offset = findAvailableOpeningOffset(wall.width, nextDoor.width, door.offset, (value) =>
+          !structureDoorError(packWithDoor({ ...nextDoor, offset: value })), 0.12)
+        if (offset !== null) nextDoor = { ...nextDoor, offset }
+      }
       const before = structureDoorPosition(state.room, pack, door)!
       const after = structureDoorPosition(state.room, pack, nextDoor)!
       if ((['x', 'y', 'z'] as const).some((axis) => door.axisLocks?.[axis] && Math.abs(before[axis] - after[axis]) > 1e-9)) return {}
       if (hasCoincidentWall(state.room, state.structurePacks, pack, wall)) return { notice: 'Esta pared necesita una medianera única para abrir un paso real.' }
-      const next = { ...pack, doors: pack.doors!.map((candidate) => candidate.id === id ? nextDoor : candidate) }
+      const next = packWithDoor(nextDoor)
       const error = structureDoorError(next)
       return error ? { notice: error } : { structurePacks: state.structurePacks.map((candidate) => candidate.id === pack.id ? next : candidate), notice: '' }
     }),
