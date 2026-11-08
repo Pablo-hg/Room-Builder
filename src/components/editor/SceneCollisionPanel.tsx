@@ -4,14 +4,14 @@ import type { SceneCollision, SceneOutsideIssue } from '../../domain/sceneCollis
 export function SceneCollisionPanel({ collisions, outside }: { collisions: readonly SceneCollision[]; outside: readonly SceneOutsideIssue[] }) {
   if (!collisions.length && !outside.length) return null
 
-  const groups = new Map<string, { name: string; others: string[] }>()
+  const groups = new Map<string, { name: string; others: Array<{ id: string; name: string }> }>()
   for (const collision of collisions) {
     let group = groups.get(collision.firstId)
     if (!group) {
       group = { name: collision.firstName, others: [] }
       groups.set(collision.firstId, group)
     }
-    group.others.push(collision.secondName)
+    group.others.push({ id: collision.secondId, name: collision.secondName })
   }
   const select = (id: string) => useRoomStore.getState().selectSceneListItem(id, 'single', [id])
   const objectButton = (id: string, name: string) => (
@@ -29,7 +29,9 @@ export function SceneCollisionPanel({ collisions, outside }: { collisions: reado
       </div>
       <ul>
         {[...groups.entries()].map(([id, { name, others }]) => (
-          <li key={id}>{objectButton(id, name)} colisiona con {others.join(', ')}.</li>
+          <li key={id}>{objectButton(id, name)} colisiona con {others.map((item, index) => (
+            <span key={item.id}>{index > 0 ? ', ' : ''}{objectButton(item.id, item.name)}</span>
+          ))}.</li>
         ))}
         {outside.map(({ id, name }) => (
           <li key={`outside-${id}`}>{objectButton(id, name)} está fuera de una habitación.</li>
