@@ -340,19 +340,22 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       const pack = state.structurePacks.find((candidate) => candidate.id === packId)
       if (!pack || !pack.surfaces.some((surface) => surface.id === surfaceId)) return {}
       const selectedSurfaceId = structureSurfaceElementId(packId, surfaceId)
+      const removeIndependentPack = (pack.id.startsWith('floor-object-') || pack.id.startsWith('wall-object-')) && pack.surfaces.length === 1
       recordInteraction('state.structure-surface.removed', {
         view: state.view,
         selectedId: state.selectedId,
         details: { packId, surfaceId, name: pack.name, surfaceName: pack.surfaces.find((surface) => surface.id === surfaceId)?.name },
       })
       return {
-        structurePacks: state.structurePacks.map((candidate) => candidate.id !== packId ? candidate : {
-          ...candidate,
-          surfaces: candidate.surfaces.filter((surface) => surface.id !== surfaceId),
-        }),
-        hiddenElementIds: state.hiddenElementIds.filter((id) => id !== selectedSurfaceId && id !== structureGridElementId(packId, surfaceId)),
-        lockedElementIds: state.lockedElementIds.filter((id) => id !== selectedSurfaceId),
-        elementFolderAssignments: withoutFolderAssignments(state.elementFolderAssignments, [selectedSurfaceId]),
+        structurePacks: removeIndependentPack
+          ? state.structurePacks.filter((candidate) => candidate.id !== packId)
+          : state.structurePacks.map((candidate) => candidate.id !== packId ? candidate : {
+            ...candidate,
+            surfaces: candidate.surfaces.filter((surface) => surface.id !== surfaceId),
+          }),
+        hiddenElementIds: state.hiddenElementIds.filter((id) => id !== selectedSurfaceId && id !== structureGridElementId(packId, surfaceId) && (!removeIndependentPack || id !== packId)),
+        lockedElementIds: state.lockedElementIds.filter((id) => id !== selectedSurfaceId && (!removeIndependentPack || id !== packId)),
+        elementFolderAssignments: withoutFolderAssignments(state.elementFolderAssignments, removeIndependentPack ? [selectedSurfaceId, packId] : [selectedSurfaceId]),
         selectedId: state.selectedId === selectedSurfaceId ? null : state.selectedId,
         notice: 'Superficie eliminada.',
       }
