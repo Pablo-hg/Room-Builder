@@ -95,7 +95,7 @@ function validateFurniture(value: unknown, room: RecordValue, occupied: Set<stri
 }
 
 function validateData(value: unknown): { data: PersistedDesign; sourceVersion: number; removedVariants: number } {
-  if (!object(value) || ![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(Number(value.version)) || typeof value.version !== 'number') invalid('La versión del diseño no es compatible.')
+  if (!object(value) || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(Number(value.version)) || typeof value.version !== 'number') invalid('La versión del diseño no es compatible.')
   const source = value as RecordValue
   if (!object(source.room)) invalid('Falta la habitación.')
   const room = source.room as RecordValue

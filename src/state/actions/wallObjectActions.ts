@@ -8,6 +8,7 @@ import { validateOpenings } from '../../domain/geometry'
 import { structureWindowError } from '../../domain/structureWindows'
 import { recordInteraction } from '../../debug/interactionLog'
 import type { RoomActionContext, RoomState } from '../types'
+import { worldOpenings } from '../../domain/wallConnections'
 
 function movementSource(state: RoomState, id: string) {
   const source = wallObjects(state).find((entry) => entry.window.id === id)
@@ -25,13 +26,25 @@ export function createWallObjectActions({ set, get }: RoomActionContext): Pick<R
     detachWallObject: (id) => set((state) => {
       const source = movementSource(state, id)
       if (!source || source.window.freePosition) return {}
-      const changed = { ...source.window, freePosition: { ...wallObjectPosition(state.room, source.window, source.pack) } }
+      const { wallPosition: _wallPosition, ...detached } = source.window
+      const { x, y, z, yaw } = wallObjectPosition(state.room, source.window, source.pack)
+      const changed = { ...detached, freePosition: { x, y, z, yaw } }
       recordInteraction('state.opening.updated', { view: state.view, selectedId: state.selectedId, details: { id, detached: true } })
       return { ...(source.pack ? { structurePacks: state.structurePacks.map((pack) => pack.id === source.pack!.id ? { ...pack, windows: pack.windows!.map((window) => window.id === id ? changed : window) } : pack) }
         : { room: { ...state.room, windows: state.room.windows.map((window) => window.id === id ? changed : window) } }), notice: 'Elemento despegado de la pared.' }
     }),
     moveWallObject: (id, axis, value) => {
       const current = get()
+      const door = worldOpenings(current).find((item) => item.id === id && item.kind === 'door')
+      if (door) {
+        if (axis === 'y' || !Number.isFinite(value) || door.object.axisLocks?.[axis] || current.lockedElementIds.includes(id)) return
+        const component = axis === 'x' ? Math.cos(door.position.yaw) : -Math.sin(door.position.yaw)
+        if (Math.abs(component) < 1 - 1e-6) return
+        const offset = door.object.offset + (snapMeasurement(value) - door.position[axis]) / component
+        if (id === 'door') current.setDoor({ offset })
+        else current.setStructureDoor(id, { offset })
+        return
+      }
       const attached = movementSource(current, id)
       if (!attached || !Number.isFinite(value) || attached.window.axisLocks?.[axis]) { rejectDiagnosticAction('wall-object-position-restricted'); return }
       if (!attached.window.freePosition) {

@@ -1,10 +1,13 @@
 import type { RoomState } from '../state/types'
 import { diagnostics } from './engine'
 
-const fields = ['kind', 'shape', 'x', 'y', 'z', 'width', 'height', 'depth', 'rotation', 'wall', 'offset', 'sill', 'color', 'wallColor', 'wallColors', 'floorColor', 'axisLocks', 'freePosition', 'attachmentPolicy']
+const fields = ['kind', 'shape', 'x', 'y', 'z', 'width', 'height', 'depth', 'rotation', 'wall', 'offset', 'sill', 'color', 'wallColor', 'wallColors', 'floorColor', 'axisLocks', 'freePosition', 'wallPosition', 'attachmentPolicy']
 function spatial(value: object) {
   const record = value as Record<string, unknown>
-  return Object.fromEntries(fields.filter((key) => record[key] !== undefined).map((key) => [key, record[key]]))
+  return Object.fromEntries(fields.filter((key) => record[key] !== undefined).map((key) => {
+    const position = key === 'wallPosition' ? record[key] as Record<string, unknown> : undefined
+    return [key, position ? { ...position, ...(typeof position.supportId === 'string' ? { supportId: diagnostics.objectId(position.supportId) } : {}) } : record[key]]
+  }))
 }
 function entities(state: RoomState) {
   const result = new Map<string, object>()

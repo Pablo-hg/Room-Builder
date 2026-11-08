@@ -40,6 +40,10 @@ export function normalizeDesign(value: unknown): PersistedDesign {
   const room = normalizeDesignRoom(source)
   if (![room.width, room.depth, room.height].every((value) => Number.isFinite(value) && value > 0)) throw new Error('Las dimensiones de la habitación no son válidas.')
   const structurePacks = normalizeStructurePacks(source.structurePacks, room)
+  if (source.version < 10 && [room.door, ...(room.extraDoors ?? []), ...room.windows,
+    ...structurePacks.flatMap((pack) => [...(pack.doors ?? []), ...(pack.windows ?? [])])].some((opening) => opening.wallPosition !== undefined)) {
+    throw new Error('Los anclajes a paredes conectadas requieren un diseño v10.')
+  }
   if (source.version < 9 && [...room.windows, ...structurePacks.flatMap((pack) => pack.windows ?? [])].some((window) => window.freePosition !== undefined)) {
     throw new Error('Las posiciones murales libres requieren un diseño v9.')
   }

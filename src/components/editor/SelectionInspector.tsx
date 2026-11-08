@@ -7,7 +7,6 @@ import { PackInspector } from './PackInspector'
 import { SurfaceInspector } from './SurfaceInspector'
 import { FurnitureInspector } from './FurnitureInspector'
 import { OpeningInspector } from './OpeningInspector'
-import { StructureDoorInspector } from './StructureDoorInspector'
 import { FolderInspector } from './FolderInspector'
 import { multiSelectionBounds, multiSelectionItems, type MultiItem } from '../../domain/multiSelection'
 import { isCeilingMountedFurniture } from '../../domain/objectCatalog'
@@ -95,7 +94,7 @@ export function SelectionInspector() {
   if (selectedFolder) return <FolderInspector folder={selectedFolder} />
   if (selectedPack) return <PackInspector selectedPack={selectedPack} />
   if (selectedSurface) return <SurfaceInspector selectedSurface={selectedSurface} />
-  if (selectedStructureDoor) return <StructureDoorInspector {...selectedStructureDoor} />
+  if (selectedStructureDoor) return <OpeningInspector selectedOpening={{ ...selectedStructureDoor.door, kind: 'door', sill: 0 }} />
   if (selectedFurniture) return <FurnitureInspector selectedFurniture={selectedFurniture} />
   if (selectedOpening) return <OpeningInspector selectedOpening={selectedOpening} />
 

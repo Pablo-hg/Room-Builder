@@ -2,6 +2,7 @@ import type { FurnitureItem, RoomConfig, StructurePack, StructureSurface } from 
 import { structureSurfaceElementId } from './elementIds'
 import { furnitureVisualYOffset } from './objectCatalog'
 import { boxOutsideBuilding } from './buildingVolume'
+import { wallIntersectionIsCut } from './wallConnections'
 
 type Box = { id: string; x: number; y: number; z: number; width: number; height: number; depth: number; rotation: number }
 type World = { room: RoomConfig; furniture: FurnitureItem[]; structurePacks: StructurePack[] }
@@ -163,7 +164,8 @@ function surfaceOverlapsFurniture(surface: StructureSurface, box: Box, item: Fur
   // Furniture rests at floor level; the floor slab is centred on that level and extends slightly above it.
   if (surface.kind === 'floor' && item.y >= box.y - epsilon) return false
   if (surface.kind === 'ceiling' && item.y + item.height <= box.y + epsilon) return false
-  return overlaps(furnitureBox(item, world), box)
+  const furniture = furnitureBox(item, world)
+  return overlaps(furniture, box) && (surface.kind !== 'wall' || !wallIntersectionIsCut(world, box.id, furniture))
 }
 
 /**

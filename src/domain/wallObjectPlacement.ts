@@ -11,6 +11,7 @@ export function wallObjects(world: WallObjectWorld) {
 /** A single world-space base centre for inspector, scene, diagnostics and transfers. */
 export function wallObjectPosition(room: RoomConfig, window: WindowConfig, pack?: StructurePack) {
   if (window.freePosition) return window.freePosition
+  if (window.wallPosition) return window.wallPosition
   const frame = pack ? structureWindowFrame(room, pack, window.wall) : null
   const yaw = frame?.yaw ?? ({ north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 }[window.wall])
   const x = frame?.x ?? (window.wall === 'east' ? room.width / 2 : window.wall === 'west' ? -room.width / 2 : 0)

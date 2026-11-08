@@ -1,4 +1,4 @@
-import { detectOutsideRoom, detectSceneCollisions } from '../domain/sceneCollisions'
+import { detectOutsideRoom, detectSceneCollisions, detectUnsupportedOpenings } from '../domain/sceneCollisions'
 import type { RoomState } from '../state/types'
 import { diagnostics } from './engine'
 
@@ -24,6 +24,10 @@ export class SpatialDiagnostics {
       for (const outside of detectOutsideRoom(pending.world)) {
         const id = diagnostics.objectId(outside.id)
         next.set(`bounds:${id}`, { objectIds: [id], rule: 'outside-room' })
+      }
+      for (const opening of detectUnsupportedOpenings(pending.world)) {
+        const id = diagnostics.objectId(opening.id)
+        next.set(`support:${id}`, { objectIds: [id], rule: 'opening-without-support' })
       }
       const emit = (action: string, issue: { objectIds: string[]; rule: string }) => diagnostics.emit({
         action, category: 'collisions', level: action.endsWith('entered') ? 'warn' : 'info', phase: 'observed',

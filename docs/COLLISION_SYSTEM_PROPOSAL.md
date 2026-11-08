@@ -1,5 +1,7 @@
 # Propuesta técnica: aperturas solapadas y diagnóstico de colisiones
 
+> **Actualización 08/11/2026 — paredes conectadas:** por petición expresa se ha implementado localmente un anclaje mundial v10 y recortes derivados sobre paredes físicas independientes. Sustituye aquí el bloqueo por medianera única; no sustituye las propuestas pendientes de solapes permitidos entre aperturas ni el modelo canónico de vivienda de #51–#53. Ver [informe F0](progress/F0_REFACTOR_AUDIT.md#paredes-conectadas-y-aperturas-compartidas) y [formato v10](DATA_AND_FORMATS.md). Pendiente de validación en main.
+
 **08/11/2026 · Propuesta original, parcialmente cubierta por cambios posteriores de la rama.** Petición del propietario en `feature/34-auditar-refactorizar`. No modifica #34 ni crea issues. El progreso de F0 se conserva en `progress/F0_REFACTOR_AUDIT.md`.
 
 > **Estado tras sincronizar con `361ab68`:** la rama ya contiene `sceneCollisions.ts`, `SceneCollisionPanel` y contornos de los elementos implicados, recibidos de los 16 commits remotos. Su alcance y límites están en [F0_COLLISION_PANEL.md](progress/F0_COLLISION_PANEL.md). La detección usa cajas orientadas y no resuelve exactamente todas las formas/rotaciones. **Permitir solapes de aperturas, unir huecos y coordinar todos los validadores sigue pendiente.** La auditoría y la condición de parada siguientes describen la propuesta anterior a esos commits; no deben interpretarse como ausencia actual del panel ni como validación de la implementación recibida. No se han ejecutado pruebas durante esta sincronización.

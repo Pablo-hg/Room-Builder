@@ -84,7 +84,7 @@ export function clampRoomDimension(key: 'width' | 'depth' | 'height', value: num
 }
 
 export function roomForDoorUpdate(room: RoomConfig, partial: { wall?: RoomConfig['door']['wall']; offset?: number; color?: string }) {
-  const adjusted = partial.offset === undefined ? partial : { ...partial, offset: snapMeasurement(partial.offset) }
+  const adjusted = partial.offset === undefined ? partial : { ...partial, offset: room.door.wallPosition ? partial.offset : snapMeasurement(partial.offset) }
   const candidate = withDoor(room, { ...adjusted, rotation: 0 })
   if (partial.wall === undefined || partial.wall === room.door.wall || partial.offset !== undefined || !validateOpenings(candidate)) return candidate
 
@@ -98,8 +98,8 @@ export function roomForDoorUpdate(room: RoomConfig, partial: { wall?: RoomConfig
 export function roomForWindowUpdate(room: RoomConfig, currentWindow: WindowConfig, partial: Partial<Pick<WindowConfig, 'wall' | 'offset' | 'width' | 'sill' | 'rotation' | 'color'>>) {
   const adjusted = {
     ...partial,
-    ...(partial.offset === undefined ? {} : { offset: snapMeasurement(partial.offset) }),
-    ...(partial.sill === undefined ? {} : {
+    ...(partial.offset === undefined ? {} : { offset: currentWindow.wallPosition ? partial.offset : snapMeasurement(partial.offset) }),
+    ...(partial.sill === undefined ? {} : currentWindow.wallPosition ? { sill: snapMeasurement(partial.sill) } : {
       sill: Math.max(0, Math.min(
         Math.floor((room.height - currentWindow.height - 0.08) * 100) / 100,
         snapMeasurement(partial.sill),
@@ -111,7 +111,7 @@ export function roomForWindowUpdate(room: RoomConfig, currentWindow: WindowConfi
     if (partial.wall !== undefined) {
       candidate.windows = candidate.windows.map((window) => {
         if (window.id !== currentWindow.id) return window
-        const { freePosition: _freePosition, ...attached } = window
+        const { freePosition: _freePosition, wallPosition: _wallPosition, ...attached } = window
         return attached
       })
     } else return candidate

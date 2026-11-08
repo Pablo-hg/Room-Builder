@@ -13,6 +13,14 @@ import { normalizeDesign } from '../persistence/designMigrations'
 import { parseDesignFile, serializeDesignFile } from '../persistence/designFile'
 import { migrateDesignToProject, projectToPersistedDesignV1 } from '../persistence/projectMigration'
 import type { WindowShape } from '../domain/types'
+import type { PersistedDesign } from '../domain/designV1'
+
+function withoutWallAnchors(data: PersistedDesign): PersistedDesign {
+  const copy = structuredClone(data)
+  for (const opening of [copy.room.door, ...(copy.room.extraDoors ?? []), ...copy.room.windows,
+    ...(copy.structurePacks ?? []).flatMap((pack) => [...(pack.doors ?? []), ...(pack.windows ?? [])])]) delete opening.wallPosition
+  return copy
+}
 
 const object = (store: ReturnType<typeof createRoomStore>, id: string) => wallObjects(store.getState()).find((source) => source.window.id === id)!
 
@@ -136,20 +144,22 @@ test('duplicar, redimensionar y renombrar un elemento libre conserva su posició
   assert.equal(copy.freePosition?.z, 0.5)
 })
 
-test('v9 se conserva en JSON, normalización y ProjectV2; posiciones inválidas se rechazan', () => {
+test('v10 conserva elementos libres en JSON y ProjectV2 y sigue leyendo v9', () => {
   const store = createRoomStore()
   const id = store.getState().room.windows[0].id
   store.getState().detachWallObject(id)
   store.getState().moveWallObject(id, 'z', 0)
   const data = persistedDesign(store.getState())
-  assert.equal(data.version, 9)
+  assert.equal(data.version, 10)
   const saved = { id: 'free', name: 'Libre', savedAt: '2026-11-08T12:00:00Z', data }
   assert.deepEqual(parseDesignFile(serializeDesignFile(saved)).design.data.room.windows, normalizeDesign(data).room.windows)
   assert.deepEqual(projectToPersistedDesignV1(migrateDesignToProject(saved)).room.windows[0].freePosition, data.room.windows[0].freePosition)
   const bad = structuredClone(data)
   bad.room.windows[0].freePosition!.x = NaN
   assert.throws(() => normalizeDesign(bad), /Posición libre/)
-  assert.throws(() => normalizeDesign({ ...data, version: 8 }), /v9/)
+  const legacy9 = { ...withoutWallAnchors(data), version: 9 as const }
+  assert.deepEqual(normalizeDesign(legacy9).room.windows[0].freePosition, data.room.windows[0].freePosition)
+  assert.throws(() => normalizeDesign({ ...legacy9, version: 8 }), /v9/)
 })
 
 test('lectura histórica v1–v5 y v8 conserva anclajes y no modifica la fuente', () => {
@@ -162,18 +172,18 @@ test('lectura histórica v1–v5 y v8 conserva anclajes y no modifica la fuente'
   const store = createRoomStore()
   store.getState().addStructurePack('up')
   store.getState().addWindow()
-  const data = persistedDesign(store.getState())
+  const data = { ...withoutWallAnchors(persistedDesign(store.getState())), version: 8 as const }
   assert.equal(data.version, 8)
   assert.deepEqual(normalizeDesign(data).structurePacks, data.structurePacks)
   const v6 = createRoomStore()
   v6.getState().setElementAxisLock(v6.getState().room.windows[0].id, 'y', true)
-  const old6 = persistedDesign(v6.getState())
+  const old6 = { ...withoutWallAnchors(persistedDesign(v6.getState())), version: 6 as const }
   assert.equal(old6.version, 6)
   assert.deepEqual(normalizeDesign(old6).room.windows, old6.room.windows)
   const v7 = createRoomStore()
   v7.getState().addStructurePack('up')
   v7.getState().addStructureDoor()
-  const old7 = persistedDesign(v7.getState())
+  const old7 = { ...withoutWallAnchors(persistedDesign(v7.getState())), version: 7 as const }
   assert.equal(old7.version, 7)
   assert.deepEqual(normalizeDesign(old7).structurePacks, old7.structurePacks)
 })

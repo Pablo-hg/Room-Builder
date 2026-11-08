@@ -1,8 +1,8 @@
 import { useRoomStore } from '../../state/useRoomStore'
 import type { SceneCollision, SceneOutsideIssue } from '../../domain/sceneCollisions'
 
-export function SceneCollisionPanel({ collisions, outside }: { collisions: readonly SceneCollision[]; outside: readonly SceneOutsideIssue[] }) {
-  if (!collisions.length && !outside.length) return null
+export function SceneCollisionPanel({ collisions, outside, unsupported = [] }: { collisions: readonly SceneCollision[]; outside: readonly SceneOutsideIssue[]; unsupported?: readonly SceneOutsideIssue[] }) {
+  if (!collisions.length && !outside.length && !unsupported.length) return null
 
   const groups = new Map<string, { name: string; others: Array<{ id: string; name: string }> }>()
   for (const collision of collisions) {
@@ -25,6 +25,7 @@ export function SceneCollisionPanel({ collisions, outside }: { collisions: reado
         <span>{[
           collisions.length ? `${collisions.length} ${collisions.length === 1 ? 'colisión' : 'colisiones'}` : '',
           outside.length ? `${outside.length} fuera` : '',
+          unsupported.length ? `${unsupported.length} sin soporte` : '',
         ].filter(Boolean).join(' · ')}</span>
       </div>
       <ul>
@@ -36,6 +37,7 @@ export function SceneCollisionPanel({ collisions, outside }: { collisions: reado
         {outside.map(({ id, name }) => (
           <li key={`outside-${id}`}>{objectButton(id, name)} está fuera de la vivienda, en el vacío.</li>
         ))}
+        {unsupported.map(({ id, name }) => <li key={`support-${id}`}>{objectButton(id, name)} no tiene soporte completo en las paredes conectadas.</li>)}
       </ul>
     </aside>
   )

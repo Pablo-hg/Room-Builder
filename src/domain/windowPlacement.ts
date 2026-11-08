@@ -4,11 +4,18 @@ import { structureSurfaceElementId } from './elementIds'
 import { hiddenWallsForView } from './geometry'
 import type { RoomState } from '../state/types'
 
-type PlacementState = Pick<RoomState, 'view' | 'isoOrientation' | 'wallView' | 'freeAzimuth' | 'hiddenElementIds' | 'lockedElementIds' | 'activeRoomId' | 'structurePacks'>
+type PlacementState = Pick<RoomState, 'view' | 'isoOrientation' | 'wallView' | 'freeAzimuth' | 'hiddenElementIds' | 'lockedElementIds' | 'activeRoomId' | 'structurePacks'> & Partial<Pick<RoomState, 'selectedId'>>
+
+/** An explicitly selected independent wall is also a valid creation support. */
+export function openingCreationPack(state: Pick<PlacementState, 'activeRoomId' | 'structurePacks' | 'selectedId'>) {
+  return state.structurePacks.find((pack) => !pack.id.startsWith('floor-pack-')
+    && pack.surfaces.some((surface) => surface.kind === 'wall' && (state.selectedId === pack.id || state.selectedId === structureSurfaceElementId(pack.id, surface.id))))
+    ?? state.structurePacks.find((pack) => pack.id === state.activeRoomId && pack.id.startsWith('floor-pack-'))
+}
 
 /** Visible usable walls first; camera-hidden walls are only a fallback. */
 export function windowPlacementWalls(state: PlacementState) {
-  const pack = state.structurePacks.find((item) => item.id === state.activeRoomId && item.id.startsWith('floor-pack-'))
+  const pack = openingCreationPack(state)
   if (pack && (state.hiddenElementIds.includes(pack.id) || state.lockedElementIds.includes(pack.id))) return []
   // In plan view the wall outlines are visible although the tall wall meshes are hidden.
   const hiddenByCamera = state.view === 'top' ? [] : hiddenWallsForView(state.view, state.isoOrientation, state.wallView, state.freeAzimuth)

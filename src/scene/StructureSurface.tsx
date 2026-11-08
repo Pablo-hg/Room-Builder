@@ -11,14 +11,13 @@ import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
 import { StructureSurfaceTransformGizmo } from './StructureSurfaceGizmo'
 import { SelectionBounds } from './SelectionBounds'
 import { independentSurfaceHasSpatialWarning } from '../domain/structureCollisions'
-import { structurePackOpenings, structureWindowFrame } from '../domain/structureWindows'
+import { physicalWalls, wallDerivedOpenings } from '../domain/wallConnections'
 import { WallBody } from './Walls'
-import { OpeningDetail } from './Openings'
-import { surfacePosition } from '../domain/roomEditing'
 import { useHistoryGesture } from '../state/useHistoryGesture'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
 import { cameraAwareShiftDrag } from './cameraAwareShiftDrag'
 import { moveFromOrigin } from '../domain/measurements'
+import type { WallFace } from '../domain/wallSolidGeometry'
 
 export function StructureSurfaceObject({
   room,
@@ -32,8 +31,8 @@ export function StructureSurfaceObject({
   showGrid,
   showCollision = true,
   colliding = false,
-  collisionIds,
   onSelect,
+  skinFaces,
 }: {
   room: RoomConfig
   packName: string
@@ -48,6 +47,7 @@ export function StructureSurfaceObject({
   collisionIds: ReadonlySet<string>
   onSelect: () => void
   packId: string
+  skinFaces?: readonly WallFace[]
 }) {
   const wall = surface.wall ?? 'north'
   const position = structureSurfacePosition(room, surface)
@@ -58,12 +58,13 @@ export function StructureSurfaceObject({
   const gridHidden = useRoomStore((state) => state.hiddenElementIds.includes(structureGridElementId(packId, surface.id)))
   const spatialWarning = useRoomStore((state) => showCollision && independentSurfaceHasSpatialWarning(state, surfaceId))
   const collision = spatialWarning || colliding
-  const pack = useRoomStore((state) => state.structurePacks.find((candidate) => candidate.id === packId))
-  const selectedId = useRoomStore((state) => state.selectedId)
-  const hiddenIds = useRoomStore((state) => state.hiddenElementIds)
-  const openings = pack ? structurePackOpenings(pack, surface) : []
-  const frame = pack && surface.wall ? structureWindowFrame(room, pack, surface.wall) : null
-  const openingLockedIds = useRoomStore((state) => state.lockedElementIds)
+  const packs = useRoomStore((state) => state.structurePacks)
+  const pack = packs.find((candidate) => candidate.id === packId)
+  const openings = useMemo(() => {
+    const world = { room, structurePacks: packs }
+    const wall = physicalWalls(world).find((item) => item.id === surfaceId)
+    return wall ? wallDerivedOpenings(world, wall) : []
+  }, [room, packs, surfaceId])
   const isIndependent = packId.startsWith('floor-object-') || packId.startsWith('wall-object-')
   const view = useRoomStore((state) => state.view)
   const { camera, size } = useThree()
@@ -160,17 +161,13 @@ export function StructureSurfaceObject({
   }
   return (
     <group onPointerMove={directMove} onPointerUp={endDirectDrag} onPointerCancel={cancelDirectDrag}>
-      {openings.length ? <group position={position} rotation={[0, baseRotation + surface.rotation, 0]}>
+      {surface.kind === 'wall' ? <group position={position} rotation={[0, baseRotation + surface.rotation, 0]}>
         <group position={[0, -surface.height / 2, 0]}>
-          <WallBody length={surface.width} height={surface.height} openings={openings} color={surface.color} depth={surface.depth} onPointerDown={selectSurface} />
-          {openings.filter((opening) => opening.kind === 'door' && !hiddenIds.includes(opening.id)).map((opening) => <group key={opening.id}>
-            <OpeningDetail room={room} wall={wall} opening={opening} selected={selectedId === opening.id} locked={openingLockedIds.includes(opening.id)} frame={frame ?? undefined} />
-            {showCollision && (selectedId === opening.id || collisionIds.has(opening.id)) && <group position={[opening.offset, opening.bottom + opening.height / 2, 0]}><SelectionBounds width={opening.width} height={opening.height} depth={surface.depth + 0.08} collision={collisionIds.has(opening.id)} /></group>}
-          </group>)}
+          <WallBody wallId={surfaceId} skinFaces={skinFaces} frame={physicalWalls({ room, structurePacks: packs }).find((wall) => wall.id === surfaceId)} length={surface.width} height={surface.height} openings={openings} color={surface.color} depth={surface.depth} onPointerDown={selectSurface} />
         </group>
       </group> : <mesh
         position={position}
-        rotation={surface.kind === 'wall' ? [0, baseRotation + surface.rotation, 0] : [0, 0, 0]}
+        rotation={[0, 0, 0]}
         userData={{ structureSurfaceId: surfaceId }}
         onPointerDown={selectSurface}
       >
@@ -192,7 +189,7 @@ export function StructureSurfaceObject({
       ) : surface.kind === 'wall' ? (
         <group position={position} rotation={[0, baseRotation + surface.rotation, 0]}>
           {[0, Math.PI].map((rotation) => <group key={rotation} rotation={[0, rotation, 0]} position={[0, -surface.height / 2, 0]}>
-            <group position={[0, 0, surface.depth / 2 - 0.06]}><WallGrid length={surface.width} height={surface.height} openings={rotation ? openings.map((opening) => ({ ...opening, offset: -opening.offset })) : openings} /></group>
+            <group position={[0, 0, surface.depth / 2 - 0.06]}><WallGrid length={surface.width} height={surface.height} openings={rotation ? openings.map((opening) => ({ ...opening, offset: -opening.offset, rotation: -opening.rotation })) : openings} /></group>
           </group>)}
         </group>
       ) : null)}
@@ -208,23 +205,6 @@ export function StructureSurfaceObject({
       )}
     </group>
   )
-}
-
-export function StructureDoorPlan({ room, packId, surface, collisionIds }: { room: RoomConfig; packId: string; surface: StructureSurface; collisionIds: ReadonlySet<string> }) {
-  const pack = useRoomStore((state) => state.structurePacks.find((candidate) => candidate.id === packId))
-  const selectedId = useRoomStore((state) => state.selectedId)
-  const hiddenIds = useRoomStore((state) => state.hiddenElementIds)
-  if (!pack || surface.kind !== 'wall' || !surface.wall) return null
-  const [x, y, z] = surfacePosition(room, surface)
-  const angle = { north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 }[surface.wall] + surface.rotation
-  return <group position={[x, y - surface.height / 2 + 0.05, z]} rotation={[0, angle, 0]}>
-    {structurePackOpenings(pack, surface).filter((door) => door.kind === 'door' && !hiddenIds.includes(door.id)).map((door) => <group key={door.id} position={[door.offset, 0, 0]}>
-      <mesh onPointerDown={(event) => { event.stopPropagation(); selectSceneObject(door.id, event.nativeEvent) }}>
-        <boxGeometry args={[door.width, 0.06, surface.depth + 0.08]} /><meshBasicMaterial color={selectedId === door.id ? '#ea6f4c' : door.kind === 'window' ? '#e9b87d' : '#e9895b'} />
-      </mesh>
-      {collisionIds.has(door.id) && <SelectionBounds width={door.width} height={0.08} depth={surface.depth + 0.08} collision />}
-    </group>)}
-  </group>
 }
 
 function structureSurfacePosition(room: RoomConfig, surface: StructureSurface): [number, number, number] {

@@ -41,7 +41,7 @@ for (const secondary of [false, true]) for (const wall of WALL_SIDES) {
     position = wallObjectPosition(room, object.window, object.pack)
     store.getState().detachWallObject(id)
     object = source(store, id)
-    assert.deepEqual(object.window.freePosition, position)
+    assert.deepEqual(object.window.freePosition, { x: position.x, y: position.y, z: position.z, yaw: position.yaw })
     assert.deepEqual(wallObjectAvailableAxes(room, object.window, object.pack), { x: true, y: true, z: true })
     store.getState().moveWallObject(id, normal, position[normal] + 0.1)
     assert.ok(source(store, id).window.freePosition)

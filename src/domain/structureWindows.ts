@@ -2,7 +2,7 @@ import { ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from './constants'
 import { isWindowShape } from './objectCatalog'
 import { surfacePosition } from './roomEditing'
 import { validateAxisLocks } from './axisLocks'
-import { validateFreeWallPosition } from './freeWallPosition'
+import { validateFreeWallPosition, validateWallPosition } from './freeWallPosition'
 import type { RoomConfig, StructurePack, StructureSurface, WallOpening, WallSide, WindowConfig } from './types'
 
 /** Apertures are local to the corresponding wall; root windows remain in RoomConfig. */
@@ -40,9 +40,10 @@ export function structureWindowError(pack: StructurePack): string | null {
       || window.width <= 0 || window.height <= 0
       || (window.name !== undefined && (typeof window.name !== 'string' || !window.name.trim() || window.name.length > 80))
       || (window.color !== undefined && typeof window.color !== 'string')) return 'Ventanas de habitación inválidas.'
-    try { validateAxisLocks(window.axisLocks); validateFreeWallPosition(window.freePosition) } catch { return 'Bloqueos o posición de ventana inválidos.' }
+    try { validateAxisLocks(window.axisLocks); validateFreeWallPosition(window.freePosition); validateWallPosition(window.wallPosition) } catch { return 'Bloqueos o posición de ventana inválidos.' }
     ids.add(window.id)
-    if (window.freePosition) continue
+    if (window.freePosition && window.wallPosition) return 'Anclaje de ventana ambiguo.'
+    if (window.freePosition || window.wallPosition) continue
     const surface = pack.surfaces.find((wall) => wall.kind === 'wall' && wall.wall === window.wall)
     if (!surface || Math.abs(window.offset) + window.width / 2 > surface.width / 2 - ROOM_LIMITS.edgeMargin + 1e-8
       || window.sill < 0 || window.sill + window.height > surface.height - 0.08) {

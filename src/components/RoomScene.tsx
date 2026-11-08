@@ -1,8 +1,7 @@
 import { Canvas, events } from '@react-three/fiber'
-import { useRef, type RefObject } from 'react'
+import { useMemo, useRef, type RefObject } from 'react'
 import * as THREE from 'three'
 import { WALL_SIDES } from '../domain/constants'
-import { openingsForWall } from '../domain/geometry'
 import { useRoomStore } from '../state/useRoomStore'
 import { OrbitPointerController } from '../scene/OrbitPointerController'
 export { FreeCameraCompass3D, RoomCompass3D } from '../scene/Compass'
@@ -13,9 +12,8 @@ import { wallVisibility } from '../scene/wallVisibility'
 import { SoftWall } from '../scene/Walls'
 import { RoomShell, StudioLight, WallIdentityLabel } from '../scene/RoomShell'
 import { recordSceneInteraction } from '../scene/sceneInteraction'
-import { PlanOpening } from '../scene/Openings'
 import { FurnitureObject } from '../scene/FurnitureObject'
-import { StructureDoorPlan, StructureSurfaceObject } from '../scene/StructureSurface'
+import { StructureSurfaceObject } from '../scene/StructureSurface'
 import { MultiFurnitureGizmo } from '../scene/MultiFurnitureGizmo'
 import { multiSelectionItems } from '../domain/multiSelection'
 import { prioritizeTransformControls } from '../scene/interactionPriority'
@@ -23,6 +21,8 @@ import { FreeCameraKeyboard } from '../scene/FreeCameraKeyboard'
 import { baseWallId, folderSelectionId, ROOT_ROOM_FOLDER } from '../domain/elementFolders'
 import { packRoomBox } from '../domain/roomEditing'
 import { WorldWallObjects } from '../scene/WorldWallObjects'
+import { physicalWalls } from '../domain/wallConnections'
+import { wallUnionFaces } from '../domain/wallSolidGeometry'
 
 function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null>; collisionIds: ReadonlySet<string> }) {
   const selectedId = useRoomStore((state) => state.selectedId)
@@ -47,6 +47,17 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
     height: focusedView || props.view === 'front' ? activeBox?.height ?? props.room.height : Math.max(props.room.height, ...props.structurePacks.filter((pack) => pack.id.startsWith('floor-pack-')).map((pack) => pack.y + (packRoomBox(pack, props.room)?.height ?? props.room.height))),
   }
   const { hidden, labeledWalls, gridWalls } = wallVisibility(props)
+  const renderedPacks = props.structurePacks.filter((pack) => !focusedView || (pack.id.startsWith('floor-pack-') ? Math.abs(pack.y - level) < 0.01 : pack.surfaces.some((surface) => { const y = pack.y + surface.y + (surface.kind === 'wall' ? props.room.height / 2 : surface.kind === 'ceiling' ? props.room.height : 0); return y >= level - 0.01 && y < level + props.room.height })))
+  const renderedPackIds = new Set(renderedPacks.filter((pack) => !hiddenElementIds.includes(pack.id)).map((pack) => pack.id))
+  const visibleWallIds = new Set(physicalWalls({ room: props.room, structurePacks: props.structurePacks }).filter((wall) => {
+    if (hiddenElementIds.includes(wall.id)) return false
+    if (!wall.packId) return showBase && !hidden.includes(wall.side)
+    if (!renderedPackIds.has(wall.packId)) return false
+    const independent = wall.packId.startsWith('floor-object-') || wall.packId.startsWith('wall-object-')
+    return independent || !hidden.includes(wall.side)
+  }).map((wall) => wall.id))
+  const visibleSignature = JSON.stringify([...visibleWallIds].sort())
+  const wallSkins = useMemo(() => wallUnionFaces({ room: props.room, structurePacks: props.structurePacks }, visibleWallIds), [props.room, props.structurePacks, visibleSignature])
 
   return (
     <>
@@ -62,6 +73,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
             key={wall}
             room={props.room}
             wall={wall}
+            skinFaces={wallSkins.get(baseWallId(wall)) ?? []}
             hidden={hidden.includes(wall) || hiddenElementIds.includes(baseWallId(wall))}
             showOpeningDetails={props.exportMode || props.view !== 'top'}
             showGrid={gridWalls.includes(wall) && props.gridVisibility[wall]}
@@ -71,7 +83,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
           />
         ))}
         {showBase && !activeRoom && !props.exportMode && labeledWalls.filter((wall) => !hiddenElementIds.includes(baseWallId(wall))).map((wall) => <WallIdentityLabel key={`base-label-${wall}`} room={props.room} wall={wall} view={props.view} wallView={props.wallView} />)}
-        {props.structurePacks.filter((pack) => !focusedView || (pack.id.startsWith('floor-pack-') ? Math.abs(pack.y - level) < 0.01 : pack.surfaces.some((surface) => { const y = pack.y + surface.y + (surface.kind === 'wall' ? props.room.height / 2 : surface.kind === 'ceiling' ? props.room.height : 0); return y >= level - 0.01 && y < level + props.room.height }))).map((pack) => (
+        {renderedPacks.map((pack) => (
           <group key={pack.id} position={[pack.x, pack.y, pack.z]} visible={!hiddenElementIds.includes(pack.id)}>
             {pack.surfaces.map((surface) => {
               const surfaceId = `structure-surface:${pack.id}:${surface.id}`
@@ -83,6 +95,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
                   packId={pack.id}
                   packName={pack.name}
                   surface={surface}
+                  skinFaces={wallSkins.get(surfaceId) ?? []}
                   hidden={hiddenElementIds.includes(surfaceId) || (!independentSurface && surface.kind === 'wall' && surface.wall !== undefined && hidden.includes(surface.wall))}
                   selected={!props.exportMode && selectedId === surfaceId}
                   outlined={!props.exportMode && !groupSelected && selectedIds.includes(surfaceId)}
@@ -93,18 +106,12 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
                   collisionIds={props.collisionIds}
                   onSelect={() => selectElement(surfaceId)}
                 />
-                {!props.exportMode && props.view === 'top' && !hiddenElementIds.includes(surfaceId) && <StructureDoorPlan room={props.room} packId={pack.id} surface={surface} collisionIds={props.collisionIds} />}
                 {pack.id === activeRoom?.id && !props.exportMode && surface.kind === 'wall' && surface.wall && labeledWalls.includes(surface.wall) && !hiddenElementIds.includes(surfaceId) && <group position={[surface.x, surface.y, surface.z]}><WallIdentityLabel room={props.room} wall={surface.wall} view={props.view} wallView={props.wallView} /></group>}
                 </group>
               )
             })}
           </group>
         ))}
-        {showBase && !props.exportMode && props.view === 'top' && WALL_SIDES.flatMap((wall) =>
-          openingsForWall(props.room, wall)
-            .filter((opening) => opening.kind === 'door' && !hiddenElementIds.includes(opening.id))
-            .map((opening) => <PlanOpening key={`${wall}-${opening.id}`} room={props.room} opening={opening} wall={wall} groupSelected={groupSelected} colliding={props.collisionIds.has(opening.id)} />),
-        )}
         <WorldWallObjects room={props.room} structurePacks={props.structurePacks} collisionIds={props.collisionIds} exportMode={props.exportMode} level={level} levelHeight={levelHeight} focusedView={focusedView} />
         {props.furniture.filter((item) => !hiddenElementIds.includes(item.id) && (!focusedView || (item.y >= level - 0.01 && item.y < level + levelHeight))).map((item) => (
           <FurnitureObject

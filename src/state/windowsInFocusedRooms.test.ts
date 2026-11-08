@@ -29,7 +29,7 @@ for (const direction of ['up', 'east'] as const) {
     if (direction === 'up') assert.ok(frame.floorY > 0)
     else assert.ok(Math.abs(frame.x) > 0 || Math.abs(frame.z) > 0)
     const saved = persistedDesign(state)
-    assert.equal(saved.version, 8)
+    assert.equal(saved.version, 10)
     const loaded = normalizeDesign(saved)
     assert.equal(packWindowById(loaded.structurePacks!, selected)?.window.id, selected)
     assert.equal(loaded.elementFolderAssignments?.[selected], state.elementFolderAssignments[selected])

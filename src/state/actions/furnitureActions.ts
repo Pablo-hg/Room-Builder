@@ -15,7 +15,8 @@ import { furnitureSelectionBounds } from '../../domain/multiFurniture'
 import { multiSelectionItems } from '../../domain/multiSelection'
 import { rehomeFreeWallObjects, wallObjectPosition } from '../../domain/wallObjectPlacement'
 import { structureWindowError } from '../../domain/structureWindows'
-import type { FurnitureItem, WindowConfig, StructurePack } from '../../domain/types'
+import { openingPosition } from '../../domain/wallConnections'
+import type { DoorConfig, FurnitureItem, WindowConfig, StructurePack } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
 import type { RoomActionContext, RoomState } from '../types'
 
@@ -69,24 +70,31 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       if (!Object.values(amount).every(Number.isFinite) || Object.values(amount).every((value) => Math.abs(value) < 1e-9)) return {}
       if ((['x', 'y', 'z'] as const).some((axis) => Math.abs(amount[axis]) > 1e-9 && items.some((item) => !item.axes.includes(axis)))) return { notice: 'Todos los elementos deben poder moverse en este eje.' }
       const furniture = state.furniture.map((item) => ids.has(item.id) ? { ...item, x: item.x + amount.x, y: item.y + amount.y, z: item.z + amount.z } : item)
-      const shiftOpening = (wall: 'north' | 'east' | 'south' | 'west') => (wall === 'north' || wall === 'south' ? amount.x : amount.z) * (wall === 'south' || wall === 'west' ? -1 : 1)
+      const movedDoor = <T extends DoorConfig>(door: T, id: string, pack?: StructurePack): T => {
+        if (!ids.has(id) || door.wallPosition?.supportId && ids.has(door.wallPosition.supportId)) return door
+        const position = openingPosition(state, door, pack?.id)
+        return { ...door, offset: door.offset + amount.x * Math.cos(position.yaw) - amount.z * Math.sin(position.yaw) }
+      }
       const movedWindow = (window: WindowConfig, pack?: StructurePack) => {
         if (!ids.has(window.id)) return window
+        if (!window.freePosition && window.wallPosition?.supportId && ids.has(window.wallPosition.supportId)) return window
         const position = wallObjectPosition(state.room, window, pack)
         if (!window.freePosition) return { ...window, sill: window.sill + amount.y,
           offset: window.offset + amount.x * Math.cos(position.yaw) - amount.z * Math.sin(position.yaw) }
         return { ...window, freePosition: { ...position, x: position.x + amount.x, y: position.y + amount.y, z: position.z + amount.z } }
       }
       const room = { ...state.room,
-        ...(state.room.extraDoors ? { extraDoors: state.room.extraDoors.map((door) => ids.has(door.id) ? { ...door, offset: door.offset + shiftOpening(door.wall) } : door) } : {}),
-        door: ids.has('door') ? { ...state.room.door, offset: state.room.door.offset + shiftOpening(state.room.door.wall) } : state.room.door,
+        ...(state.room.extraDoors ? { extraDoors: state.room.extraDoors.map((door) => movedDoor(door, door.id)) } : {}),
+        door: movedDoor(state.room.door, 'door'),
         windows: state.room.windows.map((window) => movedWindow(window)),
       }
       const structurePacks = state.structurePacks.map((pack) => {
-        const wholePack = pack.id.startsWith('floor-pack-') && pack.surfaces.length > 0 && pack.surfaces.every((surface) => ids.has(`structure-surface:${pack.id}:${surface.id}`))
+        const wholePack = pack.surfaces.length > 0 && pack.surfaces.every((surface) => ids.has(`structure-surface:${pack.id}:${surface.id}`))
         if (wholePack) return { ...pack, x: pack.x + amount.x, y: pack.y + amount.y, z: pack.z + amount.z,
           ...(pack.windows ? { windows: pack.windows.map((window) => window.freePosition ? movedWindow(window, pack) : window) } : {}) }
-        return { ...pack, ...(pack.windows ? { windows: pack.windows.map((window) => movedWindow(window, pack)) } : {}), surfaces: pack.surfaces.map((surface) => ids.has(`structure-surface:${pack.id}:${surface.id}`) ? { ...surface, x: surface.x + amount.x, y: surface.y + amount.y, z: surface.z + amount.z } : surface) }
+        return { ...pack, ...(pack.windows ? { windows: pack.windows.map((window) => movedWindow(window, pack)) } : {}),
+          ...(pack.doors ? { doors: pack.doors.map((door) => movedDoor(door, door.id, pack)) } : {}),
+          surfaces: pack.surfaces.map((surface) => ids.has(`structure-surface:${pack.id}:${surface.id}`) ? { ...surface, x: surface.x + amount.x, y: surface.y + amount.y, z: surface.z + amount.z } : surface) }
       })
       if (validateOpenings(room)) return { notice: 'No hay espacio suficiente para mover toda la selección.' }
       const windowError = structurePacks.map(structureWindowError).find(Boolean)

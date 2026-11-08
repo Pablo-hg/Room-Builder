@@ -57,7 +57,11 @@ export interface OpeningConflict { rule: 'opening-bounds' | 'opening-height' | '
 export function validateOpenings(room: RoomConfig, onConflict?: (conflict: OpeningConflict) => void): string | null {
   for (const wall of ['north', 'east', 'south', 'west'] as WallSide[]) {
     const length = wallLength(room, wall)
-    const items = openingsForWall(room, wall)
+    // v10 anchors are validated against the connected physical wall union.
+    const anchored = new Set([...(room.door.wallPosition ? ['door'] : []),
+      ...(room.extraDoors ?? []).filter((door) => door.wallPosition).map((door) => door.id),
+      ...room.windows.filter((window) => window.wallPosition).map((window) => window.id)])
+    const items = openingsForWall(room, wall).filter((item) => !anchored.has(item.id))
     for (const item of items) {
       const [start, end] = openingInterval(item.offset, item.width)
       if (start < -length / 2 + ROOM_LIMITS.edgeMargin || end > length / 2 - ROOM_LIMITS.edgeMargin) {

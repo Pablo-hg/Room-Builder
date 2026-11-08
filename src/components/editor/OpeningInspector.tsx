@@ -8,7 +8,7 @@ import type { WallSide } from '../../domain/types'
 import { AxisPositionControl, ColorControl, OpeningSwatch, PositionControl, RotationControl, WallPicker } from './Controls'
 import { ResizeControls } from './ResizeControls'
 import { packWindowById } from '../../domain/structureWindows'
-import { wallObjectAvailableAxes, wallObjectPosition } from '../../domain/wallObjectPlacement'
+import { openingPosition, openingRunBounds, worldOpenings } from '../../domain/wallConnections'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
 type SelectedOpening = (RoomState['room']['door'] & { id: string; kind: 'door'; sill: number }) | (RoomState['room']['windows'][number] & { kind: 'window' })
@@ -20,10 +20,16 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
   const moveWallObject = useRoomStore((state) => state.moveWallObject)
   const detachWallObject = useRoomStore((state) => state.detachWallObject)
   const packWindow = selectedOpening.kind === 'window' ? packWindowById(structurePacks, selectedOpening.id) : null
-  const availableAxes = selectedOpening.kind === 'window' ? wallObjectAvailableAxes(room, selectedOpening, packWindow?.pack) : null
+  const world = { room, structurePacks }
+  const source = worldOpenings(world).find((opening) => opening.id === selectedOpening.id)
+  const sourcePack = structurePacks.find((pack) => pack.id === source?.packId)
+  const worldPosition = openingPosition(world, selectedOpening, sourcePack?.id)
+  const detached = selectedOpening.kind === 'window' && !!selectedOpening.freePosition
+  const availableAxes = { x: detached || Math.abs(Math.sin(worldPosition.yaw)) < 1e-7,
+    y: selectedOpening.kind !== 'door', z: detached || Math.abs(Math.cos(worldPosition.yaw)) < 1e-7 }
+  const runBounds = openingRunBounds(world, selectedOpening.id)
   const targetWall = packWindow?.pack.surfaces.find((surface) => surface.kind === 'wall' && surface.wall === selectedOpening.wall)
   const targetLength = targetWall?.width ?? wallLength(room, selectedOpening.wall)
-  const targetHeight = targetWall?.height ?? room.height
   const setDoor = useRoomStore((state) => state.setDoor)
   const setStructureDoor = useRoomStore((state) => state.setStructureDoor)
   const removeStructureDoor = useRoomStore((state) => state.removeStructureDoor)
@@ -58,14 +64,7 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
   const rawMaxOffset = Math.max(0, targetLength / 2 - selectedOpening.width / 2 - ROOM_LIMITS.edgeMargin)
   const openingStep = 0.01
   const maxOffset = Math.floor(rawMaxOffset / openingStep) * openingStep
-  const maxSill = Math.max(0, Math.floor((targetHeight - selectedOpening.height - 0.08) * 100) / 100)
-  const horizontalAxis = selectedOpening.wall === 'north' || selectedOpening.wall === 'south' ? 'x' : 'z'
-  const sign = selectedOpening.wall === 'south' || selectedOpening.wall === 'west' ? -1 : 1
-  const position = selectedOpening.kind === 'window' ? wallObjectPosition(room, selectedOpening, packWindow?.pack) : {
-    x: horizontalAxis === 'x' ? selectedOpening.offset * sign : selectedOpening.wall === 'east' ? room.width / 2 : -room.width / 2,
-    y: selectedOpening.sill,
-    z: horizontalAxis === 'z' ? selectedOpening.offset * sign : selectedOpening.wall === 'south' ? room.depth / 2 : -room.depth / 2,
-  }
+  const position = worldPosition
   const update = (partial: { wall?: WallSide; offset?: number; rotation?: number; color?: string }) => {
     if (selectedOpening.kind === 'door') {
       if (selectedOpening.id === 'door') setDoor(partial)
@@ -98,8 +97,12 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
       {capabilities.canChangeWall && <WallPicker label="Pared" value={selectedOpening.wall} onChange={(wall) => update({ wall })} disabled={locked} />}
       {selectedOpening.kind === 'window' && selectedOpening.freePosition && <button type="button" className="text-button" disabled={locked} onClick={() => update({ wall: selectedOpening.wall })}>Volver a colocar en la pared {WALL_LABELS[selectedOpening.wall]}</button>}
       {selectedOpening.kind === 'window' && !selectedOpening.freePosition && <button type="button" className="text-button" disabled={locked} onClick={() => detachWallObject(selectedOpening.id)}>Despegar de la pared</button>}
-      {(['x', 'y', 'z'] as const).map((axis) => <AxisPositionControl key={axis} id={selectedOpening.id} axis={axis} label={`Posición ${axis.toUpperCase()}`} value={position[axis]} min={selectedOpening.kind === 'window' ? Math.min(-20, position[axis]) : axis === 'y' ? 0 : Math.min(-maxOffset, position[axis])} max={selectedOpening.kind === 'window' ? Math.max(20, position[axis]) : axis === 'y' ? maxSill : Math.max(maxOffset, position[axis])} step={openingStep} disabled={locked} locked={selectedOpening.axisLocks?.[axis] ?? false} unavailable={availableAxes ? !availableAxes[axis] : axis === 'y' || axis !== horizontalAxis} onChange={(value) => selectedOpening.kind === 'window' ? moveWallObject(selectedOpening.id, axis, value) : update({ offset: value * sign })} />)}
-      {selectedOpening.kind === 'window' && !free && availableAxes && !availableAxes.x && !availableAxes.z && <PositionControl label="Desplazamiento por la pared" value={selectedOpening.offset} min={-maxOffset} max={maxOffset} step={openingStep} disabled={locked || !!selectedOpening.axisLocks?.x || !!selectedOpening.axisLocks?.z} onChange={(offset) => update({ offset })} />}
+      {(['x', 'y', 'z'] as const).map((axis) => {
+        const component = axis === 'x' ? Math.cos(position.yaw) : axis === 'z' ? -Math.sin(position.yaw) : 0
+        const limits = runBounds && axis !== 'y' ? [position[axis] + component * runBounds.min, position[axis] + component * runBounds.max] : [-20, 20]
+        return <AxisPositionControl key={axis} id={selectedOpening.id} axis={axis} label={`Posición ${axis.toUpperCase()}`} value={position[axis]} min={Math.min(position[axis], ...limits)} max={Math.max(position[axis], ...limits)} step={openingStep} disabled={locked} locked={selectedOpening.axisLocks?.[axis] ?? false} unavailable={!availableAxes[axis]} onChange={(value) => moveWallObject(selectedOpening.id, axis, value)} />
+      })}
+      {!free && !availableAxes.x && !availableAxes.z && <PositionControl label="Desplazamiento por la pared" value={selectedOpening.offset} min={runBounds ? selectedOpening.offset + runBounds.min : -maxOffset} max={runBounds ? selectedOpening.offset + runBounds.max : maxOffset} step={openingStep} disabled={locked || !!selectedOpening.axisLocks?.x || !!selectedOpening.axisLocks?.z} onChange={(offset) => update({ offset })} />}
       {selectedOpening.kind === 'window' && <p className="rotation-hint">{free ? 'Elemento libre: puedes moverlo en XYZ o volver a colocarlo en una pared.' : 'Fijado a la pared: el eje perpendicular está bloqueado. Despega el elemento para moverlo libremente.'}</p>}
       {locked
         ? <p className="lock-hint">Elemento bloqueado: desbloquea el candado de la lista para moverlo o girarlo.</p>

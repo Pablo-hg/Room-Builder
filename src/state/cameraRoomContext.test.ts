@@ -150,7 +150,7 @@ test('puertas de raíz: huecos, JSON/R4, candados, borrado y deshacer sin perder
   const segments = buildWallSegments(wallLength(room, door.wall), room.height, openingsForWall(room, door.wall))
   assert.ok(!segments.some((segment) => Math.abs(door.offset - segment.center[0]) < segment.size[0] / 2 && Math.abs(door.height / 2 - segment.center[1]) < segment.size[1] / 2))
   const data = persistedDesign(store.getState())
-  assert.equal(data.version, 8)
+  assert.equal(data.version, 10)
   const saved = { id: 'extra-doors', name: 'Puertas', savedAt: '2026-11-07T12:00:00.000Z', data }
   assert.deepEqual(normalizeDesign(data).room.extraDoors, room.extraDoors)
   assert.deepEqual(parseDesignFile(serializeDesignFile(saved)).design.data.room.extraDoors, room.extraDoors)

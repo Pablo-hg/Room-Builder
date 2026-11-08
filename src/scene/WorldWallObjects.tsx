@@ -1,9 +1,8 @@
 import { useRef } from 'react'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { wallObjectAvailableAxes, wallObjectBox, wallObjectPosition, wallObjectSelectionFrame, wallObjects } from '../domain/wallObjectPlacement'
+import { wallObjectAvailableAxes, wallObjectBox, wallObjectSelectionFrame } from '../domain/wallObjectPlacement'
 import { boxOutsideBuilding } from '../domain/buildingVolume'
-import { structureSurfaceElementId } from '../domain/elementIds'
 import type { RoomConfig, StructurePack, WindowConfig } from '../domain/types'
 import { moveFromOrigin } from '../domain/measurements'
 import { useRoomStore } from '../state/useRoomStore'
@@ -13,8 +12,9 @@ import { WallObjectGizmo } from './WallObjectGizmo'
 import { useHistoryGesture } from '../state/useHistoryGesture'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
 import { selectSceneObject } from './sceneInteraction'
+import { openingHasSupport, openingWallRun, worldOpenings } from '../domain/wallConnections'
 
-function WorldWallObject({ room, packs, window, pack, collision, exportMode }: { room: RoomConfig; packs: StructurePack[]; window: WindowConfig; pack?: StructurePack; collision: boolean; exportMode: boolean }) {
+function WorldWallObject({ room, packs, window, pack, collision, exportMode, kind = 'window' }: { room: RoomConfig; packs: StructurePack[]; window: WindowConfig; pack?: StructurePack; collision: boolean; exportMode: boolean; kind?: 'window' | 'door' }) {
   const selected = useRoomStore((state) => state.selectedIds.includes(window.id))
   const multiple = useRoomStore((state) => state.selectedIds.length > 1)
   const locked = useRoomStore((state) => state.lockedElementIds.includes(window.id) || !!pack && state.lockedElementIds.includes(pack.id))
@@ -24,7 +24,7 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode }: {
   const gesture = useHistoryGesture(window.id)
   const selectionFrame = wallObjectSelectionFrame(room, window, pack)
   const position = selectionFrame.position
-  const availableAxes = wallObjectAvailableAxes(room, window, pack)
+  const availableAxes = { ...wallObjectAvailableAxes(room, window, pack), y: kind !== 'door' }
   const movementLocks = { x: !availableAxes.x || !!window.axisLocks?.x, y: !availableAxes.y || !!window.axisLocks?.y, z: !availableAxes.z || !!window.axisLocks?.z }
   const drag = useRef<{ point: THREE.Vector3; plane: THREE.Plane; origin: typeof position; offset: number; sill: number; vertical: boolean } | null>(null)
   const end = (event: ThreeEvent<PointerEvent>) => {
@@ -59,11 +59,15 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode }: {
     const point = event.ray.intersectPlane(current.plane, new THREE.Vector3())
     if (!point) return
     const delta = point.sub(current.point)
-    if (!window.freePosition && !availableAxes.x && !availableAxes.z) {
-      useRoomStore.getState().updateWindow(window.id, {
+    if (!window.freePosition) {
+      const update = {
         ...(!current.vertical ? { offset: moveFromOrigin(current.offset + delta.x * Math.cos(current.origin.yaw) - delta.z * Math.sin(current.origin.yaw), current.offset) } : {}),
-        ...(current.vertical || view === 'front' ? { sill: moveFromOrigin(current.sill + delta.y, current.sill) } : {}),
-      })
+        ...(kind !== 'door' && (current.vertical || view === 'front') ? { sill: moveFromOrigin(current.sill + delta.y, current.sill) } : {}),
+      }
+      if (kind === 'door') {
+        if (window.id === 'door') useRoomStore.getState().setDoor(update)
+        else useRoomStore.getState().setStructureDoor(window.id, update)
+      } else useRoomStore.getState().updateWindow(window.id, update)
       return
     }
     for (const axis of ['x', 'y', 'z'] as const) {
@@ -77,7 +81,8 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode }: {
   return <>
     <group position={[position.x, position.y, position.z]} rotation={[0, position.yaw, 0]} onPointerDown={start} onPointerMove={moving} onPointerUp={end} onPointerCancel={(event) => { gesture.cancel(); end(event) }}>
       {view === 'top' && !exportMode ? <mesh position={[0, window.height / 2, 0.05]}><boxGeometry args={[window.width, 0.04, window.shape === 'wallShelf' ? 0.3 : 0.18]} /><meshBasicMaterial color={window.color ?? '#c88f58'} /></mesh>
-        : <OpeningDetail room={room} opening={{ ...window, kind: 'window', offset: 0, bottom: 0, color: window.color ?? '#c88f58' }} wall={window.wall} selected={false} locked interactive={false} />}
+        : <OpeningDetail room={room} opening={{ ...window, kind, offset: 0, bottom: 0, color: window.color ?? '#c88f58' }} wall={window.wall} selected={false} locked interactive={false} />}
+      {!exportMode && <mesh position={[0, window.height / 2, 0]}><boxGeometry args={[window.width, window.height, 0.16]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>}
       {!exportMode && (selected || collision || outside) && <group position={selectionFrame.localCenter} rotation={[0, 0, window.rotation]}><SelectionBounds width={window.width} height={window.height} depth={selectionFrame.depth} collision={collision || outside} /></group>}
     </group>
     {!exportMode && selected && !multiple && !locked && view !== 'pov' && <WallObjectGizmo id={window.id} position={position} anchor={selectionFrame.handleBase} height={window.height} locks={movementLocks} />}
@@ -87,10 +92,17 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode }: {
 export function WorldWallObjects({ room, structurePacks, collisionIds, exportMode, level, levelHeight, focusedView }: { room: RoomConfig; structurePacks: StructurePack[]; collisionIds: ReadonlySet<string>; exportMode: boolean; level: number; levelHeight: number; focusedView: boolean }) {
   const hidden = useRoomStore((state) => state.hiddenElementIds)
   const selected = useRoomStore((state) => state.selectedIds)
-  return <>{wallObjects({ room, structurePacks }).filter(({ window, pack }) => {
-    if (hidden.includes(window.id) || pack && hidden.includes(pack.id)) return false
-    if (!window.freePosition && hidden.includes(pack ? structureSurfaceElementId(pack.id, `wall-${window.wall}`) : `room-wall:${window.wall}`)) return false
-    const position = wallObjectPosition(room, window, pack)
-    return !focusedView || selected.includes(window.id) || position.y + window.height > level - 0.01 && position.y < level + levelHeight
-  }).map(({ window, pack }) => <WorldWallObject key={window.id} room={room} packs={structurePacks} window={window} pack={pack} collision={collisionIds.has(window.id)} exportMode={exportMode} />)}</>
+  const world = { room, structurePacks }
+  return <>{worldOpenings(world).filter((opening) => {
+    if (hidden.includes(opening.id)) return false
+    const supports = openingWallRun(world, opening)
+    if (supports.length && supports.every((wall) => hidden.includes(wall.id) || !!wall.packId && hidden.includes(wall.packId))) return false
+    if (!supports.length && opening.packId && hidden.includes(opening.packId)) return false
+    const position = opening.position
+    return !focusedView || selected.includes(opening.id) || position.y + opening.height > level - 0.01 && position.y < level + levelHeight
+  }).map((opening) => {
+    const pack = structurePacks.find((pack) => pack.id === opening.packId)
+    const window: WindowConfig = { ...opening.object, id: opening.id, shape: opening.shape ?? 'rectangular', sill: 'sill' in opening.object ? Number(opening.object.sill) : 0 }
+    return <WorldWallObject key={opening.id} room={room} packs={structurePacks} window={window} pack={pack} kind={opening.kind} collision={collisionIds.has(opening.id) || !openingHasSupport(world, opening)} exportMode={exportMode} />
+  })}</>
 }
