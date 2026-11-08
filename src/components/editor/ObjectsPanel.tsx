@@ -66,7 +66,7 @@ export function ObjectsPanel() {
     ...furniture.map((item) => ({ id: item.id, name: item.name, kind: FURNITURE_FAMILIES.find((family) => family.id === FURNITURE_CATALOG[item.kind].family)?.label ?? 'Mueble', icon: <FurnitureIcon kind={item.kind} color={item.color} /> })),
     ...structurePacks.flatMap((pack) => [
       ...(pack.doors ?? []).map((door) => ({ id: door.id, name: door.name || 'Puerta', kind: 'Apertura', icon: <OpeningSwatch kind="door" /> })),
-      { id: pack.id, name: pack.name, kind: 'Pack de construcción', icon: <StructurePackIcon /> },
+      ...(!pack.id.startsWith('floor-object-') && !pack.id.startsWith('wall-object-') ? [{ id: pack.id, name: pack.name, kind: 'Pack de construcción', icon: <StructurePackIcon /> }] : []),
       ...pack.surfaces.map((surface) => ({
         id: structureSurfaceElementId(pack.id, surface.id),
         name: structureSurfaceName(surface),
