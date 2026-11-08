@@ -1,7 +1,8 @@
 import { ROOM_LIMITS } from './constants'
-import { canPlaceFurniture, clampFurniture, clampFurnitureElevation, findFreeFurniturePosition, validateOpenings, withDoor, withWindow } from './geometry'
+import { canPlaceFurniture, clampFurniture, clampFurnitureElevation, findAvailableOpeningOffset, findFreeFurniturePosition, validateOpenings, wallLength, withDoor, withWindow } from './geometry'
 import { canElevateFurniture, furnitureAttachment, FURNITURE_PRESETS, isCeilingMountedFurniture, isFloorBoundFurniture } from './objectCatalog'
 import type { FurnitureItem, RoomConfig, WindowConfig } from './types'
+import type { OpeningConflict } from './geometry'
 import { snapMeasurement } from './measurements'
 import { furnitureAxisLocks } from './axisLocks'
 
@@ -14,8 +15,8 @@ export interface RoomEditingData {
 type RoomRuleUpdate = Partial<{ room: RoomConfig; furniture: FurnitureItem[]; notice: string }>
 type FurnitureRuleUpdate = Partial<{ furniture: FurnitureItem[]; notice: string }>
 
-export function safeRoomUpdate(current: RoomEditingData, candidate: RoomConfig): RoomRuleUpdate {
-  const error = validateOpenings(candidate)
+export function safeRoomUpdate(current: RoomEditingData, candidate: RoomConfig, onConflict?: (conflict: OpeningConflict) => void): RoomRuleUpdate {
+  const error = validateOpenings(candidate, onConflict)
   if (error) return { notice: error }
   const furniture = current.furniture.map((item) => {
     if (item.axisLocks) return { ...item }
@@ -83,22 +84,43 @@ export function clampRoomDimension(key: 'width' | 'depth' | 'height', value: num
 }
 
 export function roomForDoorUpdate(room: RoomConfig, partial: { wall?: RoomConfig['door']['wall']; offset?: number; color?: string }) {
-  const adjusted = partial.offset === undefined ? partial : { ...partial, offset: snapMeasurement(partial.offset) }
-  return withDoor(room, { ...adjusted, rotation: 0 })
+  const adjusted = partial.offset === undefined ? partial : { ...partial, offset: room.door.wallPosition ? partial.offset : snapMeasurement(partial.offset) }
+  const candidate = withDoor(room, { ...adjusted, rotation: 0 })
+  if (partial.wall === undefined || partial.wall === room.door.wall || partial.offset !== undefined || !validateOpenings(candidate)) return candidate
+
+  // Solo reubicar automáticamente al cambiar de pared sin introducir un offset manual.
+  const offset = findAvailableOpeningOffset(wallLength(room, partial.wall), room.door.width, room.door.offset, (value) =>
+    !validateOpenings(withDoor(room, { ...adjusted, offset: value, rotation: 0 })),
+  )
+  return offset === null ? candidate : withDoor(room, { ...adjusted, offset, rotation: 0 })
 }
 
 export function roomForWindowUpdate(room: RoomConfig, currentWindow: WindowConfig, partial: Partial<Pick<WindowConfig, 'wall' | 'offset' | 'width' | 'sill' | 'rotation' | 'color'>>) {
   const adjusted = {
     ...partial,
-    ...(partial.offset === undefined ? {} : { offset: snapMeasurement(partial.offset) }),
-    ...(partial.sill === undefined ? {} : {
+    ...(partial.offset === undefined ? {} : { offset: currentWindow.wallPosition ? partial.offset : snapMeasurement(partial.offset) }),
+    ...(partial.sill === undefined ? {} : currentWindow.wallPosition ? { sill: snapMeasurement(partial.sill) } : {
       sill: Math.max(0, Math.min(
         Math.floor((room.height - currentWindow.height - 0.08) * 100) / 100,
         snapMeasurement(partial.sill),
       )),
     }),
   }
-  return withWindow(room, currentWindow.id, adjusted)
+  const candidate = withWindow(room, currentWindow.id, adjusted)
+  if (currentWindow.freePosition) {
+    if (partial.wall !== undefined) {
+      candidate.windows = candidate.windows.map((window) => {
+        if (window.id !== currentWindow.id) return window
+        const { freePosition: _freePosition, wallPosition: _wallPosition, ...attached } = window
+        return attached
+      })
+    } else return candidate
+  }
+  if (partial.wall === undefined || partial.wall === currentWindow.wall || partial.offset !== undefined || !validateOpenings(candidate)) return candidate
+  const offset = findAvailableOpeningOffset(wallLength(room, partial.wall), currentWindow.width, currentWindow.offset, (value) =>
+    !validateOpenings(withWindow(room, currentWindow.id, { ...adjusted, offset: value })),
+  )
+  return offset === null ? candidate : withWindow(room, currentWindow.id, { ...adjusted, offset })
 }
 
 export function movedFurniture(state: RoomEditingData, item: FurnitureItem, x: number, z: number) {

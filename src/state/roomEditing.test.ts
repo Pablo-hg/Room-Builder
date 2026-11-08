@@ -116,7 +116,7 @@ test('añade varias puertas con huecos reales en la pared indicada y conserva JS
   assert.equal(openings[0].kind, 'door')
   assert.equal(openings[0].bottom, 0)
   const data = persistedDesign(store.getState())
-  assert.equal(data.version, 7)
+  assert.equal(data.version, 10)
   const design = { id: 'doors', name: 'Puertas', savedAt: '2026-11-07T12:00:00.000Z', data }
   assert.deepEqual(normalizeDesign(data).structurePacks, data.structurePacks)
   assert.deepEqual(parseDesignFile(serializeDesignFile(design)).design.data.structurePacks, data.structurePacks)
@@ -143,23 +143,22 @@ test('puerta ligada a pared: candado indirecto, borrado en cascada y deshacer', 
   assert.ok(store.getState().elementFolderAssignments[doorId])
 })
 
-test('rechaza puertas fuera de pared o sobre paredes coincidentes sin inventar medianeras', () => {
+test('abre pasos en paredes conectadas y rechaza mover la puerta fuera del soporte', () => {
   const store = createRoomStore()
   store.getState().addStructurePack('north')
   const packId = store.getState().structurePacks[0].id
   store.getState().selectElement(structureSurfaceElementId(packId, 'wall-south'))
   store.getState().addStructureDoor()
   const created = store.getState().structurePacks[0].doors![0]
-  assert.notEqual(created.wall, 'south')
   store.getState().setStructureDoor(created.id, { wall: 'south' })
-  assert.equal(store.getState().structurePacks[0].doors![0].wall, created.wall)
-  assert.match(store.getState().notice, /medianera/)
+  assert.equal(store.getState().structurePacks[0].doors![0].wall, 'south')
+  assert.equal(store.getState().notice, '')
   store.getState().selectElement(structureSurfaceElementId(packId, 'wall-north'))
   store.getState().addStructureDoor()
   const door = store.getState().structurePacks[0].doors![0]
   store.getState().setStructureDoor(door.id, { offset: 100 })
   assert.equal(store.getState().structurePacks[0].doors![0].offset, door.offset)
   const data = structuredClone(persistedDesign(store.getState()))
-  data.structurePacks![0].doors![0].offset = 100
-  assert.throws(() => normalizeDesign(data), /pared/)
+  data.structurePacks![0].doors![0].wallPosition!.x = NaN
+  assert.throws(() => normalizeDesign(data), /[Pp]osición/)
 })

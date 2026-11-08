@@ -39,6 +39,8 @@ export interface ElementFolder {
 }
 
 export interface DoorConfig {
+  /** v10: one logical opening, independently of its original physical wall. */
+  wallPosition?: { x: number; y: number; z: number; yaw: number; supportId?: string; depth?: number }
   axisLocks?: AxisLocks
   name?: string
   wall: WallSide
@@ -50,6 +52,10 @@ export interface DoorConfig {
 }
 
 export interface WindowConfig {
+  /** v10: attached world-space base centre. freePosition remains detached. */
+  wallPosition?: { x: number; y: number; z: number; yaw: number; supportId?: string; depth?: number }
+  /** v9: detached world-space base centre and wall yaw; absent preserves legacy support. */
+  freePosition?: { x: number; y: number; z: number; yaw: number }
   axisLocks?: AxisLocks
   name?: string
   id: string
@@ -114,6 +120,8 @@ export interface StructureSurface {
 export interface StructurePack {
   axisLocks?: AxisLocks
   doors?: Array<DoorConfig & { id: string }>
+  /** Windows and wall-mounted decorations belonging to this room (legacy root uses RoomConfig.windows). */
+  windows?: WindowConfig[]
   id: string
   name: string
   x: number

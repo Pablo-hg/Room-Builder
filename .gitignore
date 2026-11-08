@@ -4,6 +4,7 @@ coverage
 playwright-report
 test-results
 logs/*.log
+logs/diagnostics/
 *.tsbuildinfo
 *.local
 .DS_Store

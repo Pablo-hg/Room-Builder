@@ -40,14 +40,21 @@ export function normalizeDesign(value: unknown): PersistedDesign {
   const room = normalizeDesignRoom(source)
   if (![room.width, room.depth, room.height].every((value) => Number.isFinite(value) && value > 0)) throw new Error('Las dimensiones de la habitación no son válidas.')
   const structurePacks = normalizeStructurePacks(source.structurePacks, room)
+  if (source.version < 10 && [room.door, ...(room.extraDoors ?? []), ...room.windows,
+    ...structurePacks.flatMap((pack) => [...(pack.doors ?? []), ...(pack.windows ?? [])])].some((opening) => opening.wallPosition !== undefined)) {
+    throw new Error('Los anclajes a paredes conectadas requieren un diseño v10.')
+  }
+  if (source.version < 9 && [...room.windows, ...structurePacks.flatMap((pack) => pack.windows ?? [])].some((window) => window.freePosition !== undefined)) {
+    throw new Error('Las posiciones murales libres requieren un diseño v9.')
+  }
   const doorError = structureDoorsWorldError(room, structurePacks)
   if (doorError) throw new Error(doorError)
   const usedIds = new Set(['door', ...BASE_ROOM_SURFACE_IDS, ...room.windows.map((window) => window.id), ...source.furniture.map((item) => item?.id),
     ...(source.elementFolders ?? []).map((folder) => folderSelectionId(folder.id)),
     ...structurePacks.flatMap((pack) => [pack.id, ...pack.surfaces.flatMap((surface) => [structureSurfaceElementId(pack.id, surface.id), structureGridElementId(pack.id, surface.id)])])])
-  for (const door of [...(room.extraDoors ?? []), ...structurePacks.flatMap((pack) => pack.doors ?? [])]) {
-    if (usedIds.has(door.id)) throw new Error('Identificador de puerta duplicado.')
-    usedIds.add(door.id)
+  for (const opening of [...(room.extraDoors ?? []), ...structurePacks.flatMap((pack) => [...(pack.doors ?? []), ...(pack.windows ?? [])])]) {
+    if (usedIds.has(opening.id)) throw new Error('Identificador de apertura duplicado.')
+    usedIds.add(opening.id)
   }
   if (validateOpenings(room)) throw new Error('Aperturas inválidas.')
   const migrated = migrateWallPictures(room, source.furniture)

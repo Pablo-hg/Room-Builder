@@ -2,6 +2,9 @@ import { resizedFurniture, resizedWallObject } from '../../domain/furnitureResiz
 import { furnitureHasSpatialWarning } from '../../domain/structureCollisions'
 import type { RoomActionContext, RoomState } from '../types'
 import { openingMovementAllowed } from '../../domain/axisLocks'
+import { packWindowById, structureWindowError } from '../../domain/structureWindows'
+import { OPENING_CATALOG, openingKindForShape } from '../../domain/objectCatalog'
+import { isMeasurementStep, MEASUREMENT_STEP_NOTICE, snapMeasurement } from '../../domain/measurements'
 
 export function createResizeActions({ set }: RoomActionContext): Pick<RoomState, 'resizeFurniture' | 'resizeWallObject'> {
   return {
@@ -17,6 +20,23 @@ export function createResizeActions({ set }: RoomActionContext): Pick<RoomState,
     }),
     resizeWallObject: (id, dimension, value) => set((state) => {
       if (state.lockedElementIds.includes(id)) return { notice: 'Desbloquea el objeto para cambiar su tamaño.' }
+      const source = packWindowById(state.structurePacks, id)
+      if (source) {
+        const { pack, window } = source
+        const range = OPENING_CATALOG[openingKindForShape(window.shape)].capabilities.resize?.dimensions[dimension]
+        if (!range) return { notice: 'Este tipo de objeto no permite editar esa medida.' }
+        if (!isMeasurementStep(value)) return { notice: MEASUREMENT_STEP_NOTICE }
+        if (value < range.min || value > range.max) return { notice: `La medida debe estar entre ${range.min} y ${range.max} m.` }
+        const changed = { ...window, [dimension]: snapMeasurement(value) }
+        const linked = OPENING_CATALOG[openingKindForShape(window.shape)].capabilities.resize?.diameter
+        if (linked?.includes(dimension)) {
+          for (const other of linked) Object.assign(changed, { [other]: snapMeasurement(value) })
+        }
+        const next = { ...pack, windows: pack.windows!.map((item) => item.id === id ? changed : item) }
+        const error = structureWindowError(next)
+        if (error) return { notice: error }
+        return { structurePacks: state.structurePacks.map((item) => item.id === pack.id ? next : item), notice: '' }
+      }
       const item = state.room.windows.find((candidate) => candidate.id === id)
       if (!item) return {}
       const result = resizedWallObject(state.room, item, dimension, value)

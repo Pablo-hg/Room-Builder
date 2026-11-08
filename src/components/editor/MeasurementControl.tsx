@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { isMeasurementStep, MEASUREMENT_STEP, MEASUREMENT_STEP_NOTICE, measurementCentimetres, measurementMetres, parseMeasurement, snapMeasurement, stepMeasurement } from '../../domain/measurements'
 import { beginMeasurementLog, finishMeasurementLog } from '../../debug/interactionLog'
+import { diagnostics } from '../../diagnostics/engine'
 import { useHistoryGesture } from '../../state/useHistoryGesture'
 import { useRoomStore } from '../../state/useRoomStore'
 
@@ -12,7 +13,7 @@ const holdAmount = (elapsed: number) => elapsed >= 1600 ? 0.10 : elapsed >= 1000
 const holdDelay = (elapsed: number) => elapsed >= 1600 ? 45 : elapsed >= 1000 ? 60 : elapsed >= 500 ? 90 : 140
 
 /** Entrada exacta en cm enteros con paso fino y repetición acelerada. */
-export function MeasurementControl({ label, inputLabel, value, min, max, onChange, disabled = false }: {
+export function MeasurementControl({ label, inputLabel, value, min, max, onChange, disabled = false, textColor }: {
   label: string
   inputLabel?: string
   value: number
@@ -20,6 +21,7 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
   max: number
   onChange: (value: number) => void
   disabled?: boolean
+  textColor?: string
 }) {
   const [draft, setDraft] = useState(measurementMetres(value))
   const [error, setError] = useState('')
@@ -128,8 +130,9 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
     draftRef.current = measurementMetres(valueRef.current)
     setDraft(draftRef.current)
     if (candidate === valueRef.current) { setError(''); return }
-    if (!isMeasurementStep(candidate)) { setError(MEASUREMENT_STEP_NOTICE); return }
+    if (!isMeasurementStep(candidate)) { diagnostics.emit({ action: 'measurement.input', level: 'warn', result: 'rejected', data: { reason: 'invalid-centimetre-step' } }); setError(MEASUREMENT_STEP_NOTICE); return }
     if (candidate < min - 1e-9 || candidate > max + 1e-9) {
+      diagnostics.emit({ action: 'measurement.input', level: 'warn', result: 'rejected', data: { reason: 'measurement-out-of-range', min, max } })
       setError(`Introduce una medida entre ${min.toLocaleString('es-ES')} y ${max.toLocaleString('es-ES')} m.`)
       return
     }
@@ -174,8 +177,8 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
     if (key === 'y' || event.shiftKey) state.redo()
     else state.undo()
   }}>
-    <span><span>{label}</span><span className="position-number">
-      <input type="text" inputMode="decimal" aria-label={inputLabel ?? `Introducir ${label.toLowerCase()} en metros`} aria-invalid={!!error}
+    <span><span style={{ color: textColor }}>{label}</span><span className="position-number" style={{ color: textColor }}>
+      <input type="text" inputMode="decimal" style={{ color: textColor }} aria-label={inputLabel ?? `Introducir ${label.toLowerCase()} en metros`} aria-invalid={!!error}
         value={draft} disabled={disabled} onChange={(event) => { draftRef.current = event.target.value; setDraft(event.target.value); setError('') }}
         onKeyDown={(event) => {
           if (event.key === 'Enter') { event.preventDefault(); stopHold(); commit(); finishEdit() }
@@ -207,7 +210,7 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
       onChange={(event) => {
         apply(clamp(Number(event.target.value)))
       }} />
-    <small className="measurement-equivalent">{!isMeasurementStep(value) ? '≈ ' : ''}{measurementCentimetres(value)} cm{!isMeasurementStep(value) ? ' · valor anterior conservado' : ''}</small>
+    <small className="measurement-equivalent" style={{ color: textColor }}>{!isMeasurementStep(value) ? '≈ ' : ''}{measurementCentimetres(value)} cm{!isMeasurementStep(value) ? ' · valor anterior conservado' : ''}</small>
     {error && <small className="measurement-error" role="alert">{error}</small>}
   </div>
 }

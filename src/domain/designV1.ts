@@ -7,7 +7,7 @@ import type { ElementFolder, FurnitureItem, GridSurface, RoomConfig, StructurePa
  * al leer se aplana a su variante activa y se guarda de nuevo como v4.
  */
 export interface PersistedDesign {
-  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
   room: RoomConfig
   furniture: FurnitureItem[]
   structurePacks?: StructurePack[]
@@ -41,7 +41,10 @@ export function persistedDesign(state: DesignState): PersistedDesign {
   const hasAxisLocks = state.furniture.some((item) => item.axisLocks)
     || !!state.room.door.axisLocks || state.room.windows.some((item) => item.axisLocks)
     || state.structurePacks.some((pack) => pack.axisLocks || pack.surfaces.some((surface) => surface.axisLocks))
-  const version: PersistedDesign['version'] = state.room.extraDoors?.length ? 8 : state.structurePacks.some((pack) => pack.doors?.length) ? 7 : hasAxisLocks ? 6 : state.sceneElementOrder.length
+  const hasFreeWallObjects = [...state.room.windows, ...state.structurePacks.flatMap((pack) => pack.windows ?? [])].some((window) => window.freePosition)
+  const hasWallAnchors = !!state.room.door.wallPosition || [...(state.room.extraDoors ?? []), ...state.room.windows,
+    ...state.structurePacks.flatMap((pack) => [...(pack.doors ?? []), ...(pack.windows ?? [])])].some((item) => item.wallPosition)
+  const version: PersistedDesign['version'] = hasWallAnchors ? 10 : hasFreeWallObjects ? 9 : state.room.extraDoors?.length || state.structurePacks.some((pack) => pack.windows?.length) ? 8 : state.structurePacks.some((pack) => pack.doors?.length) ? 7 : hasAxisLocks ? 6 : state.sceneElementOrder.length
     ? 4
     : state.elementFolders.some((folder) => folder.parentId) ? 3 : state.room.door.name || state.room.windows.some((window) => window.name) ? 2 : 1
   return {
@@ -83,7 +86,7 @@ export function persistedDesignSignature(design: PersistedDesign) {
 export function isPersistedDesign(value: unknown): value is PersistedDesign {
   if (!value || typeof value !== 'object') return false
   const design = value as Partial<PersistedDesign>
-  return (design.version === 1 || design.version === 2 || design.version === 3 || design.version === 4 || design.version === 5 || design.version === 6 || design.version === 7 || design.version === 8)
+  return (design.version === 1 || design.version === 2 || design.version === 3 || design.version === 4 || design.version === 5 || design.version === 6 || design.version === 7 || design.version === 8 || design.version === 9 || design.version === 10)
     && !!design.room
     && typeof design.room === 'object'
     && Array.isArray(design.furniture)

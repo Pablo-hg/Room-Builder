@@ -1,6 +1,6 @@
-import { BASE_ROOM_SURFACE_IDS, folderElementIds, folderIdFromSelection } from './elementFolders'
+import { BASE_ROOM_SURFACE_IDS, folderElementIds, folderIdFromSelection, ROOT_ROOM_FOLDER } from './elementFolders'
 import { structureSurfaceElementId } from './elementIds'
-import { WALL_SIDES } from './constants'
+import { ROOT_FLOOR_THICKNESS, ROOT_PLATFORM_THICKNESS, ROOT_PLATFORM_Y, WALL_SIDES } from './constants'
 import type { RoomState } from '../state/types'
 import type { RoomConfig, StructurePack, StructureSurface } from './types'
 
@@ -9,6 +9,20 @@ export function surfacePosition(room: RoomConfig, surface: StructureSurface): [n
   return [surface.x + (surface.wall === 'east' ? room.width / 2 : surface.wall === 'west' ? -room.width / 2 : 0),
     surface.y + (surface.kind === 'wall' ? room.height / 2 : surface.kind === 'ceiling' ? room.height : 0),
     surface.z + (surface.wall === 'south' ? room.depth / 2 : surface.wall === 'north' ? -room.depth / 2 : 0)]
+}
+
+/** Solid vertical envelope, independent of visibility. Surface origins are centres. */
+export function roomVerticalBounds(room: RoomConfig, pack?: StructurePack) {
+  if (!pack) return {
+    bottom: Math.min(-ROOT_FLOOR_THICKNESS / 2, ROOT_PLATFORM_Y - ROOT_PLATFORM_THICKNESS / 2),
+    top: room.height,
+  }
+  const spans = pack.surfaces.map((surface) => {
+    const center = pack.y + surfacePosition(room, surface)[1]
+    return { bottom: center - surface.height / 2, top: center + surface.height / 2 }
+  })
+  if (!spans.length) return { bottom: pack.y, top: pack.y }
+  return { bottom: Math.min(...spans.map((span) => span.bottom)), top: Math.max(...spans.map((span) => span.top)) }
 }
 
 /** Only a coherent rectangular enclosure has a meaningful room-size operation. */
@@ -27,7 +41,8 @@ export function packRoomBox(pack: StructurePack, room: RoomConfig) {
   }
   const ceiling = pack.surfaces.find((surface) => surface.kind === 'ceiling')
   if (ceiling && (!close(ceiling.x, floor.x) || !close(ceiling.z, floor.z)
-    || !close(room.height + ceiling.y, floor.y + height)
+    || (!close(room.height + ceiling.y, floor.y + height)
+      && !close(room.height + ceiling.y + ceiling.height / 2, floor.y + height))
     || !close(ceiling.width, floor.width) || !close(ceiling.depth, floor.depth))) return null
   return { width: floor.width, depth: floor.depth, height, x: floor.x, y: floor.y, z: floor.z }
 }
@@ -53,12 +68,28 @@ export function resizedRoomPack(pack: StructurePack, room: RoomConfig, size: Pic
   if (!box) return null
   return { ...pack, surfaces: pack.surfaces.map((surface) => {
     if (surface.kind === 'floor') return { ...surface, width: size.width, depth: size.depth }
-    if (surface.kind === 'ceiling') return { ...surface, width: size.width, depth: size.depth, y: box.y + size.height - room.height }
+    if (surface.kind === 'ceiling') return { ...surface, width: size.width, depth: size.depth, y: surface.y + size.height - box.height }
     return { ...surface, width: surface.wall === 'north' || surface.wall === 'south' ? size.width : size.depth, height: size.height,
       x: box.x + (surface.wall === 'east' ? (size.width - room.width) / 2 : surface.wall === 'west' ? (room.width - size.width) / 2 : 0),
       y: box.y + (size.height - room.height) / 2,
       z: box.z + (surface.wall === 'south' ? (size.depth - room.depth) / 2 : surface.wall === 'north' ? (room.depth - size.depth) / 2 : 0) }
   }) }
+}
+
+/** Camera focus is the source of truth for where new scene elements belong.
+ * World-space centre and visible tree folder always refer to the same room.
+ * Never infer the creation room from the currently selected object.
+ */
+export function focusedCreationTarget(state: Pick<RoomState, 'room' | 'structurePacks' | 'activeRoomId' | 'elementFolderAssignments' | 'elementFolders'>) {
+  const pack = state.structurePacks.find((candidate) => candidate.id === state.activeRoomId && candidate.id.startsWith('floor-pack-'))
+  const box = pack && packRoomBox(pack, state.room)
+  const candidateFolder = pack ? state.elementFolderAssignments[pack.id] : ROOT_ROOM_FOLDER
+  const folderId = candidateFolder && state.elementFolders.some((folder) => folder.id === candidateFolder) ? candidateFolder : null
+  return {
+    folderId,
+    center: { x: (pack?.x ?? 0) + (box?.x ?? 0), y: (pack?.y ?? 0) + (box?.y ?? 0), z: (pack?.z ?? 0) + (box?.z ?? 0) },
+    size: { width: box?.width ?? state.room.width, height: box?.height ?? state.room.height, depth: box?.depth ?? state.room.depth },
+  }
 }
 
 export function focusedRoom(state: RoomSelectionState & Pick<RoomState, 'activeRoomId'>) {

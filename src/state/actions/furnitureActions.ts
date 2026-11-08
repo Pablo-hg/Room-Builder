@@ -1,3 +1,4 @@
+import { rejectDiagnosticAction } from '../../diagnostics/actionScope'
 import { finishHistoryTransaction } from '../historyTransactions'
 import { applyFurnitureRotation, elevatedFurniture, movedFurniture } from '../../domain/editingRules'
 import { makeId } from '../../domain/elementIds'
@@ -6,13 +7,16 @@ import { elementName } from '../../domain/selection'
 import { FURNITURE_PRESETS, furnitureVisualYOffset, isCeilingMountedFurniture, isWallPictureKind } from '../../domain/objectCatalog'
 import { furnitureAxisLocks, unlockedAxes } from '../../domain/axisLocks'
 import { supportingFloorTop } from '../../domain/furniturePlacement'
-import { packRoomBox } from '../../domain/roomEditing'
+import { focusedCreationTarget, packRoomBox } from '../../domain/roomEditing'
 import { structureSurfaceElementId } from '../../domain/elementIds'
 import { findFreeFurniturePosition, validateOpenings } from '../../domain/geometry'
 import { snapMeasurement } from '../../domain/measurements'
 import { furnitureSelectionBounds } from '../../domain/multiFurniture'
 import { multiSelectionItems } from '../../domain/multiSelection'
-import type { FurnitureItem } from '../../domain/types'
+import { rehomeFreeWallObjects, wallObjectPosition } from '../../domain/wallObjectPlacement'
+import { structureWindowError } from '../../domain/structureWindows'
+import { openingPosition } from '../../domain/wallConnections'
+import type { DoorConfig, FurnitureItem, WindowConfig, StructurePack } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
 import type { RoomActionContext, RoomState } from '../types'
 
@@ -38,7 +42,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
   const { set, get, runtime } = context
   return {
     setElementAxisLock: (id, axis, locked) => set((state) => {
-      if (state.lockedElementIds.includes(id)) return {}
+      if (state.lockedElementIds.includes(id)) { rejectDiagnosticAction('element-locked'); return {} }
       const item = state.furniture.find((candidate) => candidate.id === id)
       if (item) {
         const locks = furnitureAxisLocks(item)
@@ -50,6 +54,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       if (id === 'door') return { room: { ...state.room, door: { ...state.room.door, axisLocks: { ...unlockedAxes(), ...state.room.door.axisLocks, [axis]: locked } } } }
       if (state.room.extraDoors?.some((door) => door.id === id)) return { room: { ...state.room, extraDoors: state.room.extraDoors.map((door) => door.id === id ? { ...door, axisLocks: { ...unlockedAxes(), ...door.axisLocks, [axis]: locked } } : door) } }
       if (state.room.windows.some((window) => window.id === id)) return { room: { ...state.room, windows: state.room.windows.map((window) => window.id !== id ? window : { ...window, axisLocks: { ...unlockedAxes(), ...window.axisLocks, [axis]: locked } }) } }
+      if (state.structurePacks.some((pack) => pack.windows?.some((window) => window.id === id))) return { structurePacks: state.structurePacks.map((pack) => ({ ...pack, ...(pack.windows ? { windows: pack.windows.map((window) => window.id !== id ? window : { ...window, axisLocks: { ...unlockedAxes(), ...window.axisLocks, [axis]: locked } }) } : {}) })) }
       if (state.structurePacks.some((pack) => pack.doors?.some((door) => door.id === id))) return { structurePacks: state.structurePacks.map((pack) => ({ ...pack, ...(pack.doors ? { doors: pack.doors.map((door) => door.id !== id ? door : { ...door, axisLocks: { ...unlockedAxes(), ...door.axisLocks, [axis]: locked } }) } : {}) })) }
       return { structurePacks: state.structurePacks.map((pack) => pack.id === id
         ? { ...pack, axisLocks: { ...unlockedAxes(), ...pack.axisLocks, [axis]: locked } }
@@ -65,19 +70,36 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       if (!Object.values(amount).every(Number.isFinite) || Object.values(amount).every((value) => Math.abs(value) < 1e-9)) return {}
       if ((['x', 'y', 'z'] as const).some((axis) => Math.abs(amount[axis]) > 1e-9 && items.some((item) => !item.axes.includes(axis)))) return { notice: 'Todos los elementos deben poder moverse en este eje.' }
       const furniture = state.furniture.map((item) => ids.has(item.id) ? { ...item, x: item.x + amount.x, y: item.y + amount.y, z: item.z + amount.z } : item)
-      const shiftOpening = (wall: 'north' | 'east' | 'south' | 'west') => (wall === 'north' || wall === 'south' ? amount.x : amount.z) * (wall === 'south' || wall === 'west' ? -1 : 1)
+      const movedDoor = <T extends DoorConfig>(door: T, id: string, pack?: StructurePack): T => {
+        if (!ids.has(id) || door.wallPosition?.supportId && ids.has(door.wallPosition.supportId)) return door
+        const position = openingPosition(state, door, pack?.id)
+        return { ...door, offset: door.offset + amount.x * Math.cos(position.yaw) - amount.z * Math.sin(position.yaw) }
+      }
+      const movedWindow = (window: WindowConfig, pack?: StructurePack) => {
+        if (!ids.has(window.id)) return window
+        if (!window.freePosition && window.wallPosition?.supportId && ids.has(window.wallPosition.supportId)) return window
+        const position = wallObjectPosition(state.room, window, pack)
+        if (!window.freePosition) return { ...window, sill: window.sill + amount.y,
+          offset: window.offset + amount.x * Math.cos(position.yaw) - amount.z * Math.sin(position.yaw) }
+        return { ...window, freePosition: { ...position, x: position.x + amount.x, y: position.y + amount.y, z: position.z + amount.z } }
+      }
       const room = { ...state.room,
-        ...(state.room.extraDoors ? { extraDoors: state.room.extraDoors.map((door) => ids.has(door.id) ? { ...door, offset: door.offset + shiftOpening(door.wall) } : door) } : {}),
-        door: ids.has('door') ? { ...state.room.door, offset: state.room.door.offset + shiftOpening(state.room.door.wall) } : state.room.door,
-        windows: state.room.windows.map((window) => !ids.has(window.id) ? window : { ...window, sill: window.sill + amount.y, offset: window.offset + shiftOpening(window.wall) }),
+        ...(state.room.extraDoors ? { extraDoors: state.room.extraDoors.map((door) => movedDoor(door, door.id)) } : {}),
+        door: movedDoor(state.room.door, 'door'),
+        windows: state.room.windows.map((window) => movedWindow(window)),
       }
       const structurePacks = state.structurePacks.map((pack) => {
-        const wholePack = pack.id.startsWith('floor-pack-') && pack.surfaces.length > 0 && pack.surfaces.every((surface) => ids.has(`structure-surface:${pack.id}:${surface.id}`))
-        if (wholePack) return { ...pack, x: pack.x + amount.x, y: pack.y + amount.y, z: pack.z + amount.z }
-        return { ...pack, surfaces: pack.surfaces.map((surface) => ids.has(`structure-surface:${pack.id}:${surface.id}`) ? { ...surface, x: surface.x + amount.x, y: surface.y + amount.y, z: surface.z + amount.z } : surface) }
+        const wholePack = pack.surfaces.length > 0 && pack.surfaces.every((surface) => ids.has(`structure-surface:${pack.id}:${surface.id}`))
+        if (wholePack) return { ...pack, x: pack.x + amount.x, y: pack.y + amount.y, z: pack.z + amount.z,
+          ...(pack.windows ? { windows: pack.windows.map((window) => window.freePosition ? movedWindow(window, pack) : window) } : {}) }
+        return { ...pack, ...(pack.windows ? { windows: pack.windows.map((window) => movedWindow(window, pack)) } : {}),
+          ...(pack.doors ? { doors: pack.doors.map((door) => movedDoor(door, door.id, pack)) } : {}),
+          surfaces: pack.surfaces.map((surface) => ids.has(`structure-surface:${pack.id}:${surface.id}`) ? { ...surface, x: surface.x + amount.x, y: surface.y + amount.y, z: surface.z + amount.z } : surface) }
       })
       if (validateOpenings(room)) return { notice: 'No hay espacio suficiente para mover toda la selección.' }
-      return { furniture, room, structurePacks, notice: '' }
+      const windowError = structurePacks.map(structureWindowError).find(Boolean)
+      if (windowError) return { notice: windowError }
+      return { furniture, ...rehomeFreeWallObjects({ room, structurePacks }), notice: '' }
     }),
     rotateSelectedFurnitureGroup: () => set((state) => {
       const selected = multiSelectionItems(state)
@@ -121,6 +143,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
         const localPosition = findFreeFurniturePosition(item, { ...state.room, ...(activeBox ? { width: activeBox.width, depth: activeBox.depth } : {}) }, localFurniture)
         const position = localPosition && { x: localPosition.x + (activePack?.x ?? 0), z: localPosition.z + (activePack?.z ?? 0) }
         if (!position) {
+          rejectDiagnosticAction('no-free-position')
           recordInteraction('state.furniture.add-rejected', {
             view: state.view,
             selectedId: state.selectedId,
@@ -142,7 +165,13 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
             placed.y = ceiling ? activePack.y + state.room.height + ceiling.y - ceiling.height / 2 - placed.height : activePack.y + (activeBox?.y ?? 0) + (activeBox?.height ?? state.room.height) - placed.height
           }
         }
-        return { furniture: [...state.furniture, placed], selectedId: id, notice: `${preset.name} añadido.` }
+        const { folderId } = focusedCreationTarget(state)
+        return {
+          furniture: [...state.furniture, placed],
+          ...(folderId ? { elementFolderAssignments: { ...state.elementFolderAssignments, [id]: folderId } } : {}),
+          selectedId: id,
+          notice: `${preset.name} añadido.`,
+        }
       })
     },
     beginFurnitureMove: () => {
@@ -154,11 +183,12 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       else finishHistoryTransaction(runtime)
     },
     moveFurniture: (id, x, z) => set((state) => {
-      if (state.lockedElementIds.includes(id)) return {}
+      if (state.lockedElementIds.includes(id)) { rejectDiagnosticAction('element-locked'); return {} }
       const item = state.furniture.find((candidate) => candidate.id === id)
       if (!item) return {}
       const moved = movedFurniture(state, item, x, z)
-      if (!moved) return {}
+      if (!moved) { rejectDiagnosticAction('position-not-applicable'); return {} }
+      if (moved.x === item.x && moved.z === item.z && (x !== item.x || z !== item.z) && (item.axisLocks?.x || item.axisLocks?.z)) rejectDiagnosticAction('furniture-axis-locked')
       recordInteraction('state.furniture.moved', {
         view: state.view,
         selectedId: state.selectedId,
@@ -168,11 +198,11 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       return { furniture: state.furniture.map((candidate) => candidate.id === id ? moved : candidate) }
     }),
     moveFurnitureVertically: (id, y) => set((state) => {
-      if (state.lockedElementIds.includes(id)) return {}
+      if (state.lockedElementIds.includes(id)) { rejectDiagnosticAction('element-locked'); return {} }
       const item = state.furniture.find((candidate) => candidate.id === id)
       if (!item) return {}
       const moved = elevatedFurniture(state, item, y)
-      if (!moved) return {}
+      if (!moved) { rejectDiagnosticAction('position-not-applicable'); return {} }
       recordInteraction('state.furniture.elevation-changed', {
         view: state.view,
         selectedId: state.selectedId,
@@ -198,7 +228,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       }
     }),
     setFurnitureRotation: (id, rotation) => set((state) => {
-      if (state.lockedElementIds.includes(id)) return {}
+      if (state.lockedElementIds.includes(id)) { rejectDiagnosticAction('element-locked'); return {} }
       const item = state.furniture.find((candidate) => candidate.id === id)
       if (!item) return {}
       const update = applyFurnitureRotation(state, item, rotation)

@@ -1,7 +1,8 @@
 import type { FurnitureItem, RoomConfig, StructurePack, StructureSurface } from './types'
 import { structureSurfaceElementId } from './elementIds'
 import { furnitureVisualYOffset } from './objectCatalog'
-import { worldRoomBoxes } from './roomEditing'
+import { boxOutsideBuilding } from './buildingVolume'
+import { wallIntersectionIsCut } from './wallConnections'
 
 type Box = { id: string; x: number; y: number; z: number; width: number; height: number; depth: number; rotation: number }
 type World = { room: RoomConfig; furniture: FurnitureItem[]; structurePacks: StructurePack[] }
@@ -149,35 +150,42 @@ export function independentSurfaceHasSpatialWarning(world: World, surfaceId: str
   if (!entry) return false
   const isIndependent = world.structurePacks.some((pack) => (pack.id.startsWith('floor-object-') || pack.id.startsWith('wall-object-')) && pack.surfaces.some((surface) => structureSurfaceElementId(pack.id, surface.id) === surfaceId))
   if (!isIndependent) return world.furniture.some((item) => surfaceOverlapsFurniture(entry.surface, entry.box, item, world))
-  const rooms = worldRoomBoxes(world.room, world.structurePacks)
-  const { box } = entry
-  const inside = rooms.some((room) => Math.abs(box.x - room.x) + radius(box, { x: 1, z: 0 }) <= room.width / 2 + epsilon
-    && Math.abs(box.z - room.z) + radius(box, { x: 0, z: 1 }) <= room.depth / 2 + epsilon
-    && box.y - box.height / 2 >= room.y - epsilon
-    && box.y + box.height / 2 <= room.y + room.height + epsilon)
-  return !inside || world.furniture.some((item) => surfaceOverlapsFurniture(entry.surface, box, item, world))
+  return independentSurfaceOutsideRoom(world, surfaceId) || world.furniture.some((item) => surfaceOverlapsFurniture(entry.surface, entry.box, item, world))
+}
+
+/** A dedicated out-of-room check, distinct from intersections with furniture. */
+export function independentSurfaceOutsideRoom(world: World, surfaceId: string) {
+  const box = independentSurfaces(world).find((surface) => surface.id === surfaceId)
+  if (!box) return false
+  return boxOutsideBuilding(world, box)
 }
 
 function surfaceOverlapsFurniture(surface: StructureSurface, box: Box, item: FurnitureItem, world: World) {
   // Furniture rests at floor level; the floor slab is centred on that level and extends slightly above it.
   if (surface.kind === 'floor' && item.y >= box.y - epsilon) return false
   if (surface.kind === 'ceiling' && item.y + item.height <= box.y + epsilon) return false
-  return overlaps(furnitureBox(item, world), box)
+  const furniture = furnitureBox(item, world)
+  return overlaps(furniture, box) && (surface.kind !== 'wall' || !wallIntersectionIsCut(world, box.id, furniture))
+}
+
+/**
+ * Geometría compartida con el listado de intersecciones de la escena.
+ * Reutiliza la misma prueba SAT que los contornos de advertencia existentes.
+ */
+export type SceneCollisionBox = Box
+export const furnitureSceneBox = furnitureBox
+export const independentSceneBoxes = independentSurfaces
+export const sceneBoxesOverlap = overlaps
+
+/** Distinguish the volume outside any room from intersections with other objects. */
+export function furnitureOutsideRoom(world: World, item: FurnitureItem) {
+  return boxOutsideBuilding(world, furnitureBox(item, world))
 }
 
 /** Visual warning only: contacts with floors and walls do not prevent placement. */
 export function furnitureHasSpatialWarning(world: World, item: FurnitureItem) {
   const box = furnitureBox(item, world)
-  const rooms = worldRoomBoxes(world.room, world.structurePacks)
-  const halfX = radius(box, { x: 1, z: 0 })
-  const halfZ = radius(box, { x: 0, z: 1 })
-  const insideRoom = rooms.some((room) =>
-    Math.abs(item.x - room.x) + halfX <= room.width / 2 + epsilon
-    && Math.abs(item.z - room.z) + halfZ <= room.depth / 2 + epsilon
-    && item.y >= room.y - epsilon
-    && item.y + item.height <= room.y + room.height + epsilon,
-  )
-  return !insideRoom
+  return furnitureOutsideRoom(world, item)
     || allSurfaces(world).some(({ surface, box: surfaceBounds }) => surfaceOverlapsFurniture(surface, surfaceBounds, item, world))
     || world.furniture.some((other) => other.id !== item.id && overlaps(box, furnitureBox(other, world)))
 }

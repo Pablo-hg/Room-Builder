@@ -8,6 +8,91 @@ import { normalizeDesign } from '../persistence/designMigrations'
 import { serializeDesignFile, parseDesignFile } from '../persistence/designFile'
 import { migrateDesignToProject, projectToPersistedDesignV1 } from '../persistence/projectMigration'
 import { validateOpenings, openingsForWall, buildWallSegments, wallLength } from '../domain/geometry'
+import type { ViewMode } from '../domain/types'
+
+for (const view of ['top', 'isometric', 'front', 'pov', 'free'] as ViewMode[]) {
+  test(`eliminar o deshacer la habitación enfocada restaura el último foco válido en ${view}`, () => {
+    const store = createRoomStore()
+    store.getState().setView(view)
+    store.getState().addFurniture('chair')
+    const furniture = structuredClone(store.getState().furniture)
+    store.getState().addStructurePack('east')
+    const previous = store.getState().structurePacks[0]
+    store.getState().addStructurePack('up')
+    const removed = store.getState().activeRoomId!
+    store.getState().undo()
+    assert.equal(store.getState().activeRoomId, previous.id)
+    assert.equal(store.getState().isoCameraHeight, previous.y)
+    assert.deepEqual(store.getState().freeCameraOffset, { x: previous.x, y: previous.y, z: previous.z })
+    store.getState().redo()
+    // Restoring geometry does not override a still-valid camera choice.
+    assert.equal(store.getState().activeRoomId, previous.id)
+    store.getState().setActiveRoomId(removed)
+    store.getState().removeStructurePack(removed)
+    assert.equal(store.getState().activeRoomId, previous.id)
+    assert.deepEqual(store.getState().furniture, furniture)
+    store.getState().removeStructurePack(previous.id)
+    assert.equal(store.getState().activeRoomId, null)
+    assert.equal(store.getState().isoCameraHeight, 0)
+    assert.deepEqual(store.getState().freeCameraOffset, { x: 0, y: 0, z: 0 })
+  })
+}
+
+test('el foco manual prevalece y se descartan referencias eliminadas o ajenas a habitaciones', () => {
+  const store = createRoomStore()
+  store.getState().addStructurePack('east')
+  const first = store.getState().activeRoomId!
+  store.getState().addStructurePack('up')
+  const second = store.getState().activeRoomId!
+  store.getState().setActiveRoomId(null)
+  store.getState().setActiveRoomId(second)
+  store.getState().removeStructurePack(first)
+  store.getState().removeStructurePack(second)
+  assert.equal(store.getState().activeRoomId, null)
+  const count = store.getState().undoCount
+  store.getState().setActiveRoomId('missing-room')
+  assert.equal(store.getState().activeRoomId, null)
+  store.getState().addStructureObject('floor')
+  store.getState().setActiveRoomId(store.getState().structurePacks[0].id)
+  assert.equal(store.getState().activeRoomId, null)
+  assert.equal(store.getState().undoCount, count + 1)
+})
+
+test('borrar una carpeta restaura el foco y navegar no se guarda ni añade pasos de undo', () => {
+  const store = createRoomStore()
+  store.getState().addStructurePack('up')
+  const first = store.getState().activeRoomId!
+  store.getState().addStructurePack('east')
+  const second = store.getState().activeRoomId!
+  store.getState().setActiveRoomId(first)
+  const before = persistedDesign(store.getState())
+  const count = store.getState().undoCount
+  store.getState().setTopCameraPosition(3, 4)
+  store.getState().moveFreeCamera(1, 2, 3)
+  store.getState().setActiveRoomId(second)
+  assert.deepEqual(persistedDesign(store.getState()), before)
+  assert.equal(store.getState().undoCount, count)
+  assert.equal(store.getState().topCameraX, 0)
+  assert.equal(store.getState().topCameraZ, 0)
+  store.getState().deleteElementFolder(store.getState().elementFolderAssignments[second])
+  assert.equal(store.getState().activeRoomId, first)
+  store.getState().undo()
+  assert.equal(store.getState().activeRoomId, first)
+  assert.ok(store.getState().structurePacks.some((pack) => pack.id === second))
+})
+
+test('cargar otro diseño reinicia el historial de foco incluso si reutiliza IDs', () => {
+  const store = createRoomStore()
+  store.getState().addStructurePack('east')
+  const data = persistedDesign(store.getState())
+  const id = store.getState().activeRoomId!
+  store.setState({ savedDesigns: [{ id: 'saved', name: 'Histórico', savedAt: '2026-11-08T12:00:00Z', data }] })
+  store.getState().loadDesign('saved')
+  assert.equal(store.getState().activeRoomId, null)
+  store.getState().setActiveRoomId(id)
+  store.getState().removeStructurePack(id)
+  assert.equal(store.getState().activeRoomId, null)
+})
 
 test('panel y edición usan la habitación de cámara aunque se seleccione otra carpeta', () => {
   const store = createRoomStore()
@@ -65,7 +150,7 @@ test('puertas de raíz: huecos, JSON/R4, candados, borrado y deshacer sin perder
   const segments = buildWallSegments(wallLength(room, door.wall), room.height, openingsForWall(room, door.wall))
   assert.ok(!segments.some((segment) => Math.abs(door.offset - segment.center[0]) < segment.size[0] / 2 && Math.abs(door.height / 2 - segment.center[1]) < segment.size[1] / 2))
   const data = persistedDesign(store.getState())
-  assert.equal(data.version, 8)
+  assert.equal(data.version, 10)
   const saved = { id: 'extra-doors', name: 'Puertas', savedAt: '2026-11-07T12:00:00.000Z', data }
   assert.deepEqual(normalizeDesign(data).room.extraDoors, room.extraDoors)
   assert.deepEqual(parseDesignFile(serializeDesignFile(saved)).design.data.room.extraDoors, room.extraDoors)

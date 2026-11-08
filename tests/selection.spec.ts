@@ -317,12 +317,14 @@ test('resuelve la selección del inspector para muebles, aperturas, packs y supe
 
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
-  await expect(inspector.getByText('Pack de construcción', { exact: true })).toBeVisible()
-  await inspector.getByRole('button', { name: 'Suelo · Editar', exact: true }).click()
+  const space = inspector.locator('.room-section')
+  await expect(space.getByRole('heading', { name: 'Posición de la habitación' })).toBeVisible()
+  await space.getByRole('button', { name: 'Suelo · Editar', exact: true }).click()
   await expect(inspector.getByText('Superficie de construcción', { exact: true })).toBeVisible()
   await expect(inspector.getByRole('heading', { name: 'Suelo', exact: true })).toBeVisible()
   await inspector.getByRole('button', { name: 'Seleccionar pack completo', exact: true }).click()
-  await expect(inspector.getByText('Pack de construcción', { exact: true })).toBeVisible()
+  await expect(space.getByRole('heading', { name: 'Posición de la habitación' })).toBeVisible()
+  await expect(inspector.getByText('Pack de construcción', { exact: true })).toHaveCount(0)
 })
 
 test('sitúa catálogo a la izquierda e inspector a la derecha y permite plegarlos', async ({ page }) => {

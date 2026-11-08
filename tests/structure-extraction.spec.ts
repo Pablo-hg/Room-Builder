@@ -5,7 +5,7 @@ test('mueve un pack, redimensiona una superficie y deshace la edición', async (
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
   const inspector = page.locator('.selection-section--inspector')
-  const packX = inspector.getByLabel('Mover pack X', { exact: true })
+  const packX = page.locator('.room-section').getByLabel('Mover pack X', { exact: true })
   const initialX = await packX.inputValue()
   await packX.focus()
   await packX.press('ArrowRight')

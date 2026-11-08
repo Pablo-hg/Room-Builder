@@ -89,6 +89,8 @@ export interface RoomState {
   setDoor: (partial: { wall?: WallSide; offset?: number; color?: string }) => void
   addWindow: (shape?: WindowShape) => void
   updateWindow: (id: string, partial: Partial<Pick<WindowConfig, 'wall' | 'offset' | 'width' | 'sill' | 'rotation' | 'color'>>) => void
+  moveWallObject: (id: string, axis: 'x' | 'y' | 'z', value: number) => void
+  detachWallObject: (id: string) => void
   removeWindow: (id: string) => void
   addFurniture: (kind: FurnitureKind) => void
   selectElement: (id: string | null) => void
@@ -113,6 +115,7 @@ export interface RoomState {
   copySelected: () => boolean
   pasteSelected: () => boolean
   toggleGridVisibility: (surface: GridSurface) => void
+  setGridGroupVisibility: (scope: 'focused' | 'all', visible: boolean) => void
   toggleElementVisibility: (id: string) => void
   toggleElementLock: (id: string) => void
   createElementFolder: (name: string, elementId?: string, parentId?: string) => void

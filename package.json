@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "diagnostics": "tsx tools/diagnostics/read.ts",
+    "build": "tsc -b && vite build && node scripts/verify-diagnostics-bundle.mjs",
     "preview": "vite preview",
     "test": "tsx --test src/**/*.test.ts",
     "test:watch": "tsx --test --watch src/**/*.test.ts",
