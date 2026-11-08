@@ -76,7 +76,7 @@ test('la carpeta raíz usa el icono de habitación y su selección se mantiene s
   await expect(root.locator('svg path')).toHaveCount(1)
   await root.click()
   await expect(root).toHaveAttribute('aria-pressed', 'true')
-  await expect(root.locator('..').locator('..')).toHaveClass(/element-folder__heading/)
+  await expect(root.locator('..')).toHaveClass(/element-folder__heading/)
   // Contorno 3D verde y ausencia de gizmo: comprobación visual pendiente.
 })
 
