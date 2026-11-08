@@ -24,7 +24,7 @@ export function instrumentActions(state: RoomState, get: () => RoomState, runtim
     const input = { action: `editor.${action}`, operationId, result: outcome,
       category: outcome === 'failed' ? 'errors' as const : 'interactions' as const,
       level: outcome === 'failed' ? 'error' as const : outcome === 'rejected' ? 'warn' as const : 'info' as const,
-      objectIds: summary.objectIds.length ? summary.objectIds : scope.objectIds ?? [], data: { before: snapshots('before'), after: snapshots('after'), changesApplied: summary.changed > 0,
+      objectIds: summary.objectIds.length ? summary.objectIds : scope.objectIds ?? [], data: { source: 'store', view: after.view, before: snapshots('before'), after: snapshots('after'), changesApplied: summary.changed > 0,
         ...(bulk ? { sceneReplaced: summary.geometryChanged, furnitureCount: after.furniture.length, packCount: after.structurePacks.length } : {}),
         ...(scope.reason ? { reason: scope.reason } : {}), ...(summary.changed > summary.changes.length ? { truncated: true, changedCount: summary.changed } : {}) } }
     const spatialOperation = group && outcome === 'completed'

@@ -63,6 +63,8 @@
 
 ## Aclaraciones
 
+- **08/11/2026 — CONFIRMADO por el propietario (#34):** diagnóstico local común para desarrollo y web publicada, IndexedDB canónico (inicialmente 7 días y aproximadamente 5 MiB), separado de undo/redo. Vite solo copia eventos a JSONL en desarrollo; visor/importador excluido de producción. Ayuda pública ofrece exportar/compartir por iniciativa del usuario, sin backend ni telemetría. No modifica política de colisiones ni formatos de diseños. Implementación y límites en [DIAGNOSTICS.md](DIAGNOSTICS.md); validación pendiente en main. Sustituye para este sistema la propuesta inicial de registrar solo en DEV.
+
 - **07/11/2026 — Última petición del propietario:** la habitación enfocada en la
   cámara determina el contexto del catálogo de puertas y del panel de espacio;
   la selección de objetos permanece independiente. Precisa la continuación

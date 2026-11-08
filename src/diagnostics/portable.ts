@@ -6,11 +6,14 @@ export interface DiagnosticFile {
   exportedAt: string
   appVersion: string
   storageLimited: boolean
+  browser?: 'Firefox' | 'Chromium' | 'Safari' | 'Other'
   events: DiagnosticEvent[]
 }
 export function diagnosticFile(events: DiagnosticEvent[], appVersion: string, storageLimited = false): DiagnosticFile {
+  const agent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  const browser = /Firefox\//.test(agent) ? 'Firefox' : /Chrom(e|ium)\//.test(agent) ? 'Chromium' : /Safari\//.test(agent) ? 'Safari' : 'Other'
   return { format: 'room-builder-diagnostics', version: 1, exportedAt: new Date().toISOString(), appVersion, storageLimited,
-    events: events.map(parseEvent) }
+    browser, events: events.map(parseEvent) }
 }
 export function parseDiagnosticFile(text: string): DiagnosticEvent[] {
   if (new TextEncoder().encode(text).byteLength > PORTABLE_MAX_BYTES) throw new Error('El diagnóstico supera el límite de 8 MB.')

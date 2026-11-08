@@ -26,6 +26,9 @@ let duplicates = 0
 let lastDescription = ''
 let totalLineBytes = 0
 let largestLineBytes = 0
+const categories = new Map()
+const eventIds = new Set()
+let repeatedEventIds = 0
 
 try {
   const info = await stat(path)
@@ -37,6 +40,19 @@ try {
     const bytes = Buffer.byteLength(line, 'utf8')
     totalLineBytes += bytes
     largestLineBytes = Math.max(largestLineBytes, bytes)
+    if (line.trimStart().startsWith('{')) {
+      try {
+        const event = JSON.parse(line)
+        if (event.schemaVersion !== 1 || typeof event.eventId !== 'string' || typeof event.timestamp !== 'string' || typeof event.category !== 'string' || typeof event.sessionId !== 'string') throw new Error('invalid event')
+        if (eventIds.has(event.eventId)) repeatedEventIds++
+        eventIds.add(event.eventId)
+        sessions.add(event.sessionId)
+        categories.set(event.category, (categories.get(event.category) ?? 0) + 1)
+        const bucket = event.timestamp.slice(0, 19)
+        bursts.set(bucket, (bursts.get(bucket) ?? 0) + 1)
+      } catch { invalid++ }
+      continue
+    }
     const match = pattern.exec(line)
     if (!match) {
       invalid += 1
@@ -60,6 +76,8 @@ try {
     sessions: sessions.size,
     entriesWithUnrecognizedFormat: invalid,
     consecutiveRepeatedDescriptions: duplicates,
+    repeatedStructuredEventIds: repeatedEventIds,
+    structuredCategories: Object.fromEntries(categories),
     averageLineBytes: lines ? Math.round(totalLineBytes / lines) : 0,
     maxLineBytes: largestLineBytes,
     maxEntriesInOneSecond: peak,

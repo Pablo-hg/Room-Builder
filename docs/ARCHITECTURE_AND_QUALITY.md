@@ -1,5 +1,7 @@
 # Arquitectura y calidad técnica
 
+**08/11/2026 — #34, rama de trabajo:** el diagnóstico usa motor de eventos propio y almacenamiento IndexedDB en navegador, con copia JSONL y visor exclusivamente de desarrollo. No se conecta al historial ni modifica el contrato de diseños. Arquitectura, operación y límites: [DIAGNOSTICS.md](DIAGNOSTICS.md). Implementación pendiente de pruebas/build en main y validación visual.
+
 > **VIGENCIA 04/11/2026:** R0–R5 están integradas; el baseline necesita revalidación E2E completa (#24). El MVP final aprobado requiere migración de vivienda (#51), habitaciones y plantas (#52/#53), geometría irregular (#35), WASD (#36) y siete módulos confirmados (#37/#38/#39/#40/#41/#45/#47). El detalle de arquitectura histórica inferior NO es un contrato de casa publicado. **Plan canónico:** [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md); **checkpoint v0.2** [LOCAL_MVP_BACKLOG.md](LOCAL_MVP_BACKLOG.md); **gate final** #54.
 
 
