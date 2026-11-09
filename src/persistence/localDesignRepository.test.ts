@@ -24,9 +24,12 @@ test('el repositorio conserva los cinco diseños completos, sus metadatos y la c
   assert.equal(STORAGE_KEY, 'room-builder:v0.1:design')
   assert.deepEqual(repository.read(), designs)
   assert.equal(storage.writes, 1)
-  // Preserve the previous reader: ignore entries beyond the five-design limit.
-  storage.values.set(SAVED_DESIGNS_KEY, JSON.stringify([...designs, { invalid: true }]))
-  assert.deepEqual(repository.read(), designs)
+  // Un sexto diseño no debe desaparecer tras la siguiente operación.
+  const oversized = JSON.stringify([...designs, { invalid: true }])
+  storage.values.set(SAVED_DESIGNS_KEY, oversized)
+  assert.throws(() => repository.read(), /más de cinco/)
+  assert.throws(() => repository.write(designs), DesignStorageConflictError)
+  assert.equal(storage.getItem(SAVED_DESIGNS_KEY), oversized)
   assert.equal(storage.writes, 1)
 })
 
@@ -123,5 +126,20 @@ test('no sustituye una biblioteca no validada o corrupta, ni supera cinco diseñ
   const empty = new MemoryStorage()
   const bounded = createLocalDesignRepository(() => empty)
   assert.throws(() => bounded.write(Array.from({ length: 6 }, (_, i) => design(String(i)))), /cinco/)
+  assert.equal(empty.getItem(SAVED_DESIGNS_KEY), null)
+})
+
+
+test('rechaza identificadores de biblioteca repetidos sin alterar el original', () => {
+  const storage = new MemoryStorage()
+  const repository = createLocalDesignRepository(() => storage)
+  const data = [design('igual'), design('igual')]
+  const raw = JSON.stringify(data)
+  storage.values.set(SAVED_DESIGNS_KEY, raw)
+  assert.throws(() => repository.read(), /IDs duplicados/)
+  assert.throws(() => repository.write([design('nuevo')]), DesignStorageConflictError)
+  assert.equal(storage.getItem(SAVED_DESIGNS_KEY), raw)
+  const empty = new MemoryStorage()
+  assert.throws(() => createLocalDesignRepository(() => empty).write(data), /IDs duplicados/)
   assert.equal(empty.getItem(SAVED_DESIGNS_KEY), null)
 })

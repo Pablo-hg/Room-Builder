@@ -28,7 +28,9 @@ export function createLocalDesignRepository(getStorage: () => DesignStorage = ()
     if (rawDesigns !== null) {
       const parsed: unknown = JSON.parse(rawDesigns)
       if (!Array.isArray(parsed)) throw new Error('invalid saved designs')
-      const designs = parsed.slice(0, MAX_SAVED_DESIGNS).map((entry: unknown) => {
+      // Nunca ocultar entradas sobrantes: una escritura posterior las eliminaría.
+      if (parsed.length > MAX_SAVED_DESIGNS) throw new Error('La biblioteca contiene más de cinco diseños. No se ha modificado.')
+      const designs = parsed.map((entry: unknown) => {
         if (!entry || typeof entry !== 'object') throw new Error('invalid saved design')
         const saved = entry as Partial<SavedDesign>
         if (
@@ -39,6 +41,7 @@ export function createLocalDesignRepository(getStorage: () => DesignStorage = ()
         ) throw new Error('invalid saved design')
         return saved as SavedDesign
       })
+      if (new Set(designs.map((design) => design.id)).size !== designs.length) throw new Error('La biblioteca contiene IDs duplicados.')
       expectedRaw = rawDesigns
       return designs
     }
@@ -55,6 +58,7 @@ export function createLocalDesignRepository(getStorage: () => DesignStorage = ()
 
   function write(designs: SavedDesign[]) {
     if (designs.length > MAX_SAVED_DESIGNS) throw new Error('La biblioteca no admite más de cinco diseños.')
+    if (new Set(designs.map((design) => design.id)).size !== designs.length) throw new Error('No se pueden guardar diseños con IDs duplicados.')
     const storage = getStorage()
     const currentRaw = storage.getItem(SAVED_DESIGNS_KEY)
     if ((expectedRaw === undefined && currentRaw !== null)

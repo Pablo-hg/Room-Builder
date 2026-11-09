@@ -66,6 +66,11 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
       if (!designId) return
       const savedDesigns = state.savedDesigns.filter((design) => design.id !== designId)
       const deletingActive = state.selectedSavedDesignId === designId
+      const nextDesign = deletingActive ? savedDesigns[0] : undefined
+      // Validar el siguiente diseño ANTES de borrar el activo; un fallo no debe vaciar la escena.
+      let nextData: PersistedDesign | undefined
+      try { if (nextDesign) nextData = normalizeDesign(nextDesign.data) }
+      catch { set({ notice: 'No se puede eliminar el diseño activo: el siguiente diseño guardado no es válido.' }); return }
       try {
         repository.write(savedDesigns)
         recordInteraction('state.design.deleted', {
@@ -77,19 +82,15 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           set({ savedDesigns, notice: 'Diseño guardado eliminado.' })
           return
         }
-        const nextDesign = savedDesigns[0]
-        if (nextDesign) {
-          try {
-            const data = normalizeDesign(nextDesign.data)
-            set({
-              ...sceneFromDesign(data),
-              selectedSavedDesignId: nextDesign.id,
-              hasUnsavedChanges: false,
-              savedDesigns,
-              notice: 'Diseño guardado eliminado. Se ha abierto el primero de la lista.',
-            })
-            return
-          } catch { /* Si el primero no es válido, se muestra un lienzo en blanco. */ }
+        if (nextDesign && nextData) {
+          set({
+            ...sceneFromDesign(nextData),
+            selectedSavedDesignId: nextDesign.id,
+            hasUnsavedChanges: false,
+            savedDesigns,
+            notice: 'Diseño guardado eliminado. Se ha abierto el primero de la lista.',
+          })
+          return
         }
         const data = blankDesignData()
         set({
@@ -97,9 +98,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           selectedSavedDesignId: '',
           hasUnsavedChanges: false,
           savedDesigns,
-          notice: nextDesign
-            ? 'Diseño eliminado. El primero de la lista no es válido; se muestra un lienzo en blanco.'
-            : 'Diseño guardado eliminado. Se muestra un lienzo en blanco.',
+          notice: 'Diseño guardado eliminado. Se muestra un lienzo en blanco.',
         })
         // El envoltorio de set marca como no guardado un lienzo sin diseño activo; se corrige aquí.
         set({ hasUnsavedChanges: false })
