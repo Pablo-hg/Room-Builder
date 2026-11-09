@@ -1,5 +1,24 @@
 # Datos, unidades, guardado e interoperabilidad
 
+## F1-01 — Integridad del guardado local y exportación JSON (09/11/2026)
+
+**Implementado en la rama de trabajo, pendiente de certificación en `main`.** Esta sección describe el comportamiento actualizado de la biblioteca sin modificar las claves ni el formato:
+
+- Biblioteca: `room-builder:v0.1:designs` con un máximo de **5 diseños**; `room-builder:v0.1:design` conserva los datos legacy para migrarlos una sola vez, sin borrar el original.
+- Una biblioteca con más de cinco entradas o IDs de diseño repetidos se **rechaza sin reescribirla**. No se recorta silenciosamente. Los datos corruptos o ilegibles tampoco se sustituyen por un lienzo nuevo.
+- Cada sesión del editor recuerda la representación exacta leída de `localStorage`. Antes de escribir comprueba si otra pestaña la ha cambiado; en caso afirmativo, falla con aviso y **conserva en memoria la edición actual**. No hay fusión automática entre pestañas: se recomienda exportar el JSON antes de recargar.
+- Fallos de cuota, acceso denegado y conflictos de escritura no sustituyen el guardado anterior ni marcan como guardados los cambios pendientes.
+- Abrir otro diseño o crear uno en blanco mientras hay modificaciones pendientes exige confirmar el descarte. El borrado del diseño activo advierte también de esas modificaciones. La página solicita confirmación nativa del navegador al recargar o cerrar con cambios sin guardar, cuando el navegador lo permite.
+- Exportación JSON: incluye el estado del editor aunque no se haya guardado y no modifica el diseño activo ni su indicador de cambios pendientes. Las referencias obsoletas se omiten únicamente en la copia exportada, con aviso.
+- El contenedor de importación usa `format: "room-builder-design"`, `schemaVersion: 5` y un límite de **2 MiB**. La versión interna del diseño puede ser v1–v10; v5 histórica se aplana a la variante activa y se informa de las alternativas descartadas.
+- Importar requiere previsualización y confirmación. Si coincide el ID exterior del diseño, se asigna un nuevo ID de biblioteca. No se sustituye el diseño abierto, ni se sobrescriben diseños existentes, ni se supera el límite de cinco. Entradas malformadas, peligrosas, demasiado profundas o con referencias inválidas se rechazan antes de escribir.
+- Un editor ya abierto funciona con sus operaciones locales si pierde la conexión. **Arrancar sin conexión desde cero no está garantizado** y no se incorpora un service worker nuevo en esta tarea.
+
+**Compatibilidad:** las versiones internas v1–v4 se normalizan a sus preferencias actuales sin modificar el archivo fuente; v5 pierde solo las variantes que no estén activas, por una decisión de producto anterior. Versiones superiores v6–v10 mantienen sus campos y validaciones de anclajes específicos. No se cambia ninguna versión ni se introduce IndexedDB.
+
+**Verificación:** pruebas unitarias de almacenamiento, migraciones e importación y pruebas E2E añadidas/reforzadas; su ejecución automática se reserva para la integración autorizada en `main`, según `AGENTS.md`. Hasta entonces, no se declara certificada la #25.
+
+
 ## Anclajes a paredes conectadas — v10 (08/11/2026)
 
 **Implementado localmente; pendiente de validación funcional.** `DoorConfig` y `WindowConfig` admiten `wallPosition?: { x, y, z, yaw, supportId?, depth? }`. X/Y/Z son el centro de la base en metros mundiales, yaw está en radianes, depth conserva el grosor de referencia y supportId identifica el soporte de origen. Este ID es una referencia geométrica de mejor esfuerzo: puede faltar tras borrar una pared, sin invalidar ni duplicar el objeto. La carpeta/colección original sigue siendo su contenedor lógico, incluso cuando el objeto recorre otro tramo físico. Offset/sill mantienen las coordenadas de edición relativas; el render, selección y recortes usan el anclaje mundial.
@@ -39,7 +58,7 @@ Las pruebas incluyen diseños completos, antiguos con opcionales ausentes, malfo
 
 ## Almacenamiento y migraciones tras R3.4
 
-Se mantienen `room-builder:v0.1:designs` para la lista actual y `room-builder:v0.1:design` para el diseño legacy. La lista actual tiene prioridad; un error al leerla no activa una recuperación silenciosa desde legacy. El lector mantiene el límite de las primeras cinco entradas y las acciones conservan el límite de creación/guardado.
+Se mantienen `room-builder:v0.1:designs` para la lista actual y `room-builder:v0.1:design` para el diseño legacy. La lista actual tiene prioridad; un error al leerla no activa una recuperación silenciosa desde legacy. **Históricamente**, el lector recortaba a las cinco primeras entradas. **Desde F1-01** se rechaza una lista que supere cinco entradas o que tenga IDs repetidos, para evitar que una escritura posterior borre datos ocultos. Las acciones conservan el límite de creación/guardado.
 
 Si no existe la lista actual y la cabecera legacy es válida, se crea una entrada con ID/fecha nuevos y el nombre anterior, se escribe la lista y se conserva la clave original. Releer usa la lista creada y mantiene ese ID. Las migraciones de decoración mural se aplican al cargar en memoria; no reescriben por sí solas el diseño guardado. Los errores de lectura, parseo o escritura llegan a las acciones, que mantienen los avisos anteriores y actualizan la lista en memoria solo después de una escritura satisfactoria.
 

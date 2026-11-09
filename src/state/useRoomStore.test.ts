@@ -4,6 +4,7 @@ import { beforeEach, test } from 'node:test'
 import { DEFAULT_ROOM } from '../domain/constants'
 import type { PersistedDesign } from '../domain/types'
 import { createRoomStore } from './useRoomStore'
+import { createLocalDesignRepository, SAVED_DESIGNS_KEY as PERSISTED_KEY } from '../persistence/localDesignRepository'
 
 let testStore: ReturnType<typeof createRoomStore>
 beforeEach(() => { testStore = createRoomStore() })
@@ -405,4 +406,30 @@ test('aísla el historial y el portapapeles entre instancias del store', () => {
   second.getState().undo()
   assert.equal(first.getState().furniture.length, 1)
   assert.equal(second.getState().furniture.length, 0)
+})
+
+
+test('si falla la escritura se conservan el diseño persistido y los cambios pendientes', () => {
+  const storage = new MemoryStorage()
+  let failWrites = false
+  const repository = createLocalDesignRepository(() => ({
+    getItem: (key) => storage.getItem(key),
+    setItem: (key, value) => {
+      if (failWrites) throw new Error('quota exceeded')
+      storage.setItem(key, value)
+    },
+  }))
+  const store = createRoomStore(repository)
+  store.getState().initializeSavedDesigns()
+  store.getState().saveDesign()
+  const before = storage.getItem(PERSISTED_KEY)
+  store.getState().addFurniture('chair')
+  assert.equal(store.getState().hasUnsavedChanges, true)
+  const editedFurniture = structuredClone(store.getState().furniture)
+  failWrites = true
+  store.getState().saveDesign()
+  assert.equal(storage.getItem(PERSISTED_KEY), before)
+  assert.deepEqual(store.getState().furniture, editedFurniture)
+  assert.equal(store.getState().hasUnsavedChanges, true)
+  assert.match(store.getState().notice, /almacenamiento local/)
 })
