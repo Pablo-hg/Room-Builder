@@ -661,3 +661,11 @@ Base `a587762`, push a main: unitarias y build correctos; E2E fragmento 3/4 corr
 - Órbita sobre pared: se inició la órbita en el punto supuesto de pared; falta demostrar qué geometría alcanzó el rayo y corregir el caso sin perder prioridad de pared.
 
 No se ejecutaron pruebas, build ni CI en esta rama. Tras completar las correcciones y la integración manual autorizada en main, ejecutar `npm ci`, unitarias, build y suite E2E completa en sus cuatro fragmentos; revisar artefactos y los comportamientos funcionales indicados. Ninguna modificación aquí acredita una pasada ni certifica F0.
+
+### Continuación local de los ocho fallos (09/11/2026)
+
+El propietario autorizó pruebas locales en ramas de trabajo; GitHub Actions sigue limitado a `push` a `main`. En IndexedDB se encolan juntas las consultas de claves de cada lote, sin cambiar la transacción, retención ni deduplicación: antes se esperaban en serie y el caso tardó 26,9 s localmente frente al límite de 30 s. No se observó un bloqueo de transacción; las pruebas posteriores deben confirmar el comportamiento bajo carga.
+
+La prueba del gizmo arrastra en diagonal y exige movimiento en X sin cambios en Y ni Z. La de plano verifica el desplazamiento, cambio de zoom y restitución de los tres valores de cámara, sin exigir imágenes idénticas. En frontal se ocultaron las aperturas ligadas exclusivamente a paredes ocultas: la puerta de la pared opuesta interceptaba la ventana. La prueba de órbita identifica una pared seleccionable antes de arrastrarla y comprueba el ángulo continuo, evitando deducirlo del texto discreto de paredes visibles.
+
+Las ocho regresiones originales pasaron juntas localmente (8/8, un trabajador); las unitarias pasaron 429/429 y el build pasó con aviso de bundle de 1.569 kB. La primera ejecución completa E2E con dos trabajadores se interrumpió tras un timeout en una prueba móvil; esa misma prueba pasó con un trabajador. La repetición completa local, sin filtros y con un trabajador, terminó con **176/176** en 24,9 minutos. `git diff --check` pasó. Quedan pendientes la integración manual y el CI completo de `main`; F0 no está certificada.
