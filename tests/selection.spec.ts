@@ -407,9 +407,9 @@ test('selecciona elementos y carpetas con Ctrl, Meta y Mayús en el orden visibl
   await expect(folder).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('heading', { name: '3 elementos seleccionados' })).toBeVisible()
   await door.click()
-  await chair.click({ modifiers: ['Shift'] })
+  await folder.click({ modifiers: ['Shift'] })
   for (const item of [door, window, chair]) await expect(item).toHaveAttribute('aria-pressed', 'true')
-  // La carpeta está entre la puerta (dentro de Raíz) y la silla en el orden visible.
+  // El rango termina en la carpeta, después de los elementos de Raíz.
   await expect(folder).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('heading', { name: '4 elementos seleccionados' })).toBeVisible()
   await window.click()

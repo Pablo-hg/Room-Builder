@@ -645,3 +645,19 @@ La vivienda por plantas y medianeras físicas únicas corresponde a #51–#53.
 La versión v6 exige el editor actualizado. La certificación funcional, las
 capturas nuevas y aceptación manual siguen pendientes. Sin PR, push, integración
 ni publicación automática; solo commits locales en la rama autorizada.
+
+
+### Continuación F0: ejecución 42537312577 (09/11/2026)
+
+Base `a587762`, push a main: unitarias y build correctos; E2E fragmento 3/4 correcto y ocho fallos en 1/4, 2/4 y 4/4. Se descargaron los logs y los tres artefactos de fallo. La certificación F0 sigue pendiente.
+
+- Selector de puerta: la prueba esperaba Posición lateral, que solo aparece con pared girada; se comprueba Posición X en la configuración inicial.
+- Órbita libre: la prueba esperaba un evento de instrumentación retirado; ahora comprueba el cambio de orientación de la brújula. Pendiente verificar el control en CI.
+- Gizmo X: la instrumentación anterior ya no emite el evento esperado. Sigue pendiente una comprobación que identifique el eje sin debilitar la aserción.
+- Selección de carpeta: la captura sitúa Carpeta 1 después de los elementos de Raíz; el rango ahora termina en la carpeta y sigue exigiendo los cuatro elementos. Pendiente comprobar el orden y la selección real en CI.
+- IndexedDB: la prueba agotó 30 s dentro de evaluate; falta localizar la transacción bloqueada o lenta. Su causa raíz y corrección siguen pendientes.
+- Restablecer plano: la captura final no igualó exactamente la inicial; falta distinguir estado de cámara y sincronización/renderizado.
+- Ventana frontal: no se seleccionó en la coordenada usada; falta determinar impacto real y corregir el punto o la interacción.
+- Órbita sobre pared: se inició la órbita en el punto supuesto de pared; falta demostrar qué geometría alcanzó el rayo y corregir el caso sin perder prioridad de pared.
+
+No se ejecutaron pruebas, build ni CI en esta rama. Tras completar las correcciones y la integración manual autorizada en main, ejecutar `npm ci`, unitarias, build y suite E2E completa en sus cuatro fragmentos; revisar artefactos y los comportamientos funcionales indicados. Ninguna modificación aquí acredita una pasada ni certifica F0.

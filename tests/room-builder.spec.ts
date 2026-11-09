@@ -642,7 +642,7 @@ test('incluye puerta y ventana en el catálogo y abre sus propiedades a la izqui
 
   await page.getByRole('button', { name: /Puerta Apertura/ }).click()
   await expect(inspector.getByRole('heading', { name: 'Puerta' })).toBeVisible()
-  await expect(inspector.getByText('Posición lateral')).toBeVisible()
+  await expect(inspector.getByLabel('Posición X', { exact: true })).toBeVisible()
   await expect(inspector.getByText('1.00 m', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'Ventana ＋ Añadir', exact: true }).click()
