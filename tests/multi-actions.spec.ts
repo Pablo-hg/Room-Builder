@@ -21,6 +21,7 @@ test('soltar un objeto sobre una fila exterior lo saca de la carpeta', async ({ 
 
 test('el menú y el arrastre actúan sobre toda la selección y permiten agrupar', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1200 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
@@ -51,7 +52,9 @@ test('el menú y el arrastre actúan sobre toda la selección y permiten agrupar
   await table.locator('.element-select').click({ modifiers: ['Control'] })
   const door = row('Puerta')
   await chair.scrollIntoViewIfNeeded()
-  await chair.dragTo(door, { force: true, timeout: 12_000, sourcePosition: { x: 10, y: 10 }, targetPosition: { x: 10, y: 5 } })
+  await expect(chair).toBeInViewport()
+  await expect(door).toBeInViewport()
+  await chair.dragTo(door, { timeout: 12_000, sourcePosition: { x: 10, y: 10 }, targetPosition: { x: 10, y: 5 } })
   await expect(folder.locator('.element-row').filter({ hasText: 'Silla' })).toHaveCount(0)
   await expect(folder.locator('.element-row').filter({ hasText: 'Mesa' })).toHaveCount(0)
   await expect.poll(async () => (await chair.boundingBox())!.y < (await door.boundingBox())!.y).toBe(true)

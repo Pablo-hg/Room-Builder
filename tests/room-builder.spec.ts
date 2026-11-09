@@ -415,6 +415,13 @@ test('orbita desde suelo y exterior sin girar la cámara al arrastrar paredes', 
     const { isoAngle, selectedId } = useRoomStore.getState()
     return { isoAngle, selectedId }
   })
+  // R3F initially exposes the browser's 300×150 canvas before measuring its
+  // container. All pointer coordinates below require the final rendered size.
+  await expect.poll(async () => {
+    const panel = await scene.boundingBox()
+    const surface = await canvas.boundingBox()
+    return !!panel && !!surface && Math.abs(panel.width - surface.width) < 1 && Math.abs(panel.height - surface.height) < 1
+  }).toBe(true)
   const bounds = await canvas.boundingBox()
   if (!bounds) throw new Error('No se pudo localizar el canvas de la habitación')
 
