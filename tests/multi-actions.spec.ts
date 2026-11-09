@@ -54,7 +54,17 @@ test('el menú y el arrastre actúan sobre toda la selección y permiten agrupar
   await chair.scrollIntoViewIfNeeded()
   await expect(chair).toBeInViewport()
   await expect(door).toBeInViewport()
-  await chair.dragTo(door, { timeout: 12_000, sourcePosition: { x: 10, y: 10 }, targetPosition: { x: 10, y: 5 } })
+  // The HTML5 drag starts on the draggable row. Using the mouse avoids the
+  // locator.dragTo stability gate, which can stall on the live WebGL editor in CI.
+  // Keep the real pointer gesture and assert that BOTH selected items move.
+  const source = await chair.boundingBox()
+  const target = await door.boundingBox()
+  if (!source || !target) throw new Error('Las filas del arrastre no están disponibles')
+  await page.mouse.move(source.x + 10, source.y + 10)
+  await page.mouse.down()
+  await page.mouse.move(source.x + 20, source.y + 20, { steps: 5 })
+  await page.mouse.move(target.x + 10, target.y + 5, { steps: 12 })
+  await page.mouse.up()
   await expect(folder.locator('.element-row').filter({ hasText: 'Silla' })).toHaveCount(0)
   await expect(folder.locator('.element-row').filter({ hasText: 'Mesa' })).toHaveCount(0)
   await expect.poll(async () => (await chair.boundingBox())!.y < (await door.boundingBox())!.y).toBe(true)
