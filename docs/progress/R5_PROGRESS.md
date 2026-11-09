@@ -645,3 +645,33 @@ La vivienda por plantas y medianeras físicas únicas corresponde a #51–#53.
 La versión v6 exige el editor actualizado. La certificación funcional, las
 capturas nuevas y aceptación manual siguen pendientes. Sin PR, push, integración
 ni publicación automática; solo commits locales en la rama autorizada.
+
+
+### Continuación F0: ejecución 42537312577 (09/11/2026)
+
+Base `a587762`, push a main: unitarias y build correctos; E2E fragmento 3/4 correcto y ocho fallos en 1/4, 2/4 y 4/4. Se descargaron los logs y los tres artefactos de fallo. La certificación F0 sigue pendiente.
+
+- Selector de puerta: la prueba esperaba Posición lateral, que solo aparece con pared girada; se comprueba Posición X en la configuración inicial.
+- Órbita libre: la prueba esperaba un evento de instrumentación retirado; ahora comprueba el cambio de orientación de la brújula. Pendiente verificar el control en CI.
+- Gizmo X: la instrumentación anterior ya no emite el evento esperado. Sigue pendiente una comprobación que identifique el eje sin debilitar la aserción.
+- Selección de carpeta: la captura sitúa Carpeta 1 después de los elementos de Raíz; el rango ahora termina en la carpeta y sigue exigiendo los cuatro elementos. Pendiente comprobar el orden y la selección real en CI.
+- IndexedDB: la prueba agotó 30 s dentro de evaluate; falta localizar la transacción bloqueada o lenta. Su causa raíz y corrección siguen pendientes.
+- Restablecer plano: la captura final no igualó exactamente la inicial; falta distinguir estado de cámara y sincronización/renderizado.
+- Ventana frontal: no se seleccionó en la coordenada usada; falta determinar impacto real y corregir el punto o la interacción.
+- Órbita sobre pared: se inició la órbita en el punto supuesto de pared; falta demostrar qué geometría alcanzó el rayo y corregir el caso sin perder prioridad de pared.
+
+No se ejecutaron pruebas, build ni CI en esta rama. Tras completar las correcciones y la integración manual autorizada en main, ejecutar `npm ci`, unitarias, build y suite E2E completa en sus cuatro fragmentos; revisar artefactos y los comportamientos funcionales indicados. Ninguna modificación aquí acredita una pasada ni certifica F0.
+
+### Continuación local de los ocho fallos (09/11/2026)
+
+El propietario autorizó pruebas locales en ramas de trabajo; GitHub Actions sigue limitado a `push` a `main`. En IndexedDB se encolan juntas las consultas de claves de cada lote, sin cambiar la transacción, retención ni deduplicación: antes se esperaban en serie y el caso tardó 26,9 s localmente frente al límite de 30 s. No se observó un bloqueo de transacción; las pruebas posteriores deben confirmar el comportamiento bajo carga.
+
+La prueba del gizmo arrastra en diagonal y exige movimiento en X sin cambios en Y ni Z. La de plano verifica el desplazamiento, cambio de zoom y restitución de los tres valores de cámara, sin exigir imágenes idénticas. En frontal se ocultaron las aperturas ligadas exclusivamente a paredes ocultas: la puerta de la pared opuesta interceptaba la ventana. La prueba de órbita identifica una pared seleccionable antes de arrastrarla y comprueba el ángulo continuo, evitando deducirlo del texto discreto de paredes visibles.
+
+Las ocho regresiones originales pasaron juntas localmente (8/8, un trabajador); las unitarias pasaron 429/429 y el build pasó con aviso de bundle de 1.569 kB. La primera ejecución completa E2E con dos trabajadores se interrumpió tras un timeout en una prueba móvil; esa misma prueba pasó con un trabajador. La repetición completa local, sin filtros y con un trabajador, terminó con **176/176** en 24,9 minutos. `git diff --check` pasó. Quedan pendientes la integración manual y el CI completo de `main`; F0 no está certificada.
+
+### Ajuste de las dos regresiones de CI (09/11/2026)
+
+La ejecución [42542932549](https://github.com/Pablo-hg/Room-Builder/actions/runs/42542932549), sobre `c6a671a` en `main`, aprobó unitarias, build y 174 E2E; fallaron dos pruebas del fragmento 2/4. En el arrastre múltiple, la traza muestra la fila visible y seleccionada y el agotamiento del límite global durante el inicio del gesto, tras una preparación lenta; no muestra un `drop` fallido ni acredita un defecto funcional. La prueba reduce el movimiento, comprueba que origen y destino están en pantalla y usa `dragTo` sin `force`, conservando las aserciones de movimiento y orden de ambos elementos. Sigue pendiente confirmar su estabilidad bajo la carga real de CI.
+
+En la prueba de órbita, la traza registró coordenadas calculadas sobre el canvas inicial de 300 × 150, antes de adaptarse al panel. Se espera su medición real antes de obtener coordenadas; se mantiene la selección de una pared y la comprobación de que el arrastre no activa órbita ni cambia el ángulo. Ambas pruebas pasaron juntas tres veces en local, con dos trabajadores (2/2 en cada ejecución). No se ejecutaron otras suites ni se modificó el workflow. El CI completo en `main` sigue pendiente; F0 no está certificada.

@@ -141,6 +141,12 @@ export function migrateWallPictures(room: RoomConfig, furniture: FurnitureItem[]
           rotation: 0,
           color: item.color,
         }
+        // Legacy migration must not attach a picture to a wall that cannot
+        // physically hold it. The live editor can retain oversized apertures
+        // during a resize, but that leniency must not invent a new attachment.
+        const length = wall === 'north' || wall === 'south' ? room.width : room.depth
+        if (length < picture.width + 0.24 - 1e-9 || room.height < picture.sill + picture.height + 0.08 - 1e-9
+          || Math.abs(offset) + picture.width / 2 > length / 2 - 0.12 + 1e-9) continue
         const candidateRoom = { ...room, windows: [...windows, picture] }
         if (validateOpenings(candidateRoom)) continue
         windows.push(picture)

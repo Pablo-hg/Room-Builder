@@ -68,7 +68,10 @@ test('IndexedDB retention, duplicate IDs and recovery use real browser transacti
     try { await repository.append([warning]) } catch { denied = true }
     fail = false
     await repository.append([old, warning, warning])
-    for (let index = 0; index < 400; index++) await repository.append([engine.emit({ action: 'detail', level: 'debug' })])
+    // Misma carga de 400 eventos en ocho transacciones, no en 400.
+    for (let index = 0; index < 8; index++) {
+      await repository.append(Array.from({ length: 50 }, () => engine.emit({ action: 'detail', level: 'debug' })))
+    }
     const events = await repository.read()
     return { denied, old: events.some((event: { action: string }) => event.action === 'old'), important: events.filter((event: { action: string }) => event.action === 'important').length, count: events.length }
   })

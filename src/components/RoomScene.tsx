@@ -125,7 +125,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
           </group>
         ))}
         {props.view === 'top' && !props.exportMode && <PlanWallLines strips={planStrips} />}
-        <WorldWallObjects room={props.room} structurePacks={props.structurePacks} collisionIds={props.collisionIds} exportMode={props.exportMode} level={level} levelHeight={levelHeight} focusedView={focusedView} />
+        <WorldWallObjects room={props.room} structurePacks={props.structurePacks} collisionIds={props.collisionIds} exportMode={props.exportMode} level={level} levelHeight={levelHeight} focusedView={focusedView} frontVisibleWalls={props.view === 'front' && !props.exportMode ? visibleWallIds : undefined} />
         {props.furniture.filter((item) => !hiddenElementIds.includes(item.id) && (!focusedView || (item.y >= level - 0.01 && item.y < level + levelHeight))).map((item) => (
           <FurnitureObject
             key={item.id}

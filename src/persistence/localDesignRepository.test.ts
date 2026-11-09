@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { SavedDesign } from '../domain/designV1'
-import { createLocalDesignRepository, SAVED_DESIGNS_KEY, STORAGE_KEY } from './localDesignRepository'
+import { createLocalDesignRepository, DesignStorageConflictError, SAVED_DESIGNS_KEY, STORAGE_KEY } from './localDesignRepository'
 
 class MemoryStorage {
   values = new Map<string, string>()
@@ -24,9 +24,12 @@ test('el repositorio conserva los cinco diseños completos, sus metadatos y la c
   assert.equal(STORAGE_KEY, 'room-builder:v0.1:design')
   assert.deepEqual(repository.read(), designs)
   assert.equal(storage.writes, 1)
-  // Preserve the previous reader: ignore entries beyond the five-design limit.
-  storage.values.set(SAVED_DESIGNS_KEY, JSON.stringify([...designs, { invalid: true }]))
-  assert.deepEqual(repository.read(), designs)
+  // Un sexto diseño no debe desaparecer tras la siguiente operación.
+  const oversized = JSON.stringify([...designs, { invalid: true }])
+  storage.values.set(SAVED_DESIGNS_KEY, oversized)
+  assert.throws(() => repository.read(), /más de cinco/)
+  assert.throws(() => repository.write(designs), DesignStorageConflictError)
+  assert.equal(storage.getItem(SAVED_DESIGNS_KEY), oversized)
   assert.equal(storage.writes, 1)
 })
 
@@ -89,7 +92,54 @@ test('un fallo de escritura durante migración o guardado conserva los valores a
   assert.deepEqual(values, before)
   values.set(SAVED_DESIGNS_KEY, JSON.stringify([design('saved')]))
   const saved = values.get(SAVED_DESIGNS_KEY)
+  assert.deepEqual(repository.read(), [design('saved')])
   assert.throws(() => repository.write([design('replacement')]), /quota exceeded/)
   assert.equal(values.get(SAVED_DESIGNS_KEY), saved)
   assert.deepEqual(repository.read(), [design('saved')])
+})
+
+
+test('detecta escrituras de otra pestaña y nunca sobrescribe la biblioteca', () => {
+  const storage = new MemoryStorage()
+  const first = createLocalDesignRepository(() => storage)
+  const second = createLocalDesignRepository(() => storage)
+  assert.deepEqual(first.read(), [])
+  assert.deepEqual(second.read(), [])
+  first.write([design('primero')])
+  const persisted = storage.getItem(SAVED_DESIGNS_KEY)
+  assert.throws(() => second.write([design('segundo')]), DesignStorageConflictError)
+  assert.equal(storage.getItem(SAVED_DESIGNS_KEY), persisted)
+  assert.deepEqual(second.read(), [design('primero')])
+  second.write([design('primero'), design('segundo')])
+  assert.deepEqual(first.read(), [design('primero'), design('segundo')])
+})
+
+test('no sustituye una biblioteca no validada o corrupta, ni supera cinco diseños', () => {
+  const storage = new MemoryStorage()
+  storage.setItem(SAVED_DESIGNS_KEY, '{')
+  const repository = createLocalDesignRepository(() => storage)
+  assert.throws(() => repository.read())
+  assert.throws(() => repository.write([]), DesignStorageConflictError)
+  assert.equal(storage.getItem(SAVED_DESIGNS_KEY), '{')
+  const fresh = createLocalDesignRepository(() => storage)
+  assert.throws(() => fresh.write([]), DesignStorageConflictError)
+  const empty = new MemoryStorage()
+  const bounded = createLocalDesignRepository(() => empty)
+  assert.throws(() => bounded.write(Array.from({ length: 6 }, (_, i) => design(String(i)))), /cinco/)
+  assert.equal(empty.getItem(SAVED_DESIGNS_KEY), null)
+})
+
+
+test('rechaza identificadores de biblioteca repetidos sin alterar el original', () => {
+  const storage = new MemoryStorage()
+  const repository = createLocalDesignRepository(() => storage)
+  const data = [design('igual'), design('igual')]
+  const raw = JSON.stringify(data)
+  storage.values.set(SAVED_DESIGNS_KEY, raw)
+  assert.throws(() => repository.read(), /IDs duplicados/)
+  assert.throws(() => repository.write([design('nuevo')]), DesignStorageConflictError)
+  assert.equal(storage.getItem(SAVED_DESIGNS_KEY), raw)
+  const empty = new MemoryStorage()
+  assert.throws(() => createLocalDesignRepository(() => empty).write(data), /IDs duplicados/)
+  assert.equal(empty.getItem(SAVED_DESIGNS_KEY), null)
 })

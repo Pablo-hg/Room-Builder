@@ -221,7 +221,7 @@ test('mueve y colorea juntos una puerta y un mueble solo por el eje compatible',
 test('incluye los descendientes de carpetas y evita duplicar elementos seleccionados', () => {
   const store = createRoomStore()
   store.getState().createElementFolder('Grupo')
-  const folder = store.getState().elementFolders[0].id
+  const folder = store.getState().elementFolders.find((entry) => entry.name === 'Grupo')!.id
   store.getState().addFurniture('chair')
   const chair = store.getState().selectedId!
   store.getState().moveElementToFolder(chair, folder)
@@ -234,7 +234,11 @@ test('incluye los descendientes de carpetas y evita duplicar elementos seleccion
   assert.deepEqual(new Set(items.map((item) => item.id)), new Set([chair, wall]))
   const previous = structuredClone(store.getState().structurePacks)
   store.getState().moveSelectedFurnitureGroup('x', 0.15)
-  assert.equal(store.getState().structurePacks[0].surfaces[0].x, previous[0].surfaces[0].x + 0.15)
+  // Si se seleccionan todas las superficies de un pack, se traslada el pack
+  // entero para evitar dobles transformaciones; la coordenada local no cambia.
+  const moved = store.getState().structurePacks[0]
+  assert.equal(moved.x + moved.surfaces[0].x, previous[0].x + previous[0].surfaces[0].x + 0.15)
+  assert.equal(moved.surfaces[0].x, previous[0].surfaces[0].x)
   store.getState().undo()
   assert.deepEqual(store.getState().structurePacks, previous)
 })

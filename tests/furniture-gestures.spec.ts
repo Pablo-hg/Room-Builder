@@ -1,25 +1,30 @@
 import { expect, test } from '@playwright/test'
 
 test('la flecha X del control de ejes compartidos inicia el arrastre de ese eje', async ({ page }) => {
-  const axes: string[] = []
-  page.on('request', (request) => {
-    if (!request.url().includes('/__room-builder/interaction-log') || request.method() !== 'POST') return
-    const entry = request.postDataJSON() as { action?: string; details?: { axis?: string } }
-    if (entry.action === 'scene.furniture.axis-drag-start' && entry.details?.axis) axes.push(entry.details.axis)
-  })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
+  const position = async () => page.evaluate(async () => {
+    const path = '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ path)
+    const state = useRoomStore.getState()
+    const item = state.furniture.find((candidate: { id: string }) => candidate.id === state.selectedId)!
+    return { x: item.x, y: item.y, z: item.z }
+  })
+  const before = await position()
   const canvas = await page.locator('.scene-panel canvas').first().boundingBox()
   if (!canvas) throw new Error('Canvas no disponible')
   const x = canvas.x + canvas.width / 2 + 26
   const y = canvas.y + canvas.height / 2
   await page.mouse.move(x, y)
   await page.mouse.down()
-  await page.mouse.move(x + 30, y, { steps: 5 })
+  await page.mouse.move(x + 60, y + 60, { steps: 5 })
   await page.mouse.up()
-  await expect.poll(() => axes).toContain('x')
+  await expect.poll(async () => (await position()).x).not.toBe(before.x)
+  const after = await position()
+  expect(after.y).toBe(before.y)
+  expect(after.z).toBe(before.z)
 })
 
 for (const target of ['cuerpo', 'eje X'] as const) {

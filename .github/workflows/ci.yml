@@ -17,8 +17,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -28,16 +28,25 @@ jobs:
           npm --version
           git rev-parse HEAD
       - run: npm ci
-      - run: npm test
-      - run: npm run build
+      - name: Pruebas unitarias
+        run: npm test
+      # El build es una comprobación independiente: no omitirlo si fallan tests.
+      # GitHub Actions evalúa !cancelled() incluso si una etapa anterior falló.
+      - name: Compilación de producción
+        if: ${{ !cancelled() }}
+        run: npm run build
 
   e2e-chromium:
-    name: E2E funcional — Chromium (suite completa tests/)
+    name: E2E Chromium (fragmento ${{ matrix.shard }}/4)
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -45,17 +54,17 @@ jobs:
         run: npm ci
       - name: Instalar Chromium y dependencias del sistema
         run: npx playwright install --with-deps chromium
-      - name: Inventario de la suite real
+      - name: Inventario de la suite del fragmento
         run: |
           npx playwright --version
-          npx playwright test --list
-      - name: Ejecutar TODA la suite funcional (sin filtros)
-        run: npm run test:e2e -- --workers=2
+          npx playwright test --list --shard=${{ matrix.shard }}/4
+      - name: Ejecutar el fragmento completo de E2E (sin filtros)
+        run: npm run test:e2e -- --workers=2 --shard=${{ matrix.shard }}/4
       - name: Conservar trazas y capturas de fallos
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: room-builder-e2e-failures
+          name: room-builder-e2e-failures-${{ matrix.shard }}-de-4
           path: |
             test-results/
             playwright-report/

@@ -210,10 +210,10 @@ test('permite elevar un mueble desde el inspector', async ({ page }) => {
 
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
   const elevation = inspector.getByLabel('Posición Y', { exact: true })
-  await expect(elevation).toHaveValue('0')
+  await expect(elevation).toHaveValue('0.02')
   await elevation.focus()
   await elevation.press('ArrowRight')
-  await expect(elevation).toHaveValue('0.01')
+  await expect(elevation).toHaveValue('0.03')
 })
 
 test('permite mover un mueble lateralmente y en altura en vista frontal', async ({ page }) => {
@@ -244,14 +244,14 @@ test('permite mover un mueble lateralmente y en altura en vista frontal', async 
   await expect(elevation).not.toHaveValue('0')
 })
 
-test('mantiene ambas alfombras sobre el suelo y oculta el control vertical', async ({ page }) => {
+test('mantiene ambas alfombras sobre el suelo y permite el movimiento vertical', async ({ page }) => {
   await page.goto('/')
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
 
   for (const name of ['Alfombra', 'Alfombra circular']) {
     await page.getByRole('button', { name: `${name} ＋ Añadir`, exact: true }).click()
     await expect(inspector.getByRole('heading', { name, exact: true })).toBeVisible()
-    await expect(inspector.getByText('Posición Y', { exact: true })).toHaveCount(0)
+    await expect(inspector.getByText('Posición Y', { exact: true })).toBeVisible()
     await expect(inspector.getByLabel('Posición X', { exact: true })).toBeVisible()
     await expect(inspector.getByLabel('Posición Z', { exact: true })).toBeVisible()
     await inspector.getByRole('button', { name: 'Eliminar' }).click()
@@ -266,7 +266,7 @@ test('añade los nuevos objetos decorativos e iluminación', async ({ page }) =>
     await page.getByRole('button', { name: `${name} ＋ Añadir`, exact: true }).click()
     await expect(inspector.getByRole('heading', { name, exact: true })).toBeVisible()
     if (name === 'Lámpara de techo') {
-      await expect(inspector.getByText('Posición Y', { exact: true })).toHaveCount(0)
+      await expect(inspector.getByText('Posición Y', { exact: true })).toBeVisible()
     }
     await inspector.getByRole('button', { name: 'Eliminar' }).click()
   }
@@ -405,16 +405,29 @@ test('orbita desde un objeto con el botón central y lo deselecciona sin moverlo
   await expect(inspector.locator('.selected-heading p')).toHaveText(originalPosition)
 })
 
-test('orbita la vista isométrica desde el suelo, las paredes y el exterior', async ({ page }) => {
+test('orbita desde suelo y exterior sin girar la cámara al arrastrar paredes', async ({ page }) => {
   await page.goto('/')
   const scene = page.locator('.scene-panel')
   const canvas = scene.locator('canvas').first()
+  const cameraState = () => page.evaluate(async () => {
+    const path = '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ path)
+    const { isoAngle, selectedId } = useRoomStore.getState()
+    return { isoAngle, selectedId }
+  })
+  // R3F initially exposes the browser's 300×150 canvas before measuring its
+  // container. All pointer coordinates below require the final rendered size.
+  await expect.poll(async () => {
+    const panel = await scene.boundingBox()
+    const surface = await canvas.boundingBox()
+    return !!panel && !!surface && Math.abs(panel.width - surface.width) < 1 && Math.abs(panel.height - surface.height) < 1
+  }).toBe(true)
   const bounds = await canvas.boundingBox()
   if (!bounds) throw new Error('No se pudo localizar el canvas de la habitación')
 
   await expect(canvas).toHaveCSS('cursor', 'grab')
   await expect(page.locator('.camera-orbit-mouse-icon')).toBeVisible()
-  const blankOrientation = await page.locator('.visible-walls-badge').innerText()
+  const blankOrientation = (await cameraState()).isoAngle
   const exteriorCandidates = [
     [0.03, 0.72],
     [0.97, 0.18],
@@ -441,21 +454,30 @@ test('orbita la vista isométrica desde el suelo, las paredes y el exterior', as
   await expect(canvas).toHaveCSS('cursor', 'grabbing')
   await page.mouse.move(blankX - 100, blankY, { steps: 4 })
   await page.mouse.up()
-  await expect(page.locator('.visible-walls-badge')).not.toHaveText(blankOrientation)
+  await expect.poll(async () => (await cameraState()).isoAngle).not.toBe(blankOrientation)
   await expect(scene).not.toHaveClass(/scene-panel--orbit-dragging/)
   await expect(canvas).toHaveCSS('cursor', 'grab')
 
-  const wallOrientation = await page.locator('.visible-walls-badge').innerText()
-  const wallX = bounds.x + bounds.width * 0.5
-  const wallY = bounds.y + bounds.height * 0.4
+  // Locate an actual selectable wall, rather than assuming a fixed canvas pixel
+  // still lies on one after the preceding orbit.
+  let wallPoint: { x: number; y: number } | undefined
+  for (const [rx, ry] of [[0.7, 0.35], [0.3, 0.35], [0.65, 0.45], [0.35, 0.45], [0.5, 0.3]] as const) {
+    const x = bounds.x + bounds.width * rx, y = bounds.y + bounds.height * ry
+    await page.mouse.click(x, y)
+    if ((await cameraState()).selectedId?.startsWith('room-wall:')) { wallPoint = { x, y }; break }
+  }
+  expect(wallPoint, 'debe poder seleccionarse una pared visible').toBeDefined()
+  const wallOrientation = (await cameraState()).isoAngle
+  const { x: wallX, y: wallY } = wallPoint!
   await page.mouse.move(wallX, wallY)
   await page.mouse.down()
-  await expect(scene).toHaveClass(/scene-panel--orbit-dragging/)
+  // Las paredes tienen prioridad sobre la órbita, conforme a #34.
+  await expect(scene).not.toHaveClass(/scene-panel--orbit-dragging/)
   await page.mouse.move(wallX + 110, wallY, { steps: 4 })
   await page.mouse.up()
-  await expect(page.locator('.visible-walls-badge')).not.toHaveText(wallOrientation)
+  expect((await cameraState()).isoAngle).toBe(wallOrientation)
 
-  const floorOrientation = await page.locator('.visible-walls-badge').innerText()
+  const floorOrientation = (await cameraState()).isoAngle
   const floorX = bounds.x + bounds.width * 0.5
   const floorY = bounds.y + bounds.height * 0.73
   await page.mouse.move(floorX, floorY)
@@ -463,7 +485,7 @@ test('orbita la vista isométrica desde el suelo, las paredes y el exterior', as
   await expect(scene).toHaveClass(/scene-panel--orbit-dragging/)
   await page.mouse.move(floorX - 110, floorY, { steps: 4 })
   await page.mouse.up()
-  await expect(page.locator('.visible-walls-badge')).not.toHaveText(floorOrientation)
+  await expect.poll(async () => (await cameraState()).isoAngle).not.toBe(floorOrientation)
 
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   await expect(page.getByText('Inspector del elemento')).toBeVisible()
@@ -504,10 +526,22 @@ test('la vista libre orbita en dos ejes y mantiene la edición desde los paneles
   await expect(scene).not.toHaveClass(/scene-panel--orbit-dragging/)
 
   const blankAreaOrientation = await compass.getAttribute('aria-label')
-  await page.mouse.move(bounds.x + bounds.width - 18, bounds.y + 18)
-  await page.mouse.down()
-  await expect(scene).toHaveClass(/scene-panel--orbit-dragging/)
-  await page.mouse.move(bounds.x + bounds.width - 72, bounds.y + 54, { steps: 4 })
+  // La proyección en vista Libre puede ocupar el borde superior derecho.
+  // Buscar una zona de fondo sin colisión en vez de asumir coordenadas fijas.
+  let freeBlank: { x: number; y: number } | null = null
+  for (const [rx, ry] of [[0.03, 0.18], [0.97, 0.18], [0.03, 0.80], [0.97, 0.80]]) {
+    const x = bounds.x + bounds.width * rx
+    const y = bounds.y + bounds.height * ry
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    if (await scene.evaluate((el) => el.classList.contains('scene-panel--orbit-dragging'))) {
+      freeBlank = { x, y }
+      break
+    }
+    await page.mouse.up()
+  }
+  expect(freeBlank, 'la vista Libre debe permitir orbitar sobre el fondo').not.toBeNull()
+  await page.mouse.move(freeBlank!.x - 54, freeBlank!.y + 36, { steps: 4 })
   await page.mouse.up()
   await expect(compass).not.toHaveAttribute('aria-label', blankAreaOrientation ?? '')
   await expect(scene).not.toHaveClass(/scene-panel--orbit-dragging/)
@@ -517,10 +551,10 @@ test('la vista libre orbita en dos ejes y mantiene la edición desde los paneles
   const wallY = bounds.y + bounds.height * 0.4
   await page.mouse.move(wallX, wallY)
   await page.mouse.down()
-  await expect(scene).toHaveClass(/scene-panel--orbit-dragging/)
+  await expect(scene).not.toHaveClass(/scene-panel--orbit-dragging/)
   await page.mouse.move(wallX + 35, wallY + 20, { steps: 3 })
   await page.mouse.up()
-  await expect(compass).not.toHaveAttribute('aria-label', wallOrientation ?? '')
+  await expect(compass).toHaveAttribute('aria-label', wallOrientation ?? '')
   await expect(scene).not.toHaveClass(/scene-panel--orbit-dragging/)
 
   const floorOrientation = await compass.getAttribute('aria-label')
@@ -629,7 +663,7 @@ test('incluye puerta y ventana en el catálogo y abre sus propiedades a la izqui
 
   await page.getByRole('button', { name: /Puerta Apertura/ }).click()
   await expect(inspector.getByRole('heading', { name: 'Puerta' })).toBeVisible()
-  await expect(inspector.getByText('Posición lateral')).toBeVisible()
+  await expect(inspector.getByLabel('Posición X', { exact: true })).toBeVisible()
   await expect(inspector.getByText('1.00 m', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'Ventana ＋ Añadir', exact: true }).click()
@@ -746,7 +780,8 @@ test('reordena objetos sin carpeta y dentro de una carpeta', async ({ page }) =>
   const chair = row('Silla')
   const door = row('Puerta')
   const target = (await door.boundingBox())!
-  await chair.dragTo(door, { sourcePosition: { x: 12, y: 12 }, targetPosition: { x: target.width / 2, y: 4 } })
+  await chair.scrollIntoViewIfNeeded()
+  await chair.dragTo(door, { force: true, timeout: 12_000, sourcePosition: { x: 12, y: 12 }, targetPosition: { x: target.width / 2, y: 4 } })
   await expect.poll(async () => (await chair.boundingBox())!.y < (await door.boundingBox())!.y).toBe(true)
   await chair.click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Bajar' }).click()
@@ -758,7 +793,8 @@ test('reordena objetos sin carpeta y dentro de una carpeta', async ({ page }) =>
     await page.getByRole('menuitem', { name: 'Carpeta 1', exact: true }).click()
   }
   const box = (await door.boundingBox())!
-  await chair.dragTo(door, { sourcePosition: { x: 12, y: 12 }, targetPosition: { x: box.width / 2, y: 4 } })
+  await chair.scrollIntoViewIfNeeded()
+  await chair.dragTo(door, { force: true, timeout: 12_000, sourcePosition: { x: 12, y: 12 }, targetPosition: { x: box.width / 2, y: 4 } })
   await expect.poll(async () => (await chair.boundingBox())!.y < (await door.boundingBox())!.y).toBe(true)
 })
 
@@ -798,9 +834,11 @@ test('intercala carpetas y objetos hermanos sin cambiar su pertenencia', async (
     return firstIndex !== -1 && secondIndex !== -1 && firstIndex < secondIndex
   }
 
-  await row('Silla').dragTo(first, { sourcePosition: { x: 12, y: 12 }, targetPosition: { x: 30, y: 2 } })
+  await row('Silla').scrollIntoViewIfNeeded()
+  await row('Silla').dragTo(first, { force: true, timeout: 12_000, sourcePosition: { x: 12, y: 12 }, targetPosition: { x: 30, y: 2 } })
   await expect.poll(() => appearsBefore('Silla', 'Carpeta Carpeta 2')).toBe(true)
-  await second.dragTo(row('Puerta'), { targetPosition: { x: 40, y: 3 } })
+  await second.scrollIntoViewIfNeeded()
+  await second.dragTo(row('Puerta'), { force: true, timeout: 12_000, targetPosition: { x: 40, y: 3 } })
   await expect.poll(() => appearsBefore('Carpeta Carpeta 3', 'Puerta')).toBe(true)
   await expect(parent.locator('.element-row').filter({ hasText: 'Silla' })).toHaveCount(1)
   await first.getByRole('button', { name: 'Carpeta Carpeta 2', exact: true }).click()

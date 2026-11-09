@@ -18,6 +18,20 @@ test('exportar e importar conserva el diseño editable sin modificar el original
   assert.deepEqual(design, original)
 })
 
+test('un diseño con ventana de pack conserva las referencias y se puede importar', () => {
+  const store = createRoomStore()
+  store.getState().addStructurePack('up')
+  store.getState().addWindow('rectangular')
+  const id = store.getState().selectedId!
+  assert.ok(store.getState().structurePacks[0].windows?.some((window) => window.id === id))
+  const design: SavedDesign = { ...makeDesign(), data: persistedDesign(store.getState()) }
+  const cleaned = cleanExportReferences(design.data)
+  assert.equal(cleaned.omitted, 0)
+  assert.equal(cleaned.data.elementFolderAssignments?.[id], design.data.elementFolderAssignments?.[id])
+  const loaded = parseDesignFile(serializeDesignFile({ ...design, data: cleaned.data }))
+  assert.ok(loaded.design.data.structurePacks?.[0].windows?.some((window) => window.id === id))
+})
+
 test('admite diseños históricos v1–v5 y conserva la variante activa de v5', () => {
   for (const path of ['persistence-v1/valid-complete', 'persisted-designs/valid-v2', 'persisted-designs/valid-v3', 'persisted-designs/valid-v4', 'persisted-designs/valid-v5']) {
     const data = JSON.parse(readFileSync(new URL(`../../tests/fixtures/${path}.json`, import.meta.url), 'utf8'))
@@ -59,4 +73,33 @@ test('la copia para exportar elimina referencias obsoletas sin modificar el dise
   assert.equal(result.omitted, 1)
   assert.deepEqual(result.data.sceneElementOrder, [])
   assert.deepEqual(design.data.sceneElementOrder, ['no-existe'])
+})
+
+
+test('rechaza propiedades peligrosas y árboles demasiado profundos en cualquier nivel', () => {
+  const dangerous = JSON.parse(serializeDesignFile(makeDesign()))
+  Object.defineProperty(dangerous.design.data.room, '__proto__', { value: { polluted: true }, enumerable: true })
+  assert.throws(() => parseDesignFile(JSON.stringify(dangerous)), /propiedad no admitida/)
+  assert.equal(({} as { polluted?: boolean }).polluted, undefined)
+
+  const nested = JSON.parse(serializeDesignFile(makeDesign()))
+  let deep: Record<string, unknown> = { end: true }
+  for (let level = 0; level < 40; level++) deep = { child: deep }
+  nested.design.data.untrusted = deep
+  assert.throws(() => parseDesignFile(JSON.stringify(nested)), /demasiado complejo/)
+})
+
+test('los formatos v1–v5 conservan la geometría en normalizaciones repetidas', () => {
+  for (const path of ['persistence-v1/valid-complete', 'persisted-designs/valid-v2', 'persisted-designs/valid-v3', 'persisted-designs/valid-v4', 'persisted-designs/valid-v5']) {
+    const source = JSON.parse(readFileSync(new URL(`../../tests/fixtures/${path}.json`, import.meta.url), 'utf8'))
+    const parsed = parseDesignFile(file(source)).design.data
+    const again = parseDesignFile(file(parsed)).design.data
+    assert.equal(persistedDesignSignature(parsed), persistedDesignSignature(again), path)
+    assert.deepEqual(parsed.room, again.room, path)
+    assert.deepEqual(parsed.structurePacks, again.structurePacks, path)
+    assert.deepEqual(parsed.lockedElementIds, again.lockedElementIds, path)
+    assert.deepEqual(parsed.hiddenElementIds, again.hiddenElementIds, path)
+    assert.deepEqual(parsed.elementFolderAssignments, again.elementFolderAssignments, path)
+    assert.deepEqual(parsed.sceneElementOrder, again.sceneElementOrder, path)
+  }
 })

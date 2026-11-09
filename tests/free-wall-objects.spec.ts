@@ -17,7 +17,8 @@ for (const width of [375, 1280]) {
     await move(page, 'X', '0')
     await move(page, 'Y', '0.3')
     await expect(page.locator('.scene-collision-panel').getByText(/está fuera de la vivienda/)).toHaveCount(0)
-    await move(page, 'Y', '30')
+    // XYZ admite hasta 20 m; 30 se rechaza y el objeto no sale.
+    await move(page, 'Y', '15')
     await expect(page.locator('.scene-collision-panel')).toContainText('está fuera de la vivienda, en el vacío')
     await expect(inspector(page).getByRole('button', { name: /Volver a colocar en la pared/ })).toBeVisible()
     await page.getByRole('button', { name: 'Deshacer el último cambio', exact: true }).click()

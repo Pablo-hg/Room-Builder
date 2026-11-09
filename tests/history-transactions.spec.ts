@@ -45,7 +45,7 @@ for (const finish of ['ratón', 'cancelación táctil'] as const) {
     await page.getByRole('button', { name: 'Frontal', exact: true }).click()
     const select = page.getByRole('button', { name: /Ventana 1 Apertura/ })
     await select.click()
-    const offset = page.locator('.selection-section--inspector').getByLabel('Posición lateral', { exact: true })
+    const offset = page.locator('.selection-section--inspector').getByLabel('Posición X', { exact: true })
     const initial = await offset.inputValue()
     const bounds = await page.locator('.scene-panel canvas').first().boundingBox()
     if (!bounds) throw new Error('No se pudo localizar el canvas')

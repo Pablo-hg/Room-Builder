@@ -389,3 +389,17 @@ El diagnóstico exportado el 08/11 (21:52–22:25) muestra que mover una pared d
 - Se da mayor prioridad de render a los gizmos de puertas/ventanas/cuadros en Plano para que las flechas de movimiento queden sobre los símbolos 2D y no resulten invisibles al seleccionar un elemento mural.
 - `Cuadrícula` incorpora **dos checks de grupo**: ocultar/mostrar todas las cuadrículas de la habitación enfocada y ocultar/mostrar todas las de todas las habitaciones. Incluye suelo, paredes y superficies independientes según su habitación de origen/carpeta (incluidas subcarpetas). Las ocultaciones individuales se conservan; el estado «parcial» se indica cuando hay mezcla. Cada check realiza una sola actualización persistente y deshacible sin cambiar el ajuste magnético de movimiento.
 - Pruebas de regresión preparadas en `buildingVolume.test.ts`, `planWallLines.test.ts` y `gridGroups.test.ts`, sin ejecutar. Comprobar manualmente las cuatro situaciones antes de fusionar: (1) mover pared con grosor notable y recinto todavía cerrado; (2) abrir un hueco real y recibir incidencias; (3) seleccionar/arrastrar paredes en Isométrica sin orbitar y seleccionarlas en Plano; (4) ver flechas en cuadros/ventanas en Plano, y usar ambos checks de Cuadrícula con más de una habitación y un muro independiente.
+
+## Certificación CI tras merge: ejecución #42532939284 (09/11/2026)
+
+La suite `main` con 429 pruebas unitarias y 176 E2E registró 3 fallos unitarios y 25 E2E fallidos, con 151 E2E correctos tras **24 minutos**. Los tres fallos unitarios se abordaron previamente en `fix/f0-pr67-unitarias`.
+
+Optimizaciones preparadas en la misma rama:
+- **Sharding real de Playwright** en matriz de cuatro jobs concurrentes, dos workers por fragmento, `fail-fast: false`, con `--shard=N/4` tanto para inventario como ejecución. Cada fragmento conserva su captura y traza bajo un artefacto con nombre único; ningún test se omite o filtra. El CI sigue disparándose **solo con push a `main`**.
+- Reducción de trabajo no asertivo: un E2E antes capturaba cinco vistas por caso sin comparar imágenes; se mantienen las cinco aserciones de vista y las capturas automáticas en caso de error.
+- Diagnósticos: las 400 incidencias de retención se escriben en 8 transacciones de 50, no en 400 transacciones separadas.
+- Actualizados selectores y expectativas obsoletas tras sustituir Posición lateral por XYZ y cambiar nombres de aperturas/objetos. Los tests de órbita respetan que una pared se puede seleccionar sin orbitar. Al soltar drag-and-drop, el orden final sigue comprobándose.
+- Tiempo ampliado **solo** para E2E multivista que guarda y recarga diseños. No se incrementa de forma global el timeout de todos los tests.
+- Corrección de composición a 320 px mediante envoltura de controles visibles, sin ocultar el desbordamiento de forma artificial.
+
+**No ejecutado en rama** por el flujo establecido. La matriz y todas las correcciones se certificarán en `main`. Los E2E restantes de selección de objetos sobre canvas, eje X del gizmo y selección de carpetas requieren revisión de trazas y validación real; no se han deshabilitado ni marcado como esperados.

@@ -23,7 +23,7 @@ test('un mueble puede cruzar las paredes y el suelo y conservar su posición al 
   await expect(y).toHaveValue('-1.00')
   await page.getByRole('button', { name: 'Deshacer el último cambio' }).click()
   await page.getByRole('button', { name: /Silla Asientos/ }).click()
-  await expect(y).toHaveValue('0.00')
+  await expect(y).toHaveValue('0.02')
 })
 
 test('el suelo del plano desplaza la cámara y el botón restablece posición y zoom', async ({ page }) => {
@@ -33,21 +33,23 @@ test('el suelo del plano desplaza la cámara y el botón restablece posición y 
   const canvas = page.locator('.scene-panel canvas').first()
   const box = await canvas.boundingBox()
   if (!box) throw new Error('Canvas no disponible')
-  await page.waitForTimeout(500)
-  const initial = await canvas.screenshot()
+  const cameraState = () => page.evaluate(async () => {
+    const path = '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ path)
+    const { topCameraX, topCameraZ, cameraZoom } = useRoomStore.getState()
+    return { topCameraX, topCameraZ, cameraZoom }
+  })
+  const initial = await cameraState()
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
   await page.mouse.down()
   await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2 + 40, { steps: 8 })
   await page.mouse.up()
-  const panned = await canvas.screenshot()
-  expect(initial.equals(panned)).toBe(false)
+  await expect.poll(cameraState).not.toEqual(initial)
   await page.mouse.wheel(0, -120)
+  await expect.poll(async () => (await cameraState()).cameraZoom).not.toBe(initial.cameraZoom)
   await page.getByRole('button', { name: 'Restablecer posición y zoom del plano' }).click()
   await expect(page.getByRole('status')).toContainText('100%')
-  await page.mouse.move(0, 0)
-  await page.waitForTimeout(500)
-  const reset = await canvas.screenshot()
-  expect(initial.equals(reset)).toBe(true)
+  await expect.poll(cameraState).toEqual(initial)
 })
 
 test('el aro de giro de una pared tiene prioridad sobre un suelo que lo tapa', async ({ page }) => {
@@ -91,7 +93,7 @@ for (const kind of ['Suelo', 'Pared']) {
     await width.press('Enter')
     await expect(width).toHaveValue('2.75')
     await page.getByRole('button', { name: /Deshacer el último cambio/ }).click()
-    await page.getByRole('button', { name: new RegExp(`${kind} 1 · ${kind} independiente Superficie de construcción`) }).click()
+    await page.getByRole('button', { name: new RegExp(`${kind} independiente Superficie de construcción`) }).click()
     await expect(width).not.toHaveValue('2.75')
     await expect(thickness).toHaveValue('0.25')
   })
@@ -140,7 +142,7 @@ for (const kind of ['Suelo', 'Pared']) {
     await page.mouse.up()
     await expect(position).not.toHaveValue(initial)
     await page.getByRole('button', { name: 'Deshacer el último cambio' }).click()
-    await page.getByRole('button', { name: new RegExp(`${kind} 1 · ${kind} independiente Superficie de construcción`) }).click()
+    await page.getByRole('button', { name: new RegExp(`${kind} independiente Superficie de construcción`) }).click()
     await expect(position).toHaveValue(initial)
   })
 

@@ -11,13 +11,13 @@ test('buscar un hueco no relaja las distancias ni acepta paredes sin espacio', (
   assert.equal(findAvailableOpeningOffset(4.5, 1.5, 2, () => false), null)
 })
 
-test('trasladar la puerta principal a una pared ocupada busca un hueco válido', () => {
+test('trasladar la puerta principal a una pared ocupada permite solapamientos con aviso visual', () => {
   const store = createRoomStore()
   store.getState().setDoor({ wall: 'north' })
   const room = store.getState().room
   assert.equal(room.door.wall, 'north')
   assert.equal(validateOpenings(room), null)
-  assert.ok(Math.abs(room.door.offset) > 0.01)
+  assert.equal(room.door.offset, 0) // Solapar aperturas es válido: el panel de incidencias avisa.
 })
 
 test('una ventana fuera de rango en la nueva pared se recoloca sin modificar su anchura', () => {

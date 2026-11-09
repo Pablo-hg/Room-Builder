@@ -20,7 +20,12 @@ test('soltar un objeto sobre una fila exterior lo saca de la carpeta', async ({ 
 })
 
 test('el menú y el arrastre actúan sobre toda la selección y permiten agrupar', async ({ page }) => {
+  // CI trace #42548565603: the preceding WebGL-heavy UI operations consume the
+  // global 30s limit before the final drag even begins. Scope extra time to
+  // this integration scenario; keep all drag/drop assertions unchanged.
+  test.setTimeout(90_000)
   await page.setViewportSize({ width: 1440, height: 1200 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
@@ -50,7 +55,20 @@ test('el menú y el arrastre actúan sobre toda la selección y permiten agrupar
   await chair.locator('.element-select').click()
   await table.locator('.element-select').click({ modifiers: ['Control'] })
   const door = row('Puerta')
-  await chair.dragTo(door, { sourcePosition: { x: 10, y: 10 }, targetPosition: { x: 10, y: 5 } })
+  await chair.scrollIntoViewIfNeeded()
+  await expect(chair).toBeInViewport()
+  await expect(door).toBeInViewport()
+  // The HTML5 drag starts on the draggable row. Using the mouse avoids the
+  // locator.dragTo stability gate, which can stall on the live WebGL editor in CI.
+  // Keep the real pointer gesture and assert that BOTH selected items move.
+  const source = await chair.boundingBox()
+  const target = await door.boundingBox()
+  if (!source || !target) throw new Error('Las filas del arrastre no están disponibles')
+  await page.mouse.move(source.x + 10, source.y + 10)
+  await page.mouse.down()
+  await page.mouse.move(source.x + 20, source.y + 20, { steps: 5 })
+  await page.mouse.move(target.x + 10, target.y + 5, { steps: 12 })
+  await page.mouse.up()
   await expect(folder.locator('.element-row').filter({ hasText: 'Silla' })).toHaveCount(0)
   await expect(folder.locator('.element-row').filter({ hasText: 'Mesa' })).toHaveCount(0)
   await expect.poll(async () => (await chair.boundingBox())!.y < (await door.boundingBox())!.y).toBe(true)
