@@ -51,8 +51,12 @@ export class DiagnosticRepository {
       let total = Number(await request(meta.get('bytes'))) || 0
       const configured = await request(meta.get('retention')) as Retention | undefined
       if (configured) this.retention = configured
-      for (const event of batch) {
-        if (await request(events.getKey(event.eventId))) continue
+      // Queue lookups together while the transaction is active. Deduplicate the
+      // batch first, because none of its puts exist when the lookups are queued.
+      const unique = [...new Map([...batch].reverse().map((event) => [event.eventId, event])).values()].reverse()
+      const existing = await Promise.all(unique.map((event) => request(events.getKey(event.eventId))))
+      for (const [index, event] of unique.entries()) {
+        if (existing[index] !== undefined) continue
         const row: Row = { eventId: event.eventId, timestamp: event.timestamp, priority: event.level === 'error' ? 3 : event.level === 'warn' ? 2 : event.level === 'info' ? 1 : 0, bytes: byteSize(event), event }
         events.put(row); total += row.bytes
       }

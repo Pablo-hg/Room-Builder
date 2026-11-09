@@ -33,25 +33,23 @@ test('el suelo del plano desplaza la cámara y el botón restablece posición y 
   const canvas = page.locator('.scene-panel canvas').first()
   const box = await canvas.boundingBox()
   if (!box) throw new Error('Canvas no disponible')
-  await page.waitForTimeout(500)
-  const initial = await canvas.screenshot()
+  const cameraState = () => page.evaluate(async () => {
+    const path = '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ path)
+    const { topCameraX, topCameraZ, cameraZoom } = useRoomStore.getState()
+    return { topCameraX, topCameraZ, cameraZoom }
+  })
+  const initial = await cameraState()
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
   await page.mouse.down()
   await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2 + 40, { steps: 8 })
   await page.mouse.up()
-  const panned = await canvas.screenshot()
-  expect(initial.equals(panned)).toBe(false)
+  await expect.poll(cameraState).not.toEqual(initial)
   await page.mouse.wheel(0, -120)
+  await expect.poll(async () => (await cameraState()).cameraZoom).not.toBe(initial.cameraZoom)
   await page.getByRole('button', { name: 'Restablecer posición y zoom del plano' }).click()
   await expect(page.getByRole('status')).toContainText('100%')
-  await page.mouse.move(0, 0)
-  await page.waitForTimeout(500)
-  // La cámara usa interpolación; comprobar la imagen tras estabilizar
-  // en lugar de exigir igualdad en un único frame inmediatamente.
-  await expect(async () => {
-    const reset = await canvas.screenshot({ animations: 'disabled' })
-    expect(initial.equals(reset)).toBe(true)
-  }).toPass({ timeout: 5_000 })
+  await expect.poll(cameraState).toEqual(initial)
 })
 
 test('el aro de giro de una pared tiene prioridad sobre un suelo que lo tapa', async ({ page }) => {

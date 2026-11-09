@@ -409,12 +409,18 @@ test('orbita desde suelo y exterior sin girar la cámara al arrastrar paredes', 
   await page.goto('/')
   const scene = page.locator('.scene-panel')
   const canvas = scene.locator('canvas').first()
+  const cameraState = () => page.evaluate(async () => {
+    const path = '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ path)
+    const { isoAngle, selectedId } = useRoomStore.getState()
+    return { isoAngle, selectedId }
+  })
   const bounds = await canvas.boundingBox()
   if (!bounds) throw new Error('No se pudo localizar el canvas de la habitación')
 
   await expect(canvas).toHaveCSS('cursor', 'grab')
   await expect(page.locator('.camera-orbit-mouse-icon')).toBeVisible()
-  const blankOrientation = await page.locator('.visible-walls-badge').innerText()
+  const blankOrientation = (await cameraState()).isoAngle
   const exteriorCandidates = [
     [0.03, 0.72],
     [0.97, 0.18],
@@ -441,22 +447,30 @@ test('orbita desde suelo y exterior sin girar la cámara al arrastrar paredes', 
   await expect(canvas).toHaveCSS('cursor', 'grabbing')
   await page.mouse.move(blankX - 100, blankY, { steps: 4 })
   await page.mouse.up()
-  await expect(page.locator('.visible-walls-badge')).not.toHaveText(blankOrientation)
+  await expect.poll(async () => (await cameraState()).isoAngle).not.toBe(blankOrientation)
   await expect(scene).not.toHaveClass(/scene-panel--orbit-dragging/)
   await expect(canvas).toHaveCSS('cursor', 'grab')
 
-  const wallOrientation = await page.locator('.visible-walls-badge').innerText()
-  const wallX = bounds.x + bounds.width * 0.5
-  const wallY = bounds.y + bounds.height * 0.4
+  // Locate an actual selectable wall, rather than assuming a fixed canvas pixel
+  // still lies on one after the preceding orbit.
+  let wallPoint: { x: number; y: number } | undefined
+  for (const [rx, ry] of [[0.7, 0.35], [0.3, 0.35], [0.65, 0.45], [0.35, 0.45], [0.5, 0.3]] as const) {
+    const x = bounds.x + bounds.width * rx, y = bounds.y + bounds.height * ry
+    await page.mouse.click(x, y)
+    if ((await cameraState()).selectedId?.startsWith('room-wall:')) { wallPoint = { x, y }; break }
+  }
+  expect(wallPoint, 'debe poder seleccionarse una pared visible').toBeDefined()
+  const wallOrientation = (await cameraState()).isoAngle
+  const { x: wallX, y: wallY } = wallPoint!
   await page.mouse.move(wallX, wallY)
   await page.mouse.down()
   // Las paredes tienen prioridad sobre la órbita, conforme a #34.
   await expect(scene).not.toHaveClass(/scene-panel--orbit-dragging/)
   await page.mouse.move(wallX + 110, wallY, { steps: 4 })
   await page.mouse.up()
-  await expect(page.locator('.visible-walls-badge')).toHaveText(wallOrientation)
+  expect((await cameraState()).isoAngle).toBe(wallOrientation)
 
-  const floorOrientation = await page.locator('.visible-walls-badge').innerText()
+  const floorOrientation = (await cameraState()).isoAngle
   const floorX = bounds.x + bounds.width * 0.5
   const floorY = bounds.y + bounds.height * 0.73
   await page.mouse.move(floorX, floorY)
@@ -464,7 +478,7 @@ test('orbita desde suelo y exterior sin girar la cámara al arrastrar paredes', 
   await expect(scene).toHaveClass(/scene-panel--orbit-dragging/)
   await page.mouse.move(floorX - 110, floorY, { steps: 4 })
   await page.mouse.up()
-  await expect(page.locator('.visible-walls-badge')).not.toHaveText(floorOrientation)
+  await expect.poll(async () => (await cameraState()).isoAngle).not.toBe(floorOrientation)
 
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   await expect(page.getByText('Inspector del elemento')).toBeVisible()

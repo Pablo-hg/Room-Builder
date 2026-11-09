@@ -91,13 +91,14 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode, kin
   </>
 }
 
-export function WorldWallObjects({ room, structurePacks, collisionIds, exportMode, level, levelHeight, focusedView }: { room: RoomConfig; structurePacks: StructurePack[]; collisionIds: ReadonlySet<string>; exportMode: boolean; level: number; levelHeight: number; focusedView: boolean }) {
+export function WorldWallObjects({ room, structurePacks, collisionIds, exportMode, level, levelHeight, focusedView, frontVisibleWalls }: { room: RoomConfig; structurePacks: StructurePack[]; collisionIds: ReadonlySet<string>; exportMode: boolean; level: number; levelHeight: number; focusedView: boolean; frontVisibleWalls?: ReadonlySet<string> }) {
   const hidden = useRoomStore((state) => state.hiddenElementIds)
   const selected = useRoomStore((state) => state.selectedIds)
   const world = { room, structurePacks }
   return <>{worldOpenings(world).filter((opening) => {
     if (hidden.includes(opening.id)) return false
     const supports = openingWallRun(world, opening)
+    if (frontVisibleWalls && !opening.object.freePosition && supports.length && supports.every((wall) => !frontVisibleWalls.has(wall.id))) return false
     if (supports.length && supports.every((wall) => hidden.includes(wall.id) || !!wall.packId && hidden.includes(wall.packId))) return false
     if (!supports.length && opening.packId && hidden.includes(opening.packId)) return false
     const position = opening.position
