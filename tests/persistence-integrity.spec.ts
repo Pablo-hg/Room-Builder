@@ -55,3 +55,35 @@ test('dos pestañas no sobrescriben silenciosamente los cambios de la biblioteca
   expect(stored).toHaveLength(1)
   expect(stored[0].data.furniture).toHaveLength(0)
 })
+
+
+test('cancelar una importación no altera ni el diseño abierto ni localStorage', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
+  await page.getByRole('button', { name: 'Guardar como' }).click()
+  const before = await page.evaluate(() => localStorage.getItem('room-builder:v0.1:designs'))
+  const json = JSON.stringify({
+    format: 'room-builder-design', schemaVersion: 5, exportedAt: new Date().toISOString(),
+    design: JSON.parse(before!)[0],
+  })
+  const selector = page.getByRole('button', { name: 'Seleccionar diseño guardado' })
+  await selector.click()
+  await page.locator('input[type=file]').setInputFiles({ name: 'copia.json', mimeType: 'application/json', buffer: Buffer.from(json) })
+  const dialog = page.getByRole('dialog', { name: 'Importar «Diseño 1»' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: 'Cancelar' }).click()
+  expect(await page.evaluate(() => localStorage.getItem('room-builder:v0.1:designs'))).toEqual(before)
+  await expect(selector).toContainText('Diseño 1')
+})
+
+test('un error de descarga informa sin guardar ni modificar el diseño', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Guardar como' }).click()
+  const before = await page.evaluate(() => localStorage.getItem('room-builder:v0.1:designs'))
+  await page.evaluate(() => { URL.createObjectURL = () => { throw new Error('Descarga bloqueada') } })
+  await page.getByRole('button', { name: 'Seleccionar diseño guardado' }).click()
+  await page.getByRole('button', { name: 'Más opciones de Diseño 1' }).click()
+  await page.getByRole('menuitem', { name: /Exportar diseño/ }).click()
+  await expect(page.getByRole('alert')).toContainText('Descarga bloqueada')
+  expect(await page.evaluate(() => localStorage.getItem('room-builder:v0.1:designs'))).toEqual(before)
+})

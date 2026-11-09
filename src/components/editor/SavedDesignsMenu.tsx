@@ -108,14 +108,22 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
       const contents = serializeDesignFile({ id: saved?.id ?? makeId('design'), name, savedAt: saved?.savedAt ?? now, data })
       if (new TextEncoder().encode(contents).length > DESIGN_FILE_MAX_BYTES) throw new Error('El diseño supera el límite de 2 MB.')
       parseDesignFile(contents)
-      const url = URL.createObjectURL(new Blob([contents], { type: 'application/json;charset=utf-8' }))
+      // Fallback limitado para navegadores que no exponen URL.createObjectURL.
+      // Evitar data URLs enormes: podrían fallar sin avisar o saturar el navegador.
+      const objectUrl = typeof URL.createObjectURL === 'function'
+        ? URL.createObjectURL(new Blob([contents], { type: 'application/json;charset=utf-8' }))
+        : null
+      if (!objectUrl && contents.length > 128 * 1024) throw new Error('Este navegador no permite descargar archivos JSON grandes.')
       const link = document.createElement('a')
-      link.href = url
+      link.href = objectUrl ?? `data:application/json;charset=utf-8,${encodeURIComponent(contents)}`
       link.download = `${name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-').trim().slice(0, 80) || 'diseno'}-${now.slice(0, 10)}.json`
-      document.body.appendChild(link); link.click(); link.remove()
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+      try { document.body.appendChild(link); link.click() }
+      finally {
+        link.remove()
+        if (objectUrl && typeof URL.revokeObjectURL === 'function') window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+      }
       setFileError('')
-      setFileNotice(omitted ? `Archivo descargado. Se omitieron ${omitted} referencias obsoletas o duplicadas.` : 'Archivo descargado.')
+      setFileNotice(omitted ? `Descarga solicitada. Se omitieron ${omitted} referencias obsoletas o duplicadas.` : 'Descarga solicitada.')
       setSavedDesignsOpen(true)
       diagnostics.emit({ action: 'design.export-json', operationId, result: 'completed', data: { downloadRequested: true, omittedReferences: omitted } })
     } catch (error) { diagnostics.emit({ action: 'design.export-json', operationId, category: 'errors', level: 'error', result: 'failed', data: { reason: 'export-failed' } }); showError(error instanceof Error ? error.message : 'No se pudo exportar el diseño.') }
