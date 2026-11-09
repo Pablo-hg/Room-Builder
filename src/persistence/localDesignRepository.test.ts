@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { SavedDesign } from '../domain/designV1'
-import { createLocalDesignRepository, SAVED_DESIGNS_KEY, STORAGE_KEY } from './localDesignRepository'
+import { createLocalDesignRepository, DesignStorageConflictError, SAVED_DESIGNS_KEY, STORAGE_KEY } from './localDesignRepository'
 
 class MemoryStorage {
   values = new Map<string, string>()
@@ -89,7 +89,39 @@ test('un fallo de escritura durante migración o guardado conserva los valores a
   assert.deepEqual(values, before)
   values.set(SAVED_DESIGNS_KEY, JSON.stringify([design('saved')]))
   const saved = values.get(SAVED_DESIGNS_KEY)
+  assert.deepEqual(repository.read(), [design('saved')])
   assert.throws(() => repository.write([design('replacement')]), /quota exceeded/)
   assert.equal(values.get(SAVED_DESIGNS_KEY), saved)
   assert.deepEqual(repository.read(), [design('saved')])
+})
+
+
+test('detecta escrituras de otra pestaña y nunca sobrescribe la biblioteca', () => {
+  const storage = new MemoryStorage()
+  const first = createLocalDesignRepository(() => storage)
+  const second = createLocalDesignRepository(() => storage)
+  assert.deepEqual(first.read(), [])
+  assert.deepEqual(second.read(), [])
+  first.write([design('primero')])
+  const persisted = storage.getItem(SAVED_DESIGNS_KEY)
+  assert.throws(() => second.write([design('segundo')]), DesignStorageConflictError)
+  assert.equal(storage.getItem(SAVED_DESIGNS_KEY), persisted)
+  assert.deepEqual(second.read(), [design('primero')])
+  second.write([design('primero'), design('segundo')])
+  assert.deepEqual(first.read(), [design('primero'), design('segundo')])
+})
+
+test('no sustituye una biblioteca no validada o corrupta, ni supera cinco diseños', () => {
+  const storage = new MemoryStorage()
+  storage.setItem(SAVED_DESIGNS_KEY, '{')
+  const repository = createLocalDesignRepository(() => storage)
+  assert.throws(() => repository.read())
+  assert.throws(() => repository.write([]), DesignStorageConflictError)
+  assert.equal(storage.getItem(SAVED_DESIGNS_KEY), '{')
+  const fresh = createLocalDesignRepository(() => storage)
+  assert.throws(() => fresh.write([]), DesignStorageConflictError)
+  const empty = new MemoryStorage()
+  const bounded = createLocalDesignRepository(() => empty)
+  assert.throws(() => bounded.write(Array.from({ length: 6 }, (_, i) => design(String(i)))), /cinco/)
+  assert.equal(empty.getItem(SAVED_DESIGNS_KEY), null)
 })
