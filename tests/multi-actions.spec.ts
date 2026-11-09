@@ -20,6 +20,10 @@ test('soltar un objeto sobre una fila exterior lo saca de la carpeta', async ({ 
 })
 
 test('el menú y el arrastre actúan sobre toda la selección y permiten agrupar', async ({ page }) => {
+  // CI trace #42548565603: the preceding WebGL-heavy UI operations consume the
+  // global 30s limit before the final drag even begins. Scope extra time to
+  // this integration scenario; keep all drag/drop assertions unchanged.
+  test.setTimeout(90_000)
   await page.setViewportSize({ width: 1440, height: 1200 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
