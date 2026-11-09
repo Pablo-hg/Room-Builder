@@ -9,6 +9,7 @@ import { DesignModal } from './DesignModal'
 import { diagnostics } from '../../diagnostics/engine'
 
 type ContextMenu = { x: number; y: number; designId: string | null }
+type PendingDiscard = { kind: 'load'; id: string } | { kind: 'create'; name: string }
 
 export function SavedDesignsMenu({ state, exportMode, onExport }: { state: EditorHeaderState; exportMode: boolean; onExport: () => void }) {
   const [savedDesignsOpen, setSavedDesignsOpen] = useState(false)
@@ -17,6 +18,7 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
   const [renamingDesignId, setRenamingDesignId] = useState<string | null>(null)
   const [renamingDesignName, setRenamingDesignName] = useState('')
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null)
+  const [pendingDiscard, setPendingDiscard] = useState<PendingDiscard | null>(null)
   const [preview, setPreview] = useState<DesignFilePreview | null>(null)
   const [fileError, setFileError] = useState('')
   const [fileNotice, setFileNotice] = useState('')
@@ -48,11 +50,50 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
     return () => { window.removeEventListener('pointerdown', closeOnOutsideClick, true); window.removeEventListener('keydown', closeOnEscape) }
   }, [savedDesignsOpen, context])
   useEffect(() => { if (context) contextRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus() }, [context])
+  useEffect(() => {
+    if (!state.hasUnsavedChanges) return
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
+    window.addEventListener('beforeunload', warnBeforeUnload)
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload)
+  }, [state.hasUnsavedChanges])
 
   const openContext = (x: number, y: number, designId: string | null) => {
     setContext({ x: Math.max(8, Math.min(x, window.innerWidth - 246)), y: Math.max(8, Math.min(y, window.innerHeight - 320)), designId })
   }
   const showError = (message: string) => { setFileNotice(''); setFileError(message); setSavedDesignsOpen(true) }
+  const loadSavedDesign = (id: string) => {
+    if (useRoomStore.getState().hasUnsavedChanges) {
+      setSavedDesignsOpen(false)
+      setPendingDiscard({ kind: 'load', id })
+      return
+    }
+    state.loadDesign(id)
+    setSavedDesignsOpen(false)
+    savedDesignTriggerRef.current?.focus()
+  }
+  const createBlankDesign = () => {
+    if (!newDesignName.trim()) { state.createDesign('blank', ''); return }
+    if (useRoomStore.getState().hasUnsavedChanges) {
+      setSavedDesignsOpen(false)
+      setPendingDiscard({ kind: 'create', name: newDesignName.trim() })
+      return
+    }
+    state.createDesign('blank', newDesignName)
+    setCreateDesignOpen(false)
+    setNewDesignName('')
+  }
+  const confirmDiscard = () => {
+    if (!pendingDiscard) return
+    const current = useRoomStore.getState()
+    if (pendingDiscard.kind === 'load') current.loadDesign(pendingDiscard.id)
+    else {
+      current.createDesign('blank', pendingDiscard.name)
+      setCreateDesignOpen(false)
+      setNewDesignName('')
+    }
+    setPendingDiscard(null)
+    savedDesignTriggerRef.current?.focus()
+  }
   const exportDesign = (designId: string | null) => {
     const operationId = diagnostics.nextOperation()
     diagnostics.emit({ action: 'design.export-json', operationId, phase: 'started' })
@@ -126,7 +167,7 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
             <input autoFocus aria-label={`Nuevo nombre para ${design.name}`} maxLength={48} value={renamingDesignName} onChange={(event) => setRenamingDesignName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { state.renameSavedDesign(design.id, renamingDesignName); setRenamingDesignId(null) } else if (event.key === 'Escape') { event.stopPropagation(); setRenamingDesignId(null) } }} />
             <button type="button" className="saved-design-action" aria-label="Guardar nombre" onClick={() => { state.renameSavedDesign(design.id, renamingDesignName); setRenamingDesignId(null) }}>✓</button>
           </div> : <>
-            <button type="button" className={`saved-design-choice${state.selectedSavedDesignId === design.id ? ' active' : ''}`} aria-label={design.name} onClick={() => { state.loadDesign(design.id); setSavedDesignsOpen(false); savedDesignTriggerRef.current?.focus() }}><span className="saved-design-name">{design.name}</span>{state.selectedSavedDesignId === design.id && <span className="saved-design-current">Actual</span>}</button>
+            <button type="button" className={`saved-design-choice${state.selectedSavedDesignId === design.id ? ' active' : ''}`} aria-label={design.name} onClick={() => loadSavedDesign(design.id)}><span className="saved-design-name">{design.name}</span>{state.selectedSavedDesignId === design.id && <span className="saved-design-current">Actual</span>}</button>
             <button type="button" className="saved-design-action" aria-label={`Más opciones de ${design.name}`} aria-haspopup="menu" onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); openContext(rect.left, rect.bottom + 5, design.id) }}>⋯</button>
           </>}
         </div>)}
@@ -136,7 +177,7 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
         </div>
         {createDesignOpen && <div className="saved-design-create">
           <label><span>Nombre del diseño</span><input autoFocus maxLength={48} value={newDesignName} onChange={(event) => setNewDesignName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') { event.stopPropagation(); setCreateDesignOpen(false) } }} placeholder="Mi diseño" /></label>
-          <button type="button" className="saved-design-create-action" disabled={state.savedDesigns.length >= 5} onClick={() => { if (!newDesignName.trim()) { state.createDesign('blank', ''); return } state.createDesign('blank', newDesignName); setCreateDesignOpen(false); setNewDesignName('') }}>Crear en blanco</button>
+          <button type="button" className="saved-design-create-action" disabled={state.savedDesigns.length >= 5} onClick={createBlankDesign}>Crear en blanco</button>
           <button type="button" className="saved-design-cancel" onClick={() => setCreateDesignOpen(false)}>Cancelar</button>
         </div>}
         <p className="saved-design-info">Se guardan en este navegador, no en cookies, y no caducan automáticamente. Se borran si los eliminas aquí o borras los datos del sitio; en navegación privada, al cerrar la sesión privada.</p>
@@ -156,7 +197,16 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
     {pendingDelete && <DesignModal titleId="delete-design-title" descriptionId="delete-design-copy" onClose={() => setPendingDelete(null)}>
       <h2 id="delete-design-title">¿Eliminar «{pendingDelete.name}»?</h2>
       <p id="delete-design-copy">Se borrará de este navegador y no se puede deshacer.</p>
+      {state.hasUnsavedChanges && state.selectedSavedDesignId === pendingDelete.id && <p>También se perderán los cambios sin guardar del diseño abierto.</p>}
       <div className="design-modal-actions"><button type="button" data-modal-initial onClick={() => setPendingDelete(null)}>Cancelar</button><button type="button" className="design-modal-danger" onClick={(event) => { event.stopPropagation(); state.deleteSavedDesign(pendingDelete.id); setPendingDelete(null) }}>Eliminar diseño</button></div>
+    </DesignModal>}
+    {pendingDiscard && <DesignModal titleId="discard-design-title" descriptionId="discard-design-copy" onClose={() => { setPendingDiscard(null); setSavedDesignsOpen(true) }}>
+      <h2 id="discard-design-title">¿Descartar los cambios sin guardar?</h2>
+      <p id="discard-design-copy">Los cambios de la habitación actual se perderán al {pendingDiscard.kind === 'load' ? 'abrir otro diseño' : 'crear un diseño en blanco'}. Puedes cancelar y guardar o exportar el diseño actual.</p>
+      <div className="design-modal-actions">
+        <button type="button" data-modal-initial onClick={() => { setPendingDiscard(null); setSavedDesignsOpen(true) }}>Cancelar</button>
+        <button type="button" className="design-modal-danger" onClick={confirmDiscard}>Descartar y continuar</button>
+      </div>
     </DesignModal>}
     {preview && <DesignModal titleId="import-design-title" descriptionId="import-design-copy" onClose={() => { setPreview(null); setFileError('') }}>
       <h2 id="import-design-title">Importar «{preview.design.name}»</h2>
