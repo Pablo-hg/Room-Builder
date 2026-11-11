@@ -90,7 +90,7 @@ test('flujo básico sin tutorial: medidas, apertura, mueble, guardar y volver a 
   const width = inspector.getByRole('textbox', { name: 'Introducir anchura en metros' })
   await width.fill('6.25')
   await width.press('Enter')
-  await expect(width).toHaveValue('6,25')
+  await expect(width).toHaveValue('6.25')
 
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   await catalog.locator('#catalog-grid-openings .catalog-card').nth(1).click()
@@ -108,6 +108,6 @@ test('flujo básico sin tutorial: medidas, apertura, mueble, guardar y volver a 
   await page.getByRole('button', { name: 'Diseño 1', exact: true }).click()
   await expect(page.locator('.statusbar__save')).toContainText('Diseño guardado')
   const roomWidth = inspector.getByRole('textbox', { name: 'Introducir anchura en metros' })
-  await expect(roomWidth).toHaveValue('6,25')
+  await expect(roomWidth).toHaveValue('6.25')
   await expect(catalog.locator('.element-row').filter({ hasText: 'Silla' })).toHaveCount(1)
 })
