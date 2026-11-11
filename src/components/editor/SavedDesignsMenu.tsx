@@ -84,16 +84,31 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
       setPendingDiscard({ kind: 'create', name: newDesignName.trim() })
       return
     }
-    state.createDesign('blank', newDesignName)
+    const previousCount = useRoomStore.getState().savedDesigns.length
+    state.createDesign('blank', newDesignName.trim())
+    const result = useRoomStore.getState()
+    if (result.savedDesigns.length === previousCount) { showError(result.notice || 'No se pudo crear el diseño.'); return }
+    setFileError('')
+    setFileNotice('')
     setCreateDesignOpen(false)
     setNewDesignName('')
+    setSavedDesignsOpen(false)
   }
   const confirmDiscard = () => {
     if (!pendingDiscard) return
     const current = useRoomStore.getState()
     if (pendingDiscard.kind === 'load') current.loadDesign(pendingDiscard.id)
     else {
+      const previousCount = current.savedDesigns.length
       current.createDesign('blank', pendingDiscard.name)
+      const result = useRoomStore.getState()
+      if (result.savedDesigns.length === previousCount) {
+        setPendingDiscard(null)
+        showError(result.notice || 'No se pudo crear el diseño.')
+        return
+      }
+      setFileError('')
+      setFileNotice('')
       setCreateDesignOpen(false)
       setNewDesignName('')
     }
@@ -208,7 +223,7 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
           </>}
         </div>)}
         <div className="saved-design-quick-actions">
-          <button type="button" className="saved-design-create-trigger" disabled={state.savedDesigns.length >= 5} onClick={() => { setNewDesignName(''); setCreateDesignOpen(true); setRenamingDesignId(null) }}>＋ Crear diseño</button>
+          <button type="button" className="saved-design-create-trigger" disabled={state.savedDesigns.length >= 5} onClick={() => { setFileError(''); setFileNotice(''); setNewDesignName(''); setCreateDesignOpen(true); setRenamingDesignId(null) }}>＋ Crear diseño</button>
           <button type="button" className="saved-design-create-trigger" disabled={readingFile || state.savedDesigns.length >= 5} onClick={() => fileInputRef.current?.click()}>⇧ Importar diseño</button>
         </div>
         {createDesignOpen && <div className="saved-design-create">
