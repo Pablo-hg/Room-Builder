@@ -48,7 +48,6 @@ export function ObjectCatalogSection() {
           </button>
         </div>
         {!catalogCollapsed && <div className="catalog-families" id="catalog-families">
-          <div className="catalog-stage" aria-label="Construir habitación"><strong>Construir habitación</strong><span>La habitación inicial ya está creada. Añade otras estancias, paredes, puertas o ventanas cuando lo necesites.</span></div>
           <section className={`catalog-family ${collapsedCategories.structure ? 'catalog-family--collapsed' : ''}`} aria-labelledby="catalog-structure">
             <h3>
               <button

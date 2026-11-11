@@ -17,7 +17,6 @@ export function EditorHeader({ exportMode, onExport }: {
           <b>V0.1</b>
         </a>
         <nav className="view-switcher" aria-label="Cambiar vista">
-          <span className="view-switcher__heading" aria-hidden="true">Ver</span>
           {VIEW_OPTIONS.map((option) => (
             <button type="button" key={option.id} className={state.view === option.id ? 'active' : ''} onClick={() => state.setView(option.id)} aria-pressed={state.view === option.id}>
               <span aria-hidden="true">{option.icon}</span>{option.label}

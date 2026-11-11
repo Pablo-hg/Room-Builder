@@ -5,11 +5,10 @@ test('explica construir, añadir, editar y ver sin ocultar herramientas avanzada
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
 
-  await expect(catalog.getByText('Construir habitación', { exact: true })).toBeVisible()
   await expect(catalog.getByText('Añadir objetos', { exact: true })).toBeVisible()
+  await expect(catalog.getByText('La habitación inicial ya está creada.', { exact: false })).toHaveCount(0)
   await expect(inspector.getByRole('heading', { name: 'Nada seleccionado' })).toBeVisible()
   await expect(inspector.getByText('Para las medidas generales', { exact: false })).toBeVisible()
-  await expect(page.getByRole('navigation', { name: 'Cambiar vista' }).getByText('Ver', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Frontal', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Libre', exact: true })).toBeVisible()
   await expect(catalog.getByRole('button', { name: /Nueva habitación vacía/ })).toBeVisible()

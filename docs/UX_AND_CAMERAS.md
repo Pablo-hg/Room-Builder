@@ -74,3 +74,7 @@ Un control solo debe aparecer si aporta valor inmediato en el contexto de la tar
 La barra inferior refleja el estado **real** del diseño (sin guardar, cambios sin guardar, guardado). La biblioteca muestra un encabezado y conserva «Crear»/«Importar» como acciones directas; el texto explicativo se mueve a una ayuda desplegable para reducir ruido. La selección de un diseño que ya está abierto deja de volver a cargarlo y de generar una confirmación innecesaria, para no perder modificaciones accidentales. Se habilita navegación por flechas/Home/End dentro de la lista de diseños y apertura mediante flechas desde el selector. El formulario de creación indica inline cuando falta el nombre.
 
 **Contraste con referencias:** seguir un orden visual «medir/construir → amueblar → visualizar → guardar» de la comparativa de MyRoomPlanner y la sencillez de acceso al catálogo de Rooms.xyz/MakeRoom, sin clonar sus interfaces; conservar el inspector contextual de inspiración Figma y la estética de la guía visual vigente. No se cambian escenas, geometría, datos de guardado ni vistas.
+
+## Ajustes de legibilidad F1-03 (11/11/2026)
+
+Se eleva el tamaño de las tipografías pequeñas del editor (de 9–13 px a aproximadamente 11–14 px) para mejorar la lectura sin alterar su contenido. Se retira la palabra decorativa «Ver» del selector superior de vistas y el bloque introductorio redundante «Construir habitación»; se mantienen visibles todas las categorías, el selector de cámaras y sus controles.
