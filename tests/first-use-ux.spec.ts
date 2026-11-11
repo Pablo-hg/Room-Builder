@@ -24,7 +24,7 @@ test('la barra inferior refleja el estado real sin guardar, guardado y cambios p
   await expect(status).toContainText('Diseño guardado en este navegador')
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await expect(status).toContainText('Cambios sin guardar')
-  await page.getByRole('button', { name: 'Guardar cambios' }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await expect(status).toContainText('Diseño guardado en este navegador')
 })
 

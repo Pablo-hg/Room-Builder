@@ -49,7 +49,7 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
           label: `Posición ${axis.toUpperCase()}`,
           min: Math.min(-10, position[axis]), max: Math.max(10, position[axis]),
           step: ROOM_LIMITS.placementStep, value: position[axis],
-          disabled: locked || !!attachment && !available[axis],
+          disabled: locked || (!!attachment && !available[axis]),
           onChange: (value: number) => axis === 'y'
             ? moveFurnitureVertically(selectedFurniture.id, value - furnitureVisualYOffset(selectedFurniture, { room, structurePacks }))
             : moveFurniture(selectedFurniture.id, axis === 'x' ? value : selectedFurniture.x, axis === 'z' ? value : selectedFurniture.z),

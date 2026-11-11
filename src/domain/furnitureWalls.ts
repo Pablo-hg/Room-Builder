@@ -196,7 +196,8 @@ function onWall(world: WallWorld, old: FurnitureItem, candidate: FurnitureItem, 
   const extent = radius(candidate, tangent(wall))
   const limit = wall.width / 2 - extent
   if (limit < 0) return null
-  const locks = furnitureAxisLocks(old)
+  // Al activar la fijación, los bloqueos manuales previos dejan de aplicarse.
+  const locks = furnitureAxisLocks(candidate)
   const t = tangent(wall), n = normal(wall)
   const dx = candidate.x - old.x, dz = candidate.z - old.z
   // A numeric X/Z edit must reach that coordinate while the other coordinate follows the wall.
