@@ -1,5 +1,19 @@
 # Experiencia de uso, interacción y cámaras
 
+## F1-03: guía interactiva opcional de primer uso (11/11/2026)
+
+**Implementación en rama `feature/F1-03-simplificar-uso-controles`, pendiente de pruebas manuales y certificación.**
+
+- En la primera apertura sin diseños locales, aparece una **invitación que no bloquea el editor**. El usuario puede empezar el recorrido, pulsar «Ahora no» o seguir trabajando; interactuar fuera de la invitación la descarta.
+- El recorrido visual resalta los controles reales del editor en **seis pasos**: medidas, puertas/ventanas, mobiliario, inspector de selección, vistas y guardado. No crea objetos ni modifica la geometría, ni exige seguir una secuencia obligatoria.
+- «Siguiente», «Anterior», «Saltar guía» y «Finalizar» permiten salir en cualquier momento; Escape también cierra el recorrido. El diálogo gestiona el foco del teclado y se posiciona de forma adaptativa en escritorio y móvil.
+- El usuario puede iniciar el recorrido de nuevo desde **Inspector y configuración detallada → ¿Necesitas ayuda? → Ver guía de primer uso**.
+- La preferencia se guarda exclusivamente en `room-builder:first-use-guide:v1`. No altera `room-builder:v0.1:designs`, no requiere cuenta, red, herramientas de terceros ni cambios de formato. Los usuarios que ya tienen diseños locales no reciben una invitación inesperada.
+- Si el navegador bloquea `localStorage`, la guía no interfiere con el editor; puede reabrirse manualmente. No se utilizan CDN, scripts externos ni telemetría.
+
+**Criterio de calidad:** comprobar el recorrido mediante ratón, teclado (Tab, Mayús+Tab, Escape), vista de 390 px, paneles desplazables, recarga tras saltar y reapertura. No declarar aprobado sin dichas pruebas. No ocultar Frontal, Libre o funciones avanzadas ni sustituir los controles originales.
+
+
 > **Vigente 04/11/2026:** la comparación A/B se retiró del MVP por RB-040. El contenido antiguo de comparación está reemplazado por nota de compatibilidad. Según RB-039 y RB-041, los muebles se pueden atravesar y se muestra advertencia roja; no bloquear esos movimientos por colisión.
 
 

@@ -68,8 +68,18 @@ type Spotlight = { left: number; top: number; width: number; height: number }
 type Style = CSSProperties
 
 export function FirstUseInvitation({ onStart, onDismiss }: { onStart: () => void; onDismiss: () => void }) {
+  const invitationRef = useRef<HTMLElement>(null)
+  // La invitación no debe bloquear el uso del editor: cualquier interacción
+  // fuera de ella la descarta y conserva el clic original.
+  useEffect(() => {
+    const dismissOnOutsidePointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !invitationRef.current?.contains(event.target)) onDismiss()
+    }
+    document.addEventListener('pointerdown', dismissOnOutsidePointer, true)
+    return () => document.removeEventListener('pointerdown', dismissOnOutsidePointer, true)
+  }, [onDismiss])
   return (
-    <aside className="first-use-invitation" aria-label="Invitación a la guía de primer uso">
+    <aside ref={invitationRef} className="first-use-invitation" aria-label="Invitación a la guía de primer uso">
       <strong>¿Es tu primera vez en Room Builder?</strong>
       <p>Descubre el editor con una guía visual de seis pasos. Puedes saltártela y abrirla después desde el panel derecho.</p>
       <div className="first-use-invitation__actions">

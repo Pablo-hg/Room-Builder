@@ -30,3 +30,7 @@
 **Aprobadas para el MVP completo:** plantillas #41, cotas #26/#38, guía magnética #37, materiales #39, fotos/cámaras #40, trazado #45, editor modular #47, casa/plantas #51–#53 y recorrido WASD #36. **No están implementadas por esta documentación**.
 
 **Solo futuro:** rayos X/#42, apilamiento #43, presets de grupos #44, puerta animada #46, GLB externo #48, ambientes dinámicos #49, objetos interactivos #50, IA automática, Workshop y monetización. Ver [FUTURE_IMPROVEMENTS](FUTURE_IMPROVEMENTS.md). No convertir ventajas comerciales de otras webs en tareas sin aprobación.
+
+## Aplicación de referencias en F1-03 — guía de primer uso
+
+Sin replicar interfaces ajenas, el recorrido opcional de seis pasos toma el principio de **entrada sencilla y divertida** de Rooms.xyz/MakeRoom, la secuencia «medir → construir → amueblar → visualizar» documentada para MyRoomPlanner y el **inspector contextual** de Figma. No introduce cuentas, progresión de juego, plantillas externas ni automatización. Las pruebas visuales y con usuarios siguen pendientes en la rama.
