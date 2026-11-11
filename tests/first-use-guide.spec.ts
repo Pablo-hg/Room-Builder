@@ -73,3 +73,17 @@ test('la guía es navegable con teclado y cabe en un móvil', async ({ page }) =
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
 })
+
+
+test('reabrir la guía recupera los paneles necesarios sin tocar el diseño', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ahora no' }).click()
+  await page.getByRole('button', { name: 'Minimizar panel izquierdo' }).click()
+  await expect(page.locator('.workspace')).toHaveClass(/workspace--objects-collapsed/)
+  await page.getByRole('button', { name: 'Ver guía de primer uso' }).click()
+  await expect(page.locator('.workspace')).not.toHaveClass(/workspace--objects-collapsed/)
+  await expect(page.getByRole('dialog', { name: 'Empieza por las medidas' })).toBeVisible()
+  await page.getByRole('button', { name: 'Saltar guía' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+})

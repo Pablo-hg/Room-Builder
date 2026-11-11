@@ -315,7 +315,13 @@ function App() {
   const [exportNotice, setExportNotice] = useState('')
   const [guideOpen, setGuideOpen] = useState(false)
   const [guideInvitation, setGuideInvitation] = useState(shouldOfferFirstUseGuide)
-  const startGuide = useCallback(() => { setGuideInvitation(false); setGuideOpen(true) }, [])
+  const startGuide = useCallback(() => {
+    // Mostrar los paneles que la guía necesita resaltar, sin cambiar el diseño.
+    setObjectsCollapsed(false)
+    setSettingsCollapsed(false)
+    setGuideInvitation(false)
+    setGuideOpen(true)
+  }, [])
   const closeGuide = useCallback(() => { rememberFirstUseGuide(); setGuideInvitation(false); setGuideOpen(false) }, [])
   useEditorShortcuts()
   useEffect(() => { initializeSavedDesigns() }, [initializeSavedDesigns])
