@@ -117,6 +117,7 @@ export function ObjectCatalogSection() {
                 <h3>
                   <button
                     id={`catalog-${family.id}`}
+                    data-tour={family.id === FURNITURE_FAMILIES[0].id ? 'furniture' : undefined}
                     type="button"
                     className="catalog-family__toggle"
                     aria-expanded={!collapsedCategories[family.id]}

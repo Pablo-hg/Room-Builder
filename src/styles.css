@@ -602,3 +602,46 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .wall-attachment-controls label { display: flex; align-items: center; gap: 0.5rem; }
 .wall-attachment-controls input { width: 1.15rem; height: 1.15rem; flex-shrink: 0; }
 .wall-attachment-controls p { margin: 0; }
+
+/* F1-03: primer uso contextual, sin bloquear el editor salvo durante la guía. */
+.first-use-invitation {
+  position: fixed; z-index: 40; left: 20px; bottom: 48px; width: min(332px, calc(100vw - 32px));
+  box-sizing: border-box; padding: 18px; border: 1px solid var(--line);
+  border-radius: 16px; background: #fffdf9; box-shadow: 0 14px 45px rgba(42, 48, 40, .20);
+  color: var(--ink);
+}
+.first-use-invitation strong { display: block; font-size: 14px; }
+.first-use-invitation p { margin: 8px 0 14px; font-size: 12px; line-height: 1.55; color: var(--muted); }
+.first-use-invitation__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.first-use-invitation__actions button, .first-use-restart {
+  min-height: 38px; padding: 8px 12px; border: 1px solid var(--line);
+  border-radius: 9px; background: #fffdf9; color: var(--ink); font-weight: 650; cursor: pointer;
+}
+.first-use-invitation__actions .first-use-invitation__primary { border-color: var(--forest); background: var(--forest); color: white; }
+.first-use-restart { width: 100%; text-align: center; }
+.first-use-restart-section h3 { margin: 0 0 8px; font-size: 13px; }
+.first-use-restart-section .section-copy { margin: 0 0 10px; }
+.first-use-guide { position: fixed; inset: 0; z-index: 2000; pointer-events: none; }
+.first-use-guide__shade { position: fixed; background: rgba(24, 33, 27, .66); pointer-events: auto; }
+.first-use-guide__spotlight { position: fixed; border: 2px solid #f9efd5; border-radius: 12px; box-sizing: border-box; pointer-events: auto; box-shadow: 0 0 0 3px rgba(255,255,255,.14); }
+.first-use-guide__card {
+  position: fixed; width: min(360px, calc(100vw - 32px)); box-sizing: border-box;
+  max-height: calc(100dvh - 32px); overflow-y: auto; padding: 18px; border: 1px solid #e2ded5;
+  border-radius: 15px; background: #fffdf9; color: var(--ink);
+  box-shadow: 0 18px 52px rgba(0,0,0,.25); pointer-events: auto;
+}
+.first-use-guide__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11px; font-weight: 700; letter-spacing: .025em; color: var(--muted); }
+.first-use-guide__heading button { min-width: 36px; min-height: 36px; border: 0; border-radius: 9px; background: transparent; font-size: 24px; color: var(--ink); cursor: pointer; }
+.first-use-guide__card h2 { margin: 8px 0; font-size: 18px; line-height: 1.3; }
+.first-use-guide__card p { margin: 0; font-size: 13px; line-height: 1.6; }
+.first-use-guide__progress { display: flex; gap: 5px; margin: 16px 0; }
+.first-use-guide__progress span { flex: 1; height: 4px; border-radius: 4px; background: #e5e0d8; }
+.first-use-guide__progress span.active { background: var(--forest); }
+.first-use-guide__actions, .first-use-guide__actions > div { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.first-use-guide__actions button { min-height: 38px; padding: 7px 11px; border: 1px solid #dedbd3; border-radius: 9px; background: white; color: var(--ink); font-size: 12px; font-weight: 650; cursor: pointer; }
+.first-use-guide__actions .first-use-guide__next { background: var(--forest); border-color: var(--forest); color: white; }
+.first-use-guide__card button:focus-visible, .first-use-invitation button:focus-visible, .first-use-restart:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 699px) {
+  .first-use-invitation { left: 16px; bottom: 16px; }
+  .first-use-guide__card { left: 16px; bottom: 16px; top: auto; }
+}

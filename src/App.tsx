@@ -19,6 +19,7 @@ import { visibleWallsForView } from './components/editor/viewHelpers'
 import { EditorHeader } from './components/editor/EditorHeader'
 import { VIEW_OPTIONS } from './components/editor/viewOptions'
 import { useEditorShortcuts } from './components/editor/useEditorShortcuts'
+import { FirstUseGuide, FirstUseInvitation, rememberFirstUseGuide, shouldOfferFirstUseGuide } from './components/editor/FirstUseGuide'
 import './styles.css'
 
 const ORBIT_DRAG_SENSITIVITY = 0.009
@@ -312,6 +313,10 @@ function App() {
   const [exportMode, setExportMode] = useState(false)
   const [exportRequest, setExportRequest] = useState(0)
   const [exportNotice, setExportNotice] = useState('')
+  const [guideOpen, setGuideOpen] = useState(false)
+  const [guideInvitation, setGuideInvitation] = useState(shouldOfferFirstUseGuide)
+  const startGuide = useCallback(() => { setGuideInvitation(false); setGuideOpen(true) }, [])
+  const closeGuide = useCallback(() => { rememberFirstUseGuide(); setGuideInvitation(false); setGuideOpen(false) }, [])
   useEditorShortcuts()
   useEffect(() => { initializeSavedDesigns() }, [initializeSavedDesigns])
   useEffect(() => {
@@ -349,13 +354,15 @@ function App() {
           exportRequest={exportRequest}
           onExportComplete={handleExportComplete}
         />
-        <SettingsPanel />
+        <SettingsPanel onStartGuide={startGuide} />
       </main>
       <footer className="statusbar">
         <span><i className="status-dot" /> Guardado local en tu navegador</span>
         <span>Cuadrado visible: 25 cm · ajuste: 5 cm</span>
       </footer>
       <EditorNotice exportNotice={exportNotice} />
+      {guideInvitation && <FirstUseInvitation onStart={startGuide} onDismiss={closeGuide} />}
+      <FirstUseGuide open={guideOpen} onClose={closeGuide} />
     </div>
   )
 }

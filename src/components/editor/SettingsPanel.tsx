@@ -7,7 +7,7 @@ import { PackInspector } from './PackInspector'
 import { focusedRoom } from '../../domain/roomEditing'
 import { DiagnosticExportButton } from './DiagnosticExportButton'
 
-export function SettingsPanel() {
+export function SettingsPanel({ onStartGuide }: { onStartGuide: () => void }) {
   const state = useRoomStore()
   const cameraRoom = focusedRoom(state)
   const editableRoom = cameraRoom.editable
@@ -115,6 +115,11 @@ export function SettingsPanel() {
             </dl>
             <p className="shortcut-guide__hint">Copia, pega y duplica con un elemento seleccionado.</p>
           </div>
+        </section>
+        <section className="panel-section first-use-restart-section" aria-label="Ayuda para empezar">
+          <h3>¿Necesitas ayuda?</h3>
+          <p className="section-copy">Descubre dónde ajustar medidas, añadir objetos y guardar tu habitación.</p>
+          <button type="button" className="first-use-restart" onClick={onStartGuide}>Ver guía de primer uso</button>
         </section>
         <section className="panel-section diagnostic-export-section" aria-label="Diagnóstico local">
           <DiagnosticExportButton />
