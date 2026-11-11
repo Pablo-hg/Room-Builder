@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { cloneRoom } from '../state/defaults'
 import { createStructureSurface } from './structureRules'
 import { physicalWalls } from './wallConnections'
-import { constrainFurnitureWalls, furnitureWallContact, snapFurnitureToWall, validateFurnitureWallAttachments, type FurnitureWallMagnets } from './furnitureWalls'
+import { constrainFurnitureWalls, furnitureWallAxes, furnitureWallContact, snapFurnitureToWall, validateFurnitureWallAttachments, type FurnitureWallMagnets } from './furnitureWalls'
 import { planWallStrips } from '../scene/planWallGeometry'
 import type { FurnitureItem, StructurePack } from './types'
 
@@ -216,4 +216,19 @@ test('al fijar lejos de una pared elige automáticamente una cara válida', () =
   assert.equal(furnitureWallContact(source, result!.item)?.wall.id, result!.wallId)
   const anchored = { ...result!.item, wallAttachment: { wallId: result!.wallId, side: result!.side, lockLateral: false } }
   assert.doesNotThrow(() => validateFurnitureWallAttachments(world([anchored]), 11))
+})
+
+test('fijado a paredes cardinales o giradas: solamente altura y un eje lateral editable', () => {
+  const source = world(), z = northContact(source)
+  const north = item({ z, wallAttachment: { wallId: 'room-wall:north', side: 1, lockLateral: false } })
+  assert.deepEqual(furnitureWallAxes(source, north), { x: true, y: true, z: false })
+  const room = cloneRoom()
+  const pack: StructurePack = { id: 'wall-object-axes', name: 'Pared girada', x: 0, y: 0, z: 0,
+    surfaces: [{ ...createStructureSurface(room, 'wall-north'), z: room.depth / 2, rotation: Math.PI / 4 }] }
+  const rotatedWorld = world([], [pack])
+  const wall = physicalWalls(rotatedWorld).find((wall) => wall.packId)!
+  const rotated = item({ x: wall.x, z: wall.z, wallAttachment: { wallId: wall.id, side: 1, lockLateral: false } })
+  const available = furnitureWallAxes(rotatedWorld, rotated)
+  assert.equal(available.y, true)
+  assert.equal(Number(available.x) + Number(available.z), 1)
 })

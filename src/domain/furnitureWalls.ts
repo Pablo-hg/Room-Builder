@@ -52,8 +52,11 @@ export function furnitureWallAxes(world: WallWorld, item: FurnitureItem) {
   // Un mueble fijado solo puede desplazarse lateralmente (tangente) y en altura.
   // La coordenada perpendicular no se edita; para despegarlo se desmarca el check.
   const t = tangent(wall)
-  return { x: !locks.x && Math.abs(t.x) > epsilon, y: !locks.y,
-    z: !locks.z && Math.abs(t.z) > epsilon }
+  // Para paredes giradas, X y Z representan el mismo desplazamiento lateral.
+  // Mostrar uno solo evita aparentar tres grados de libertad.
+  const lateralAxis = Math.abs(t.x) >= Math.abs(t.z) ? 'x' : 'z'
+  return { x: !locks.x && lateralAxis === 'x', y: !locks.y,
+    z: !locks.z && lateralAxis === 'z' }
 }
 
 /** Only actual wall faces can support furniture; openings and wall ends cannot. */

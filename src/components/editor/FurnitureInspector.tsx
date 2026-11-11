@@ -74,7 +74,7 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
       </div>
       {locked
         ? <p className="lock-hint">Elemento bloqueado: desbloquea el candado de la lista para moverlo o girarlo.</p>
-        : <p className="rotation-hint">La posición Y indica la altura absoluta de la base. ${attachment ? 'Para moverlo libremente en los tres ejes, desmarca «Fijar a pared».' : 'Puedes bloquear cada eje para conservar su posición.'}{canRotate ? ' Usa el aro para girar.' : ''}</p>}
+        : <p className="rotation-hint">La posición Y indica la altura absoluta de la base. {attachment ? 'Para moverlo libremente en los tres ejes, desmarca «Fijar a pared».' : 'Puedes bloquear cada eje para conservar su posición.'}{canRotate && !attachment ? ' Usa el aro para girar.' : ''}</p>}
     </section>
   )
 
