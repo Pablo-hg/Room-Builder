@@ -2,14 +2,15 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { DEFAULT_ROOM, DEFAULT_WALL_COLOR } from '../domain/constants'
 import { createStructureSurface } from '../domain/structureRules'
-import { planWallStrips } from './planWallGeometry'
+import { planWallStrips, planWallTraceThickness } from './planWallGeometry'
 import type { StructurePack } from '../domain/types'
 
-test('en plano el trazo es más ancho que el grosor raíz y el color neutro se mantiene', () => {
+test('en plano el trazo usa la mitad del grosor raíz y el color neutro se mantiene', () => {
   const wallId = 'room-wall:east'
   const strips = planWallStrips({ room: DEFAULT_ROOM, structurePacks: [] }, new Set([wallId]))
   assert.equal(strips.length, 1)
-  assert.ok(strips[0].thickness > 0.12)
+  assert.equal(planWallTraceThickness(0.12), 0.06)
+  assert.equal(strips[0].thickness, planWallTraceThickness(0.12))
   assert.equal(strips[0].color, DEFAULT_WALL_COLOR)
 })
 
@@ -37,7 +38,7 @@ test('la línea no tapa el paso de una puerta ni una ventana a la altura del pla
   const strips = planWallStrips({ room: root, structurePacks: [] }, new Set([wall]))
   assert.equal(strips.length, 2)
   assert.ok(strips.every((strip) => strip.length > 0))
-  assert.ok(strips.every((strip) => strip.thickness >= 0.22))
+  assert.ok(strips.every((strip) => strip.thickness === planWallTraceThickness(0.12)))
 })
 
 test('las paredes ocultas no producen líneas, incluso si tienen color personalizado', () => {
@@ -52,7 +53,8 @@ test('una pared independiente coloreada se ve en Plano sin añadir otras líneas
   assert.equal(strips.length, 1)
   assert.equal(strips[0].color, '#ce3e64')
   assert.ok(strips[0].x !== 0)
-  assert.ok(strips[0].thickness > 0.13)
+  assert.equal(planWallTraceThickness(surface.depth), surface.depth * 0.5)
+  assert.equal(strips[0].thickness, planWallTraceThickness(surface.depth))
 })
 
 // The new plan trace keeps a stable underlying surface ID for click selection.

@@ -278,15 +278,36 @@ test('añade los nuevos objetos decorativos e iluminación', async ({ page }) =>
 
 test('lista puerta y ventanas y conserva su visibilidad al recuperar', async ({ page }) => {
   await page.goto('/')
+  const readVisibility = () => page.evaluate(async () => {
+    const path = '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ path)
+    const state = useRoomStore.getState()
+    const windowId = state.room.windows[0]?.id
+    const saved = state.savedDesigns.find((design: { id: string }) => design.id === state.selectedSavedDesignId)
+    const stored = JSON.parse(localStorage.getItem('room-builder:v0.1:designs') ?? '[]')
+      .find((design: { id: string }) => design.id === state.selectedSavedDesignId)
+    return { windowId, hidden: state.hiddenElementIds.includes(windowId),
+      savedHidden: saved?.data.hiddenElementIds?.includes(windowId),
+      storedHidden: stored?.data.hiddenElementIds?.includes(windowId), unsaved: state.hasUnsavedChanges }
+  })
   const doorVisibility = page.getByRole('button', { name: /Mostrar Puerta$|Ocultar Puerta$/ })
   const windowVisibility = page.getByRole('button', { name: /Mostrar Ventana 1$|Ocultar Ventana 1$/ })
   await expect(doorVisibility).toHaveAttribute('aria-pressed', 'true')
   await expect(windowVisibility).toHaveAttribute('aria-pressed', 'true')
   await windowVisibility.click()
   await page.getByRole('button', { name: 'Guardar' }).click()
+  await expect.poll(readVisibility).toMatchObject({ hidden: true, savedHidden: true, storedHidden: true, unsaved: false })
   await page.getByRole('button', { name: 'Mostrar Ventana 1' }).click()
+  await expect.poll(readVisibility).toMatchObject({ hidden: false, savedHidden: true, storedHidden: true, unsaved: true })
   await page.getByRole('button', { name: 'Seleccionar diseño guardado' }).click()
   await page.getByRole('button', { name: /^Diseño 1/ }).click()
+  const discard = page.getByRole('dialog', { name: '¿Descartar los cambios sin guardar?' })
+  await expect(discard).toBeVisible()
+  // The saved window still exists and is hidden. Loading waits for explicit discard.
+  await expect.poll(readVisibility).toMatchObject({ windowId: 'window-1', hidden: false, storedHidden: true })
+  await discard.getByRole('button', { name: 'Descartar y continuar' }).click()
+  await expect(discard).toHaveCount(0)
+  await expect.poll(readVisibility).toMatchObject({ windowId: 'window-1', hidden: true, savedHidden: true, storedHidden: true, unsaved: false })
   await expect(page.getByRole('button', { name: 'Mostrar Ventana 1' })).toHaveAttribute('aria-pressed', 'false')
 })
 
