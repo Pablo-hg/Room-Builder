@@ -6,6 +6,7 @@ import { withoutFolderAssignments } from '../../domain/elementFolders'
 import { elementName } from '../../domain/selection'
 import { FURNITURE_PRESETS, furnitureVisualYOffset, isCeilingMountedFurniture, isWallPictureKind } from '../../domain/objectCatalog'
 import { furnitureAxisLocks, unlockedAxes } from '../../domain/axisLocks'
+import { furnitureWallContact } from '../../domain/furnitureWalls'
 import { supportingFloorTop } from '../../domain/furniturePlacement'
 import { focusedCreationTarget, packRoomBox } from '../../domain/roomEditing'
 import { structureSurfaceElementId } from '../../domain/elementIds'
@@ -26,6 +27,8 @@ type FurnitureActions = Pick<
   | 'beginFurnitureMove'
   | 'endFurnitureMove'
   | 'moveFurniture'
+  | 'setFurnitureWallAttachment'
+  | 'setFurnitureWallLateralLock'
   | 'setElementAxisLock'
   | 'moveSelectedFurnitureGroup'
   | 'moveSelectedFurnitureGroupBy'
@@ -41,6 +44,27 @@ type FurnitureActions = Pick<
 export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 'get' | 'runtime'>): FurnitureActions {
   const { set, get, runtime } = context
   return {
+    setFurnitureWallAttachment: (id, attached) => set((state) => {
+      if (state.lockedElementIds.includes(id)) return { notice: 'Desbloquea el objeto para cambiar su fijación.' }
+      const item = state.furniture.find((candidate) => candidate.id === id)
+      if (!item || !!item.wallAttachment === attached) return {}
+      if (!attached) {
+        const { wallAttachment: _attachment, ...free } = item
+        return { furniture: state.furniture.map((candidate) => candidate.id === id ? free : candidate), notice: 'Objeto despegado de la pared.' }
+      }
+      const contact = furnitureWallContact(state, item)
+      if (!contact) return { notice: 'Acerca el objeto a una cara de pared sin aberturas para fijarlo.' }
+      return { furniture: state.furniture.map((candidate) => candidate.id === id ? {
+        ...candidate, wallAttachment: { wallId: contact.wall.id, side: contact.side, lockLateral: false },
+      } : candidate), notice: 'Objeto fijado. Puedes deslizarlo por la pared o bloquear su movimiento.' }
+    }),
+    setFurnitureWallLateralLock: (id, locked) => set((state) => {
+      const item = state.furniture.find((candidate) => candidate.id === id)
+      if (!item?.wallAttachment || state.lockedElementIds.includes(id)) return {}
+      return { furniture: state.furniture.map((candidate) => candidate.id === id ? {
+        ...candidate, wallAttachment: { ...item.wallAttachment!, lockLateral: locked },
+      } : candidate) }
+    }),
     setElementAxisLock: (id, axis, locked) => set((state) => {
       if (state.lockedElementIds.includes(id)) { rejectDiagnosticAction('element-locked'); return {} }
       const item = state.furniture.find((candidate) => candidate.id === id)
@@ -182,7 +206,8 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       if (token) get().commitHistoryGesture(token)
       else finishHistoryTransaction(runtime)
     },
-    moveFurniture: (id, x, z) => set((state) => {
+    moveFurniture: (id, x, z, source) => set((state) => {
+      runtime.furnitureMoveSource = source
       if (state.lockedElementIds.includes(id)) { rejectDiagnosticAction('element-locked'); return {} }
       const item = state.furniture.find((candidate) => candidate.id === id)
       if (!item) return {}

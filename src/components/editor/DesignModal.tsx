@@ -29,7 +29,7 @@ export function DesignModal({ titleId, descriptionId, onClose, children }: {
     return () => {
       document.removeEventListener('keydown', keydown, true)
       if (previous?.isConnected) previous.focus()
-      else document.querySelector<HTMLElement>('[aria-label="Más opciones del diseño"]')?.focus()
+      else document.querySelector<HTMLElement>('[aria-label="Seleccionar diseño guardado"]')?.focus()
     }
   }, [])
   return createPortal(<div className="design-modal-backdrop" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); if (event.target === event.currentTarget) onClose() }}>

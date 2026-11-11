@@ -36,6 +36,14 @@ for (const target of ['cuerpo', 'eje X'] as const) {
       await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
       const position = page.locator('.selection-section--inspector').getByLabel('Posición X', { exact: true })
       const initial = await position.inputValue()
+      const readState = (id?: string) => page.evaluate(async (id) => {
+        const path = '/src/state/useRoomStore.ts'
+        const { useRoomStore } = await import(/* @vite-ignore */ path)
+        const state = useRoomStore.getState()
+        const item = state.furniture.find((candidate: { id: string }) => candidate.id === (id ?? state.selectedId))!
+        return { id: item.id, x: item.x, selectedId: state.selectedId, undoCount: state.undoCount, redoCount: state.redoCount }
+      }, id)
+      const initialState = await readState()
       const bounds = await page.locator('.scene-panel canvas').first().boundingBox()
       if (!bounds) throw new Error('No se pudo localizar el canvas')
       // El centro exacto contiene el eje Y del gizmo, visto de punta en planta.
@@ -66,17 +74,19 @@ for (const target of ['cuerpo', 'eje X'] as const) {
 
       await expect(position).not.toHaveValue(initial)
       const moved = await position.inputValue()
+      expect((await readState(initialState.id)).undoCount).toBe(initialState.undoCount + 1)
       // Una edición posterior debe quedar fuera del gesto, también tras cancelarlo.
       await position.focus()
       await position.press('ArrowRight')
       await expect(position).not.toHaveValue(moved)
       await page.getByRole('button', { name: 'Deshacer el último cambio' }).click()
-      await page.locator('.element-select').filter({ hasText: 'Sillón' }).click()
-      await expect(position).toHaveValue(moved)
+      await expect.poll(() => readState(initialState.id)).toMatchObject({ x: Number(moved), selectedId: null, undoCount: initialState.undoCount + 1 })
       await page.getByRole('button', { name: 'Deshacer el último cambio' }).click()
-      await page.locator('.element-select').filter({ hasText: 'Sillón' }).click()
-      await expect(position).toHaveValue(initial)
+      await expect.poll(() => readState(initialState.id)).toMatchObject({ x: Number(initial), selectedId: null, undoCount: initialState.undoCount })
       await page.getByRole('button', { name: 'Rehacer el último cambio deshecho' }).click()
+      await expect.poll(() => readState(initialState.id)).toMatchObject({ x: Number(moved), selectedId: null, undoCount: initialState.undoCount + 1 })
+      // Recover the inspector once; undo intentionally clears selection. Reading
+      // actual positions above avoids three costly reselections on software WebGL in CI.
       await page.locator('.element-select').filter({ hasText: 'Sillón' }).click()
       await expect(position).toHaveValue(moved)
     })

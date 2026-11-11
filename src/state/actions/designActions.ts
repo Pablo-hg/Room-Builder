@@ -1,4 +1,4 @@
-import { MAX_SAVED_DESIGNS } from '../../persistence/localDesignRepository'
+import { DesignStorageConflictError, MAX_SAVED_DESIGNS } from '../../persistence/localDesignRepository'
 import { normalizeDesign } from '../../persistence/designMigrations'
 import { initialRoomFolder } from '../../domain/elementFolders'
 import { DEFAULT_ROOM } from '../../domain/constants'
@@ -22,6 +22,10 @@ type DesignActions = Pick<
   | 'importDesign'
   | 'loadDesign'
 >
+
+const writeFailureNotice = (error: unknown, fallback: string) => error instanceof DesignStorageConflictError
+  ? 'La biblioteca ha cambiado en otra pestaña o no se ha podido cargar de forma segura. No se ha sobrescrito. Conserva tus cambios y exporta el JSON antes de recargar.'
+  : fallback
 
 const blankDesignData = (): PersistedDesign => persistedDesign({
   room: cloneRoom(),
@@ -62,6 +66,11 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
       if (!designId) return
       const savedDesigns = state.savedDesigns.filter((design) => design.id !== designId)
       const deletingActive = state.selectedSavedDesignId === designId
+      const nextDesign = deletingActive ? savedDesigns[0] : undefined
+      // Validar el siguiente diseño ANTES de borrar el activo; un fallo no debe vaciar la escena.
+      let nextData: PersistedDesign | undefined
+      try { if (nextDesign) nextData = normalizeDesign(nextDesign.data) }
+      catch { set({ notice: 'No se puede eliminar el diseño activo: el siguiente diseño guardado no es válido.' }); return }
       try {
         repository.write(savedDesigns)
         recordInteraction('state.design.deleted', {
@@ -73,19 +82,15 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           set({ savedDesigns, notice: 'Diseño guardado eliminado.' })
           return
         }
-        const nextDesign = savedDesigns[0]
-        if (nextDesign) {
-          try {
-            const data = normalizeDesign(nextDesign.data)
-            set({
-              ...sceneFromDesign(data),
-              selectedSavedDesignId: nextDesign.id,
-              hasUnsavedChanges: false,
-              savedDesigns,
-              notice: 'Diseño guardado eliminado. Se ha abierto el primero de la lista.',
-            })
-            return
-          } catch { /* Si el primero no es válido, se muestra un lienzo en blanco. */ }
+        if (nextDesign && nextData) {
+          set({
+            ...sceneFromDesign(nextData),
+            selectedSavedDesignId: nextDesign.id,
+            hasUnsavedChanges: false,
+            savedDesigns,
+            notice: 'Diseño guardado eliminado. Se ha abierto el primero de la lista.',
+          })
+          return
         }
         const data = blankDesignData()
         set({
@@ -93,15 +98,13 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           selectedSavedDesignId: '',
           hasUnsavedChanges: false,
           savedDesigns,
-          notice: nextDesign
-            ? 'Diseño eliminado. El primero de la lista no es válido; se muestra un lienzo en blanco.'
-            : 'Diseño guardado eliminado. Se muestra un lienzo en blanco.',
+          notice: 'Diseño guardado eliminado. Se muestra un lienzo en blanco.',
         })
         // El envoltorio de set marca como no guardado un lienzo sin diseño activo; se corrige aquí.
         set({ hasUnsavedChanges: false })
-      } catch {
+      } catch (error) {
         failDiagnosticAction('storage.delete-failed')
-        set({ notice: 'No se pudo eliminar el diseño guardado.' })
+        set({ notice: writeFailureNotice(error, 'No se pudo eliminar el diseño guardado.') })
       }
     },
     createDesign: (mode, name) => {
@@ -147,9 +150,9 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           hasUnsavedChanges: false,
           notice: mode === 'blank' ? 'Diseño nuevo creado en blanco.' : 'Copia del diseño creada.',
         })
-      } catch {
+      } catch (error) {
         failDiagnosticAction('storage.create-failed')
-        set({ notice: 'No se pudo crear el diseño en el almacenamiento local.' })
+        set({ notice: writeFailureNotice(error, 'No se pudo crear el diseño en el almacenamiento local.') })
       }
     },
     renameSavedDesign: (id, name) => {
@@ -165,9 +168,9 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           details: { id },
         })
         set({ savedDesigns, notice: 'Nombre del diseño actualizado.' })
-      } catch {
+      } catch (error) {
         failDiagnosticAction('storage.rename-failed')
-        set({ notice: 'No se pudo cambiar el nombre del diseño.' })
+        set({ notice: writeFailureNotice(error, 'No se pudo cambiar el nombre del diseño.') })
       }
     },
     saveDesign: () => {
@@ -202,9 +205,9 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           hasUnsavedChanges: false,
           notice: activeDesign ? 'Cambios guardados en el diseño actual.' : 'Diseño guardado en este navegador.',
         })
-      } catch {
+      } catch (error) {
         failDiagnosticAction('storage.save-failed')
-        set({ notice: 'No se pudo acceder al almacenamiento local.' })
+        set({ notice: writeFailureNotice(error, 'No se pudo acceder al almacenamiento local.') })
       }
     },
     importDesign: (design) => {
@@ -220,9 +223,9 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
         set({ savedDesigns, notice: `Diseño «${imported.name}» importado.` })
         recordInteraction('state.design.imported', { view: state.view, selectedId: state.selectedId, details: { id } })
         return null
-      } catch {
+      } catch (error) {
         failDiagnosticAction('storage.import-failed')
-        return 'No se pudo guardar el diseño importado en este navegador.'
+        return writeFailureNotice(error, 'No se pudo guardar el diseño importado en este navegador.')
       }
     },
     loadDesign: (id) => {

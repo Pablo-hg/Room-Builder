@@ -14,6 +14,11 @@
 La clasificación en el código actual está repartida entre FurnitureKind, WindowShape, StructureSurface/Pack; **no** asumir que esta taxonomía documental ya está implementada como sistema nuevo.
 
 ## Contrato conceptual de cada objeto
+
+**Corrección confirmada posterior, 11/11/2026:** la primera implementación de detención rígida queda sustituida por magnetismo suave. Los muebles pueden atravesar paredes al seguir desplazándose, también con pasos de 1 cm; los giros y redimensionados libres vuelven a admitir penetraciones con advertencia. En una esquina se pueden ajustar las dos caras en una sola operación. El check ofrece deslizamiento por pared, pero un empuje normal despega el objeto. En Plano las paredes usan el mismo grosor físico que en 3D. Implementación local sin certificación funcional/visual; la nota anterior se conserva debajo como historial de la primera implementación.
+
+**Petición confirmada 11/11/2026, implementación local sin validación funcional:** el mobiliario se detiene contra paredes mediante su caja orientada (ancho/fondo/alto y giro). Es un proxy conservador: no sigue cada hueco de una silla o las curvas de una lámpara. Se consideran el grosor/altura de las paredes, incluidas las independientes y giradas, y los recortes de puertas/ventanas; un volumen que cabe en una abertura puede atravesarla. El inspector ofrece fijación manual a una cara sólida, deslizamiento, bloqueo lateral y altura. Los solapes entre muebles continúan permitidos. Las aberturas/decoración mural conservan sus controles constructivos existentes. Ver [informe F1](progress/F1_PROGRESS.md).
+
 - ID estable por instancia; tipo/definición distinta de la instancia; nombre legible.
 - Dimensiones expresadas en metros (ancho, fondo, alto) y puntos de apoyo/anclaje.
 - Posición XYZ del mundo; rotación/pivote; color base/material estilizado.

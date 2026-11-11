@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { isMeasurementStep, MEASUREMENT_STEP, MEASUREMENT_STEP_NOTICE, measurementCentimetres, measurementMetres, parseMeasurement, snapMeasurement, stepMeasurement } from '../../domain/measurements'
+import { isMeasurementStep, MEASUREMENT_INVALID_NOTICE, MEASUREMENT_STEP, MEASUREMENT_STEP_NOTICE, measurementCentimetres, measurementMetres, parseMeasurement, snapMeasurement, stepMeasurement } from '../../domain/measurements'
 import { beginMeasurementLog, finishMeasurementLog } from '../../debug/interactionLog'
 import { diagnostics } from '../../diagnostics/engine'
 import { useHistoryGesture } from '../../state/useHistoryGesture'
@@ -130,6 +130,7 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
     draftRef.current = measurementMetres(valueRef.current)
     setDraft(draftRef.current)
     if (candidate === valueRef.current) { setError(''); return }
+    if (!Number.isFinite(candidate)) { diagnostics.emit({ action: 'measurement.input', level: 'warn', result: 'rejected', data: { reason: 'invalid-number' } }); setError(MEASUREMENT_INVALID_NOTICE); return }
     if (!isMeasurementStep(candidate)) { diagnostics.emit({ action: 'measurement.input', level: 'warn', result: 'rejected', data: { reason: 'invalid-centimetre-step' } }); setError(MEASUREMENT_STEP_NOTICE); return }
     if (candidate < min - 1e-9 || candidate > max + 1e-9) {
       diagnostics.emit({ action: 'measurement.input', level: 'warn', result: 'rejected', data: { reason: 'measurement-out-of-range', min, max } })

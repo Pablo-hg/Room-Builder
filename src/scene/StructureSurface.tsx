@@ -15,6 +15,7 @@ import { physicalWalls, wallDerivedOpenings } from '../domain/wallConnections'
 import { WallBody } from './Walls'
 import { useHistoryGesture } from '../state/useHistoryGesture'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
+import { usePlanPan } from './usePlanPan'
 import { cameraAwareShiftDrag } from './cameraAwareShiftDrag'
 import { moveFromOrigin } from '../domain/measurements'
 import type { WallFace } from '../domain/wallSolidGeometry'
@@ -66,6 +67,8 @@ export function StructureSurfaceObject({
     return wall ? wallDerivedOpenings(world, wall) : []
   }, [room, packs, surfaceId])
   const isIndependent = packId.startsWith('floor-object-') || packId.startsWith('wall-object-')
+  const isRoomFloor = surface.kind === 'floor' && packId.startsWith('floor-pack-')
+  const planPan = usePlanPan()
   const view = useRoomStore((state) => state.view)
   const { camera, size } = useThree()
   const gesture = useHistoryGesture(surfaceId)
@@ -139,6 +142,12 @@ export function StructureSurfaceObject({
       return
     }
     if (!shiftClickPending.current && !selectedBefore) onSelect()
+    // En Plano, arrastrar el suelo de cualquier habitación desplaza la cámara,
+    // igual que el suelo raíz (también si está bloqueado: no edita el diseño).
+    if (isRoomFloor && planPan.startPan(event)) {
+      shiftClickPending.current = false
+      return
+    }
     if (!isIndependent || locked || (event.nativeEvent.button !== 0 && event.nativeEvent.pointerType !== 'touch')) {
       if (shiftClickPending.current) selectSceneObject(clickedSurfaceId, event.nativeEvent)
       shiftClickPending.current = false
@@ -168,8 +177,9 @@ export function StructureSurfaceObject({
       </group> : <mesh
         position={position}
         rotation={[0, 0, 0]}
-        userData={{ structureSurfaceId: surfaceId }}
+        userData={{ structureSurfaceId: surfaceId, ...(isRoomFloor ? { planPannable: true } : {}) }}
         onPointerDown={selectSurface}
+        {...(isRoomFloor ? { onPointerMove: planPan.movePan, onPointerUp: planPan.endPan, onPointerCancel: planPan.endPan, onLostPointerCapture: planPan.lostPan } : {})}
       >
         <boxGeometry args={[surface.width, surface.height, surface.depth]} />
         <meshStandardMaterial

@@ -25,6 +25,12 @@ import { physicalWalls } from '../domain/wallConnections'
 import { wallUnionFaces } from '../domain/wallSolidGeometry'
 import { planWallStrips } from '../scene/planWallGeometry'
 import { PlanWallLines } from '../scene/PlanWallLines'
+import { PlanDimensions } from '../scene/PlanDimensions'
+import { PlanFloorSheet } from '../scene/PlanFloorSheet'
+import { planFloorGroups, planSheetPlacements } from '../scene/planSheet'
+import { roundFloorLevel } from '../domain/floorLevels'
+import { PlanPanSurface } from '../scene/PlanPanSurface'
+import { planRoomDimensions } from '../domain/planDimensions'
 
 function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null>; collisionIds: ReadonlySet<string> }) {
   const selectedId = useRoomStore((state) => state.selectedId)
@@ -70,6 +76,32 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
   const planStrips = useMemo(() => props.view === 'top' && !props.exportMode
     ? planWallStrips({ room: props.room, structurePacks: props.structurePacks }, planVisibleWallIds)
     : [], [props.room, props.structurePacks, props.view, props.exportMode, planSignature])
+  // Hoja de plantas: solo en Plano y con más de una planta. La planta
+  // enfocada se edita en su sitio real; las demás son copias desplazadas.
+  const planSheet = useMemo(() => {
+    if (props.view !== 'top' || props.exportMode || !focusedView) return null
+    const groups = planFloorGroups(props.room, props.structurePacks)
+    if (groups.length < 2) return null
+    const focusedKey = activeRoom ? roundFloorLevel(activeRoom.y) : 0
+    return { groups, focusedKey, placements: planSheetPlacements(groups, focusedKey, props.orientation) }
+  }, [props.view, props.exportMode, focusedView, props.room, props.structurePacks, activeRoom, props.orientation])
+  // «Plano detallado»: capa visual sobre el mismo plano, nunca en exportación
+  // ni fuera de Plano. Acota las paredes visibles en el Plano de todas las
+  // habitaciones (raíz y adicionales); las paredes independientes no.
+  const planDetailsVisible = useRoomStore((state) => state.planDetailsVisible)
+  const showPlanDimensions = planDetailsVisible && props.view === 'top' && !props.exportMode
+  const planDimensions = useMemo(() => showPlanDimensions
+    ? planRoomDimensions({ room: props.room, structurePacks: props.structurePacks }, (wall) => planVisibleWallIds.has(wall.id))
+    : [], [showPlanDimensions, props.room, props.structurePacks, planSignature])
+  // Con detalles, la letra «PARED X» se desplaza por detrás de su cota.
+  const baseWallLabels = showBase && !activeRoom && !props.exportMode
+    ? labeledWalls.filter((wall) => !hiddenElementIds.includes(baseWallId(wall)))
+    : []
+  const activeRoomWallLabelIds = activeRoom && !props.exportMode
+    ? activeRoom.surfaces.filter((surface) => surface.kind === 'wall' && surface.wall && labeledWalls.includes(surface.wall))
+      .map((surface) => `structure-surface:${activeRoom.id}:${surface.id}`).filter((id) => !hiddenElementIds.includes(id))
+    : []
+  const planDimensionWallLabels = new Set(showPlanDimensions ? [...baseWallLabels.map(baseWallId), ...activeRoomWallLabelIds] : [])
 
   return (
     <>
@@ -94,7 +126,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
             collisionIds={props.collisionIds}
           />
         ))}
-        {showBase && !activeRoom && !props.exportMode && labeledWalls.filter((wall) => !hiddenElementIds.includes(baseWallId(wall))).map((wall) => <WallIdentityLabel key={`base-label-${wall}`} room={props.room} wall={wall} view={props.view} wallView={props.wallView} />)}
+        {!showPlanDimensions && baseWallLabels.map((wall) => <WallIdentityLabel key={`base-label-${wall}`} room={props.room} wall={wall} view={props.view} wallView={props.wallView} />)}
         {renderedPacks.map((pack) => (
           <group key={pack.id} position={[pack.x, pack.y, pack.z]} visible={!hiddenElementIds.includes(pack.id)}>
             {pack.surfaces.map((surface) => {
@@ -118,7 +150,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
                   collisionIds={props.collisionIds}
                   onSelect={() => selectElement(surfaceId)}
                 />
-                {pack.id === activeRoom?.id && !props.exportMode && surface.kind === 'wall' && surface.wall && labeledWalls.includes(surface.wall) && !hiddenElementIds.includes(surfaceId) && <group position={[surface.x, surface.y, surface.z]}><WallIdentityLabel room={props.room} wall={surface.wall} view={props.view} wallView={props.wallView} /></group>}
+                {!showPlanDimensions && pack.id === activeRoom?.id && !props.exportMode && surface.kind === 'wall' && surface.wall && labeledWalls.includes(surface.wall) && !hiddenElementIds.includes(surfaceId) && <group position={[surface.x, surface.y, surface.z]}><WallIdentityLabel room={props.room} wall={surface.wall} view={props.view} wallView={props.wallView} /></group>}
                 </group>
               )
             })}
@@ -141,6 +173,11 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
         ))}
         {!props.exportMode && groupSelected && <MultiFurnitureGizmo items={multiItems} locked={[...selectedIds, ...multiItems.map((item) => item.id)].some((id) => lockedElementIds.includes(id))} view={props.view} wall={props.wallView} />}
       </RoomShell>
+      {/* Plano: el fondo vacío también permite desplazar la vista. */}
+      {props.view === 'top' && !props.exportMode && <PlanPanSurface y={level - 1} />}
+      {/* Plano: las demás plantas se dibujan a izquierda y derecha, como en una lámina de arquitectura. */}
+      {planSheet && <PlanFloorSheet groups={planSheet.groups} placements={planSheet.placements} focusedKey={planSheet.focusedKey} room={props.room} structurePacks={props.structurePacks} furniture={props.furniture} orientation={props.orientation} />}
+      {showPlanDimensions && <PlanDimensions dimensions={planDimensions} y={level + levelHeight + 0.05} wallLabels={planDimensionWallLabels} />}
     </>
   )
 }

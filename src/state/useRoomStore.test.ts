@@ -4,6 +4,7 @@ import { beforeEach, test } from 'node:test'
 import { DEFAULT_ROOM } from '../domain/constants'
 import type { PersistedDesign } from '../domain/types'
 import { createRoomStore } from './useRoomStore'
+import { createLocalDesignRepository, SAVED_DESIGNS_KEY as PERSISTED_KEY } from '../persistence/localDesignRepository'
 
 let testStore: ReturnType<typeof createRoomStore>
 beforeEach(() => { testStore = createRoomStore() })
@@ -248,15 +249,15 @@ test('migra espejos de diseños guardados desde el suelo a una pared', () => {
   }
 })
 
-test('permite habitaciones de hasta 100 m y limita el zoom entre 25 % y 300 %', () => {
+test('permite habitaciones de hasta 15 m de alto y limita el zoom entre 25 % y 300 %', () => {
   const store = testStore
 
   store.getState().setDimension('height', 10)
   assert.equal(store.getState().room.height, 10)
-  store.getState().setDimension('height', 100)
-  assert.equal(store.getState().room.height, 100)
+  store.getState().setDimension('height', 15)
+  assert.equal(store.getState().room.height, 15)
   store.getState().setDimension('height', 200)
-  assert.equal(store.getState().room.height, 100)
+  assert.equal(store.getState().room.height, 15)
 
   store.getState().setFrontCameraHeight(20)
   assert.equal(store.getState().frontCameraHeight, 10)
@@ -405,4 +406,30 @@ test('aísla el historial y el portapapeles entre instancias del store', () => {
   second.getState().undo()
   assert.equal(first.getState().furniture.length, 1)
   assert.equal(second.getState().furniture.length, 0)
+})
+
+
+test('si falla la escritura se conservan el diseño persistido y los cambios pendientes', () => {
+  const storage = new MemoryStorage()
+  let failWrites = false
+  const repository = createLocalDesignRepository(() => ({
+    getItem: (key) => storage.getItem(key),
+    setItem: (key, value) => {
+      if (failWrites) throw new Error('quota exceeded')
+      storage.setItem(key, value)
+    },
+  }))
+  const store = createRoomStore(repository)
+  store.getState().initializeSavedDesigns()
+  store.getState().saveDesign()
+  const before = storage.getItem(PERSISTED_KEY)
+  store.getState().addFurniture('chair')
+  assert.equal(store.getState().hasUnsavedChanges, true)
+  const editedFurniture = structuredClone(store.getState().furniture)
+  failWrites = true
+  store.getState().saveDesign()
+  assert.equal(storage.getItem(PERSISTED_KEY), before)
+  assert.deepEqual(store.getState().furniture, editedFurniture)
+  assert.equal(store.getState().hasUnsavedChanges, true)
+  assert.match(store.getState().notice, /almacenamiento local/)
 })

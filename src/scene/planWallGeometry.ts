@@ -15,7 +15,12 @@ export interface PlanWallStrip {
   color: string
 }
 
-/** Plan-only thicker trace: walls stay at their real thickness in 3D and on export. */
+/** Trazo visual al 50 % del grosor físico, exclusivo de Plano. */
+export const planWallTraceThickness = (depth: number) => depth * 0.5
+/** Room traces keep their interior face on the physical face, leaving no artificial furniture gap. */
+export const planWallTraceInset = (depth: number) => (depth - planWallTraceThickness(depth)) / 2
+
+/** Thin plan traces; world geometry and furniture contact retain the physical wall thickness. */
 export function planWallStrips(world: WallWorld, visibleIds: ReadonlySet<string>): PlanWallStrip[] {
   const rootColor = (side: 'north' | 'east' | 'south' | 'west') =>
     world.room.wallColors?.[side] ?? world.room.wallColor ?? DEFAULT_WALL_COLOR
@@ -27,6 +32,13 @@ export function planWallStrips(world: WallWorld, visibleIds: ReadonlySet<string>
       : rootColor(wall.side)
     // A plan wall must use the *actual* wall material, including the default.
     const color = surfaceColor
+    const pack = wall.packId && world.structurePacks.find((pack) => pack.id === wall.packId)
+    const floor = pack ? pack.surfaces.find((surface) => surface.kind === 'floor') : undefined
+    const roomBounded = !wall.packId || !!floor
+    const roomCenter = { x: pack ? pack.x + (floor?.x ?? 0) : 0, z: pack ? pack.z + (floor?.z ?? 0) : 0 }
+    const normalX = Math.sin(wall.yaw), normalZ = Math.cos(wall.yaw)
+    const inwardSign = (roomCenter.x - wall.x) * normalX + (roomCenter.z - wall.z) * normalZ < 0 ? -1 : 1
+    const inset = roomBounded ? inwardSign * planWallTraceInset(wall.depth) : 0
     // A conventional plan cut through the lower part of the wall, so doors
     // and ordinary-height windows leave a visible gap in the trace.
     const sliceHeight = Math.min(wall.height * 0.5, 1.25)
@@ -39,12 +51,12 @@ export function planWallStrips(world: WallWorld, visibleIds: ReadonlySet<string>
       return {
         id: `${wall.id}:${index}`,
         wallId: wall.id,
-        x: wall.x + centre * Math.cos(wall.yaw),
+        x: wall.x + centre * Math.cos(wall.yaw) + normalX * inset,
         y: wall.y + wall.height + 0.035,
-        z: wall.z - centre * Math.sin(wall.yaw),
+        z: wall.z - centre * Math.sin(wall.yaw) + normalZ * inset,
         yaw: wall.yaw,
         length: end - start,
-        thickness: Math.max(0.22, wall.depth * 1.7),
+        thickness: planWallTraceThickness(wall.depth),
         color,
       }
     })

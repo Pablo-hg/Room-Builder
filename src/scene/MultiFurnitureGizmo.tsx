@@ -29,10 +29,14 @@ export function MultiFurnitureGizmo({ items, locked, view, wall }: { items: Mult
   const scale = camera instanceof THREE.OrthographicCamera ? (camera.right - camera.left) / camera.zoom / size.width : 0.01
   const dimensions = [bounds.max.x - bounds.min.x, bounds.max.y - bounds.min.y, bounds.max.z - bounds.min.z] as const
   const center = [bounds.center.x, bounds.center.y, bounds.center.z] as const
+  // A room folder's invisible group box covers its entire floor. In Plano
+  // let that floor receive the drag for panning; axis handles still move the selection.
+  const panRoomFloor = view === 'top' && items.some((item) => item.type === 'surface'
+    && item.surfaceId === 'floor' && item.packId?.startsWith('floor-pack-'))
   const modified = (event: PointerEvent | MouseEvent) => event.ctrlKey || event.metaKey || event.shiftKey
   return <group>
     <group position={center}><SelectionBounds width={dimensions[0]} height={dimensions[1]} depth={dimensions[2]} /></group>
-    <mesh position={[center[0], center[1] + 0.02, center[2]]}
+    {!panRoomFloor && <mesh position={[center[0], center[1] + 0.02, center[2]]}
       onPointerDown={(event: ThreeEvent<PointerEvent>) => {
         if (modified(event.nativeEvent)) return
         event.stopPropagation()
@@ -68,7 +72,7 @@ export function MultiFurnitureGizmo({ items, locked, view, wall }: { items: Mult
       onClick={(event) => { if (!modified(event.nativeEvent)) event.stopPropagation() }}>
       <boxGeometry args={[dimensions[0], dimensions[1] + 0.04, dimensions[2]]} />
       <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} side={THREE.DoubleSide} />
-    </mesh>
+    </mesh>}
     {!locked && view !== 'pov' && <AxisAnchor center={center} dimensions={dimensions}>{(['x', 'y', 'z'] as const).filter((value) => {
       if (!items.every((item) => item.axes.includes(value))) return false
       if (value === 'y' && view === 'top') return false

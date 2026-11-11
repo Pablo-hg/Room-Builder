@@ -3,6 +3,7 @@ export const MEASUREMENT_STEP = 0.01
 export const MOVEMENT_STEP = 0.05
 
 export const MEASUREMENT_STEP_NOTICE = 'Usa centímetros enteros, por ejemplo 0,13 m (13 cm).'
+export const MEASUREMENT_INVALID_NOTICE = 'Escribe un número en metros o centímetros, por ejemplo 4,37 m o 437 cm.'
 
 export function parseMeasurement(text: string): number {
   const match = text.trim().match(/^([+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+))\s*(cm|m)?$/i)

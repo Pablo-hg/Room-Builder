@@ -100,7 +100,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
     if (event.nativeEvent.shiftKey) {
       const start = frontDragStart.current
       const projected = cameraAwareShiftDrag(camera, size, { clientX: start.clientX, clientY: start.clientY, position: { x: start.x, y: start.y, z: start.z } }, event.nativeEvent)
-      moveFurniture(item.id, moveFromOrigin(projected.x, start.x), moveFromOrigin(projected.z, start.z))
+      moveFurniture(item.id, moveFromOrigin(projected.x, start.x), moveFromOrigin(projected.z, start.z), 'pointer')
       if (canMoveVertically) moveFurnitureVertically(item.id, moveFromOrigin(projected.y, start.y))
       return
     }
@@ -115,6 +115,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
         item.id,
         horizontalAxis === 'x' ? frontDragStart.current.x + horizontalDelta : frontDragStart.current.x,
         horizontalAxis === 'z' ? frontDragStart.current.z + horizontalDelta : frontDragStart.current.z,
+        'pointer',
       )
       if (canMoveVertically) {
         moveFurnitureVertically(
@@ -125,7 +126,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
       return
     }
     if (event.ray.intersectPlane(floorPlane, point)) {
-      moveFurniture(item.id, moveFromOrigin(point.x - dragOffset.current.x, dragOrigin.current.x), moveFromOrigin(point.z - dragOffset.current.z, dragOrigin.current.z))
+      moveFurniture(item.id, moveFromOrigin(point.x - dragOffset.current.x, dragOrigin.current.x), moveFromOrigin(point.z - dragOffset.current.z, dragOrigin.current.z), 'pointer')
     }
   }
   const handleUp = (event: ThreeEvent<PointerEvent>) => {
@@ -171,7 +172,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
           {frontWall
             ? <FrontAxisMoveGizmo item={item} wall={frontWall} />
             : <AxisMoveGizmo item={item} groundLevel={!canMoveVertically} canMoveVertically={canMoveVertically} hideAxis={planView ? 'y' : null} />}
-          {hasUsefulFurnitureRotation(item.kind, item) && (frontWall ? <FrontRotationHandle item={item} wall={frontWall} /> : <RotationHandle item={item} />)}
+          {!item.wallAttachment && hasUsefulFurnitureRotation(item.kind, item) && (frontWall ? <FrontRotationHandle item={item} wall={frontWall} /> : <RotationHandle item={item} />)}
         </>
       )}
     </group>

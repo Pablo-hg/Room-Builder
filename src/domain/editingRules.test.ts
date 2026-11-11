@@ -63,7 +63,7 @@ test('recoloca muebles en orden conservando dimensiones del catálogo y sin muta
 
 test('conserva límites dimensionales y geometría por defecto de las seis superficies', () => {
   for (const dimension of ['width', 'depth', 'height'] as const) {
-    assert.equal(clampRoomDimension(dimension, 100), 100)
+    assert.equal(clampRoomDimension(dimension, 100), dimension === 'height' ? 15 : 50)
     assert.equal(clampRoomDimension(dimension, 0), 0.01)
   }
   for (const side of ['north', 'east', 'south', 'west'] as const) {

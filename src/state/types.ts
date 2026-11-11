@@ -14,6 +14,9 @@ export interface RoomState {
   topOrientation: number
   topCameraX: number
   topCameraZ: number
+  /** Plano detallado: estado visual de sesión; no se guarda ni entra en el historial. */
+  planDetailsVisible: boolean
+  setPlanDetailsVisible: (visible: boolean) => void
   activeRoomId: string | null
   setActiveRoomId: (id: string | null) => void
   isoAngle: number
@@ -98,7 +101,9 @@ export interface RoomState {
   renameElement: (id: string, name: string) => void
   beginFurnitureMove: () => void
   endFurnitureMove: () => void
-  moveFurniture: (id: string, x: number, z: number) => void
+  moveFurniture: (id: string, x: number, z: number, source?: 'pointer') => void
+  setFurnitureWallAttachment: (id: string, attached: boolean) => void
+  setFurnitureWallLateralLock: (id: string, locked: boolean) => void
   setElementAxisLock: (id: string, axis: 'x' | 'y' | 'z', locked: boolean) => void
   moveSelectedFurnitureGroup: (axis: 'x' | 'y' | 'z', delta: number) => void
   moveSelectedFurnitureGroupBy: (delta: { x: number; y: number; z: number }) => void
@@ -149,6 +154,7 @@ export type HistoryGestureToken = symbol
 
 // Mutable editing context owned by each store instance, outside persisted world data.
 export interface RoomRuntime {
+  furnitureMoveSource?: 'pointer'
   undoHistory: PersistedDesign[]
   redoHistory: PersistedDesign[]
   copiedElement: FurnitureItem | WindowConfig | null
