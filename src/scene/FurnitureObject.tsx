@@ -116,7 +116,10 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
       const start = frontDragStart.current
       if (Math.hypot(event.nativeEvent.clientX - start.clientX, event.nativeEvent.clientY - start.clientY) < 4) return
       shiftClickPending.current = false
+      // Cambiar la selección interrumpe la transacción de historial activa.
+      // Reabrirla evita que el arrastre con Mayús se detenga en el primer movimiento.
       useRoomStore.getState().selectElement(item.id)
+      gesture.begin()
     }
     if (event.nativeEvent.shiftKey) {
       const start = frontDragStart.current
