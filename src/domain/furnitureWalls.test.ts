@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { cloneRoom } from '../state/defaults'
 import { createStructureSurface } from './structureRules'
+import { canElevateFurniture } from './objectCatalog'
 import { physicalWalls } from './wallConnections'
 import { constrainFurnitureWalls, furnitureWallAxes, furnitureWallContact, snapFurnitureToWall, validateFurnitureWallAttachments, type FurnitureWallMagnets } from './furnitureWalls'
 import { planWallStrips } from '../scene/planWallGeometry'
@@ -231,4 +232,15 @@ test('fijado a paredes cardinales o giradas: solamente altura y un eje lateral e
   const available = furnitureWallAxes(rotatedWorld, rotated)
   assert.equal(available.y, true)
   assert.equal(Number(available.x) + Number(available.z), 1)
+})
+
+
+test('muebles de un diseño anterior sin axisLocks pueden elevarse al estar fijados', () => {
+  const before = world(), z = northContact(before)
+  const legacy = item({ z, axisLocks: undefined, attachmentPolicy: 'by-type',
+    wallAttachment: { wallId: 'room-wall:north', side: 1, lockLateral: true } })
+  assert.equal(canElevateFurniture(legacy), true)
+  const result = constrainFurnitureWalls(world([legacy]), world([{ ...legacy, y: 0.5 }]))!
+  close(result.furniture[0].y, 0.5)
+  assert.equal(result.furniture[0].wallAttachment?.wallId, 'room-wall:north')
 })

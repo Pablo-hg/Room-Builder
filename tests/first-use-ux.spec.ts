@@ -140,3 +140,18 @@ test('fijar a pared solo deja un eje lateral y la altura; despegar recupera XYZ'
   await expect(z).toBeEnabled()
   await expect(y).toBeEnabled()
 })
+
+
+test('los textos habituales son legibles sin reintroducir el encabezado del menú de vistas', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  const measures = await page.evaluate(() => ({
+    body: Number.parseFloat(getComputedStyle(document.body).fontSize),
+    catalog: Number.parseFloat(getComputedStyle(document.querySelector('.section-copy')!).fontSize),
+    view: Number.parseFloat(getComputedStyle(document.querySelector('.view-switcher button')!).fontSize),
+  }))
+  expect(measures.body).toBeGreaterThanOrEqual(14)
+  expect(measures.catalog).toBeGreaterThanOrEqual(14)
+  expect(measures.view).toBeGreaterThanOrEqual(14)
+  await expect(page.locator('.view-switcher__heading')).toHaveCount(0)
+})
