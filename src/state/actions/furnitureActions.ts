@@ -6,7 +6,7 @@ import { withoutFolderAssignments } from '../../domain/elementFolders'
 import { elementName } from '../../domain/selection'
 import { FURNITURE_PRESETS, furnitureVisualYOffset, isCeilingMountedFurniture, isWallPictureKind } from '../../domain/objectCatalog'
 import { furnitureAxisLocks, unlockedAxes } from '../../domain/axisLocks'
-import { furnitureWallContact } from '../../domain/furnitureWalls'
+import { furnitureWallContact, snapFurnitureToWall } from '../../domain/furnitureWalls'
 import { supportingFloorTop } from '../../domain/furniturePlacement'
 import { focusedCreationTarget, packRoomBox } from '../../domain/roomEditing'
 import { structureSurfaceElementId } from '../../domain/elementIds'
@@ -50,13 +50,18 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       if (!item || !!item.wallAttachment === attached) return {}
       if (!attached) {
         const { wallAttachment: _attachment, ...free } = item
-        return { furniture: state.furniture.map((candidate) => candidate.id === id ? free : candidate), notice: 'Objeto despegado de la pared.' }
+        return { furniture: state.furniture.map((candidate) => candidate.id === id ? { ...free, axisLocks: unlockedAxes() } : candidate), notice: 'Objeto despegado de la pared.' }
       }
       const contact = furnitureWallContact(state, item)
-      if (!contact) return { notice: 'Acerca el objeto a una cara de pared sin aberturas para fijarlo.' }
+      const target = contact
+        ? { item, wallId: contact.wall.id, side: contact.side }
+        : snapFurnitureToWall(state, item)
+      if (!target) return { notice: 'No hay una cara de pared válida para fijar este objeto.' }
       return { furniture: state.furniture.map((candidate) => candidate.id === id ? {
-        ...candidate, wallAttachment: { wallId: contact.wall.id, side: contact.side, lockLateral: false },
-      } : candidate), notice: 'Objeto fijado. Puedes deslizarlo por la pared o bloquear su movimiento.' }
+        ...target.item,
+        axisLocks: unlockedAxes(),
+        wallAttachment: { wallId: target.wallId, side: target.side, lockLateral: false },
+      } : candidate), notice: 'Objeto fijado a la pared. Puedes moverlo lateralmente y en altura; desmarca la casilla para despegarlo.' }
     }),
     setFurnitureWallLateralLock: (id, locked) => set((state) => {
       const item = state.furniture.find((candidate) => candidate.id === id)

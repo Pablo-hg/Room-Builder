@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { cloneRoom } from '../state/defaults'
 import { createStructureSurface } from './structureRules'
 import { physicalWalls } from './wallConnections'
-import { constrainFurnitureWalls, furnitureWallContact, validateFurnitureWallAttachments, type FurnitureWallMagnets } from './furnitureWalls'
+import { constrainFurnitureWalls, furnitureWallContact, snapFurnitureToWall, validateFurnitureWallAttachments, type FurnitureWallMagnets } from './furnitureWalls'
 import { planWallStrips } from '../scene/planWallGeometry'
 import type { FurnitureItem, StructurePack } from './types'
 
@@ -119,7 +119,7 @@ test('no convierte puertas ni paredes en barreras al atravesarlas', () => {
   close(constrainFurnitureWalls(wide, { ...wide, furniture: [{ ...wide.furniture[0], z: 10 }] })!.furniture[0].z, 10)
 })
 
-test('pared independiente girada: contacto, deslizamiento tangente y bloqueo lateral', () => {
+test('pared independiente girada: el mueble fijado solo se desliza por la tangente', () => {
   const room = cloneRoom()
   const pack: StructurePack = { id: 'wall-object-test', name: 'Pared', x: 0, y: 0, z: 0,
     surfaces: [{ ...createStructureSurface(room, 'wall-north'), z: room.depth / 2, width: 4, rotation: Math.PI / 4 }] }
@@ -132,11 +132,16 @@ test('pared independiente girada: contacto, deslizamiento tangente y bloqueo lat
   const slide = constrainFurnitureWalls(anchored, { ...anchored, furniture: [{ ...attached, x: attached.x + 0.4, z: attached.z - 0.4 }] })!
   close(slide.furniture[0].x - attached.x, 0.4)
   close(slide.furniture[0].z - attached.z, -0.4)
+  // El antiguo lockLateral se tolera en diseños existentes, pero ya no inmoviliza el objeto.
   const fixed = { ...attached, wallAttachment: { ...attached.wallAttachment, lockLateral: true } }
-  const locked = { ...before, furniture: [fixed] }
-  const stayed = constrainFurnitureWalls(locked, { ...locked, furniture: [{ ...fixed, x: fixed.x + 0.4, z: fixed.z - 0.4 }] })!
-  close(stayed.furniture[0].x, fixed.x)
-  close(stayed.furniture[0].z, fixed.z)
+  const existing = { ...before, furniture: [fixed] }
+  const legacySlide = constrainFurnitureWalls(existing, { ...existing, furniture: [{ ...fixed, x: fixed.x + 0.4, z: fixed.z - 0.4 }] })!
+  close(legacySlide.furniture[0].x - fixed.x, 0.4)
+  close(legacySlide.furniture[0].z - fixed.z, -0.4)
+  const normalPush = constrainFurnitureWalls(existing, { ...existing, furniture: [{ ...fixed, x: fixed.x + 0.4, z: fixed.z + 0.4 }] })!
+  close(normalPush.furniture[0].x, fixed.x)
+  close(normalPush.furniture[0].z, fixed.z)
+  assert.ok(normalPush.furniture[0].wallAttachment)
 })
 
 test('no bloquea solapes entre muebles y conserva intersecciones antiguas recuperables', () => {
@@ -179,10 +184,36 @@ test('sigue la pared al moverla y se despega al borrarla', () => {
   close(removed.furniture[0].z, before.furniture[0].z)
 })
 
-test('rechaza girar un mueble fijado y respeta el bloqueo de altura', () => {
+test('rechaza girar un mueble fijado, pero permite cambiar la altura con bloqueos antiguos', () => {
   const source = world(), attached = item({ z: northContact(source), axisLocks: { x: false, y: true, z: false },
     wallAttachment: { wallId: 'room-wall:north', side: 1, lockLateral: false } })
   const before = world([attached])
   assert.equal(constrainFurnitureWalls(before, { ...before, furniture: [{ ...attached, rotation: 1 }] }), null)
-  assert.equal(constrainFurnitureWalls(before, { ...before, furniture: [{ ...attached, y: 1 }] }), null)
+  const elevated = constrainFurnitureWalls(before, { ...before, furniture: [{ ...attached, y: 1 }] })!
+  close(elevated.furniture[0].y, 1)
+  assert.ok(elevated.furniture[0].wallAttachment)
+})
+
+
+test('fijación manual mantiene el contacto ante un empuje normal y deja mover los otros dos ejes', () => {
+  const source = world(), z = northContact(source)
+  const attached = item({ z, wallAttachment: { wallId: 'room-wall:north', side: 1, lockLateral: false } })
+  const current = world([attached])
+  const normalPush = constrainFurnitureWalls(current, { ...current, furniture: [{ ...attached, z: z + 0.4 }] })!
+  close(normalPush.furniture[0].z, z)
+  assert.equal(normalPush.furniture[0].wallAttachment?.wallId, 'room-wall:north')
+  const moved = constrainFurnitureWalls(current, { ...current, furniture: [{ ...attached, x: 0.4, y: 0.5 }] })!
+  close(moved.furniture[0].x, 0.4)
+  close(moved.furniture[0].y, 0.5)
+  close(moved.furniture[0].z, z)
+})
+
+test('al fijar lejos de una pared elige automáticamente una cara válida', () => {
+  const source = world()
+  const result = snapFurnitureToWall(source, source.furniture[0])
+  assert.ok(result)
+  assert.ok(result!.wallId.startsWith('room-wall:'))
+  assert.equal(furnitureWallContact(source, result!.item)?.wall.id, result!.wallId)
+  const anchored = { ...result!.item, wallAttachment: { wallId: result!.wallId, side: result!.side, lockLateral: false } }
+  assert.doesNotThrow(() => validateFurnitureWallAttachments(world([anchored]), 11))
 })

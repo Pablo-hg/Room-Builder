@@ -78,3 +78,7 @@ La barra inferior refleja el estado **real** del diseño (sin guardar, cambios s
 ## Ajustes de legibilidad F1-03 (11/11/2026)
 
 Se eleva el tamaño de las tipografías pequeñas del editor (de 9–13 px a aproximadamente 11–14 px) para mejorar la lectura sin alterar su contenido. Se retira la palabra decorativa «Ver» del selector superior de vistas y el bloque introductorio redundante «Construir habitación»; se mantienen visibles todas las categorías, el selector de cámaras y sus controles.
+
+## F1-03: casilla única de fijación a pared
+
+El inspector de muebles muestra solo la casilla **Fijar a pared**, sin repetir título ni ofrecer las casillas «Bloquear movimiento lateral» y «Mantener altura». Al activarla, el mueble se apoya en la cara válida más cercana si aún no está en contacto; la geometría restringe el desplazamiento perpendicular a la pared, dejando libres altura y deslizamiento lateral. No se despega al empujarlo: para volver al movimiento XYZ libre se desmarca la casilla. Las fijaciones antiguas con `lockLateral` siguen leyéndose por compatibilidad, pero ya no fuerzan un bloqueo invisible de deslizamiento.

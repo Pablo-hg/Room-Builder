@@ -4,7 +4,10 @@ export const POSITION_AXES: PositionAxis[] = ['x', 'y', 'z']
 export const unlockedAxes = (): AxisLocks => ({ x: false, y: false, z: false })
 
 /** Absence preserves legacy attachment behaviour; explicit locks freeze coordinates. */
-export function furnitureAxisLocks(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy' | 'axisLocks'>): AxisLocks {
+export function furnitureAxisLocks(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy' | 'axisLocks' | 'wallAttachment'>): AxisLocks {
+  // La fijación reemplaza los bloqueos manuales antiguos mientras esté activa:
+  // solo la geometría de la pared restringe el eje perpendicular.
+  if (item.wallAttachment) return unlockedAxes()
   return item.axisLocks ?? { x: false, y: item.attachmentPolicy === 'by-type' && ['rug', 'circularRug', 'ceilingLamp'].includes(item.kind), z: false }
 }
 
