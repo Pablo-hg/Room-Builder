@@ -92,7 +92,8 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
     setFileNotice('')
     setCreateDesignOpen(false)
     setNewDesignName('')
-    setSavedDesignsOpen(false)
+    // Mantener visible la biblioteca: permite renombrar la nueva entrada sin reabrirla.
+    setSavedDesignsOpen(true)
   }
   const confirmDiscard = () => {
     if (!pendingDiscard) return
