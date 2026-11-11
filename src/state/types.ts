@@ -145,7 +145,7 @@ export interface RoomState {
   createDesign: (mode: 'blank' | 'copy', name: string) => void
   renameSavedDesign: (id: string, name: string) => void
   saveDesign: () => void
-  importDesign: (design: SavedDesign) => string | null
+  importDesign: (design: SavedDesign, open?: boolean) => string | null
   loadDesign: (id?: string) => void
   clearNotice: () => void
 }

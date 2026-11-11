@@ -49,8 +49,8 @@ export function EditorHeader({ exportMode, onExport }: {
             {state.hasUnsavedChanges ? 'Cambios sin guardar' : state.selectedSavedDesignId ? 'Guardado' : 'Sin guardar'}
           </span>
           <SavedDesignsMenu state={state} exportMode={exportMode} onExport={onExport} />
-          <button type="button" className="primary-button" aria-label={state.selectedSavedDesignId ? 'Guardar cambios' : 'Guardar como'} aria-keyshortcuts="Control+G Meta+G" title="Guardar (Ctrl/⌘+G)" onClick={state.saveDesign}>
-            ✓ <span>{state.selectedSavedDesignId ? 'Guardar cambios' : 'Guardar como'}</span>
+          <button type="button" className="primary-button" aria-label={state.selectedSavedDesignId ? 'Guardar' : 'Guardar como'} aria-keyshortcuts="Control+G Meta+G" title="Guardar (Ctrl/⌘+G)" onClick={state.saveDesign}>
+            ✓ <span>{state.selectedSavedDesignId ? 'Guardar' : 'Guardar como'}</span>
           </button>
         </div>
       </header>

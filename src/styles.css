@@ -52,7 +52,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .save-actions .saved-design-more:hover { background: #f1f3ef; }
 .saved-design-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 175px; max-width: 19vw; height: 38px; padding: 0 9px; border: 1px solid #dcd9d1; border-radius: 9px; background: white; color: var(--ink); font-size: 11px; text-align: left; }
 .saved-design-trigger span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.saved-design-menu { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; width: min(380px, calc(100vw - 28px)); max-height: min(360px, calc(100vh - 100px)); overflow: auto; padding: 6px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper); box-shadow: 0 9px 26px rgba(32, 43, 35, .18); }
+.saved-design-menu { position: absolute; z-index: 30; top: calc(100% + 7px); right: 0; width: min(380px, calc(100vw - 28px)); max-height: calc(100vh - 100px); overflow: auto; padding: 6px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper); box-shadow: 0 9px 26px rgba(32, 43, 35, .18); }
 .saved-design-item { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 5px 6px; border-bottom: 1px solid #f0ede7; }
 .saved-design-item:last-child { border-bottom: 0; }
 .save-actions .saved-design-choice { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; height: 40px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font-size: 12px; font-weight: 600; text-align: left; }
@@ -67,6 +67,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .saved-design-rename input { flex: 1; }
 .saved-design-create { display: grid; gap: 8px; padding: 10px 7px; border-bottom: 1px solid #f0ede7; }
 .saved-design-create label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.saved-design-name-error { margin: 0; color: var(--danger); font-size: 11px; }
 .saved-design-create > div { display: flex; gap: 6px; }
 .saved-design-quick-actions { display: flex; gap: 4px; }
 .saved-design-quick-actions .saved-design-create-trigger { flex: 1; min-width: 0; }
