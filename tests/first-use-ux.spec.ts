@@ -19,6 +19,8 @@ test('la barra inferior refleja el estado real sin guardar, guardado y cambios p
   await page.goto('/')
   const status = page.locator('.statusbar__save')
   await expect(status).toContainText('Diseño sin guardar')
+  await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
+  await expect(status).toContainText('Cambios sin guardar · pulsa Guardar como')
   await page.getByRole('button', { name: 'Guardar como' }).click()
   await expect(status).toContainText('Diseño guardado en este navegador')
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
@@ -100,7 +102,7 @@ test('flujo básico sin tutorial: medidas, apertura, mueble, guardar y volver a 
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs')!))
   expect(saved).toHaveLength(1)
   expect(saved[0].data.room.width).toBe(6.25)
-  expect(saved[0].data.room.windows.length).toBeGreaterThan(0)
+  expect(saved[0].data.room.windows.length).toBeGreaterThan(1)
   expect(saved[0].data.furniture.some((item: { kind: string }) => item.kind === 'chair')).toBe(true)
 
   await page.reload()
