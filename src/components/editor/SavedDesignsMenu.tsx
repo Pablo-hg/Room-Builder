@@ -62,6 +62,12 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
   }
   const showError = (message: string) => { setFileNotice(''); setFileError(message); setSavedDesignsOpen(true) }
   const loadSavedDesign = (id: string) => {
+    // Seleccionar el diseño que ya está abierto no debe descartar su edición.
+    if (id === useRoomStore.getState().selectedSavedDesignId) {
+      setSavedDesignsOpen(false)
+      savedDesignTriggerRef.current?.focus()
+      return
+    }
     if (useRoomStore.getState().hasUnsavedChanges) {
       setSavedDesignsOpen(false)
       setPendingDiscard({ kind: 'load', id })
@@ -72,7 +78,7 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
     savedDesignTriggerRef.current?.focus()
   }
   const createBlankDesign = () => {
-    if (!newDesignName.trim()) { state.createDesign('blank', ''); return }
+    if (!newDesignName.trim()) { showError('Introduce un nombre para crear el diseño.'); return }
     if (useRoomStore.getState().hasUnsavedChanges) {
       setSavedDesignsOpen(false)
       setPendingDiscard({ kind: 'create', name: newDesignName.trim() })
@@ -157,18 +163,40 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
     const active = buttons.indexOf(document.activeElement as HTMLButtonElement)
     buttons[(active + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length]?.focus()
   }
+  const designListKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.target instanceof HTMLInputElement || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+    event.preventDefault()
+    event.stopPropagation()
+    const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
+    if (!buttons.length) return
+    const index = buttons.indexOf(document.activeElement as HTMLButtonElement)
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
+      : event.key === 'ArrowDown' ? (index + 1) % buttons.length : (index < 0 ? 0 : index + buttons.length - 1) % buttons.length
+    buttons[next]?.focus()
+  }
   const onContext = (event: ReactMouseEvent, designId: string | null) => { event.preventDefault(); event.stopPropagation(); openContext(event.clientX, event.clientY, designId) }
   const act = (action: () => void) => { setContext(null); action() }
 
   return <>
     <div className="saved-design-select" ref={savedDesignsRef} onContextMenu={(event) => onContext(event, state.selectedSavedDesignId || null)}>
       <div className="saved-design-selector-row">
-        <button type="button" className="saved-design-trigger" ref={savedDesignTriggerRef} aria-label="Seleccionar diseño guardado" aria-expanded={savedDesignsOpen} aria-haspopup="dialog" aria-controls="saved-designs-popup" onClick={() => { setContext(null); setSavedDesignsOpen((open) => !open) }}>
+        <button type="button" className="saved-design-trigger" ref={savedDesignTriggerRef} aria-label="Seleccionar diseño guardado" aria-expanded={savedDesignsOpen} aria-haspopup="dialog" aria-controls="saved-designs-popup" onKeyDown={(event) => {
+          if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+          event.preventDefault()
+          setContext(null)
+          setSavedDesignsOpen(true)
+          window.requestAnimationFrame(() => {
+            const buttons = Array.from(savedDesignsRef.current?.querySelectorAll<HTMLButtonElement>('.saved-design-menu button:not(:disabled)') ?? [])
+            if (event.key === 'ArrowUp') buttons[buttons.length - 1]?.focus()
+            else buttons[0]?.focus()
+          })
+        }} onClick={() => { setContext(null); setSavedDesignsOpen((open) => !open) }}>
           <span>{currentDesign?.name ?? `Diseños (${state.savedDesigns.length}/5)`}</span><span aria-hidden="true">▾</span>
         </button>
       </div>
       <input ref={fileInputRef} type="file" accept=".json,application/json" hidden onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; void readDesign(file) }} />
-      {savedDesignsOpen && <div id="saved-designs-popup" className="saved-design-menu" role="dialog" aria-label="Diseños guardados">
+      {savedDesignsOpen && <div id="saved-designs-popup" className="saved-design-menu" role="dialog" aria-label="Diseños guardados" onKeyDown={designListKeyDown}>
+        <p className="saved-design-menu__heading">Mis diseños <span>{state.savedDesigns.length}/5</span></p>
         {state.savedDesigns.length === 0 && !createDesignOpen && <p className="saved-design-empty">Aún no hay diseños guardados.</p>}
         {state.savedDesigns.map((design) => <div className="saved-design-item" key={design.id} onContextMenu={(event) => onContext(event, design.id)}>
           {renamingDesignId === design.id ? <div className="saved-design-rename">
@@ -188,7 +216,7 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
           <button type="button" className="saved-design-create-action" disabled={state.savedDesigns.length >= 5} onClick={createBlankDesign}>Crear en blanco</button>
           <button type="button" className="saved-design-cancel" onClick={() => setCreateDesignOpen(false)}>Cancelar</button>
         </div>}
-        <p className="saved-design-info">Se guardan en este navegador, no en cookies, y no caducan automáticamente. Se borran si los eliminas aquí o borras los datos del sitio; en navegación privada, al cerrar la sesión privada.</p>
+        <details className="saved-design-help"><summary>¿Dónde se guardan los diseños?</summary><p>Se guardan en este navegador, no en cookies, y no caducan automáticamente. Se borran si los eliminas aquí o borras los datos del sitio; en navegación privada, al cerrar la sesión privada.</p></details>
         {state.savedDesigns.length >= 5 && <p className="saved-design-info">La biblioteca está llena. Elimina un diseño para importar o crear otro.</p>}
         {readingFile && <p role="status">Leyendo archivo…</p>}
         {fileNotice && <p className="saved-design-info" role="status">{fileNotice}</p>}

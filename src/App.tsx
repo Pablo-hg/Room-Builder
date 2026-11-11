@@ -306,6 +306,8 @@ function EditorNotice({ exportNotice }: { exportNotice: string }) {
 
 function App() {
   const initializeSavedDesigns = useRoomStore((state) => state.initializeSavedDesigns)
+  const hasUnsavedChanges = useRoomStore((state) => state.hasUnsavedChanges)
+  const selectedSavedDesignId = useRoomStore((state) => state.selectedSavedDesignId)
   const [settingsCollapsed, setSettingsCollapsed] = useState(false)
   const [objectsCollapsed, setObjectsCollapsed] = useState(false)
   const [objectsWidth, setObjectsWidth] = useState(264)
@@ -363,7 +365,7 @@ function App() {
         <SettingsPanel onStartGuide={startGuide} />
       </main>
       <footer className="statusbar">
-        <span><i className="status-dot" /> Guardado local en tu navegador</span>
+        <span className={`statusbar__save${hasUnsavedChanges || !selectedSavedDesignId ? ' statusbar__save--pending' : ''}`} role="status" aria-live="polite"><i className="status-dot" aria-hidden="true" />{hasUnsavedChanges ? 'Cambios sin guardar · pulsa Guardar cambios' : selectedSavedDesignId ? 'Diseño guardado en este navegador' : 'Diseño sin guardar · pulsa Guardar como'}</span>
         <span>Cuadrado visible: 25 cm · ajuste: 5 cm</span>
       </footer>
       <EditorNotice exportNotice={exportNotice} />

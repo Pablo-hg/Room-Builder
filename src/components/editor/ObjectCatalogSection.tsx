@@ -30,11 +30,11 @@ export function ObjectCatalogSection() {
 
   return (
         <section className="panel-section">
-        <span className="eyebrow">Objetos</span>
+        <span className="eyebrow">Construir · Añadir objetos</span>
         <div className="catalog-heading">
           <div>
-            <h2>Pequeño catálogo</h2>
-            {!catalogCollapsed && <p className="section-copy">Añade muebles, aperturas y decoración mural, o selecciona la puerta existente.</p>}
+            <h2>Construye y amuebla</h2>
+            {!catalogCollapsed && <p className="section-copy">Ajusta primero las medidas a la derecha, añade aperturas y después elige tus muebles. Puedes hacerlo en cualquier orden.</p>}
           </div>
           <button
             type="button"
@@ -48,6 +48,7 @@ export function ObjectCatalogSection() {
           </button>
         </div>
         {!catalogCollapsed && <div className="catalog-families" id="catalog-families">
+          <div className="catalog-stage" aria-label="Construir habitación"><strong>Construir habitación</strong><span>La habitación inicial ya está creada. Añade otras estancias, paredes, puertas o ventanas cuando lo necesites.</span></div>
           <section className={`catalog-family ${collapsedCategories.structure ? 'catalog-family--collapsed' : ''}`} aria-labelledby="catalog-structure">
             <h3>
               <button
@@ -110,6 +111,7 @@ export function ObjectCatalogSection() {
               </button>
             </div>}
           </section>
+          <div className="catalog-stage" aria-label="Añadir objetos"><strong>Añadir objetos</strong><span>Elige una categoría y pulsa la pieza que quieras colocar. Selecciónala después para editar sus propiedades.</span></div>
           {FURNITURE_FAMILIES.map((family) => {
             const kinds = (Object.keys(FURNITURE_CATALOG) as FurnitureKind[]).filter((kind) => FURNITURE_CATALOG[kind].family === family.id)
             return (

@@ -66,3 +66,11 @@ Un control solo debe aparecer si aporta valor inmediato en el contexto de la tar
 - [#45](https://github.com/Pablo-hg/Room-Builder/issues/45): imagen de plano con escala calibrada, líneas/esquinas sugeridas y trazado corregible; no interpretación automática.
 
 **Vivienda:** la vista Plano pasará de habitación individual a **planta global**, con selección de estancia y selector de nivel (#52/#53). No crear otra escena ni otra unidad de medida. La interacción detallada debe validarse con usuario antes de completar F4.
+
+## F1-03: claridad de controles y gestión de diseños (11/11/2026)
+
+**Implementación de la rama F1-03; pendiente de validación manual y E2E específicos.** Se diferencia la sección «Construir habitación» de «Añadir objetos» en el catálogo, manteniendo los mismos controles, iconos y categorías; el inspector vacío explica cómo editar una selección y dónde se encuentran las dimensiones. La barra de vistas identifica el grupo «Ver» sin ocultar las vistas avanzadas.
+
+La barra inferior refleja el estado **real** del diseño (sin guardar, cambios sin guardar, guardado). La biblioteca muestra un encabezado y conserva «Crear»/«Importar» como acciones directas; el texto explicativo se mueve a una ayuda desplegable para reducir ruido. La selección de un diseño que ya está abierto deja de volver a cargarlo y de generar una confirmación innecesaria, para no perder modificaciones accidentales. Se habilita navegación por flechas/Home/End dentro de la lista de diseños y apertura mediante flechas desde el selector. El formulario de creación indica inline cuando falta el nombre.
+
+**Contraste con referencias:** seguir un orden visual «medir/construir → amueblar → visualizar → guardar» de la comparativa de MyRoomPlanner y la sencillez de acceso al catálogo de Rooms.xyz/MakeRoom, sin clonar sus interfaces; conservar el inspector contextual de inspiración Figma y la estética de la guía visual vigente. No se cambian escenas, geometría, datos de guardado ni vistas.

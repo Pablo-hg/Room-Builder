@@ -645,3 +645,19 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
   .first-use-invitation { left: 16px; bottom: 16px; }
   .first-use-guide__card { left: 16px; bottom: 16px; top: auto; }
 }
+
+/* F1-03: pasos del catálogo, vistas y estado de guardado en pantallas estrechas. */
+.catalog-stage { display: grid; gap: 5px; border-top: 1px solid var(--line); padding: 12px 1px 0; }
+.catalog-stage:first-child { border-top: 0; padding-top: 0; }
+.catalog-stage strong { color: var(--forest); font-size: 12px; font-weight: 800; }
+.catalog-stage span { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.view-switcher__heading { padding: 0 7px 0 4px; font-size: 11px; color: var(--muted); font-weight: 800; }
+.statusbar__save { color: var(--forest); white-space: nowrap; }
+.statusbar__save--pending { color: var(--accent); }
+.statusbar__save--pending .status-dot { background: var(--accent); }
+.saved-design-menu__heading { display: flex; justify-content: space-between; gap: 10px; margin: 2px 5px 8px; font-size: 12px; font-weight: 750; }
+.saved-design-menu__heading span { color: var(--muted); font-weight: 600; }
+.saved-design-help { margin: 10px 4px 3px; border-top: 1px solid #e9e5de; padding: 8px 4px; color: var(--muted); font-size: 11px; }
+.saved-design-help summary { cursor: pointer; font-weight: 650; }
+.saved-design-help p { margin: 7px 0 0; font-size: 10px; line-height: 1.5; }
+@media (max-width: 770px) { .view-switcher__heading { display: none; } }
