@@ -162,3 +162,9 @@ Petición del propietario a partir de las capturas de una planta inferior. Se co
 - **Pendiente:** ejecución de unitarias/E2E/build/CI únicamente tras integración autorizada en `main`; no se ha abierto el navegador ni certificado visualmente el resultado de las capturas. Sin commits, PR ni publicación.
 
 Comprobación manual: enfocar una habitación de la planta inferior y alternar Isométrica → Plano → Isométrica, también después de panear. El título debe contener solo el nombre y la transición no debe corregir su posición al final. Arrastrar la cama a las dos paredes de la esquina, mantener el ratón en el mismo paso y comprobar el borde de contacto en Plano/Frontal/Isométrica. Continuar más allá de la banda debe permitir atravesar, sin modificar los bloqueos elegidos por el usuario.
+
+### CI en PR hacia main y push a main — política actualizada (11/11/2026)
+
+Por instrucción expresa del propietario, `.github/workflows/ci.yml` conserva `push.branches: [main]` y añade `pull_request.branches: [main]`, sin filtrar la rama de origen. Valida PR abiertas, reabiertas y nuevos commits contra `main`, además de cada push a `main`. Se conservan los jobs existentes: instalación limpia, unitarias, build y E2E Chromium completo repartido en cuatro fragmentos. Los push a `dev` y las PR cuyo destino sea `dev` no activan esta CI.
+
+`AGENTS.md` se actualiza para sustituir la regla anterior que posponía las pruebas hasta después de integrar. Las menciones anteriores de este informe se conservan como historial de lo ejecutado o pendiente en cada momento. El cambio se prepara para actualizar `dev`, origen de la PR #72, por autorización expresa para configurar GitHub; no autoriza fusionar ni publicar la aplicación. Los resultados reales se consultan en Actions: configurar el disparador no demuestra que las pruebas pasen ni activa por sí solo protecciones de rama.
