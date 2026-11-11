@@ -5,6 +5,7 @@ import { clampFurnitureElevation, validateOpenings } from '../domain/geometry'
 import type { PersistedDesign, SavedDesign } from '../domain/designV1'
 import { normalizeDesign } from './designMigrations'
 import { validateAxisLocks } from '../domain/axisLocks'
+import { validateFurnitureWallAttachment } from '../domain/furnitureWalls'
 
 export const DESIGN_FILE_MAX_BYTES = 2 * 1024 * 1024
 const FORMAT = 'room-builder-design'
@@ -90,13 +91,14 @@ function validateFurniture(value: unknown, room: RecordValue, occupied: Set<stri
     ids.add((item as RecordValue).id as string)
     const furniture = item as unknown as PersistedDesign['furniture'][number]
     validateAxisLocks(furniture.axisLocks)
+    validateFurnitureWallAttachment(furniture.wallAttachment)
     const attachment = furnitureAttachment(furniture)
     if ((attachment === 'floor' || attachment === 'ceiling') && Math.abs(furniture.y - clampFurnitureElevation(furniture, room as unknown as PersistedDesign['room'], false)) > 1e-9) invalid('Un mueble no respeta su anclaje.')
   }
 }
 
 function validateData(value: unknown): { data: PersistedDesign; sourceVersion: number; removedVariants: number } {
-  if (!object(value) || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(Number(value.version)) || typeof value.version !== 'number') invalid('La versión del diseño no es compatible.')
+  if (!object(value) || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].includes(Number(value.version)) || typeof value.version !== 'number') invalid('La versión del diseño no es compatible.')
   const source = value as RecordValue
   if (!object(source.room)) invalid('Falta la habitación.')
   const room = source.room as RecordValue

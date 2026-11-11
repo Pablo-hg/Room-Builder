@@ -6,6 +6,7 @@ import type { RoomState } from '../state/types'
 import type { WallSide } from './types'
 import { elementName } from './selection'
 import { furnitureAxisLocks } from './axisLocks'
+import { furnitureWallAxes } from './furnitureWalls'
 import { wallObjectAvailableAxes, wallObjectBox, wallObjects } from './wallObjectPlacement'
 import { worldOpenings } from './wallConnections'
 
@@ -30,7 +31,8 @@ export function multiSelectionItems(state: Pick<RoomState, 'room' | 'furniture' 
     const ext = furnitureHalfExtents(item)
     const y = item.y + furnitureVisualYOffset(item, state)
     const locks = furnitureAxisLocks(item)
-    const axes: Axis[] = (['x', 'y', 'z'] as const).filter((axis) => !locks[axis] && (axis !== 'y' || canElevateFurniture(item)))
+    const available = furnitureWallAxes(state, item)
+    const axes: Axis[] = (['x', 'y', 'z'] as const).filter((axis) => !locks[axis] && available[axis] && (axis !== 'y' || canElevateFurniture(item)))
     items.push({ id: item.id, name: item.name, color: item.color, type: 'furniture', axes, min: { x: item.x - ext.halfWidth, y, z: item.z - ext.halfDepth }, max: { x: item.x + ext.halfWidth, y: y + item.height, z: item.z + ext.halfDepth } })
   }
   for (const { window, pack } of wallObjects(state)) {

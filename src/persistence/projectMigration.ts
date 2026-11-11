@@ -4,6 +4,7 @@ import { validateOpenings } from '../domain/geometry'
 import { normalizeDesignPreferences, normalizeStructurePacks } from '../domain/normalizeDesignV1'
 import { FURNITURE_PRESETS, isWindowShape } from '../domain/objectCatalog'
 import { validateAxisLocks } from '../domain/axisLocks'
+import { validateFurnitureWallAttachments } from '../domain/furnitureWalls'
 import { validateFreeWallPosition, validateWallPosition } from '../domain/freeWallPosition'
 import { rootDoorPack, structureDoorError } from '../domain/structureDoors'
 import {
@@ -76,7 +77,8 @@ function assertMigratableDesign(data: PersistedDesign): void {
       || !isPositive(item.height)
     ) throw new Error('invalid furniture')
   }
-  if (data.structurePacks !== undefined) normalizeStructurePacks(data.structurePacks, room)
+  const structurePacks = normalizeStructurePacks(data.structurePacks, room)
+  validateFurnitureWallAttachments({ room, furniture: data.furniture, structurePacks }, data.version)
   if (data.version < 10 && [room.door, ...(room.extraDoors ?? []), ...room.windows,
     ...(data.structurePacks ?? []).flatMap((pack) => [...(pack.doors ?? []), ...(pack.windows ?? [])])].some((item) => item.wallPosition !== undefined)) throw new Error('Los anclajes compartidos requieren v10.')
   if (data.version < 9 && [...room.windows, ...(data.structurePacks ?? []).flatMap((pack) => pack.windows ?? [])].some((window) => window.freePosition !== undefined)) throw new Error('Las posiciones libres requieren v9.')
@@ -320,6 +322,7 @@ export function projectToPersistedDesignV1(project: ProjectV2, layoutId = projec
     windows,
   }
   const furniture: FurnitureItem[] = layout.furniture.map((item) => ({
+    ...(item.wallAttachment ? { wallAttachment: { ...item.wallAttachment } } : {}),
     ...(item.axisLocks ? { axisLocks: { ...item.axisLocks } } : {}),
     ...(item.attachmentPolicy ? { attachmentPolicy: item.attachmentPolicy } : {}),
     id: item.id,

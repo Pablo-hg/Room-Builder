@@ -82,6 +82,7 @@ export interface RoomConfig {
 }
 
 export interface FurnitureItem {
+  wallAttachment?: import('./furnitureWalls').FurnitureWallAttachment
   axisLocks?: AxisLocks
   /** Ausente en objetos antiguos: conserva su libertad de movimiento previa. */
   attachmentPolicy?: 'by-type'

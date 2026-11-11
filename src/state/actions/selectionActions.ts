@@ -192,6 +192,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
           for (const copy of copies) {
             if ('kind' in copy) {
               const item: FurnitureItem = { ...copy, id: makeId(copy.kind), attachmentPolicy: 'by-type' }
+              delete item.wallAttachment
               if (!item.axisLocks) item.y = canElevateFurniture(item) ? snapMeasurement(item.y) : clampFurnitureElevation(item, state.room, false)
               const offsets = [[0.5, 0.5], [0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5], [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5]] as const
               const room = { ...state.room, windows }
@@ -249,6 +250,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
       set((state) => {
         if ('kind' in copy) {
           const item: FurnitureItem = { ...copy, id: makeId(copy.kind), attachmentPolicy: 'by-type' }
+          delete item.wallAttachment
           if (!item.axisLocks) item.y = canElevateFurniture(item) ? snapMeasurement(item.y) : clampFurnitureElevation(item, state.room, false)
           const offsets = [
             [0.5, 0.5], [0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5],

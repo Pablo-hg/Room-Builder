@@ -5,8 +5,9 @@ import { doorWorldPosition, inwardDirection, shortestAngleDelta, topViewWallForO
 import type { ViewMode, WallSide } from '../domain/types'
 import type { SceneProps } from './types'
 import { useRoomStore } from '../state/useRoomStore'
-import { shouldOrbitFront } from './cameraTransitions'
-import { packRoomBox } from '../domain/roomEditing'
+import { shouldOrbitFront, spatialCameraOrbit, spatialCameraPosition } from './cameraTransitions'
+import { packRoomBox, worldRoomBoxes } from '../domain/roomEditing'
+import { cameraFarPlane } from './cameraClipping'
 
 const ISOMETRIC_CAMERA_TARGET_HEIGHT = 0.8
 
@@ -24,8 +25,9 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
   const roomY = (activeRoom?.y ?? 0) + (activeBox?.y ?? 0)
   const roomZ = (activeRoom?.z ?? 0) + (activeBox?.z ?? 0)
   const hasFloors = useRoomStore((state) => state.structurePacks.some((pack) => pack.id.startsWith('floor-pack-')))
+  const structurePacks = useRoomStore((state) => state.structurePacks)
   const initialized = useRef(false)
-  const previousMode = useRef({ view, wallView, activeRoomId, roomX, roomY, roomZ, isoCameraHeight })
+  const previousMode = useRef({ view, wallView, activeRoomId, roomX, roomY, roomZ, isoCameraHeight, topCameraX, topCameraZ, roomHeight: room.height })
   const previousFreeOffset = useRef(freeCameraOffset)
   const [reduceMotion, setReduceMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   const animation = useRef<{
@@ -82,7 +84,7 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
     const previous = previousMode.current
     const freeMoved = previousFreeOffset.current !== freeCameraOffset
     previousFreeOffset.current = freeCameraOffset
-    previousMode.current = { view, wallView, activeRoomId, roomX, roomY, roomZ, isoCameraHeight }
+    previousMode.current = { view, wallView, activeRoomId, roomX, roomY, roomZ, isoCameraHeight, topCameraX, topCameraZ, roomHeight: room.height }
     const targetCamera = camera.clone()
     const frontLookHeight = roomY + room.height / 2
     let targetZoom = 1
@@ -115,7 +117,7 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
         south: [0, 0, 1],
         west: [-1, 0, 0],
       }
-      targetCamera.position.set(roomX + topCameraX, roomY + Math.max(12, room.height + 5), roomZ + topCameraZ + 0.001)
+      targetCamera.position.set(roomX + topCameraX, roomY + Math.max(12, room.height + 5), roomZ + topCameraZ)
       targetCamera.up.set(...topViewUp[topViewWallForOrientation(orientation)])
       targetCamera.lookAt(roomX + topCameraX, roomY, roomZ + topCameraZ)
       targetZoom = Math.max(1, zoom)
@@ -152,6 +154,13 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
 
     targetZoom *= cameraZoom
     if (targetCamera instanceof THREE.OrthographicCamera || targetCamera instanceof THREE.PerspectiveCamera) targetCamera.zoom = targetZoom
+    // El plano lejano crece con la escena: evita que las habitaciones grandes
+    // salgan cortadas. Cubre el origen y el destino de la transición.
+    const far = cameraFarPlane([camera.position, targetCamera.position], worldRoomBoxes(anchorRoom, structurePacks))
+    for (const candidate of [camera, targetCamera]) {
+      if (candidate instanceof THREE.OrthographicCamera || candidate instanceof THREE.PerspectiveCamera) candidate.far = far
+    }
+    camera.updateProjectionMatrix()
     targetCamera.updateProjectionMatrix()
     const currentZoom = 'zoom' in camera ? camera.zoom : 1
 
@@ -195,21 +204,18 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
     ) || (
       elevatedRoomView(view) && previous.view === 'top'
     )
-    const roomOrbitCenter = new THREE.Vector3(0, room.height / 2, 0)
-    const fromSpherical = new THREE.Spherical().setFromVector3(camera.position.clone().sub(roomOrbitCenter))
-    const toSpherical = new THREE.Spherical().setFromVector3(targetCamera.position.clone().sub(roomOrbitCenter))
-    const fromTheta = previous.view === 'top' ? toSpherical.theta : fromSpherical.theta
-    const toTheta = view === 'top' ? fromTheta : toSpherical.theta
-    const spatialOrbit = shouldOrbitBetweenRoomAndTop ? {
-      fromCenter: roomOrbitCenter,
-      toCenter: roomOrbitCenter,
-      fromRadius: fromSpherical.radius,
-      toRadius: toSpherical.radius,
-      fromPhi: fromSpherical.phi,
-      toPhi: toSpherical.phi,
-      fromTheta,
-      toTheta: fromTheta + shortestAngleDelta(fromTheta, toTheta),
-    } : null
+    const fromRoomCenter = new THREE.Vector3(
+      previous.roomX + (previous.view === 'top' ? previous.topCameraX : 0),
+      previous.roomY + previous.roomHeight / 2,
+      previous.roomZ + (previous.view === 'top' ? previous.topCameraZ : 0),
+    )
+    const toRoomCenter = new THREE.Vector3(
+      roomX + (view === 'top' ? topCameraX : 0),
+      roomY + room.height / 2,
+      roomZ + (view === 'top' ? topCameraZ : 0),
+    )
+    const spatialOrbit = shouldOrbitBetweenRoomAndTop
+      ? spatialCameraOrbit(camera.position, targetCamera.position, fromRoomCenter, toRoomCenter) : null
 
     animation.current = {
       active: true,
@@ -228,7 +234,7 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
       camera.aspect = targetCamera.aspect
       camera.updateProjectionMatrix()
     }
-  }, [camera, cameraZoom, freeAzimuth, freeElevation, frontCameraHeight, isoAngle, isFreeOrbitDragging, isIsoOrbitDragging, orientation, povYaw, reduceMotion, room, size, view, wallView, topCameraX, topCameraZ, isoCameraHeight, freeCameraOffset, activeRoom, hasFloors, roomX, roomY, roomZ])
+  }, [camera, cameraZoom, freeAzimuth, freeElevation, frontCameraHeight, isoAngle, isFreeOrbitDragging, isIsoOrbitDragging, orientation, povYaw, reduceMotion, room, size, view, wallView, topCameraX, topCameraZ, isoCameraHeight, freeCameraOffset, activeRoom, hasFloors, roomX, roomY, roomZ, anchorRoom, structurePacks])
 
   useFrame((_, delta) => {
     const transition = animation.current
@@ -238,13 +244,7 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
     const progress = transition.elapsed / transition.duration
     const eased = 1 - Math.pow(1 - progress, 3)
     if (transition.spatialOrbit) {
-      const center = new THREE.Vector3().lerpVectors(transition.spatialOrbit.fromCenter, transition.spatialOrbit.toCenter, eased)
-      const spherical = new THREE.Spherical(
-        THREE.MathUtils.lerp(transition.spatialOrbit.fromRadius, transition.spatialOrbit.toRadius, eased),
-        THREE.MathUtils.lerp(transition.spatialOrbit.fromPhi, transition.spatialOrbit.toPhi, eased),
-        THREE.MathUtils.lerp(transition.spatialOrbit.fromTheta, transition.spatialOrbit.toTheta, eased),
-      )
-      camera.position.setFromSpherical(spherical).add(center)
+      camera.position.copy(spatialCameraPosition(transition.spatialOrbit, eased))
       camera.quaternion.slerpQuaternions(transition.fromQuaternion, transition.toQuaternion, eased)
     } else if (transition.orbit) {
       const angle = THREE.MathUtils.lerp(transition.orbit.fromAngle, transition.orbit.toAngle, eased)

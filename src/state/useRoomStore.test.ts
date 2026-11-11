@@ -249,15 +249,15 @@ test('migra espejos de diseños guardados desde el suelo a una pared', () => {
   }
 })
 
-test('permite habitaciones de hasta 100 m y limita el zoom entre 25 % y 300 %', () => {
+test('permite habitaciones de hasta 15 m de alto y limita el zoom entre 25 % y 300 %', () => {
   const store = testStore
 
   store.getState().setDimension('height', 10)
   assert.equal(store.getState().room.height, 10)
-  store.getState().setDimension('height', 100)
-  assert.equal(store.getState().room.height, 100)
+  store.getState().setDimension('height', 15)
+  assert.equal(store.getState().room.height, 15)
   store.getState().setDimension('height', 200)
-  assert.equal(store.getState().room.height, 100)
+  assert.equal(store.getState().room.height, 15)
 
   store.getState().setFrontCameraHeight(20)
   assert.equal(store.getState().frontCameraHeight, 10)

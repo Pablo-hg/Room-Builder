@@ -91,7 +91,7 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode, kin
   </>
 }
 
-export function WorldWallObjects({ room, structurePacks, collisionIds, exportMode, level, levelHeight, focusedView, frontVisibleWalls }: { room: RoomConfig; structurePacks: StructurePack[]; collisionIds: ReadonlySet<string>; exportMode: boolean; level: number; levelHeight: number; focusedView: boolean; frontVisibleWalls?: ReadonlySet<string> }) {
+export function WorldWallObjects({ room, structurePacks, collisionIds, exportMode, level, levelHeight, focusedView, frontVisibleWalls, strictLevel = false }: { room: RoomConfig; structurePacks: StructurePack[]; collisionIds: ReadonlySet<string>; exportMode: boolean; level: number; levelHeight: number; focusedView: boolean; frontVisibleWalls?: ReadonlySet<string>; /** Copias de otras plantas en Plano: no incluir la selección de otra planta. */ strictLevel?: boolean }) {
   const hidden = useRoomStore((state) => state.hiddenElementIds)
   const selected = useRoomStore((state) => state.selectedIds)
   const world = { room, structurePacks }
@@ -102,7 +102,7 @@ export function WorldWallObjects({ room, structurePacks, collisionIds, exportMod
     if (supports.length && supports.every((wall) => hidden.includes(wall.id) || !!wall.packId && hidden.includes(wall.packId))) return false
     if (!supports.length && opening.packId && hidden.includes(opening.packId)) return false
     const position = opening.position
-    return !focusedView || selected.includes(opening.id) || position.y + opening.height > level - 0.01 && position.y < level + levelHeight
+    return !focusedView || (!strictLevel && selected.includes(opening.id)) || position.y + opening.height > level - 0.01 && position.y < level + levelHeight
   }).map((opening) => {
     const pack = structurePacks.find((pack) => pack.id === opening.packId)
     const window: WindowConfig = { ...opening.object, id: opening.id, shape: opening.shape ?? 'rectangular', sill: 'sill' in opening.object ? Number(opening.object.sill) : 0 }

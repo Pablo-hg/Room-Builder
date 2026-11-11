@@ -7,7 +7,7 @@ import { persistedDesign } from '../domain/designV1'
 import { packRoomBox } from '../domain/roomEditing'
 import { createRoomStore } from './useRoomStore'
 
-test('todas las dimensiones de la habitación raíz admiten de 0,01 a 100 metros', () => {
+test('las dimensiones de la habitación raíz admiten de 0,01 m a 50 m de planta y 15 m de alto', () => {
   const store = createRoomStore()
   for (const dimension of ['width', 'depth', 'height'] as const) {
     store.getState().setDimension(dimension, 0.01)
@@ -16,11 +16,14 @@ test('todas las dimensiones de la habitación raíz admiten de 0,01 a 100 metros
   assert.equal(validateOpenings(store.getState().room), null)
   const saved = persistedDesign(store.getState())
   assert.equal(normalizeDesign(saved).room.height, 0.01)
+  const maximum = { width: 50, depth: 50, height: 15 } as const
   for (const dimension of ['width', 'depth', 'height'] as const) {
+    store.getState().setDimension(dimension, maximum[dimension])
+    assert.equal(store.getState().room[dimension], maximum[dimension])
     store.getState().setDimension(dimension, 100)
-    assert.equal(store.getState().room[dimension], 100)
+    assert.equal(store.getState().room[dimension], maximum[dimension], `${dimension} no supera el máximo`)
   }
-  assert.equal(normalizeDesign(persistedDesign(store.getState())).room.width, 100)
+  assert.equal(normalizeDesign(persistedDesign(store.getState())).room.width, 50)
 })
 
 test('no permite una dimensión nula y limita los valores fuera de rango', () => {
@@ -45,7 +48,7 @@ test('habitaciones adicionales mantienen sus superficies y pueden tener dimensio
   assert.equal(normalizeDesign(saved).structurePacks?.length, 1)
   for (const dimension of ['width', 'depth', 'height'] as const) {
     store.getState().setFocusedRoomDimension(dimension, 100)
-    assert.equal(packRoomBox(store.getState().structurePacks.find((pack) => pack.id === id)!, store.getState().room)?.[dimension], 100)
+    assert.equal(packRoomBox(store.getState().structurePacks.find((pack) => pack.id === id)!, store.getState().room)?.[dimension], dimension === 'height' ? 15 : 50)
   }
 })
 

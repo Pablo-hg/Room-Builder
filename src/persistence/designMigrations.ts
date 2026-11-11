@@ -5,6 +5,7 @@ import type { FurnitureItem, RoomConfig, WallSide, WindowConfig } from '../domai
 import { clampFurnitureElevation, snapToVisibleGrid, validateOpenings } from '../domain/geometry'
 import { furnitureAttachment, FURNITURE_PRESETS, isWallPictureKind, isWindowShape, OPENING_CATALOG } from '../domain/objectCatalog'
 import { validateAxisLocks } from '../domain/axisLocks'
+import { validateFurnitureWallAttachments } from '../domain/furnitureWalls'
 import { structureDoorsWorldError } from '../domain/structureDoors'
 import { structureGridElementId, structureSurfaceElementId } from '../domain/elementIds'
 import { BASE_ROOM_SURFACE_IDS, folderSelectionId } from '../domain/elementFolders'
@@ -64,6 +65,7 @@ export function normalizeDesign(value: unknown): PersistedDesign {
     return { ...item, width: item.width ?? preset?.width, depth: item.depth ?? preset?.depth, height: item.height ?? preset?.height, y: item.y ?? 0 }
   })
   validateFurniture(furniture, migrated.room)
+  validateFurnitureWallAttachments({ room: migrated.room, structurePacks, furniture }, source.version)
   return { ...source, room: migrated.room, structurePacks, furniture, ...normalizeDesignPreferences(source) }
 }
 

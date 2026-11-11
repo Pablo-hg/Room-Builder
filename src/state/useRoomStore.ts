@@ -22,6 +22,7 @@ import { createWallObjectActions } from './actions/wallObjectActions'
 import { rootDoorPack, structureDoorsWorldError, structureDoorPosition } from '../domain/structureDoors'
 import { packRoomBox } from '../domain/roomEditing'
 import { movedSceneFolderAssignments } from '../domain/spatialFolderPlacement'
+import { constrainFurnitureWalls, type FurnitureWallMagnets } from '../domain/furnitureWalls'
 import { anchorWallOpenings, connectedOpeningError, fitOpeningToConnectedRun, openingHasSupport, openingTranslationSupported, openingWallRun, reconcileWallOpeningPositions, worldOpenings } from '../domain/wallConnections'
 
 export { structureSurfaceElementId } from '../domain/elementIds'
@@ -36,6 +37,7 @@ function editorNotice(notice: string): string {
 export const createRoomStore = (repository: DesignRepository = createLocalDesignRepository()) => create<RoomState>((storeSet, get) => {
   // Camera navigation is session state, never part of a saved design or undo entry.
   let roomFocusHistory: Array<string | null> = [null]
+  const furnitureWallMagnets: FurnitureWallMagnets = new Map()
   const runtime: RoomRuntime = {
     undoHistory: [],
     redoHistory: [],
@@ -48,6 +50,8 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
   const set = (update: RoomUpdate) => {
     let current = get()
     const requestedUpdate = typeof update === 'function' ? update(current) : update
+    const furnitureMoveSource = runtime.furnitureMoveSource
+    runtime.furnitureMoveSource = undefined
     if (Object.keys(requestedUpdate).length === 1 && requestedUpdate.notice) rejectDiagnosticAction('rule-rejected')
     const rawUpdate = requestedUpdate.notice ? { ...requestedUpdate, notice: editorNotice(requestedUpdate.notice) } : requestedUpdate
     const oldOpeningGeometry = new Map(worldOpenings(current).map((opening) => [opening.id, opening]))
@@ -143,6 +147,16 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     const packs = nextUpdate.structurePacks ?? current.structurePacks
     const validFocus = (id: string | null) => id === null || packs.some((pack) => pack.id === id && pack.id.startsWith('floor-pack-'))
     const replacingDesign = Object.hasOwn(rawUpdate, 'room') && Object.hasOwn(rawUpdate, 'selectedSavedDesignId')
+    if (runtime.isUndoing || replacingDesign) furnitureWallMagnets.clear()
+    if (!runtime.isUndoing && !replacingDesign && (nextUpdate.furniture || nextUpdate.room || nextUpdate.structurePacks)) {
+      const constrained = constrainFurnitureWalls(current, { ...current, ...nextUpdate }, furnitureWallMagnets, furnitureMoveSource)
+      if (!constrained) {
+        rejectDiagnosticAction('furniture-wall-constraint')
+        storeSet({ notice: 'La pared o un eje bloqueado impide el cambio. Despega el objeto para girarlo.' })
+        return
+      }
+      nextUpdate = { ...nextUpdate, ...constrained }
+    }
     let nextFocusHistory = replacingDesign ? [null] : roomFocusHistory.filter(validFocus)
     const requestedFocus = replacingDesign ? null : nextUpdate.activeRoomId === undefined ? current.activeRoomId : nextUpdate.activeRoomId
     const activeRoomId = validFocus(requestedFocus) ? requestedFocus : [...nextFocusHistory].reverse().find(validFocus) ?? null
@@ -236,6 +250,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     topOrientation: 0,
     topCameraX: 0,
     topCameraZ: 0,
+    planDetailsVisible: false,
     activeRoomId: null,
     setActiveRoomId: (activeRoomId) => set({ activeRoomId }),
     isoAngle: ISO_BASE_ANGLE,
