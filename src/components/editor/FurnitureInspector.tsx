@@ -55,8 +55,8 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
             : moveFurniture(selectedFurniture.id, axis === 'x' ? value : selectedFurniture.x, axis === 'z' ? value : selectedFurniture.z),
         }
         return attachment
-          ? <PositionControl key={axis} {...props} />
-          : <AxisPositionControl key={axis} {...props} id={selectedFurniture.id} locked={locks[axis]} />
+          ? <PositionControl key={axis} {...props} axis={axis} />
+          : <AxisPositionControl key={axis} {...props} id={selectedFurniture.id} axis={axis} locked={locks[axis]} />
       })}
       {canRotate && <RotationControl
         rotation={selectedFurniture.rotation}
