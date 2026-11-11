@@ -14,6 +14,8 @@ import { AxisMoveGizmo, FrontAxisMoveGizmo, RotationHandle, FrontRotationHandle 
 import { SelectionBounds } from './SelectionBounds'
 import { furnitureHasSpatialWarning } from '../domain/structureCollisions'
 import { cameraAwareShiftDrag } from './cameraAwareShiftDrag'
+import { physicalWalls } from '../domain/wallConnections'
+import { beginWallSurfaceDrag, moveWallSurfaceDrag, type WallSurfaceDrag } from './wallSurfaceDrag'
 
 export function FurnitureObject({ item, selected, outlined, canDrag, planView, frontWall, showCollision = true, colliding = false }: { item: FurnitureItem; selected: boolean; outlined: boolean; canDrag: boolean; planView: boolean; frontWall: WallSide | null; showCollision?: boolean; colliding?: boolean }) {
   const gesture = useHistoryGesture(item.id)
@@ -28,9 +30,13 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
   const structurePacks = useRoomStore((state) => state.structurePacks)
   const visualY = item.y + furnitureVisualYOffset(item, { room, structurePacks })
   const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), -visualY), [visualY])
+  const attachedWall = useMemo(() => item.wallAttachment
+    ? physicalWalls({ room, structurePacks }).find((wall) => wall.id === item.wallAttachment?.wallId)
+    : undefined, [item.wallAttachment?.wallId, room, structurePacks])
   const point = useMemo(() => new THREE.Vector3(), [])
   const dragOffset = useRef({ x: 0, z: 0 })
   const dragOrigin = useRef({ x: item.x, z: item.z })
+  const wallSurfaceDrag = useRef<WallSurfaceDrag | null>(null)
   const shiftClickPending = useRef(false)
   const frontDragStart = useRef({ clientX: 0, clientY: 0, x: item.x, y: item.y, z: item.z })
 
@@ -40,6 +46,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
       gesture.cancel()
     }
     shiftClickPending.current = false
+    wallSurfaceDrag.current = null
     setDragging(false)
   }
 
@@ -79,6 +86,20 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
       setDragging(true)
       capturePointer(event)
       return
+    }
+    // En isométrica/libre, arrastrar el propio objeto fijado usa el plano de la pared.
+    // Así el movimiento vertical del ratón desplaza Y sin necesidad de agarrar la flecha.
+    // En plano seguimos trabajando sobre el suelo (la altura no es visible en esa vista).
+    wallSurfaceDrag.current = null
+    if (!planView && attachedWall) {
+      const wallDrag = beginWallSurfaceDrag(event.ray, attachedWall.yaw, { x: item.x, y: item.y, z: item.z })
+      if (wallDrag) {
+        wallSurfaceDrag.current = wallDrag
+        gesture.begin()
+        setDragging(true)
+        capturePointer(event)
+        return
+      }
     }
     const intersectsFloor = event.ray.intersectPlane(floorPlane, point) !== null
     if (!intersectsFloor && !shiftClickPending.current) return
@@ -125,6 +146,14 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
       }
       return
     }
+    if (wallSurfaceDrag.current) {
+      const projected = moveWallSurfaceDrag(event.ray, wallSurfaceDrag.current)
+      if (!projected) return
+      const start = frontDragStart.current
+      moveFurniture(item.id, moveFromOrigin(projected.x, start.x), moveFromOrigin(projected.z, start.z), 'pointer')
+      if (canMoveVertically) moveFurnitureVertically(item.id, moveFromOrigin(projected.y, start.y))
+      return
+    }
     if (event.ray.intersectPlane(floorPlane, point)) {
       moveFurniture(item.id, moveFromOrigin(point.x - dragOffset.current.x, dragOrigin.current.x), moveFromOrigin(point.z - dragOffset.current.z, dragOrigin.current.z), 'pointer')
     }
@@ -145,6 +174,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
       z: finalItem?.z,
     })
     gesture.commit()
+    wallSurfaceDrag.current = null
     setDragging(false)
     releasePointer(event)
   }

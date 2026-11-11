@@ -82,3 +82,7 @@ Se eleva el tamaño de las tipografías pequeñas del editor (de 9–13 px a apr
 ## F1-03: casilla única de fijación a pared
 
 El inspector de muebles muestra solo la casilla **Fijar a pared**, sin repetir título ni ofrecer las casillas «Bloquear movimiento lateral» y «Mantener altura». Al activarla, el mueble se apoya en la cara válida más cercana si aún no está en contacto; la geometría restringe el desplazamiento perpendicular a la pared, dejando libres altura y deslizamiento lateral. No se despega al empujarlo: para volver al movimiento XYZ libre se desmarca la casilla. Las fijaciones antiguas con `lockLateral` siguen leyéndose por compatibilidad, pero ya no fuerzan un bloqueo invisible de deslizamiento.
+
+## F1-03: arrastre directo de muebles fijados en vistas 3D (11/11/2026)
+
+En Isométrica y Libre, el arrastre del cuerpo de un mueble fijado a pared se proyecta sobre un plano vertical paralelo a su pared soporte: se mueve lateralmente y en altura con un solo gesto, **sin utilizar la flecha Y del gizmo**. El cursor conserva su punto de agarre para evitar saltos; no cambia la distancia perpendicular ni se despega el objeto. La vista Frontal mantiene su gesto vertical existente y Plano conserva el movimiento sobre el suelo, pues no permite percibir la altura. Los controles de giro, gestos con Mayús, historial y las posiciones numéricas siguen operativos. Cobertura unitaria dirigida en `src/scene/wallSurfaceDrag.test.ts`; revisar arrastre real en navegador antes de certificar.
