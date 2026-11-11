@@ -1,5 +1,6 @@
 import type { ElementFolder, FurnitureKind, GridSurface, StructurePack, WallSide, WindowShape } from './types'
 import { validateAxisLocks } from './axisLocks'
+import { validateFurnitureWallAttachment } from './furnitureWalls'
 import { validateFreeWallPosition, validateWallPosition } from './freeWallPosition'
 
 /**
@@ -85,6 +86,7 @@ export interface FurnitureDefinitionV2 {
 }
 
 export interface FurnitureInstanceV2 {
+  wallAttachment?: import('./furnitureWalls').FurnitureWallAttachment
   axisLocks?: import('./types').AxisLocks
   attachmentPolicy?: 'by-type'
   id: string
@@ -126,7 +128,7 @@ export interface ProjectMetadataV2 {
   createdAt: string
   updatedAt: string
   source: 'v1-design' | 'new'
-  migratedFromVersion?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
+  migratedFromVersion?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11
 }
 
 export interface ProjectV2 {
@@ -527,6 +529,8 @@ export function validateProject(project: ProjectV2): ProjectValidationIssue[] {
     const furnitureIds = new Set<string>()
     for (const [furnitureIndex, item] of layout.furniture.entries()) {
       const itemPath = `${path}.furniture[${furnitureIndex}]`
+      try { validateFurnitureWallAttachment(item.wallAttachment) }
+      catch { add('invalid-furniture', `${itemPath}.wallAttachment`, 'Fijación de mueble inválida.') }
       try { validateAxisLocks(item.axisLocks) }
       catch { add('invalid-furniture', `${itemPath}.axisLocks`, 'Bloqueos de posición inválidos.') }
       if (!isNonEmptyString(item.id)) add('invalid-furniture', `${itemPath}.id`, 'Identificador de mueble vacío.')

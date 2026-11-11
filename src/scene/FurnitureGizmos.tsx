@@ -11,7 +11,7 @@ import { releasePointer, usePointerCancellation } from './usePointerCancellation
 import { AXIS_COLORS } from './axisColors'
 import { AxisAnchor } from './AxisAnchor'
 import { canElevateFurniture, furnitureVisualYOffset } from '../domain/objectCatalog'
-import { furnitureAxisLocks } from '../domain/axisLocks'
+import { furnitureWallAxes } from '../domain/furnitureWalls'
 
 type FloorMoveAxis = 'x' | 'y' | 'z'
 
@@ -246,6 +246,9 @@ export function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall:
 }
 
 export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canMoveVertically = true }: { item: FurnitureItem; groundLevel?: boolean; hideAxis?: FloorMoveAxis | null; canMoveVertically?: boolean }) {
+  const room = useRoomStore((state) => state.room)
+  const structurePacks = useRoomStore((state) => state.structurePacks)
+  const available = furnitureWallAxes({ room, structurePacks }, item)
   const gesture = useHistoryGesture(item.id)
   const moveFurniture = useRoomStore((state) => state.moveFurniture)
   const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
@@ -308,14 +311,14 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
         ? event.nativeEvent.clientX - fallback.clientX
         : fallback.clientY - event.nativeEvent.clientY
       const delta = snapMovement(pixels * worldPerPixel)
-      if (fallback.axis === 'x') moveFurniture(item.id, fallback.x + delta, fallback.z)
+      if (fallback.axis === 'x') moveFurniture(item.id, fallback.x + delta, fallback.z, 'pointer')
       else if (fallback.axis === 'y') moveFurnitureVertically(item.id, fallback.y + delta)
-      else moveFurniture(item.id, fallback.x, fallback.z + delta)
+      else moveFurniture(item.id, fallback.x, fallback.z + delta, 'pointer')
       return
     }
     if (!event.ray.intersectPlane(floorPlane, point)) return
-    if (draggingAxis === 'x') moveFurniture(item.id, moveFromOrigin(point.x - dragOffset.current, dragOrigin.current.x), item.z)
-    else if (draggingAxis === 'z') moveFurniture(item.id, item.x, moveFromOrigin(point.z - dragOffset.current, dragOrigin.current.z))
+    if (draggingAxis === 'x') moveFurniture(item.id, moveFromOrigin(point.x - dragOffset.current, dragOrigin.current.x), item.z, 'pointer')
+    else if (draggingAxis === 'z') moveFurniture(item.id, item.x, moveFromOrigin(point.z - dragOffset.current, dragOrigin.current.z), 'pointer')
   }
 
   const stopDrag = (event: ThreeEvent<PointerEvent>) => {
@@ -360,7 +363,7 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
 
   return (
     <AxisAnchor center={[0, item.height / 2, 0]} dimensions={[item.width, item.height, item.depth]}>
-      {hideAxis !== 'x' && !furnitureAxisLocks(item).x && <group {...axisEvents('x')}>
+      {hideAxis !== 'x' && available.x && <group {...axisEvents('x')}>
         {([-1, 1] as const).map((direction) => (
           <group key={direction}>
             <mesh position={[direction * shaftLength / 2, 0, 0]} renderOrder={8}>
@@ -379,7 +382,7 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
           </group>
         ))}
       </group>}
-      {hideAxis !== 'z' && !furnitureAxisLocks(item).z && <group {...axisEvents('z')}>
+      {hideAxis !== 'z' && available.z && <group {...axisEvents('z')}>
         {([-1, 1] as const).map((direction) => (
           <group key={direction}>
             <mesh position={[0, 0, direction * shaftLength / 2]} renderOrder={8}>
@@ -422,6 +425,9 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
 }
 
 export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: WallSide }) {
+  const room = useRoomStore((state) => state.room)
+  const structurePacks = useRoomStore((state) => state.structurePacks)
+  const available = furnitureWallAxes({ room, structurePacks }, item)
   const gesture = useHistoryGesture(item.id)
   const moveFurniture = useRoomStore((state) => state.moveFurniture)
   const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
@@ -484,6 +490,7 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
         item.id,
         horizontalAxis === 'x' ? dragStart.current.x + delta : dragStart.current.x,
         horizontalAxis === 'z' ? dragStart.current.z + delta : dragStart.current.z,
+        'pointer',
       )
     } else {
       moveFurnitureVertically(item.id, dragStart.current.y + snapMovement(-deltaY * worldPerPixel()))
@@ -562,7 +569,7 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
   return (
     <group position={[0, item.height / 2, 0]} rotation={planeRotation}>
       <AxisAnchor center={[0, 0, 0]} dimensions={[item.width, item.height, item.depth]}>
-      {!furnitureAxisLocks(item)[horizontalAxis] && renderAxis('horizontal')}
+      {available[horizontalAxis] && renderAxis('horizontal')}
       {canMoveVertically && renderAxis('vertical')}
       </AxisAnchor>
     </group>

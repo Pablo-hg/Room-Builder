@@ -18,12 +18,15 @@ export const WALL_LABELS: Record<WallSide, string> = {
 }
 
 export const ROOM_LIMITS = {
+  // Límites de edición (10/11/2026, petición del propietario): 50 m de planta
+  // y 15 m de alto. La importación sigue aceptando diseños antiguos de hasta
+  // 100 m para no romperlos; al editarlos se ajustan a estos límites.
   minWidth: 0.01,
-  maxWidth: 100,
+  maxWidth: 50,
   minDepth: 0.01,
-  maxDepth: 100,
+  maxDepth: 50,
   minHeight: 0.01,
-  maxHeight: 100,
+  maxHeight: 15,
   wallHeight: 2.7,
   edgeMargin: 0.25,
   openingGap: 0.15,

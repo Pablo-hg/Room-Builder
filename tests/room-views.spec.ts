@@ -196,10 +196,11 @@ test('crea habitaciones en distintas caras y cambia de habitación en las vistas
     await page.getByRole('button', { name: view, exact: true }).click()
     const selector = page.getByLabel('Cámara enfocada en…')
     await expect(selector.locator('option')).toHaveCount(3)
-    if (view !== 'Plano') {
-      await expect(selector.locator('optgroup')).toHaveCount(2)
-      await expect(selector.locator('optgroup').nth(1).locator('option')).toHaveCount(2)
-    } else await expect(selector.locator('optgroup')).toHaveCount(0)
+    // Todas las vistas, también Plano, agrupan por plantas numeradas.
+    await expect(selector.locator('optgroup')).toHaveCount(2)
+    await expect(selector.locator('optgroup').nth(0)).toHaveAttribute('label', 'Planta 0')
+    await expect(selector.locator('optgroup').nth(1)).toHaveAttribute('label', 'Planta 1')
+    await expect(selector.locator('optgroup').nth(1).locator('option')).toHaveCount(2)
     await selector.selectOption({ label: 'Raíz' })
     const canvas = page.locator('.scene-panel canvas').first()
     const base = await canvas.screenshot()

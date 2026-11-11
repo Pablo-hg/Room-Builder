@@ -1,9 +1,33 @@
-import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { FRONT_CAMERA_MAX_HEIGHT, FRONT_CAMERA_MIN_HEIGHT } from '../../domain/constants'
+import { planRoomDimensions, planRoomDimensionsSummary } from '../../domain/planDimensions'
+import { ROOT_ROOM_FOLDER } from '../../domain/elementFolders'
 import { useRoomStore } from '../../state/useRoomStore'
 import { topViewWallForOrientation } from '../../domain/geometry'
 
 const ORBIT_DRAG_SENSITIVITY = 0.009
+
+/** Alterna «Plano normal» / «Plano detallado» sin cambiar de vista, cámara ni diseño. */
+function PlanDetailsToggle() {
+  const planDetailsVisible = useRoomStore((state) => state.planDetailsVisible)
+  const setPlanDetailsVisible = useRoomStore((state) => state.setPlanDetailsVisible)
+  const room = useRoomStore((state) => state.room)
+  const structurePacks = useRoomStore((state) => state.structurePacks)
+  const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
+  const rootName = useRoomStore((state) => state.elementFolders.find((folder) => folder.id === ROOT_ROOM_FOLDER)?.name ?? 'Habitación principal')
+  const summary = useMemo(() => planDetailsVisible
+    ? planRoomDimensionsSummary(
+      planRoomDimensions({ room, structurePacks }, (wall) => !hiddenElementIds.includes(wall.id) && !(wall.packId && hiddenElementIds.includes(wall.packId))),
+      (roomId) => roomId ? structurePacks.find((pack) => pack.id === roomId)?.name ?? 'Habitación' : rootName)
+    : '', [planDetailsVisible, room, structurePacks, hiddenElementIds, rootName])
+  return <>
+    <label className="plan-details-toggle" title={planDetailsVisible ? 'Plano detallado: cotas de las paredes de cada habitación' : 'Plano normal: sin cotas'}>
+      <input type="checkbox" checked={planDetailsVisible} onChange={(event) => setPlanDetailsVisible(event.target.checked)} aria-describedby="plan-details-summary" />
+      <span>Mostrar detalles</span>
+    </label>
+    <span id="plan-details-summary" className="visually-hidden" aria-live="polite">{planDetailsVisible ? `Cotas: ${summary}.` : ''}</span>
+  </>
+}
 
 export function ViewControls() {
   const view = useRoomStore((state) => state.view)
@@ -79,7 +103,7 @@ export function ViewControls() {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
     setFreeOrbitDragging(false)
   }
-  if (view === 'top') return <div className="camera-controls camera-controls--plan"><span className="plan-camera-hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M8 6l4-4 4 4M8 18l4 4 4-4M6 8l-4 4 4 4M18 8l4 4-4 4" /></svg>Arrastra el suelo para desplazar</span><button type="button" className="plan-camera-reset" onClick={resetTopCamera} aria-label="Restablecer posición y zoom del plano" title="Restablecer posición y zoom; usa las flechas para desplazar" onKeyDown={(event) => {
+  if (view === 'top') return <div className="camera-controls camera-controls--plan"><PlanDetailsToggle /><span className="plan-camera-hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20M8 6l4-4 4 4M8 18l4 4 4-4M6 8l-4 4 4 4M18 8l4 4-4 4" /></svg>Arrastra el suelo para desplazar</span><button type="button" className="plan-camera-reset" onClick={resetTopCamera} aria-label="Restablecer posición y zoom del plano" title="Restablecer posición y zoom; usa las flechas para desplazar" onKeyDown={(event) => {
     const direction = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[event.key]
     if (!direction) return
     event.preventDefault()

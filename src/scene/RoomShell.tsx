@@ -1,13 +1,12 @@
 import type { ReactNode, RefObject } from 'react'
-import { useEffect, useMemo, useRef } from 'react'
-import { useThree, type ThreeEvent } from '@react-three/fiber'
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { DEFAULT_FLOOR_COLOR, ROOT_FLOOR_THICKNESS, ROOT_PLATFORM_THICKNESS, ROOT_PLATFORM_Y, WALL_LABELS } from '../domain/constants'
 import type { RoomConfig, ViewMode, WallSide } from '../domain/types'
 import { useRoomStore } from '../state/useRoomStore'
 import { FloorGrid } from './FloorGrid'
 import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
-import { releasePointer, usePointerCancellation } from './usePointerCancellation'
+import { usePlanPan } from './usePlanPan'
 import { BASE_FLOOR_ID, folderSelectionId, ROOT_ROOM_FOLDER } from '../domain/elementFolders'
 import { SelectionBounds } from './SelectionBounds'
 
@@ -20,41 +19,21 @@ export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, 
   children: ReactNode
 }) {
   const selectElement = useRoomStore((state) => state.selectElement)
-  const view = useRoomStore((state) => state.view)
   const floorHidden = useRoomStore((state) => state.hiddenElementIds.includes(BASE_FLOOR_ID))
   const floorSelected = useRoomStore((state) => state.selectedIds.includes(BASE_FLOOR_ID))
   const rootSelected = useRoomStore((state) => state.selectedIds.includes(folderSelectionId(ROOT_ROOM_FOLDER)))
-  const { camera, size } = useThree()
-  const pan = useRef<{ pointerId: number; x: number; y: number; cameraX: number; cameraZ: number; right: THREE.Vector3; up: THREE.Vector3; scale: number } | null>(null)
-  const capturePan = usePointerCancellation(() => { pan.current = null })
-  const startPan = (event: ThreeEvent<PointerEvent>) => {
-    if (view !== 'top' || event.button !== 0 || !(camera instanceof THREE.OrthographicCamera)) return
-    const state = useRoomStore.getState()
-    pan.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, cameraX: state.topCameraX, cameraZ: state.topCameraZ, right: new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion), scale: (camera.right - camera.left) / camera.zoom / Math.max(size.width, 1) }
-    capturePan(event)
-  }
-  const movePan = (event: ThreeEvent<PointerEvent>) => {
-    const drag = pan.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-    event.stopPropagation()
-    const dx = (event.clientX - drag.x) * drag.scale
-    const dy = (event.clientY - drag.y) * drag.scale
-    useRoomStore.getState().setTopCameraPosition(drag.cameraX - dx * drag.right.x + dy * drag.up.x, drag.cameraZ - dx * drag.right.z + dy * drag.up.z)
-  }
-  const endPan = (event: ThreeEvent<PointerEvent>) => {
-    if (pan.current?.pointerId !== event.pointerId) return
-    pan.current = null
-    event.stopPropagation()
-    releasePointer(event)
-  }
+  const { startPan, movePan, endPan, lostPan } = usePlanPan()
+  // El cursor de desplazamiento lo decide el fondo del Plano (PlanPanSurface)
+  // a partir de `planPannable`; aquí solo se arrastra.
+  const panHandlers = { onPointerMove: movePan, onPointerUp: endPan, onPointerCancel: endPan, onLostPointerCapture: lostPan }
   return (
     <group ref={modelRootRef}>
-      {showBase && !floorHidden && <mesh receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
+      {showBase && !floorHidden && <mesh receiveShadow userData={{ freeOrbitSurface: true, planPannable: true }} onPointerDown={(event) => {
         event.stopPropagation()
         recordSceneInteraction('background.pointer-down', { target: 'floor' })
         selectSceneObject(BASE_FLOOR_ID, event.nativeEvent)
         startPan(event)
-      }} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={endPan} onLostPointerCapture={() => { pan.current = null }}>
+      }} {...panHandlers}>
         <boxGeometry args={[room.width, ROOT_FLOOR_THICKNESS, room.depth]} />
         <meshStandardMaterial color={room.floorColor ?? DEFAULT_FLOOR_COLOR} roughness={0.94} />
       </mesh>}
@@ -62,11 +41,12 @@ export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, 
       {showBase && showSelection && rootSelected && <group position={[0, room.height / 2, 0]}><SelectionBounds width={room.width} height={room.height} depth={room.depth} /></group>}
       <FloorGrid room={room} visible={showBase && !floorHidden && showFloorGrid} />
       {children}
-      {showBase && <mesh position={[0, ROOT_PLATFORM_Y, 0]} receiveShadow userData={{ freeOrbitSurface: true }} onPointerDown={(event) => {
+      {showBase && <mesh position={[0, ROOT_PLATFORM_Y, 0]} receiveShadow userData={{ freeOrbitSurface: true, planPannable: true }} onPointerDown={(event) => {
         event.stopPropagation()
         recordSceneInteraction('background.pointer-down', { target: 'platform' })
         selectElement(null)
-      }}>
+        startPan(event)
+      }} {...panHandlers}>
         <boxGeometry args={[room.width + 0.28, ROOT_PLATFORM_THICKNESS, room.depth + 0.28]} />
         <meshStandardMaterial color="#b7835d" roughness={0.9} />
       </mesh>}
@@ -76,15 +56,17 @@ export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, 
 
 export function StudioLight({ room }: { room: RoomConfig }) {
   const shadowExtent = Math.max(room.width, room.depth) / 2 + 1
+  // La luz siempre queda por encima de las paredes, también en salas altas.
+  const lightHeight = Math.max(14, room.height + 6)
   return (
     <directionalLight
-      position={[0.01, 14, 0.01]}
+      position={[0.01, lightHeight, 0.01]}
       intensity={2.1}
       color="#fff2dc"
       castShadow
       shadow-mapSize={[1536, 1536]}
       shadow-camera-near={1}
-      shadow-camera-far={30}
+      shadow-camera-far={lightHeight + 16}
       shadow-camera-left={-shadowExtent}
       shadow-camera-right={shadowExtent}
       shadow-camera-top={shadowExtent}
@@ -96,7 +78,11 @@ export function StudioLight({ room }: { room: RoomConfig }) {
   )
 }
 
-export function WallIdentityLabel({ room, wall, view, wallView }: { room: RoomConfig; wall: WallSide; view: ViewMode; wallView: WallSide | null }) {
+/** Tamaño en metros de la etiqueta «PARED X» (ancho × alto del sprite). */
+export const WALL_IDENTITY_LABEL_SIZE: readonly [number, number] = [0.69, 0.52]
+
+/** Textura compartida de la etiqueta «PARED X»; se libera al desmontar. */
+export function useWallIdentityTexture(wall: WallSide) {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas')
     canvas.width = 256
@@ -144,7 +130,11 @@ export function WallIdentityLabel({ room, wall, view, wallView }: { room: RoomCo
     return nextTexture
   }, [wall])
   useEffect(() => () => texture.dispose(), [texture])
+  return texture
+}
 
+export function WallIdentityLabel({ room, wall, view, wallView }: { room: RoomConfig; wall: WallSide; view: ViewMode; wallView: WallSide | null }) {
+  const texture = useWallIdentityTexture(wall)
   const isFrontSideWall = view === 'front' && wall !== (wallView ?? 'north')
   const height = isFrontSideWall ? room.height / 2 : room.height + 0.44
   const wallOffset = 0.6
@@ -157,7 +147,7 @@ export function WallIdentityLabel({ room, wall, view, wallView }: { room: RoomCo
         : [-room.width / 2 - wallOffset, height, 0]
 
   return (
-    <sprite position={position} scale={[0.69, 0.52, 1]} renderOrder={30} raycast={() => undefined}>
+    <sprite position={position} scale={[...WALL_IDENTITY_LABEL_SIZE, 1]} renderOrder={30} raycast={() => undefined}>
       <spriteMaterial map={texture} transparent depthTest={false} depthWrite={false} toneMapped={false} />
     </sprite>
   )

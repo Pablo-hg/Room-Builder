@@ -205,7 +205,10 @@ input[type='range']::-webkit-slider-thumb { width: 14px; height: 14px; appearanc
 .scene-panel--orbit-ready .room-scene-canvas--orbit { cursor: grab; }
 .scene-panel--orbit-ready-isometric .room-scene-canvas--orbit { cursor: grab; }
 .scene-panel--orbit-dragging .room-scene-canvas--orbit { cursor: grabbing; }
+/* Plano: mano abierta sobre un suelo desplazable; los muebles (can-grab) mantienen su cursor. */
+body.plan-pan-ready .scene-panel canvas { cursor: grab; }
 body.can-grab .scene-panel canvas { cursor: grabbing; }
+body.plan-panning .scene-panel canvas { cursor: grabbing; }
 .sidebar-toggle { position: absolute; z-index: 8; top: 50%; display: grid; place-items: center; width: 27px; height: 54px; padding: 0; border: 1px solid rgba(66,85,71,.24); background: rgba(255,253,249,.94); color: var(--forest); box-shadow: 0 5px 16px rgba(40,49,42,.13); font-size: 23px; font-weight: 700; line-height: 1; cursor: pointer; backdrop-filter: blur(8px); transform: translateY(-50%); transition: width .16s ease, background .16s ease, color .16s ease; }
 .sidebar-toggle:hover { width: 32px; background: var(--forest); color: white; }
 .sidebar-toggle--objects { left: 0; border-left: 0; border-radius: 0 11px 11px 0; }
@@ -243,6 +246,8 @@ body.can-grab .scene-panel canvas { cursor: grabbing; }
 .camera-controls--plan .plan-camera-reset { display: flex; align-items: center; gap: 5px; width: auto; height: 36px; padding: 0 8px; color: #405748; }
 .camera-controls--plan .plan-camera-reset svg { width: 25px; height: 25px; }
 .camera-controls--plan .plan-camera-reset span { min-width: 0; color: inherit; white-space: nowrap; }
+.camera-controls--plan .plan-details-toggle { display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 9px 0 4px; border-right: 1px solid rgba(76,91,80,.12); color: #405748; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.camera-controls--plan .plan-details-toggle input { width: 17px; height: 17px; margin: 0; accent-color: #52705d; cursor: pointer; }
 .camera-controls .camera-orbit-drag { display: grid; grid-template-columns: 18px minmax(112px, auto) 18px; align-items: center; width: auto; min-width: 164px; padding: 0 8px; border-inline: 1px solid rgba(76,91,80,.1); border-radius: 8px; color: #55675c; cursor: ew-resize; touch-action: none; user-select: none; }
 .camera-controls .camera-orbit-drag--free { grid-template-columns: 22px minmax(150px, auto) 22px; min-width: 204px; cursor: move; }
 .camera-orbit-mouse-icon, .camera-orbit-touch-icon { justify-self: center; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
@@ -576,6 +581,7 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
   .scene-controls .camera-orbit-drag { grid-template-columns: 12px minmax(26px, 1fr) 12px; min-width: 80px; padding: 0 4px; }
   .scene-controls .camera-orbit-drag--free { grid-template-columns: 18px minmax(90px, 1fr) 18px; min-width: 0; flex: 1; }
   .scene-controls .camera-controls--plan { flex-wrap: wrap; }
+  .scene-controls .camera-controls--plan .plan-details-toggle { min-height: 44px; }
   .scene-controls .front-camera-control__header > span { flex-wrap: wrap; }
 }
 
@@ -584,3 +590,15 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 }
 .diagnostic-export-section { padding-block: 14px; }
 .diagnostic-export__button { width: 100%; }
+.wall-attachment-controls {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+}
+.wall-attachment-controls label { display: flex; align-items: center; gap: 0.5rem; }
+.wall-attachment-controls input { width: 1.15rem; height: 1.15rem; flex-shrink: 0; }
+.wall-attachment-controls p { margin: 0; }

@@ -1,5 +1,13 @@
 # Datos, unidades, guardado e interoperabilidad
 
+## Fijación manual de mobiliario — v11 (11/11/2026)
+
+**Corrección posterior del propietario:** el imán automático es temporal y no introduce datos persistidos ni actualiza la versión del diseño. `wallAttachment` sigue siendo la fijación elegida explícitamente mediante el check, pero se retira al empujar el objeto en dirección normal a la pared. La memoria de captura/liberación del imán pertenece a cada sesión del editor y se limpia al cargar o deshacer/rehacer; no forma parte del JSON. La geometría y los bloqueos de eje siguen usando las mismas coordenadas mundiales en todas las vistas.
+
+**Implementación local, sin certificar.** `FurnitureItem.wallAttachment?: { wallId: string, side: -1 | 1, lockLateral: boolean }` identifica una cara de una pared física. XYZ y giro siguen siendo mundiales; `axisLocks.y` conserva la altura. La dirección lateral y la distancia de contacto se derivan de la geometría real de la pared y de las medidas/giro del mueble, sin segunda posición persistida. Un diseño con este campo se escribe como v11; v1–v10 se leen sin añadir fijaciones ni alterar sus posiciones originales. Los lectores anteriores a v11 no pueden abrir estos diseños nuevos.
+
+Se validan estructura del campo, versión, referencia de pared, cara, dimensiones y contacto. JSON y el puente ProjectV2 conservan fijación/bloqueos. Borrar el soporte despega el mueble conservando su pose; deshacer recupera la relación. Las copias se pegan libres porque su nueva posición no pertenece necesariamente al soporte original. Las pruebas de normalización/JSON/ProjectV2 están preparadas, pendientes de ejecución en `main`.
+
 ## F1-01 — Integridad del guardado local y exportación JSON (09/11/2026)
 
 **Implementado en la rama de trabajo, pendiente de certificación en `main`.** Esta sección describe el comportamiento actualizado de la biblioteca sin modificar las claves ni el formato:
