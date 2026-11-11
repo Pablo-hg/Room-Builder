@@ -155,3 +155,12 @@ test('los textos habituales son legibles sin reintroducir el encabezado del men�
   expect(measures.view).toBeGreaterThanOrEqual(14)
   await expect(page.locator('.view-switcher__heading')).toHaveCount(0)
 })
+
+
+test('al agrandar la tipografía no aparece desbordamiento horizontal en móvil', async ({ page }) => {
+  await page.goto('/')
+  for (const width of [320, 390, 580]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  }
+})
