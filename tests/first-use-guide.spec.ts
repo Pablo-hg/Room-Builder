@@ -1,3 +1,35 @@
+test('el paso 1 ilumina desde Raíz hasta el slider de Altura y sitúa el texto a su izquierda', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Empezar guía' }).click()
+
+  const dialog = page.getByRole('dialog', { name: 'Empieza por las medidas' })
+  const target = page.locator('[data-tour="room-dimensions"]')
+  const spotlight = page.locator('.first-use-guide__spotlight')
+
+  await expect(dialog).toBeVisible()
+  await expect(target).toBeVisible()
+  await expect(target).toContainText('Raíz')
+  await expect(target.getByRole('slider', { name: 'Anchura' })).toBeVisible()
+  await expect(target.getByRole('slider', { name: 'Profundidad' })).toBeVisible()
+  await expect(target.getByRole('slider', { name: 'Altura' })).toBeVisible()
+  await expect(target).toContainText('270 cm')
+
+  const targetBox = await target.boundingBox()
+  const spotlightBox = await spotlight.boundingBox()
+  const cardBox = await dialog.boundingBox()
+  expect(targetBox).not.toBeNull()
+  expect(spotlightBox).not.toBeNull()
+  expect(cardBox).not.toBeNull()
+  expect(spotlightBox!.x).toBeLessThanOrEqual(targetBox!.x)
+  expect(spotlightBox!.x + spotlightBox!.width).toBeGreaterThanOrEqual(targetBox!.x + targetBox!.width)
+  expect(spotlightBox!.y).toBeLessThanOrEqual(targetBox!.y)
+  expect(spotlightBox!.y + spotlightBox!.height).toBeGreaterThanOrEqual(targetBox!.y + targetBox!.height)
+  expect(cardBox!.x + cardBox!.width).toBeLessThanOrEqual(spotlightBox!.x)
+  expect(cardBox!.y).toBeGreaterThanOrEqual(0)
+  expect(cardBox!.y + cardBox!.height).toBeLessThanOrEqual(900)
+})
+
 import { expect, test } from '@playwright/test'
 
 test('ofrece una guía opcional y permite recorrer los seis pasos y repetirla', async ({ page }) => {

@@ -25,14 +25,16 @@ type GuideStep = {
   description: string
   target: string
   fallback?: string
+  cardPlacement?: 'left'
 }
 
 const steps: GuideStep[] = [
   {
     title: 'Empieza por las medidas',
     description: 'En el panel derecho puedes ajustar anchura, profundidad y altura. La habitación ya existe: no necesitas crearla de nuevo.',
-    target: '.room-section__toggle',
-    fallback: '#settings-panel',
+    target: '[data-tour="room-dimensions"]',
+    fallback: '.room-section__toggle',
+    cardPlacement: 'left',
   },
   {
     title: 'Añade puertas y ventanas',
@@ -109,6 +111,10 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
   useEffect(() => {
     if (!open) return
     const step = steps[stepIndex]
+    if (stepIndex === 0) {
+      const roomToggle = document.querySelector<HTMLButtonElement>('.room-section__toggle')
+      if (roomToggle?.getAttribute('aria-expanded') === 'false') roomToggle.click()
+    }
     const target = document.querySelector<HTMLElement>(step.target)
       ?? (step.fallback ? document.querySelector<HTMLElement>(step.fallback) : null)
     target?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' })
@@ -167,12 +173,16 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
   const isMobile = viewport.width < 700
   const cardWidth = Math.min(360, viewport.width - 32)
   const cardLeft = spotlight
-    ? Math.max(16, Math.min(viewport.width - cardWidth - 16, spotlight.left + spotlight.width / 2 - cardWidth / 2))
+    ? step.cardPlacement === 'left'
+      ? Math.max(16, spotlight.left - cardWidth - 16)
+      : Math.max(16, Math.min(viewport.width - cardWidth - 16, spotlight.left + spotlight.width / 2 - cardWidth / 2))
     : Math.max(16, (viewport.width - cardWidth) / 2)
   const cardTop = spotlight
-    ? spotlight.top + spotlight.height + 262 < viewport.height
-      ? spotlight.top + spotlight.height + 14
-      : Math.max(16, spotlight.top - 250)
+    ? step.cardPlacement === 'left'
+      ? Math.max(140, Math.min(viewport.height - 140, spotlight.top + spotlight.height / 2))
+      : spotlight.top + spotlight.height + 262 < viewport.height
+        ? spotlight.top + spotlight.height + 14
+        : Math.max(16, spotlight.top - 250)
     : Math.max(16, (viewport.height - 240) / 2)
   const backdrop = (style: Style, key: string) => <div key={key} className="first-use-guide__shade" style={style} />
 
@@ -193,7 +203,11 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
         aria-labelledby="first-use-guide-title"
         aria-describedby="first-use-guide-description"
         tabIndex={-1}
-        style={isMobile ? undefined : { left: cardLeft, top: cardTop }}
+        style={isMobile ? undefined : {
+          left: cardLeft,
+          top: cardTop,
+          ...(step.cardPlacement === 'left' ? { transform: 'translateY(-50%)' } : {}),
+        }}
       >
         <div className="first-use-guide__heading">
           <span>Guía de inicio · {stepIndex + 1} de {steps.length}</span>

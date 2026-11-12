@@ -5,7 +5,7 @@
 **Implementación en rama `feature/F1-03-simplificar-uso-controles`, pendiente de pruebas manuales y certificación.**
 
 - En la primera apertura sin diseños locales, aparece una **invitación que no bloquea el editor**. El usuario puede empezar el recorrido, pulsar «Ahora no» o seguir trabajando; interactuar fuera de la invitación la descarta.
-- El recorrido visual resalta los controles reales del editor en **seis pasos**: medidas, puertas/ventanas, mobiliario, inspector de selección, vistas y guardado. No crea objetos ni modifica la geometría, ni exige seguir una secuencia obligatoria.
+- El recorrido visual resalta los controles reales del editor en **seis pasos**: medidas, puertas/ventanas, mobiliario, inspector de selección, vistas y guardado. En el paso 1, el foco abarca el selector de habitación (Raíz), la vista previa y los tres controles completos de Anchura, Profundidad y Altura; la tarjeta se coloca a la izquierda del foco en escritorio para no tapar las medidas. Si el bloque estaba plegado, se despliega al iniciar el paso. No crea objetos ni modifica la geometría, ni exige seguir una secuencia obligatoria.
 - «Siguiente», «Anterior», «Saltar guía» y «Finalizar» permiten salir en cualquier momento; Escape también cierra el recorrido. El diálogo gestiona el foco del teclado y se posiciona de forma adaptativa en escritorio y móvil.
 - El usuario puede iniciar el recorrido de nuevo desde **Inspector y configuración detallada → ¿Necesitas ayuda? → Ver guía de primer uso**.
 - La preferencia se guarda exclusivamente en `room-builder:first-use-guide:v1`. No altera `room-builder:v0.1:designs`, no requiere cuenta, red, herramientas de terceros ni cambios de formato. Los usuarios que ya tienen diseños locales no reciben una invitación inesperada.
