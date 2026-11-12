@@ -10,9 +10,9 @@ export function EditorHeader({ exportMode, onExport }: {
 }) {
   const state = useRoomStore(useShallow(selectEditorHeader))
   const isSaved = Boolean(state.selectedSavedDesignId) && !state.hasUnsavedChanges
-  const saveStatus = state.hasUnsavedChanges ? 'dirty' : isSaved ? 'saved' : 'ready'
-  const saveLabel = state.hasUnsavedChanges ? 'Cambios sin guardar' : isSaved ? 'Guardado' : 'Guardar'
-  const saveIcon = state.hasUnsavedChanges ? '!' : isSaved ? '✓' : '▣'
+  const saveStatus = isSaved ? 'saved' : 'ready'
+  const saveLabel = isSaved ? 'Guardado' : 'Guardar'
+  const saveIcon = isSaved ? '✓' : '▣'
   return (
       <header className="topbar">
         <a className="brand" href="#main" aria-label="Room Builder, ir al editor">
@@ -48,13 +48,16 @@ export function EditorHeader({ exportMode, onExport }: {
           >
             ↷ <span>Rehacer</span>
           </button>
+          <span className={`save-state${state.hasUnsavedChanges ? ' save-state--dirty' : ''}`} role="status" aria-live="polite">
+            {state.hasUnsavedChanges ? 'Cambios sin guardar' : state.selectedSavedDesignId ? 'Guardado' : 'Sin guardar'}
+          </span>
           <SavedDesignsMenu state={state} exportMode={exportMode} onExport={onExport} />
           <button
             type="button"
             className={`primary-button primary-button--${saveStatus}`}
             disabled={isSaved}
             aria-keyshortcuts="Control+G Meta+G"
-            title={isSaved ? 'El diseño ya está guardado' : state.hasUnsavedChanges ? 'Guardar los cambios (Ctrl/⌘+G)' : 'Guardar diseño (Ctrl/⌘+G)'}
+            title={isSaved ? 'El diseño ya está guardado' : 'Guardar diseño (Ctrl/⌘+G)'}
             onClick={state.saveDesign}
           >
             <span className="save-button__icon" aria-hidden="true">{saveIcon}</span>

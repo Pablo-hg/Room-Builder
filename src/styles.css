@@ -102,12 +102,11 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .design-modal-actions .design-modal-danger { border-color: var(--danger); background: var(--danger); color: white; }
 .primary-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--forest); background: var(--forest); color: white; box-shadow: 0 5px 12px rgba(48, 65, 55, .16); white-space: nowrap; }
 .primary-button:hover { background: var(--forest-dark); }
-.primary-button--ready, .primary-button--dirty { border-color: #c59642; background: #f7e9c9; color: #76531e; box-shadow: 0 4px 10px rgba(151, 106, 34, .12); }
-.primary-button--ready:hover, .primary-button--dirty:hover { border-color: #b8842f; background: #f0dfb8; }
+.primary-button--ready { border-color: #c59642; background: #f7e9c9; color: #76531e; box-shadow: 0 4px 10px rgba(151, 106, 34, .12); }
+.primary-button--ready:hover { border-color: #b8842f; background: #f0dfb8; }
 .primary-button--saved, .primary-button--saved:hover { border-color: var(--forest); background: var(--forest); color: white; box-shadow: none; cursor: default; }
 .save-actions .primary-button--saved:disabled { opacity: 1; cursor: default; }
 .save-button__icon { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; font-size: 16px; font-weight: 850; line-height: 1; }
-.primary-button--dirty .save-button__icon { width: 17px; height: 17px; border: 1.5px solid currentColor; border-radius: 50%; font-size: 11px; }
 
 .workspace { --settings-panel-width: var(--settings-expanded-width, 286px); --objects-panel-width: var(--objects-expanded-width, 264px); display: grid; grid-template-columns: minmax(0, var(--objects-panel-width)) minmax(250px, 1fr) minmax(0, var(--settings-panel-width)); min-height: 0; transition: grid-template-columns .24s ease-in-out; }
 .workspace.workspace--settings-collapsed { --settings-panel-width: 0px; }
