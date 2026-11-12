@@ -10,7 +10,11 @@ import { planRoomCreation } from '../../domain/roomCreation'
 // Catálogo: estado de las familias y acciones de alta, independiente del árbol
 // de escena para que la jerarquía/selección no controle el estado de expansión.
 export function ObjectCatalogSection() {
-  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = { structure: true, openings: true }
+    FURNITURE_FAMILIES.forEach(({ id }) => { initial[id] = true })
+    return initial
+  })
   const [catalogCollapsed, setCatalogCollapsed] = useState(false)
   const [choosingRoomPosition, setChoosingRoomPosition] = useState(false)
   const addFurniture = useRoomStore((state) => state.addFurniture)

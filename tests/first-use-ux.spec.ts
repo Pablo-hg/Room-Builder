@@ -1,4 +1,9 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+async function expandCatalogCategory(page: Page, category: string) {
+  const toggle = page.getByRole('button', { name: category, exact: true })
+  if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click()
+}
 
 test('explica construir, añadir, editar y ver sin ocultar herramientas avanzadas', async ({ page }) => {
   await page.goto('/')
@@ -9,19 +14,24 @@ test('explica construir, añadir, editar y ver sin ocultar herramientas avanzada
   await expect(catalog.getByRole('heading', { name: 'Construye y amuebla' })).toBeVisible()
   await expect(catalog.getByRole('button', { name: 'Minimizar Catálogo' })).toBeVisible()
   const catalogContent = catalog.locator('#catalog-content')
-  await expect(catalogContent.getByRole('button', { name: 'Construcción', exact: true })).toBeVisible()
-  await expect(catalogContent.getByRole('button', { name: 'Aperturas', exact: true })).toBeVisible()
+  const construction = catalogContent.getByRole('button', { name: 'Construcción', exact: true })
+  const openings = catalogContent.getByRole('button', { name: 'Aperturas', exact: true })
+  await expect(construction).toHaveAttribute('aria-expanded', 'false')
+  await expect(openings).toHaveAttribute('aria-expanded', 'false')
+  await expect(catalogContent.locator('#catalog-grid-structure')).toHaveCount(0)
+  await expect(catalogContent.locator('#catalog-grid-openings')).toHaveCount(0)
   await expect(catalog.getByText('Añadir objetos', { exact: true })).toHaveCount(0)
   await expect(catalog.getByText('La habitación inicial ya está creada.', { exact: false })).toHaveCount(0)
   await expect(inspector.getByRole('heading', { name: 'Nada seleccionado' })).toBeVisible()
   await expect(inspector.getByText('Para las medidas generales', { exact: false })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Frontal', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Libre', exact: true })).toBeVisible()
-  await expect(catalogContent.getByRole('button', { name: /Nueva habitación vacía/ })).toBeVisible()
+  await expect(catalogContent.getByRole('button', { name: /Nueva habitación vacía/ })).toHaveCount(0)
 })
 
 test('el botón alterna entre Guardar y Guardado y el estado se muestra solo en la barra inferior', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   const footerStatus = page.locator('.statusbar__save')
   const save = page.getByRole('button', { name: 'Guardar', exact: true })
 
@@ -55,6 +65,7 @@ test('el botón alterna entre Guardar y Guardado y el estado se muestra solo en 
 
 test('volver a seleccionar el diseño actual no provoca confirmación ni descarta cambios', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: 'Guardar' }).click()
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Guardar', exact: true })).toBeEnabled()
@@ -102,6 +113,7 @@ test('crear un diseño exige un nombre y mantiene el formulario abierto para cor
 test('aviso de cambios pendientes visible en móvil mediante la barra inferior', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: 'Guardar' }).click()
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await expect(page.locator('.statusbar__save')).toContainText('Cambios sin guardar')
@@ -120,7 +132,9 @@ test('flujo básico sin tutorial: medidas, apertura, mueble, guardar y volver a 
   await expect(width).toHaveValue('6.25')
 
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
+  await expandCatalogCategory(page, 'Aperturas')
   await catalog.locator('#catalog-grid-openings .catalog-card').nth(1).click()
+  await expandCatalogCategory(page, 'Asientos')
   await catalog.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.locator('.statusbar__save')).toContainText('Diseño guardado')
@@ -142,6 +156,7 @@ test('flujo básico sin tutorial: medidas, apertura, mueble, guardar y volver a 
 
 test('fijar a pared solo deja un eje lateral y la altura; despegar recupera XYZ', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
   const fixation = inspector.getByRole('checkbox', { name: 'Fijar a pared' })
@@ -191,36 +206,52 @@ test('al agrandar la tipografía no aparece desbordamiento horizontal en móvil'
   }
 })
 
-test('las categorías cuelgan directamente de Catálogo y conservan sus desplegables', async ({ page }) => {
+test('las categorías empiezan plegadas, se despliegan individualmente y vuelven a plegarse al recargar', async ({ page }) => {
   await page.goto('/')
   const sidebar = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   const catalogToggle = sidebar.locator('.catalog-heading .catalog-toggle-all')
   const content = sidebar.locator('#catalog-content')
   const construction = content.getByRole('button', { name: 'Construcción', exact: true })
+  const openings = content.getByRole('button', { name: 'Aperturas', exact: true })
+  const seating = content.getByRole('button', { name: 'Asientos', exact: true })
 
   await expect(content).toBeVisible()
+  for (const category of [construction, openings, seating]) {
+    await expect(category).toHaveAttribute('aria-expanded', 'false')
+  }
+  await expect(content.locator('#catalog-grid-structure')).toHaveCount(0)
+  await expect(content.locator('#catalog-grid-openings')).toHaveCount(0)
+
+  await construction.click()
   await expect(construction).toHaveAttribute('aria-expanded', 'true')
   await expect(content.getByRole('button', { name: /Nueva habitación vacía/ })).toBeVisible()
   await expect(content.getByRole('button', { name: /Suelo.*Objeto independiente/ })).toBeVisible()
   await expect(content.getByRole('button', { name: /Pared.*Objeto independiente/ })).toBeVisible()
-  await expect(content.getByRole('button', { name: 'Aperturas', exact: true })).toBeVisible()
-  await expect(content.getByRole('button', { name: 'Asientos', exact: true })).toBeVisible()
-
   await construction.click()
   await expect(construction).toHaveAttribute('aria-expanded', 'false')
-  await expect(content.getByRole('button', { name: /Nueva habitación vacía/ })).toHaveCount(0)
-  await expect(content.getByRole('button', { name: 'Aperturas', exact: true })).toBeVisible()
-  await construction.click()
-  await expect(content.getByRole('button', { name: /Nueva habitación vacía/ })).toBeVisible()
+
+  await openings.click()
+  await expect(openings).toHaveAttribute('aria-expanded', 'true')
+  await expect(content.locator('#catalog-grid-openings .catalog-card')).toHaveCount(3)
+  await openings.click()
+
+  await seating.click()
+  await expect(seating).toHaveAttribute('aria-expanded', 'true')
+  await expect(content.getByRole('button', { name: 'Silla ＋ Añadir', exact: true })).toBeVisible()
 
   await catalogToggle.click()
   await expect(sidebar.getByRole('button', { name: 'Mostrar Catálogo' })).toBeVisible()
-  await expect(sidebar.locator('#catalog-content')).toHaveCount(0)
   await catalogToggle.click()
   await expect(sidebar.locator('#catalog-content')).toBeVisible()
-  await expect(sidebar.locator('#catalog-content').getByRole('button', { name: 'Asientos', exact: true })).toBeVisible()
-})
+  await expect(sidebar.locator('#catalog-content').getByRole('button', { name: 'Silla ＋ Añadir', exact: true })).toBeVisible()
 
+  await page.reload()
+  const reloadedContent = sidebar.locator('#catalog-content')
+  for (const name of ['Construcción', 'Aperturas', 'Asientos', 'Mesas y auxiliares', 'Descanso', 'Almacenaje', 'Iluminación', 'Accesorios', 'Pared y decoración']) {
+    await expect(reloadedContent.getByRole('button', { name, exact: true })).toHaveAttribute('aria-expanded', 'false')
+  }
+  await expect(reloadedContent.locator('.catalog-grid')).toHaveCount(0)
+})
 test('Escena puede minimizarse y desplegarse sin perder elementos ni controles', async ({ page }) => {
   await page.goto('/')
   const sidebar = page.getByRole('complementary', { name: 'Catálogo de objetos' })

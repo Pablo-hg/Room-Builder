@@ -1,8 +1,14 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+async function expandCatalogCategory(page: Page, category: string) {
+  const toggle = page.getByRole('button', { name: category, exact: true })
+  if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click()
+}
 import { readFile } from 'node:fs/promises'
 
 test('edita medidas, guarda y recupera ventanas y mobiliario', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   const width = page.getByRole('textbox', { name: 'Introducir anchura del objeto en metros' })
   await width.fill('115 cm')
@@ -25,6 +31,7 @@ test('edita medidas, guarda y recupera ventanas y mobiliario', async ({ page }) 
 
 test('exporta e importa una copia con confirmación sin cambiar la escena', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Guardar como', exact: true }).click()
   const selector = page.getByRole('button', { name: 'Seleccionar diseño guardado' })
