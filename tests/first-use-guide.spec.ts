@@ -53,7 +53,7 @@ test('ofrece una guía opcional y permite recorrer los seis pasos y repetirla', 
   for (const step of [
     'Explora el catálogo',
     'Organiza la escena',
-    'Edita el elemento seleccionado',
+    'Edita lo que selecciones',
     'Explora las distintas vistas',
     'Guarda tu diseño',
   ]) {
@@ -140,7 +140,8 @@ test('la guía explica Catálogo y Escena y despliega ambos apartados si estaban
   await expect(sidebar.getByRole('button', { name: 'Mostrar escena' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Ver guía de primer uso' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Empieza por las medidas' })
+  await expect(page.getByRole('dialog', { name: 'Empieza por las medidas' })).toBeVisible()
+  const dialog = page.getByRole('dialog')
   await page.getByRole('button', { name: 'Siguiente' }).click()
 
   const catalog = sidebar.locator('[data-tour="catalog"]')
@@ -164,8 +165,10 @@ test('la guía explica Catálogo y Escena y despliega ambos apartados si estaban
 })
 
 
-test('la tarjeta de los pasos 2 y 3 queda a la derecha del menú en pantallas estrechas', async ({ page }) => {
-  for (const viewport of [{ width: 418, height: 638 }, { width: 406, height: 861 }]) {
+test('la tarjeta de los pasos 2 y 3 queda a la derecha del panel si hay espacio y dentro de la pantalla si no', async ({ page }) => {
+  // Con anchuras de móvil el panel ocupa todo el ancho: la tarjeta pasa abajo, sin salirse.
+  for (const viewport of [{ width: 1280, height: 800 }, { width: 418, height: 638 }, { width: 406, height: 861 }]) {
+    const sideBySide = viewport.width >= 1000
     await page.setViewportSize(viewport)
     await page.addInitScript(() => { try { localStorage.removeItem('room-builder:first-use-guide:v1') } catch { /* Origen inicial sin almacenamiento. */ } })
     await page.goto('/')
@@ -182,7 +185,8 @@ test('la tarjeta de los pasos 2 y 3 queda a la derecha del menú en pantallas es
       const spotlightBox = await spotlight.boundingBox()
       expect(cardBox).not.toBeNull()
       expect(spotlightBox).not.toBeNull()
-      expect(cardBox!.x).toBeGreaterThanOrEqual(spotlightBox!.x + spotlightBox!.width)
+      if (sideBySide) expect(cardBox!.x).toBeGreaterThanOrEqual(spotlightBox!.x + spotlightBox!.width)
+      expect(cardBox!.x).toBeGreaterThanOrEqual(0)
       expect(cardBox!.x + cardBox!.width).toBeLessThanOrEqual(viewport.width)
       expect(cardBox!.y).toBeGreaterThanOrEqual(0)
       expect(cardBox!.y + cardBox!.height).toBeLessThanOrEqual(viewport.height)

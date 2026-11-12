@@ -103,7 +103,7 @@ test('crear un diseño exige un nombre y mantiene el formulario abierto para cor
   const menu = page.getByRole('dialog', { name: 'Diseños guardados' })
   await menu.getByRole('button', { name: /Crear diseño/ }).click()
   await menu.getByRole('button', { name: 'Crear en blanco' }).click()
-  await expect(menu.getByRole('alert')).toContainText('Introduce un nombre')
+  await expect(menu.getByRole('alert')).toContainText('Escribe un nombre')
   await expect(menu.getByLabel('Nombre del diseño')).toBeVisible()
   await menu.getByLabel('Nombre del diseño').fill('Mi habitación')
   await menu.getByRole('button', { name: 'Crear en blanco' }).click()

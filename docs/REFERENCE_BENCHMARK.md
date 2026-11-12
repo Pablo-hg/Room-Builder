@@ -34,3 +34,18 @@
 ## Aplicación de referencias en F1-03 — guía de primer uso
 
 Sin replicar interfaces ajenas, el recorrido opcional de seis pasos toma el principio de **entrada sencilla y divertida** de Rooms.xyz/MakeRoom, la secuencia «medir → construir → amueblar → visualizar» documentada para MyRoomPlanner y el **inspector contextual** de Figma. No introduce cuentas, progresión de juego, plantillas externas ni automatización. Las pruebas visuales y con usuarios siguen pendientes en la rama.
+
+
+## Aplicación de referencias en F1-03 — Catálogo, Escena, guardado y borrado (12/11/2026)
+
+Contraste de diseño sobre las descripciones públicas de las referencias, **sin interfaces ajenas copiadas y sin pruebas con usuarios**. Las pruebas automáticas no sustituyen la validación visual humana.
+
+| Cambio | Principio tomado | Cómo se aplica | Límite / riesgo |
+| --- | --- | --- | --- |
+| Catálogo plegado por defecto, con Construcción y Aperturas junto a las familias de muebles | Figma: capas y grupos plegables para no abrumar; MyRoomPlanner: flujo medir → construir → amueblar | Una sola lista de categorías, todas plegadas al cargar; cada una se abre por separado | Un principiante debe abrir una categoría antes de ver objetos: la guía de primer uso lo explica en el paso 2 |
+| Escena minimizable con árbol, carpetas, visibilidad y bloqueo | Figma: panel de capas con visibilidad/bloqueo y carpetas | Minimizar solo oculta el árbol; no cambia el estado de los elementos | Sin capas anidadas más allá de las carpetas ya existentes |
+| Botón único Guardar / Guardado | Rooms.xyz/MakeRoom: acción primaria siempre evidente y estado comprensible sin leer | Ámbar y activo si hay algo que guardar; verde y desactivado si no; estado textual en la barra inferior | Guardado local en el navegador, sin cuenta; exportar JSON sigue en el menú Diseños |
+| Borrado de objetos | Edición reversible en lugar de confirmaciones constantes | Supr/Retroceso, botón del inspector y menú contextual borran sin diálogo, pero todo entra en el historial y se puede deshacer | Retroceso y Supr se ignoran al escribir en un campo. Eliminar una habitación completa tampoco pide confirmación; se recupera con Deshacer. Los diseños guardados sí piden confirmación |
+| Vistas avanzadas (Frontal, Libre, POV) | Mantener potencia sin imponerla | Siguen visibles en el selector de vistas; la guía recomienda Plano e Isométrica para empezar | Cubierto por E2E de accesibilidad con teclado |
+
+**Pendiente:** evaluar con una persona no técnica si borrar una habitación completa sin confirmación es aceptable, o si conviene un aviso previo. No se ha cambiado ese comportamiento.

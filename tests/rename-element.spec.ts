@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { expandCatalogCategories } from './helpers/catalog'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 async function rename(page: Page, row: Locator, oldName: string, newName: string) {
   await row.click({ button: 'right' })
@@ -12,6 +13,7 @@ async function rename(page: Page, row: Locator, oldName: string, newName: string
 
 test('edita el nombre en la fila y conserva el anterior si se deja vacío o se cancela', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const inspector = page.locator('.selection-section--inspector')
@@ -32,13 +34,14 @@ test('edita el nombre en la fila y conserva el anterior si se deja vacío o se c
 
 test('permite nombrar puerta y ventana en la lista y guarda sus nombres', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Aperturas'])
   await rename(page, page.locator('.element-row').filter({ hasText: 'Puerta' }), 'Puerta', 'Entrada')
   await page.getByRole('button', { name: 'Ventana ＋ Añadir', exact: true }).click()
   const rows = page.locator('.element-row').filter({ hasText: 'Ventana' })
   await rename(page, rows.last(), 'Ventana 2', 'Ventanal')
   await expect(page.locator('.element-select').filter({ hasText: 'Ventanal' })).toBeVisible()
-  await page.getByRole('button', { name: 'Guardar como' }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs') || '[]'))
   expect(stored[0].data.version).toBe(10)
   expect(stored[0].data.room.door.name).toBe('Entrada')
@@ -47,6 +50,7 @@ test('permite nombrar puerta y ventana en la lista y guarda sus nombres', async 
 
 test('renombra superficies y carpetas en la escena sin campos de nombre en el inspector', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: /Pared.*Objeto independiente/ }).click()
   const inspector = page.locator('.selection-section--inspector')
   await expect(inspector.getByLabel('Nombre', { exact: true })).toHaveCount(0)
@@ -68,6 +72,7 @@ test('renombra superficies y carpetas en la escena sin campos de nombre en el in
 for (const view of ['Isométrica', 'Libre']) {
   test(`confirma el nombre al pulsar la escena en ${view}`, async ({ page }) => {
     await page.goto('/')
+    await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Asientos'])
     await page.getByRole('button', { name: view, exact: true }).click()
     await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()

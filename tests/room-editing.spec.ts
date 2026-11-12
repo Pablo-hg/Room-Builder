@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { expandCatalogCategories } from './helpers/catalog'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 test('dimensiones vinculadas a una carpeta completa y nombres locales de superficies', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Construcción'])
   const size = page.getByRole('textbox', { name: 'Introducir anchura en metros', exact: true })
   await expect(size).toBeEnabled()
@@ -30,6 +32,7 @@ test('dimensiones vinculadas a una carpeta completa y nombres locales de superfi
 
 test('añade puertas a otra habitación, selecciona en lista y deshace el borrado', async ({ page }, testInfo) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Construcción', 'Aperturas'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 // Cada tipo se comprueba en una página aislada: los cambios de cámara no
 // consumen el timeout de las operaciones de guardado de otros objetos.
@@ -10,6 +11,7 @@ for (const { name, kind } of [
 ] as const) {
   test(`los candados de ${name} permiten elegir Y y conservan su posición al guardar`, async ({ page }, testInfo) => {
     await page.goto('/')
+    await expandAllCatalogCategories(page)
     const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
     await page.getByRole('button', { name: `${name} ＋ Añadir`, exact: true }).click()
     await expect(inspector.getByRole('heading', { name, exact: true })).toBeVisible()
@@ -32,7 +34,7 @@ for (const { name, kind } of [
     await expect(y).toHaveValue('1.25')
     await expect(y).toBeDisabled()
 
-    await page.getByRole('button', { name: 'Guardar como', exact: true }).click()
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click()
     const data = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs')!)[0].data)
     expect(data.furniture).toHaveLength(1)
     expect(data.furniture[0].kind).toBe(kind)
@@ -44,6 +46,7 @@ for (const { name, kind } of [
 
 test('las lámparas libres permiten mover Y un centímetro y conservarlo al guardar', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
   for (const name of ['Lámpara', 'Lámpara de mesa']) {
     await page.getByRole('button', { name: `${name} ＋ Añadir`, exact: true }).click()
@@ -55,7 +58,7 @@ test('las lámparas libres permiten mover Y un centímetro y conservarlo al guar
     await expect(y).toHaveValue('0.03')
   }
 
-  await page.getByRole('button', { name: 'Guardar como', exact: true }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   const data = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs')!)[0].data)
   expect(data.furniture).toHaveLength(2)
   expect(data.furniture.every((item: { attachmentPolicy?: string }) => item.attachmentPolicy === 'by-type')).toBe(true)
@@ -74,6 +77,7 @@ test('objetos antiguos conservan su altura y libertad al mezclar nuevos y recarg
     if (!localStorage.getItem('room-builder:v0.1:designs')) localStorage.setItem('room-builder:v0.1:designs', JSON.stringify(entries))
   }, saved)
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const load = async () => {
     await page.getByRole('button', { name: 'Seleccionar diseño guardado' }).click()
     await page.getByRole('button', { name: 'Antiguo y nuevo', exact: true }).click()
@@ -90,7 +94,7 @@ test('objetos antiguos conservan su altura y libertad al mezclar nuevos y recarg
   await expect(y).toHaveValue('0.78')
   await page.getByRole('button', { name: 'Alfombra ＋ Añadir', exact: true }).click()
   await expect(y).toBeDisabled()
-  await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await page.reload()
   await load()
   const newRug = page.locator('.element-select').filter({ hasText: 'Alfombra' }).filter({ hasNotText: 'antigua' })
@@ -102,6 +106,7 @@ test('objetos antiguos conservan su altura y libertad al mezclar nuevos y recarg
 
 test('la selección mixta bloquea el eje Y y conserva el movimiento horizontal', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: 'Alfombra ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Lámpara de mesa ＋ Añadir', exact: true }).click()
   await page.locator('.element-select').filter({ hasText: 'Alfombra' }).click({ modifiers: ['Control'] })

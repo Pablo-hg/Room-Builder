@@ -181,6 +181,7 @@ test('alterna la visibilidad y el candado de un elemento desde la lista', async 
 
 test('crea carpetas, mueve elementos y las renombra o elimina', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Planta ＋ Añadir', exact: true }).click()
@@ -215,8 +216,11 @@ test('crea carpetas, mueve elementos y las renombra o elimina', async ({ page })
   await page.getByRole('menuitem', { name: 'Borrar' }).click()
   await expect(catalog.getByRole('button', { name: 'Carpeta Asientos', exact: true })).toHaveCount(0)
   await expect(catalog.getByRole('button', { name: 'Carpeta Raíz', exact: true })).toBeVisible()
-  await expect(catalog.locator('.element-row').filter({ hasText: 'Silla' })).toBeVisible()
+  // Eliminar la carpeta borra también lo que contiene (la silla); lo suelto se conserva.
+  await expect(catalog.locator('.element-row').filter({ hasText: 'Silla' })).toHaveCount(0)
   await expect(catalog.locator('.element-row').filter({ hasText: 'Planta' })).toBeVisible()
+  await page.keyboard.press('Control+z')
+  await expect(catalog.locator('.element-row').filter({ hasText: 'Silla' })).toBeVisible()
 })
 
 test('permite elevar un mueble desde el inspector', async ({ page }) => {
@@ -263,6 +267,7 @@ test('permite mover un mueble lateralmente y en altura en vista frontal', async 
 
 test('mantiene ambas alfombras sobre el suelo y permite el movimiento vertical', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
 
   for (const name of ['Alfombra', 'Alfombra circular']) {
@@ -277,6 +282,7 @@ test('mantiene ambas alfombras sobre el suelo y permite el movimiento vertical',
 
 test('añade los nuevos objetos decorativos e iluminación', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
 
   for (const name of ['Jarrón', 'Lámpara de mesa', 'Lámpara de techo']) {
@@ -295,6 +301,7 @@ test('añade los nuevos objetos decorativos e iluminación', async ({ page }) =>
 
 test('lista puerta y ventanas y conserva su visibilidad al recuperar', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const readVisibility = () => page.evaluate(async () => {
     const path = '/src/state/useRoomStore.ts'
     const { useRoomStore } = await import(/* @vite-ignore */ path)
@@ -316,16 +323,11 @@ test('lista puerta y ventanas y conserva su visibilidad al recuperar', async ({ 
   await expect.poll(readVisibility).toMatchObject({ hidden: true, savedHidden: true, storedHidden: true, unsaved: false })
   await page.getByRole('button', { name: 'Mostrar Ventana 1' }).click()
   await expect.poll(readVisibility).toMatchObject({ hidden: false, savedHidden: true, storedHidden: true, unsaved: true })
+  // Volver a elegir el diseño abierto no pide confirmación ni descarta los cambios pendientes.
   await page.getByRole('button', { name: 'Seleccionar diseño guardado' }).click()
   await page.getByRole('button', { name: /^Diseño 1/ }).click()
-  const discard = page.getByRole('dialog', { name: '¿Descartar los cambios sin guardar?' })
-  await expect(discard).toBeVisible()
-  // The saved window still exists and is hidden. Loading waits for explicit discard.
-  await expect.poll(readVisibility).toMatchObject({ windowId: 'window-1', hidden: false, storedHidden: true })
-  await discard.getByRole('button', { name: 'Descartar y continuar' }).click()
-  await expect(discard).toHaveCount(0)
-  await expect.poll(readVisibility).toMatchObject({ windowId: 'window-1', hidden: true, savedHidden: true, storedHidden: true, unsaved: false })
-  await expect(page.getByRole('button', { name: 'Mostrar Ventana 1' })).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByRole('dialog', { name: '¿Descartar los cambios sin guardar?' })).toHaveCount(0)
+  await expect.poll(readVisibility).toMatchObject({ windowId: 'window-1', hidden: false, storedHidden: true, unsaved: true })
 })
 
 test('permite cambiar el color de cada pared y del suelo', async ({ page }) => {
@@ -762,6 +764,7 @@ test('permite seleccionar un pack y editar una de sus superficies', async ({ pag
 
 test('arrastra elementos entre carpetas anidadas y sin carpeta', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategory(page, 'Asientos')
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
@@ -774,20 +777,21 @@ test('arrastra elementos entre carpetas anidadas y sin carpeta', async ({ page }
   const chair = catalog.locator('.element-row').filter({ hasText: 'Silla' })
   await chair.dragTo(child.locator('.element-folder__heading').first())
   await expect(child.locator('.element-row').filter({ hasText: 'Silla' })).toBeVisible()
-  await dragToRoot(page, child.locator('.element-row').filter({ hasText: 'Silla' }), catalog.getByText('Sin carpeta', { exact: false }))
+  await dragToRoot(page, child.locator('.element-row').filter({ hasText: 'Silla' }), catalog.getByText('Nivel principal', { exact: false }))
   await expect(child.locator('.element-row').filter({ hasText: 'Silla' })).toHaveCount(0)
   await expect(catalog.locator('.element-row').filter({ hasText: 'Silla' })).toBeVisible()
 })
 
 test('mueve carpetas con el ratón y mediante el inspector', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   await catalog.getByRole('button', { name: 'Crear carpeta de elementos' }).click()
   await catalog.getByRole('button', { name: 'Crear carpeta de elementos' }).click()
   const folder = (name: string) => catalog.locator('.element-folder').filter({ has: page.getByRole('button', { name: `Carpeta ${name}`, exact: true }) })
   await folder('Carpeta 1').locator('.element-folder__heading').first().dragTo(folder('Carpeta 2').locator('.element-folder__heading').first())
   await expect(folder('Carpeta 2').locator('.element-folder').getByRole('button', { name: 'Carpeta Carpeta 1', exact: true })).toBeVisible()
-  await dragToRoot(page, folder('Carpeta 2').locator('.element-folder').locator('.element-folder__heading').first(), catalog.getByText('Sin carpeta', { exact: false }))
+  await dragToRoot(page, folder('Carpeta 2').locator('.element-folder').locator('.element-folder__heading').first(), catalog.getByText('Nivel principal', { exact: false }))
   await expect(folder('Carpeta 2').locator('.element-folder').getByRole('button', { name: 'Carpeta Carpeta 1', exact: true })).toHaveCount(0)
   await catalog.getByRole('button', { name: 'Carpeta Carpeta 1', exact: true }).click()
   const location = page.getByLabel('Ubicación de la carpeta')
@@ -824,7 +828,7 @@ test('reordena objetos sin carpeta y dentro de una carpeta', async ({ page }) =>
   await expandCatalogCategory(page, 'Asientos')
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
-  await catalog.getByRole('button', { name: 'Minimizar catálogo completo' }).click()
+  await catalog.getByRole('button', { name: 'Minimizar Catálogo' }).click()
   const row = (name: string) => catalog.locator('.element-row').filter({ has: page.locator('.element-select strong', { hasText: name }) })
   const chair = row('Silla')
   const door = row('Puerta')
@@ -859,7 +863,7 @@ test('intercala carpetas y objetos hermanos sin cambiar su pertenencia', async (
   await page.getByRole('menuitem', { name: 'Crear subcarpeta' }).click()
   await parent.locator('.element-folder__heading').first().click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Crear subcarpeta' }).click()
-  await catalog.getByRole('button', { name: 'Minimizar catálogo completo' }).click()
+  await catalog.getByRole('button', { name: 'Minimizar Catálogo' }).click()
   const row = (name: string) => catalog.locator('.element-row').filter({ has: page.locator('.element-select strong', { hasText: name }) })
   for (const name of ['Silla', 'Puerta']) {
     await row(name).click({ button: 'right' })
@@ -964,6 +968,7 @@ test('cierra el menú contextual al pulsar fuera, incluso sobre la escena', asyn
 
 test('los atajos del menú renombran, ordenan, crean y borran sin interferir al escribir', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategory(page, 'Asientos')
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()

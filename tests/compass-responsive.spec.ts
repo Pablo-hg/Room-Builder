@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 // Prepared only: execution and screenshot review are reserved for main.
 for (const width of [1200, 1199, 1024, 1000, 950, 850, 640, 430]) {
@@ -6,6 +7,7 @@ for (const width of [1200, 1199, 1024, 1000, 950, 850, 640, 430]) {
     await page.setViewportSize({ width, height: 900 })
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/')
+    await expandAllCatalogCategories(page)
     const compass = page.locator('.compass')
     const canvas = compass.locator('canvas')
     await expect(canvas).toBeVisible()

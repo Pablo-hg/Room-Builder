@@ -5,9 +5,11 @@ async function expandCatalogCategory(page: Page, category: string) {
   if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click()
 }
 import { readFile } from 'node:fs/promises'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 test('edita medidas, guarda y recupera ventanas y mobiliario', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategory(page, 'Aperturas')
   await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
@@ -15,13 +17,13 @@ test('edita medidas, guarda y recupera ventanas y mobiliario', async ({ page }) 
   await width.fill('115 cm')
   await width.press('Enter')
   await expect(width).toHaveValue('1.15')
-  await page.getByRole('button', { name: 'Guardar como', exact: true }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await page.getByRole('button', { name: 'Ventana ＋ Añadir', exact: true }).click()
   const windowWidth = page.getByRole('textbox', { name: 'Introducir anchura del objeto en metros' })
   await windowWidth.fill('1,17')
   await windowWidth.press('Enter')
   await expect(windowWidth).toHaveValue('1.17')
-  await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   await page.reload()
   await page.getByRole('button', { name: 'Seleccionar diseño guardado' }).click()
   await page.getByRole('button', { name: 'Diseño 1', exact: true }).click()
@@ -32,9 +34,10 @@ test('edita medidas, guarda y recupera ventanas y mobiliario', async ({ page }) 
 
 test('exporta e importa una copia con confirmación sin cambiar la escena', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
-  await page.getByRole('button', { name: 'Guardar como', exact: true }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   const selector = page.getByRole('button', { name: 'Seleccionar diseño guardado' })
   await selector.click()
   await page.getByRole('button', { name: 'Más opciones de Diseño 1' }).click()
@@ -57,7 +60,8 @@ test('exporta e importa una copia con confirmación sin cambiar la escena', asyn
 
 test('una descarga 3D no se repite al borrar el diseño activo ni al cambiar de cámara', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Guardar como', exact: true }).click()
+  await expandAllCatalogCategories(page)
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   const selector = page.getByRole('button', { name: 'Seleccionar diseño guardado' })
   await selector.click()
   await page.getByRole('button', { name: /Crear diseño/ }).click()

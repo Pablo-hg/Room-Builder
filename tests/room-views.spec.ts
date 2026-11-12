@@ -1,10 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 import { expandCatalogCategories } from './helpers/catalog'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 const roomFloor = (page: Page, name: string) => page.locator('.element-folder').filter({ has: page.getByRole('button', { name: `Carpeta ${name}`, exact: true }) }).getByRole('button', { name: 'Suelo Superficie de construcción', exact: true })
 
 test('el selector y las cuadrículas muestran el nombre actualizado de la carpeta raíz', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
@@ -25,6 +27,7 @@ test('el selector y las cuadrículas muestran el nombre actualizado de la carpet
 test('las cuadrículas siguen la habitación de la vista y conservan sus ajustes', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Construcción', 'Aperturas'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
@@ -59,6 +62,7 @@ test('las cuadrículas siguen la habitación de la vista y conservan sus ajustes
 test('el selector isométrico centra la habitación y ajusta la altura', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
@@ -84,6 +88,7 @@ test('el selector isométrico centra la habitación y ajusta la altura', async (
 
 test('transición frontal entre habitaciones laterales', async ({ page }, testInfo) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Pared B', exact: true }).click()
@@ -99,6 +104,7 @@ test('transición frontal entre habitaciones laterales', async ({ page }, testIn
 
 test('borrar la carpeta de habitación elimina el pack y se puede deshacer', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
@@ -118,6 +124,7 @@ test('borrar la carpeta de habitación elimina el pack y se puede deshacer', asy
 test('la vista frontal conserva las plantas vecinas al centrar una habitación', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Construcción'])
   for (let index = 0; index < 2; index++) {
     await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
@@ -131,6 +138,7 @@ test('la vista frontal conserva las plantas vecinas al centrar una habitación',
 
 test('Espacio muestra los controles del pack enfocado sin duplicarlo como hijo', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
@@ -159,6 +167,7 @@ test('Espacio muestra los controles del pack enfocado sin duplicarlo como hijo',
 
 test('controles del pack siguen el foco de cámara incluso al seleccionar otros objetos', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Asientos', 'Construcción'])
   const space = page.locator('.room-section')
   const controls = space.getByRole('heading', { name: 'Posición de la habitación' })
@@ -192,6 +201,7 @@ test('crea habitaciones en distintas caras y cambia de habitación en las vistas
   test.setTimeout(90_000) // Tres vistas, dos cambios de foco y seis capturas de canvas.
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Construcción'])
   const create = async (direction: string) => {
     await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
@@ -223,6 +233,7 @@ test('crea habitaciones en distintas caras y cambia de habitación en las vistas
 test('la cámara isométrica se eleva y la libre responde a WASD', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const canvas = page.locator('.scene-panel canvas').first()
   const before = await canvas.screenshot()
   await page.getByRole('slider', { name: 'Altura del centro de cámara isométrica' }).fill('2')

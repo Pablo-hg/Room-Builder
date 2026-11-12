@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 test('la flecha X del control de ejes compartidos inicia el arrastre de ese eje', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const position = async () => page.evaluate(async () => {
@@ -32,6 +34,7 @@ for (const target of ['cuerpo', 'eje X'] as const) {
     test(`agrupa el arrastre de mobiliario en un paso de historial: ${target}, ${gesture}`, async ({ page, context }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' })
       await page.goto('/')
+      await expandAllCatalogCategories(page)
       await page.getByRole('button', { name: 'Plano', exact: true }).click()
       await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
       const position = page.locator('.selection-section--inspector').getByLabel('Posición X', { exact: true })
@@ -97,6 +100,7 @@ for (const target of ['cuerpo', 'eje X'] as const) {
 test('Mayús + arrastrar el cuerpo permite cambiar altura y solo un eje horizontal durante todo el gesto', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
 

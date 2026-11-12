@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test'
 import { readPlanScene } from './helpers/planScene'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 // #26 · Cotas del perímetro en Plano bajo «Mostrar detalles».
 test('«Mostrar detalles» alterna Plano normal y detallado sin cambiar cámara, selección ni historial', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const width = page.getByRole('textbox', { name: 'Introducir anchura en metros', exact: true })
   const depth = page.getByRole('textbox', { name: 'Introducir profundidad en metros', exact: true })
   await width.fill('4')
@@ -62,6 +64,7 @@ test('«Mostrar detalles» alterna Plano normal y detallado sin cambiar cámara,
 test('la capa de detalles no se ve fuera de Plano y se conserva al volver', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('checkbox', { name: 'Mostrar detalles', exact: true }).check()
   await page.getByRole('button', { name: 'Isométrica', exact: true }).click()
@@ -74,6 +77,7 @@ test('el conmutador sigue accesible en pantalla estrecha', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 780 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   const toggle = page.getByRole('checkbox', { name: 'Mostrar detalles', exact: true })
   await toggle.scrollIntoViewIfNeeded()
@@ -85,6 +89,7 @@ test('el conmutador sigue accesible en pantalla estrecha', async ({ page }) => {
 test('las cotas y el arrastre del plano funcionan en una habitación adicional', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
@@ -121,6 +126,7 @@ test('las cotas y el arrastre del plano funcionan en una habitación adicional',
 test('en Plano se puede desplazar arrastrando fuera de las habitaciones', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   const canvas = page.locator('.scene-panel canvas').first()
   const box = (await canvas.boundingBox())!

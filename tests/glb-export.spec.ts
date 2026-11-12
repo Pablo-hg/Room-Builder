@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 async function readGlb(path: string) {
   const data = await readFile(path)
@@ -12,6 +13,7 @@ async function readGlb(path: string) {
 
 test('descarga la escena real en GLB con el nombre y la fecha actuales', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const date = await page.evaluate(() => new Date().toISOString().slice(0, 10))
   await page.getByRole('button', { name: 'Seleccionar diseño guardado' }).click({ button: 'right' })
@@ -31,6 +33,7 @@ test('descarga la escena real en GLB con el nombre y la fecha actuales', async (
 
 test('el adaptador excluye ocultos, líneas, sprites, cámaras, luces y hit areas del GLB', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const pending = page.waitForEvent('download')
   await page.evaluate(async () => {
     const adapterPath = '/src/scene/exportGlb.ts'

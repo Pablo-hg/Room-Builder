@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test'
 import { expandCatalogCategories } from './helpers/catalog'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 for (const label of ['Encima', 'Debajo', 'Pared A', 'Pared B', 'Pared C', 'Pared D']) {
   test(`dirección ocupada se deshabilita y se actualiza con undo/redo: ${label}`, async ({ page }) => {
     await page.goto('/')
+    await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Construcción'])
     const open = page.getByRole('button', { name: /Nueva habitación vacía/ })
     await open.click()
@@ -27,6 +29,7 @@ for (const width of [375, 1280]) {
       await page.setViewportSize({ width, height: 900 })
       await page.emulateMedia({ reducedMotion: 'reduce' })
       await page.goto('/')
+      await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Construcción'])
       await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
       await page.getByRole('button', { name: 'Pared B', exact: true }).click()
@@ -59,6 +62,7 @@ for (const direction of ['Encima', 'Debajo']) {
   test(`creación ${direction} con altura personalizada: comparación visual frontal`, async ({ page }, testInfo) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/')
+    await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Construcción'])
     const height = page.getByRole('textbox', { name: 'Introducir altura en metros', exact: true })
     await height.fill('4')
