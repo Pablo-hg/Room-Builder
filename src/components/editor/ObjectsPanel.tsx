@@ -381,7 +381,7 @@ export function ObjectsPanel() {
     <aside id="objects-panel" className="side-panel objects-panel" aria-label="Catálogo de objetos">
       <div className="side-panel__content objects-panel__content">
         <ObjectCatalogSection />
-        <section className="panel-section elements-section" aria-labelledby="scene-heading">
+        <section className="panel-section elements-section" aria-labelledby="scene-heading" data-tour="scene">
           <div className="scene-section__heading">
             <span className="eyebrow" id="scene-heading">Escena</span>
             <button

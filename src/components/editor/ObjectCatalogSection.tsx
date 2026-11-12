@@ -29,7 +29,7 @@ export function ObjectCatalogSection() {
   }
 
   return (
-        <section className="panel-section">
+        <section className="panel-section" data-tour="design">
         <span className="eyebrow">Diseño</span>
         <div className="catalog-heading">
           <div>
@@ -48,6 +48,20 @@ export function ObjectCatalogSection() {
           </button>
         </div>
         {!catalogCollapsed && <div className="catalog-families" id="catalog-families">
+          <section className={`catalog-family catalog-group${collapsedCategories.catalog ? ' catalog-family--collapsed' : ''}`} aria-labelledby="catalog-items">
+            <h3>
+              <button
+                id="catalog-items"
+                type="button"
+                className="catalog-family__toggle catalog-items__toggle"
+                aria-expanded={!collapsedCategories.catalog}
+                aria-controls="catalog-items-list"
+                onClick={() => toggleCategory('catalog')}
+              >
+                <span>Catálogo</span><i aria-hidden="true" />
+              </button>
+            </h3>
+            {!collapsedCategories.catalog && <div className="catalog-group__categories" id="catalog-items-list">
           <section className={`catalog-family ${collapsedCategories.structure ? 'catalog-family--collapsed' : ''}`} aria-labelledby="catalog-structure">
             <h3>
               <button
@@ -83,20 +97,6 @@ export function ObjectCatalogSection() {
               </button>
             </div>}
           </section>
-          <section className={`catalog-family catalog-group${collapsedCategories.catalog ? ' catalog-family--collapsed' : ''}`} aria-labelledby="catalog-items">
-            <h3>
-              <button
-                id="catalog-items"
-                type="button"
-                className="catalog-family__toggle catalog-items__toggle"
-                aria-expanded={!collapsedCategories.catalog}
-                aria-controls="catalog-items-list"
-                onClick={() => toggleCategory('catalog')}
-              >
-                <span>Catálogo</span><i aria-hidden="true" />
-              </button>
-            </h3>
-            {!collapsedCategories.catalog && <div className="catalog-group__categories" id="catalog-items-list">
               <section className={`catalog-family ${collapsedCategories.openings ? 'catalog-family--collapsed' : ''}`} aria-labelledby="catalog-openings">
             <h3>
               <button

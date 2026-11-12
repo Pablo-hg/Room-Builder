@@ -7,15 +7,16 @@ test('explica construir, añadir, editar y ver sin ocultar herramientas avanzada
 
   await expect(catalog.getByText('Diseño', { exact: true })).toBeVisible()
   await expect(catalog.getByRole('heading', { name: 'Construye y amuebla' })).toBeVisible()
-  await expect(catalog.getByRole('button', { name: 'Construcción', exact: true })).toBeVisible()
   await expect(catalog.getByRole('button', { name: 'Catálogo', exact: true })).toBeVisible()
+  const catalogGroup = catalog.locator('#catalog-items-list')
+  await expect(catalogGroup.getByRole('button', { name: 'Construcción', exact: true })).toBeVisible()
   await expect(catalog.getByText('Añadir objetos', { exact: true })).toHaveCount(0)
   await expect(catalog.getByText('La habitación inicial ya está creada.', { exact: false })).toHaveCount(0)
   await expect(inspector.getByRole('heading', { name: 'Nada seleccionado' })).toBeVisible()
   await expect(inspector.getByText('Para las medidas generales', { exact: false })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Frontal', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Libre', exact: true })).toBeVisible()
-  await expect(catalog.getByRole('button', { name: /Nueva habitación vacía/ })).toBeVisible()
+  await expect(catalogGroup.getByRole('button', { name: /Nueva habitación vacía/ })).toBeVisible()
 })
 
 test('el botón alterna entre Guardar y Guardado y el estado se muestra solo en la barra inferior', async ({ page }) => {

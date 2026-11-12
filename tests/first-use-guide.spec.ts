@@ -51,8 +51,8 @@ test('ofrece una guía opcional y permite recorrer los seis pasos y repetirla', 
   await expect(dialog).toContainText('Guía de inicio · 1 de 6')
 
   for (const step of [
-    'Añade puertas y ventanas',
-    'Amuebla y decora',
+    'Explora Diseño',
+    'Organiza la escena',
     'Edita el elemento seleccionado',
     'Explora las distintas vistas',
     'Guarda tu diseño',
@@ -128,23 +128,38 @@ test('reabrir la guía recupera los paneles necesarios sin tocar el diseño', as
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
-test('la guía abre Catálogo antes de señalar aperturas o muebles si estaba minimizado', async ({ page }) => {
+test('la guía explica Diseño y Escena y despliega ambos apartados si estaban minimizados', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ahora no' }).click()
   const sidebar = page.getByRole('complementary', { name: 'Catálogo de objetos' })
+
+  // Deja minimizados Diseño, su Catálogo y Escena antes de iniciar el recorrido.
   const catalog = sidebar.getByRole('button', { name: 'Catálogo', exact: true })
   await catalog.click()
   await expect(catalog).toHaveAttribute('aria-expanded', 'false')
-  // También puede estar minimizado el apartado Diseño que contiene Catálogo.
-  const minimizeDesign = sidebar.getByRole('button', { name: 'Minimizar catálogo completo' })
-  await minimizeDesign.click()
+  await sidebar.getByRole('button', { name: 'Minimizar catálogo completo' }).click()
   await expect(sidebar.getByRole('button', { name: 'Mostrar catálogo completo' })).toBeVisible()
+  await sidebar.getByRole('button', { name: 'Minimizar escena' }).click()
+  await expect(sidebar.getByRole('button', { name: 'Mostrar escena' })).toBeVisible()
+
   await page.getByRole('button', { name: 'Ver guía de primer uso' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Empieza por las medidas' })
   await page.getByRole('button', { name: 'Siguiente' }).click()
+
+  const design = sidebar.locator('[data-tour="design"]')
+  await expect(dialog).toContainText('Explora Diseño')
+  await expect(design).toBeVisible()
   await expect(sidebar.getByRole('button', { name: 'Minimizar catálogo completo' })).toBeVisible()
   await expect(catalog).toHaveAttribute('aria-expanded', 'true')
-  await expect(sidebar.getByRole('button', { name: 'Aperturas', exact: true })).toBeVisible()
+  await expect(sidebar.locator('#catalog-items-list').getByRole('button', { name: 'Construcción', exact: true })).toBeVisible()
+  await expect(sidebar.locator('#catalog-items-list').getByRole('button', { name: 'Aperturas', exact: true })).toBeVisible()
+
   await page.getByRole('button', { name: 'Siguiente' }).click()
-  await expect(sidebar.getByRole('button', { name: 'Asientos', exact: true })).toBeVisible()
+  const scene = sidebar.locator('[data-tour="scene"]')
+  await expect(dialog).toContainText('Organiza la escena')
+  await expect(scene).toBeVisible()
+  await expect(sidebar.getByRole('button', { name: 'Minimizar escena' })).toBeVisible()
+  await expect(sidebar.getByRole('heading', { name: 'Elementos en la habitación' })).toBeVisible()
+  await expect(sidebar.getByRole('button', { name: 'Crear carpeta de elementos' })).toBeVisible()
 })
 

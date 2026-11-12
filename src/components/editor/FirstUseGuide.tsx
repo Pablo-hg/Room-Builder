@@ -37,16 +37,16 @@ const steps: GuideStep[] = [
     cardPlacement: 'left',
   },
   {
-    title: 'Añade puertas y ventanas',
-    description: 'En el catálogo izquierdo, abre Aperturas para colocar ventanas o puertas. La habitación inicial ya tiene una puerta.',
-    target: 'section[aria-labelledby="catalog-openings"]',
-    fallback: '#catalog-openings',
+    title: 'Explora Diseño',
+    description: 'En Diseño tienes las herramientas para construir y amueblar la habitación: crear habitaciones, suelos y paredes; añadir puertas y ventanas; y elegir muebles y decoración desde las categorías del catálogo.',
+    target: '[data-tour="design"]',
+    fallback: '.catalog-heading',
   },
   {
-    title: 'Amuebla y decora',
-    description: 'Despliega una familia del catálogo y pulsa Añadir. También puedes buscar muebles y elementos de decoración mural.',
-    target: '[data-tour="furniture"]',
-    fallback: '.catalog-heading',
+    title: 'Organiza la escena',
+    description: 'En Escena puedes consultar y seleccionar los elementos de la habitación, organizarlos en carpetas y controlar su visibilidad o bloqueo.',
+    target: '[data-tour="scene"]',
+    fallback: '.elements-section',
   },
   {
     title: 'Edita el elemento seleccionado',
@@ -116,16 +116,24 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
       const roomToggle = document.querySelector<HTMLButtonElement>('.room-section__toggle')
       if (roomToggle?.getAttribute('aria-expanded') === 'false') roomToggle.click()
     }
-    // Si se habían plegado Diseño y Catálogo, el segundo desplegable aún no
-    // existe en el DOM. Reintentamos cuando React monte su contenido.
-    const ensureCatalogExpanded = () => {
-      if (stepIndex !== 1 && stepIndex !== 2) return
-      const designToggle = document.querySelector<HTMLButtonElement>('.catalog-heading .catalog-toggle-all')
-      if (designToggle?.getAttribute('aria-expanded') === 'false') designToggle.click()
-      const itemsToggle = document.querySelector<HTMLButtonElement>('.catalog-items__toggle')
-      if (itemsToggle?.getAttribute('aria-expanded') === 'false') itemsToggle.click()
+    // El paso 2 muestra todo Diseño y su Catálogo; el paso 3 muestra Escena.
+    // Si estaban minimizados, los despliega antes de calcular el foco.
+    const ensureStepSectionExpanded = () => {
+      if (stepIndex === 1) {
+        const designToggle = document.querySelector<HTMLButtonElement>('.catalog-heading .catalog-toggle-all')
+        if (designToggle?.getAttribute('aria-expanded') === 'false') {
+          designToggle.click()
+          return
+        }
+        const catalogToggle = document.querySelector<HTMLButtonElement>('.catalog-items__toggle')
+        if (catalogToggle?.getAttribute('aria-expanded') === 'false') catalogToggle.click()
+      }
+      if (stepIndex === 2) {
+        const sceneToggle = document.querySelector<HTMLButtonElement>('.scene-section__heading .catalog-toggle-all')
+        if (sceneToggle?.getAttribute('aria-expanded') === 'false') sceneToggle.click()
+      }
     }
-    ensureCatalogExpanded()
+    ensureStepSectionExpanded()
     const target = document.querySelector<HTMLElement>(step.target)
       ?? (step.fallback ? document.querySelector<HTMLElement>(step.fallback) : null)
     const update = () => {
@@ -152,19 +160,19 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update)
     if (target) observer?.observe(target)
     const leftPanel = document.querySelector('#objects-panel')
-    const catalogObserver = stepIndex === 1 || stepIndex === 2
+    const sectionObserver = stepIndex === 1 || stepIndex === 2
       ? new MutationObserver(() => {
-        ensureCatalogExpanded()
+        ensureStepSectionExpanded()
         update()
       })
       : null
-    if (leftPanel) catalogObserver?.observe(leftPanel, { childList: true, subtree: true })
+    if (leftPanel) sectionObserver?.observe(leftPanel, { childList: true, subtree: true })
     return () => {
       window.cancelAnimationFrame(frame)
       window.removeEventListener('resize', update)
       window.removeEventListener('scroll', update, true)
       observer?.disconnect()
-      catalogObserver?.disconnect()
+      sectionObserver?.disconnect()
     }
   }, [open, stepIndex])
 
