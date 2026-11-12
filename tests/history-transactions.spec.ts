@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { expandCatalogCategories } from './helpers/catalog'
 
 test('perder el foco de la ventana cierra el arrastre del inspector antes de editar con teclado', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const position = page.locator('.selection-section--inspector').getByLabel('Posición X', { exact: true })
   const initial = await position.inputValue()
@@ -91,6 +93,7 @@ test('perder captura cierra el gesto de superficie y separa la siguiente edició
   page.on('pageerror', (error) => errors.push(error.message))
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
   await page.getByRole('button', { name: /Suelo · Editar/ }).click()
@@ -126,6 +129,7 @@ test('perder captura cierra el gesto de superficie y separa la siguiente edició
 
 test('un giro continuo desde el inspector se deshace y rehace en un paso', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const dial = page.getByRole('slider', { name: 'Giro del mueble' })
   await dial.scrollIntoViewIfNeeded()
@@ -154,6 +158,7 @@ test('borrar durante un arrastre desmonta el gesto y mantiene separados sus dos 
   page.on('pageerror', (error) => errors.push(error.message))
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const position = page.locator('.selection-section--inspector').getByLabel('Posición X', { exact: true })
