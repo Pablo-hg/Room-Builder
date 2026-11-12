@@ -11,7 +11,7 @@ import { planRoomCreation } from '../../domain/roomCreation'
 // de escena para que la jerarquía/selección no controle el estado de expansión.
 export function ObjectCatalogSection() {
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
-  const [designCollapsed, setDesignCollapsed] = useState(false)
+  const [catalogCollapsed, setCatalogCollapsed] = useState(false)
   const [choosingRoomPosition, setChoosingRoomPosition] = useState(false)
   const addFurniture = useRoomStore((state) => state.addFurniture)
   const addWindow = useRoomStore((state) => state.addWindow)
@@ -34,20 +34,20 @@ export function ObjectCatalogSection() {
         <div className="catalog-heading">
           <div>
             <h2>Construye y amuebla</h2>
-            {!designCollapsed && <p className="section-copy">Ajusta primero las medidas a la derecha, añade aperturas y después elige tus muebles. Puedes hacerlo en cualquier orden.</p>}
+            {!catalogCollapsed && <p className="section-copy">Ajusta primero las medidas a la derecha, añade aperturas y después elige tus muebles. Puedes hacerlo en cualquier orden.</p>}
           </div>
           <button
             type="button"
             className="catalog-family__toggle catalog-toggle-all"
-            aria-expanded={!designCollapsed}
+            aria-expanded={!catalogCollapsed}
             aria-controls="catalog-content"
-            aria-label={designCollapsed ? 'Mostrar Catálogo' : 'Minimizar Catálogo'}
-            onClick={() => setDesignCollapsed((collapsed) => !collapsed)}
+            aria-label={catalogCollapsed ? 'Mostrar Catálogo' : 'Minimizar Catálogo'}
+            onClick={() => setCatalogCollapsed((collapsed) => !collapsed)}
           >
             <i aria-hidden="true" />
           </button>
         </div>
-        {!designCollapsed && <div className="catalog-families" id="catalog-content">
+        {!catalogCollapsed && <div className="catalog-families" id="catalog-content">
           <section className={`catalog-family ${collapsedCategories.structure ? 'catalog-family--collapsed' : ''}`} aria-labelledby="catalog-structure">
             <h3>
               <button

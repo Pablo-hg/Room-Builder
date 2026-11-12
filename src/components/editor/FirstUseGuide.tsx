@@ -118,7 +118,7 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
       const roomToggle = document.querySelector<HTMLButtonElement>('.room-section__toggle')
       if (roomToggle?.getAttribute('aria-expanded') === 'false') roomToggle.click()
     }
-    // El paso 2 muestra todo Diseño y su Catálogo; el paso 3 muestra Escena.
+    // El paso 2 muestra todo Catálogo y el paso 3 muestra Escena.
     // Si estaban minimizados, los despliega antes de calcular el foco.
     const ensureStepSectionExpanded = () => {
       if (stepIndex === 1) {
@@ -164,7 +164,7 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
       : null
     if (leftPanel) sectionObserver?.observe(leftPanel, { childList: true, subtree: true })
     // Instalar el observador antes de desplegar: así detecta también el montaje
-    // del contenido de Catálogo tras abrir Diseño.
+    // del contenido de Catálogo al desplegarlo.
     ensureStepSectionExpanded()
     return () => {
       window.cancelAnimationFrame(frame)

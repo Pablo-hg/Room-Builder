@@ -51,7 +51,7 @@ test('ofrece una guía opcional y permite recorrer los seis pasos y repetirla', 
   await expect(dialog).toContainText('Guía de inicio · 1 de 6')
 
   for (const step of [
-    'Explora Diseño',
+    'Explora el catálogo',
     'Organiza la escena',
     'Edita el elemento seleccionado',
     'Explora las distintas vistas',
@@ -128,7 +128,7 @@ test('reabrir la guía recupera los paneles necesarios sin tocar el diseño', as
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
-test('la guía explica Diseño y Escena y despliega ambos apartados si estaban minimizados', async ({ page }) => {
+test('la guía explica Catálogo y Escena y despliega ambos apartados si estaban minimizados', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ahora no' }).click()
   const sidebar = page.getByRole('complementary', { name: 'Catálogo de objetos' })
@@ -163,6 +163,7 @@ test('la guía explica Diseño y Escena y despliega ambos apartados si estaban m
 test('la tarjeta de los pasos 2 y 3 queda a la derecha del menú en pantallas estrechas', async ({ page }) => {
   for (const viewport of [{ width: 418, height: 638 }, { width: 406, height: 861 }]) {
     await page.setViewportSize(viewport)
+    await page.addInitScript(() => localStorage.removeItem('room-builder:first-use-guide:v1'))
     await page.goto('/')
     await page.getByRole('button', { name: 'Ahora no' }).click()
     await page.getByRole('button', { name: 'Ver guía de primer uso' }).click()
