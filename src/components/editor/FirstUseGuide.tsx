@@ -116,14 +116,16 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
       const roomToggle = document.querySelector<HTMLButtonElement>('.room-section__toggle')
       if (roomToggle?.getAttribute('aria-expanded') === 'false') roomToggle.click()
     }
-    // La guía de aperturas y muebles debe funcionar también si el usuario ha
-    // minimizado Diseño o Catálogo; no cambiamos el estado de cada familia.
-    if (stepIndex === 1 || stepIndex === 2) {
+    // Si se habían plegado Diseño y Catálogo, el segundo desplegable aún no
+    // existe en el DOM. Reintentamos cuando React monte su contenido.
+    const ensureCatalogExpanded = () => {
+      if (stepIndex !== 1 && stepIndex !== 2) return
       const designToggle = document.querySelector<HTMLButtonElement>('.catalog-heading .catalog-toggle-all')
       if (designToggle?.getAttribute('aria-expanded') === 'false') designToggle.click()
       const itemsToggle = document.querySelector<HTMLButtonElement>('.catalog-items__toggle')
       if (itemsToggle?.getAttribute('aria-expanded') === 'false') itemsToggle.click()
     }
+    ensureCatalogExpanded()
     const target = document.querySelector<HTMLElement>(step.target)
       ?? (step.fallback ? document.querySelector<HTMLElement>(step.fallback) : null)
     const update = () => {
@@ -149,11 +151,20 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
     window.addEventListener('scroll', update, true)
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update)
     if (target) observer?.observe(target)
+    const leftPanel = document.querySelector('#objects-panel')
+    const catalogObserver = stepIndex === 1 || stepIndex === 2
+      ? new MutationObserver(() => {
+        ensureCatalogExpanded()
+        update()
+      })
+      : null
+    if (leftPanel) catalogObserver?.observe(leftPanel, { childList: true, subtree: true })
     return () => {
       window.cancelAnimationFrame(frame)
       window.removeEventListener('resize', update)
       window.removeEventListener('scroll', update, true)
       observer?.disconnect()
+      catalogObserver?.disconnect()
     }
   }, [open, stepIndex])
 
