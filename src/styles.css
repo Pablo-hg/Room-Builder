@@ -44,8 +44,6 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .secondary-button { border: 1px solid #dcd9d1; background: white; }
 .secondary-button:hover { background: #f7f5f0; }
 .save-actions button:disabled { opacity: .48; cursor: not-allowed; }
-.save-state { color: var(--muted); font-size: 11px; font-weight: 700; white-space: nowrap; }
-.save-state--dirty { color: var(--accent); }
 .saved-design-select { position: relative; min-width: 0; }
 .saved-design-selector-row { display: flex; align-items: center; gap: 4px; }
 .save-actions .saved-design-more { flex: 0 0 auto; width: 34px; height: 38px; padding: 0; border: 1px solid #dcd9d1; border-radius: 8px; background: white; color: var(--ink); font-size: 20px; line-height: 1; cursor: pointer; }
@@ -102,8 +100,14 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .design-modal-actions button { min-height: 40px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
 .design-modal-actions .design-modal-primary { border-color: var(--forest); background: var(--forest); color: white; }
 .design-modal-actions .design-modal-danger { border-color: var(--danger); background: var(--danger); color: white; }
-.primary-button { border: 1px solid var(--forest); background: var(--forest); color: white; box-shadow: 0 5px 12px rgba(48, 65, 55, .16); }
+.primary-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--forest); background: var(--forest); color: white; box-shadow: 0 5px 12px rgba(48, 65, 55, .16); white-space: nowrap; }
 .primary-button:hover { background: var(--forest-dark); }
+.primary-button--ready, .primary-button--dirty { border-color: #c59642; background: #f7e9c9; color: #76531e; box-shadow: 0 4px 10px rgba(151, 106, 34, .12); }
+.primary-button--ready:hover, .primary-button--dirty:hover { border-color: #b8842f; background: #f0dfb8; }
+.primary-button--saved, .primary-button--saved:hover { border-color: var(--forest); background: var(--forest); color: white; box-shadow: none; cursor: default; }
+.save-actions .primary-button--saved:disabled { opacity: 1; cursor: default; }
+.save-button__icon { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; font-size: 16px; font-weight: 850; line-height: 1; }
+.primary-button--dirty .save-button__icon { width: 17px; height: 17px; border: 1.5px solid currentColor; border-radius: 50%; font-size: 11px; }
 
 .workspace { --settings-panel-width: var(--settings-expanded-width, 286px); --objects-panel-width: var(--objects-expanded-width, 264px); display: grid; grid-template-columns: minmax(0, var(--objects-panel-width)) minmax(250px, 1fr) minmax(0, var(--settings-panel-width)); min-height: 0; transition: grid-template-columns .24s ease-in-out; }
 .workspace.workspace--settings-collapsed { --settings-panel-width: 0px; }
@@ -486,7 +490,6 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
   .view-switcher button { padding-inline: 9px; }
   .save-actions button { padding-inline: 9px; }
   .saved-design-trigger { width: 145px; }
-  .save-state { display: none; }
 }
 
 @media (max-width: 1350px) {
@@ -523,7 +526,7 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
   .save-actions { grid-column: 1; grid-row: 2; justify-self: stretch; }
   .save-actions button { padding-inline: 7px; }
   .save-actions .undo-button span { display: none; }
-  .save-actions .primary-button span { display: none; }
+  .save-actions .primary-button { gap: 5px; padding-inline: 8px; font-size: 12px; white-space: nowrap; }
   .save-actions .export-button span { display: none; }
   .saved-design-select { flex: 1; width: 0; min-width: 60px; }
   .saved-design-trigger { width: 100%; max-width: none; }

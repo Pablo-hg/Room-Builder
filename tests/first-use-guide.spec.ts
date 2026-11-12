@@ -38,8 +38,8 @@ test('saltar la invitación no bloquea el editor y se recuerda tras recargar', a
   const invitation = page.getByRole('complementary', { name: 'Invitación a la guía de primer uso' })
   await invitation.getByRole('button', { name: 'Ahora no' }).click()
   await expect(invitation).toHaveCount(0)
-  await page.getByRole('button', { name: 'Guardar como' }).click()
-  await expect(page.locator('.save-state')).not.toContainText('Cambios sin guardar')
+  await page.getByRole('button', { name: 'Guardar' }).click()
+  await expect(page.getByRole('button', { name: 'Guardado', exact: true })).toBeDisabled()
   await page.reload()
   await expect(invitation).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Ver guía de primer uso' })).toBeVisible()
@@ -47,7 +47,7 @@ test('saltar la invitación no bloquea el editor y se recuerda tras recargar', a
 
 test('los usuarios con diseños anteriores no reciben la invitación', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Guardar como' }).click()
+  await page.getByRole('button', { name: 'Guardar' }).click()
   await page.evaluate(() => localStorage.removeItem('room-builder:first-use-guide:v1'))
   await page.reload()
   await expect(page.getByRole('complementary', { name: 'Invitación a la guía de primer uso' })).toHaveCount(0)

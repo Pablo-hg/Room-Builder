@@ -365,7 +365,7 @@ function App() {
         <SettingsPanel onStartGuide={startGuide} />
       </main>
       <footer className="statusbar">
-        <span className={`statusbar__save${hasUnsavedChanges || !selectedSavedDesignId ? ' statusbar__save--pending' : ''}`} role="status" aria-live="polite"><i className="status-dot" aria-hidden="true" />{hasUnsavedChanges ? (selectedSavedDesignId ? 'Cambios sin guardar · pulsa Guardar' : 'Cambios sin guardar · pulsa Guardar como') : selectedSavedDesignId ? 'Diseño guardado en este navegador' : 'Diseño sin guardar · pulsa Guardar como'}</span>
+        <span className={`statusbar__save${hasUnsavedChanges || !selectedSavedDesignId ? ' statusbar__save--pending' : ''}`} role="status" aria-live="polite"><i className="status-dot" aria-hidden="true" />{hasUnsavedChanges ? 'Cambios sin guardar · pulsa Guardar' : selectedSavedDesignId ? 'Diseño guardado en este navegador' : 'Diseño sin guardar · pulsa Guardar'}</span>
         <span>Cuadrado visible: 25 cm · ajuste: 5 cm</span>
       </footer>
       <EditorNotice exportNotice={exportNotice} />
