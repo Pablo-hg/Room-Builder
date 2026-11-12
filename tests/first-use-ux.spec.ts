@@ -194,7 +194,7 @@ test('al agrandar la tipografía no aparece desbordamiento horizontal en móvil'
 test('las categorías cuelgan directamente de Catálogo y conservan sus desplegables', async ({ page }) => {
   await page.goto('/')
   const sidebar = page.getByRole('complementary', { name: 'Catálogo de objetos' })
-  const catalogToggle = sidebar.getByRole('button', { name: 'Minimizar Catálogo' })
+  const catalogToggle = sidebar.locator('.catalog-heading .catalog-toggle-all')
   const content = sidebar.locator('#catalog-content')
   const construction = content.getByRole('button', { name: 'Construcción', exact: true })
 

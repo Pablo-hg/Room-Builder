@@ -163,7 +163,7 @@ test('la guía explica Catálogo y Escena y despliega ambos apartados si estaban
 test('la tarjeta de los pasos 2 y 3 queda a la derecha del menú en pantallas estrechas', async ({ page }) => {
   for (const viewport of [{ width: 418, height: 638 }, { width: 406, height: 861 }]) {
     await page.setViewportSize(viewport)
-    await page.addInitScript(() => localStorage.removeItem('room-builder:first-use-guide:v1'))
+    await page.addInitScript(() => { try { localStorage.removeItem('room-builder:first-use-guide:v1') } catch { /* Origen inicial sin almacenamiento. */ } })
     await page.goto('/')
     await page.getByRole('button', { name: 'Ahora no' }).click()
     await page.getByRole('button', { name: 'Ver guía de primer uso' }).click()
