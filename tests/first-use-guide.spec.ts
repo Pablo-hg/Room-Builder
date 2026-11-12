@@ -135,8 +135,13 @@ test('la guía abre Catálogo antes de señalar aperturas o muebles si estaba mi
   const catalog = sidebar.getByRole('button', { name: 'Catálogo', exact: true })
   await catalog.click()
   await expect(catalog).toHaveAttribute('aria-expanded', 'false')
+  // También puede estar minimizado el apartado Diseño que contiene Catálogo.
+  const minimizeDesign = sidebar.getByRole('button', { name: 'Minimizar catálogo completo' })
+  await minimizeDesign.click()
+  await expect(sidebar.getByRole('button', { name: 'Mostrar catálogo completo' })).toBeVisible()
   await page.getByRole('button', { name: 'Ver guía de primer uso' }).click()
   await page.getByRole('button', { name: 'Siguiente' }).click()
+  await expect(sidebar.getByRole('button', { name: 'Minimizar catálogo completo' })).toBeVisible()
   await expect(catalog).toHaveAttribute('aria-expanded', 'true')
   await expect(sidebar.getByRole('button', { name: 'Aperturas', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Siguiente' }).click()
