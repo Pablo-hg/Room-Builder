@@ -30,7 +30,7 @@ export function ObjectCatalogSection() {
 
   return (
         <section className="panel-section">
-        <span className="eyebrow">Construir · Añadir objetos</span>
+        <span className="eyebrow">Diseño</span>
         <div className="catalog-heading">
           <div>
             <h2>Construye y amuebla</h2>
@@ -83,7 +83,21 @@ export function ObjectCatalogSection() {
               </button>
             </div>}
           </section>
-          <section className={`catalog-family ${collapsedCategories.openings ? 'catalog-family--collapsed' : ''}`} aria-labelledby="catalog-openings">
+          <section className={`catalog-family catalog-group${collapsedCategories.catalog ? ' catalog-family--collapsed' : ''}`} aria-labelledby="catalog-items">
+            <h3>
+              <button
+                id="catalog-items"
+                type="button"
+                className="catalog-family__toggle catalog-items__toggle"
+                aria-expanded={!collapsedCategories.catalog}
+                aria-controls="catalog-items-list"
+                onClick={() => toggleCategory('catalog')}
+              >
+                <span>Catálogo</span><i aria-hidden="true" />
+              </button>
+            </h3>
+            {!collapsedCategories.catalog && <div className="catalog-group__categories" id="catalog-items-list">
+              <section className={`catalog-family ${collapsedCategories.openings ? 'catalog-family--collapsed' : ''}`} aria-labelledby="catalog-openings">
             <h3>
               <button
                 id="catalog-openings"
@@ -110,7 +124,6 @@ export function ObjectCatalogSection() {
               </button>
             </div>}
           </section>
-          <div className="catalog-stage" aria-label="Añadir objetos"><strong>Añadir objetos</strong><span>Elige una categoría y pulsa la pieza que quieras colocar. Selecciónala después para editar sus propiedades.</span></div>
           {FURNITURE_FAMILIES.map((family) => {
             const kinds = (Object.keys(FURNITURE_CATALOG) as FurnitureKind[]).filter((kind) => FURNITURE_CATALOG[kind].family === family.id)
             return (
@@ -169,6 +182,8 @@ export function ObjectCatalogSection() {
               </section>
             )
           })}
+            </div>}
+          </section>
         </div>}
         </section>
   )

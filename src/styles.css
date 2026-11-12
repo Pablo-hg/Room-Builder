@@ -306,6 +306,11 @@ body.plan-panning .scene-panel canvas { cursor: grabbing; }
 .catalog-family--collapsed h3 { margin-bottom: 0; }
 .catalog-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .catalog-heading .section-copy { margin-bottom: 0; }
+.catalog-group__categories { display: grid; gap: 16px; padding-left: 10px; border-left: 2px solid var(--line); }
+.catalog-group__categories > .catalog-family { min-width: 0; }
+.scene-section__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.scene-section__heading .catalog-toggle-all { flex: 0 0 auto; }
+.scene-section__toggle--collapsed i { transform: rotate(-45deg); }
 .catalog-toggle-all { width: 28px; height: 28px; flex: 0 0 auto; justify-content: center; padding: 0; border: 1px solid #dedbd4; border-radius: 7px; }
 .catalog-toggle-all::after { display: none; }
 .catalog-toggle-all i { transform: rotate(-135deg); }
