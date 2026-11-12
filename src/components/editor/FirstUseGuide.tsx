@@ -39,8 +39,8 @@ const steps: GuideStep[] = [
   {
     title: 'Añade puertas y ventanas',
     description: 'En el catálogo izquierdo, abre Aperturas para colocar ventanas o puertas. La habitación inicial ya tiene una puerta.',
-    target: '#catalog-openings',
-    fallback: '.catalog-heading',
+    target: 'section[aria-labelledby="catalog-openings"]',
+    fallback: '#catalog-openings',
   },
   {
     title: 'Amuebla y decora',
@@ -61,8 +61,8 @@ const steps: GuideStep[] = [
   },
   {
     title: 'Guarda tu diseño',
-    description: 'Pulsa Guardar como la primera vez y Guardar cambios después. Tus diseños se conservan en este navegador y puedes exportarlos a JSON.',
-    target: '.save-actions .primary-button',
+    description: 'Pulsa Guardar para conservar el diseño en este navegador; el botón pasa a Guardado cuando no hay cambios pendientes. Desde el menú de diseños puedes exportarlo a JSON.',
+    target: '.save-actions',
   },
 ]
 
@@ -83,7 +83,7 @@ export function FirstUseInvitation({ onStart, onDismiss }: { onStart: () => void
   return (
     <aside ref={invitationRef} className="first-use-invitation" aria-label="Invitación a la guía de primer uso">
       <strong>¿Es tu primera vez en Room Builder?</strong>
-      <p>Descubre el editor con una guía visual de seis pasos. Puedes saltártela y abrirla después desde el panel derecho.</p>
+      <p>Descubre el editor con una guía visual de {steps.length} pasos. Puedes saltártela y abrirla después desde el panel derecho.</p>
       <div className="first-use-invitation__actions">
         <button type="button" className="first-use-invitation__primary" onClick={onStart}>Empezar guía</button>
         <button type="button" onClick={onDismiss}>Ahora no</button>
@@ -98,6 +98,7 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
   const [viewport, setViewport] = useState({ width: 1024, height: 768 })
   const dialogRef = useRef<HTMLDivElement>(null)
   const returnFocus = useRef<HTMLElement | null>(null)
+  const [cardHeight, setCardHeight] = useState(250)
 
   useEffect(() => {
     if (!open) { setStepIndex(0); return }
@@ -150,6 +151,11 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
 
   useEffect(() => { if (open) dialogRef.current?.focus() }, [open, stepIndex])
 
+  // La tarjeta crece con el texto: se mide para no depender de una altura fija.
+  useEffect(() => {
+    if (open && dialogRef.current) setCardHeight(dialogRef.current.offsetHeight)
+  }, [open, stepIndex, viewport.width])
+
   useEffect(() => {
     if (!open) return
     const keydown = (event: KeyboardEvent) => {
@@ -183,10 +189,10 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
     : Math.max(16, (viewport.width - cardWidth) / 2)
   const cardTop = spotlight
     ? step.cardPlacement === 'left'
-      ? Math.max(140, Math.min(viewport.height - 140, spotlight.top + spotlight.height / 2))
-      : spotlight.top + spotlight.height + 262 < viewport.height
+      ? Math.max(cardHeight / 2 + 16, Math.min(viewport.height - cardHeight / 2 - 16, spotlight.top + spotlight.height / 2))
+      : spotlight.top + spotlight.height + cardHeight + 28 < viewport.height
         ? spotlight.top + spotlight.height + 14
-        : Math.max(16, spotlight.top - 250)
+        : Math.max(16, spotlight.top - cardHeight - 14)
     : Math.max(16, (viewport.height - 240) / 2)
   const backdrop = (style: Style, key: string) => <div key={key} className="first-use-guide__shade" style={style} />
 
