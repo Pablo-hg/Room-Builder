@@ -14,36 +14,35 @@ test('explica construir, añadir, editar y ver sin ocultar herramientas avanzada
   await expect(catalog.getByRole('button', { name: /Nueva habitación vacía/ })).toBeVisible()
 })
 
-test('el botón solo alterna entre Guardar y Guardado y ambos indicadores informan del estado', async ({ page }) => {
+test('el botón alterna entre Guardar y Guardado y el estado se muestra solo en la barra inferior', async ({ page }) => {
   await page.goto('/')
   const footerStatus = page.locator('.statusbar__save')
-  const headerStatus = page.locator('.save-state')
   const save = page.getByRole('button', { name: 'Guardar', exact: true })
 
   await expect(save).toBeEnabled()
   await expect(save).toHaveClass(/primary-button--ready/)
   await expect(save.locator('.save-button__icon')).toHaveText('▣')
-  await expect(headerStatus).toHaveText('Sin guardar')
+  await expect(page.locator('.save-state')).toHaveCount(0)
   await expect(footerStatus).toContainText('Diseño sin guardar · pulsa Guardar')
+  await expect(footerStatus).toHaveCSS('font-weight', '650')
 
   await save.click()
   const saved = page.getByRole('button', { name: 'Guardado', exact: true })
   await expect(saved).toBeDisabled()
   await expect(saved).toHaveClass(/primary-button--saved/)
   await expect(saved.locator('.save-button__icon')).toHaveText('✓')
-  await expect(headerStatus).toHaveText('Guardado')
+  await expect(page.locator('.save-state')).toHaveCount(0)
   await expect(footerStatus).toContainText('Diseño guardado en este navegador')
 
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   const changed = page.getByRole('button', { name: 'Guardar', exact: true })
   await expect(changed).toBeEnabled()
   await expect(changed).toHaveClass(/primary-button--ready/)
-  await expect(headerStatus).toHaveText('Cambios sin guardar')
+  await expect(page.locator('.save-state')).toHaveCount(0)
   await expect(footerStatus).toContainText('Cambios sin guardar · pulsa Guardar')
 
   await changed.click()
   await expect(page.getByRole('button', { name: 'Guardado', exact: true })).toBeDisabled()
-  await expect(headerStatus).toHaveText('Guardado')
   await expect(footerStatus).toContainText('Diseño guardado en este navegador')
 })
 
@@ -101,8 +100,6 @@ test('aviso de cambios pendientes visible en móvil mediante la barra inferior',
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await expect(page.locator('.statusbar__save')).toContainText('Cambios sin guardar')
   await expect(page.locator('.statusbar__save')).toBeVisible()
-  await expect(page.locator('.save-state')).toContainText('Cambios sin guardar')
-  await expect(page.locator('.save-state')).toBeVisible()
 })
 
 

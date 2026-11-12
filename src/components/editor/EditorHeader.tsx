@@ -49,9 +49,6 @@ export function EditorHeader({ exportMode, onExport }: {
             ↷ <span>Rehacer</span>
           </button>
           <SavedDesignsMenu state={state} exportMode={exportMode} onExport={onExport} />
-          <span className={`save-state${state.hasUnsavedChanges ? ' save-state--dirty' : ''}`} role="status" aria-live="polite">
-            {state.hasUnsavedChanges ? 'Cambios sin guardar' : state.selectedSavedDesignId ? 'Guardado' : 'Sin guardar'}
-          </span>
           <button
             type="button"
             className={`primary-button primary-button--${saveStatus}`}

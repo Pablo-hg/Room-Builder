@@ -44,8 +44,6 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .secondary-button { border: 1px solid #dcd9d1; background: white; }
 .secondary-button:hover { background: #f7f5f0; }
 .save-actions button:disabled { opacity: .48; cursor: not-allowed; }
-.save-state { flex: 0 0 auto; color: var(--muted); font-size: 11px; font-weight: 700; white-space: nowrap; }
-.save-state--dirty { color: var(--accent); }
 .saved-design-select { position: relative; min-width: 0; }
 .saved-design-selector-row { display: flex; align-items: center; gap: 4px; }
 .save-actions .saved-design-more { flex: 0 0 auto; width: 34px; height: 38px; padding: 0; border: 1px solid #dcd9d1; border-radius: 8px; background: white; color: var(--ink); font-size: 20px; line-height: 1; cursor: pointer; }
@@ -656,7 +654,7 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .catalog-stage:first-child { border-top: 0; padding-top: 0; }
 .catalog-stage strong { color: var(--forest); font-size: 14px; font-weight: 800; }
 .catalog-stage span { color: var(--muted); font-size: 13px; line-height: 1.5; }
-.statusbar__save { color: var(--forest); white-space: nowrap; }
+.statusbar__save { color: var(--forest); font-weight: 650; white-space: nowrap; }
 .statusbar__save--pending { color: var(--accent); }
 .statusbar__save--pending .status-dot { background: var(--accent); }
 .saved-design-menu__heading { display: flex; justify-content: space-between; gap: 10px; margin: 2px 5px 8px; font-size: 14px; font-weight: 750; }
