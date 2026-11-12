@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { expandCatalogCategories } from './helpers/catalog'
 
 for (const width of [375, 1280]) {
   for (const secondary of [false, true]) {
@@ -6,6 +7,7 @@ for (const width of [375, 1280]) {
       await page.setViewportSize({ width, height: 900 })
       await page.emulateMedia({ reducedMotion: 'reduce' })
       await page.goto('/')
+  await expandCatalogCategories(page, ['Construcción', 'Aperturas'])
       if (secondary) {
         await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
         await page.getByRole('button', { name: 'Encima', exact: true }).click()

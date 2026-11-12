@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test'
+import { expandCatalogCategories } from './helpers/catalog'
 
 test('soltar un objeto sobre una fila exterior lo saca de la carpeta', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1200 })
   await page.goto('/')
+  await expandCatalogCategories(page, ['Aperturas'])
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   await catalog.getByRole('button', { name: 'Crear carpeta de elementos' }).click()
   await page.getByRole('button', { name: 'Ventana ＋ Añadir', exact: true }).click()
@@ -27,6 +29,7 @@ test('el menú y el arrastre actúan sobre toda la selección y permiten agrupar
   await page.setViewportSize({ width: 1440, height: 1200 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandCatalogCategories(page, ['Asientos', 'Mesas y auxiliares'])
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
@@ -76,6 +79,7 @@ test('el menú y el arrastre actúan sobre toda la selección y permiten agrupar
 
 test('duplica y borra toda la selección y deshace cada operación', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategories(page, ['Asientos', 'Mesas y auxiliares'])
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
@@ -102,6 +106,7 @@ test('duplica y borra toda la selección y deshace cada operación', async ({ pa
 
 test('ofrece desagrupar al seleccionar una carpeta y conserva los objetos', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategories(page, ['Asientos'])
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await catalog.getByRole('button', { name: 'Crear carpeta de elementos' }).click()

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { expandCatalogCategories } from './helpers/catalog'
 
 const inspector = (page: Page) => page.locator('.selection-section--inspector')
 async function move(page: Page, axis: string, value: string) {
@@ -11,6 +12,7 @@ for (const width of [375, 1280]) {
   test(`una ventana sale al vacío por Y y deshacer recupera su posición, ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/')
+  await expandCatalogCategories(page, ['Aperturas'])
     await page.locator('#catalog-grid-openings').getByRole('button', { name: 'Ventana ＋ Añadir', exact: true }).click()
     await inspector(page).getByRole('button', { name: 'Despegar de la pared', exact: true }).click()
     await move(page, 'Z', '0')
@@ -31,6 +33,7 @@ for (const width of [375, 1280]) {
   test(`una ventana creada en un pack pasa a Raíz sin perder selección, ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/')
+  await expandCatalogCategories(page, ['Construcción', 'Aperturas'])
     await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
     await page.getByRole('button', { name: 'Pared B', exact: true }).click()
     await page.locator('#catalog-grid-openings').getByRole('button', { name: 'Ventana ＋ Añadir', exact: true }).click()
@@ -49,12 +52,14 @@ for (const width of [375, 1280]) {
 
 test('la puerta conserva su posición vertical bloqueada', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategories(page, ['Aperturas'])
   await page.getByRole('button', { name: 'Puerta Apertura', exact: true }).click()
   await expect(inspector(page).getByRole('textbox', { name: 'Introducir Y en metros', exact: true })).toBeDisabled()
 })
 
 test('el eje perpendicular cambia con la pared y se libera solo al despegar', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategories(page, ['Aperturas'])
   await page.locator('#catalog-grid-openings').getByRole('button', { name: 'Ventana ＋ Añadir', exact: true }).click()
   const x = inspector(page).getByRole('textbox', { name: 'Introducir X en metros', exact: true })
   const y = inspector(page).getByRole('textbox', { name: 'Introducir Y en metros', exact: true })

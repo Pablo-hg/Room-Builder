@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test'
+import { expandCatalogCategories } from './helpers/catalog'
 
 test('muestra una advertencia visual al crear una pared que atraviesa un mueble', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: /Pared.*Objeto independiente/ }).click()
   await expect(page.getByRole('heading', { name: 'Pared independiente' })).toBeVisible()
@@ -11,6 +13,7 @@ test('muestra una advertencia visual al crear una pared que atraviesa un mueble'
 
 test('un mueble puede cruzar las paredes y el suelo y conservar su posición al soltar', async ({ page }, testInfo) => {
   await page.goto('/')
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   const x = page.getByRole('textbox', { name: 'Introducir X en metros' })
   const y = page.getByRole('textbox', { name: 'Introducir Y en metros' })
@@ -104,6 +107,7 @@ for (const view of ['Isométrica', 'Libre', 'Plano', 'Frontal']) {
     test(`${kind}: crear, reseleccionar y mover en ${view}`, async ({ page }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' })
       await page.goto('/')
+  await expandCatalogCategories(page, ['Aperturas'])
       await page.getByRole('button', { name: view, exact: true }).click()
       await page.getByRole('button', { name: new RegExp(`${kind}.*Objeto independiente`) }).click()
       const inspector = page.locator('.selection-section--inspector')
@@ -169,6 +173,7 @@ for (const kind of ['Suelo', 'Pared']) {
   test(`${kind}: reselección táctil en isométrica`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/')
+  await expandCatalogCategories(page, ['Aperturas'])
     await page.getByRole('button', { name: new RegExp(`${kind}.*Objeto independiente`) }).click()
     await page.getByRole('button', { name: /Puerta Apertura/ }).click()
     const box = await page.locator('.scene-panel canvas').first().boundingBox()

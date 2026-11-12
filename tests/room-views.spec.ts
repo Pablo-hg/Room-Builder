@@ -1,9 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
+import { expandCatalogCategories } from './helpers/catalog'
 
 const roomFloor = (page: Page, name: string) => page.locator('.element-folder').filter({ has: page.getByRole('button', { name: `Carpeta ${name}`, exact: true }) }).getByRole('button', { name: 'Suelo Superficie de construcción', exact: true })
 
 test('el selector y las cuadrículas muestran el nombre actualizado de la carpeta raíz', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
   const root = page.getByRole('button', { name: 'Carpeta Raíz', exact: true })
@@ -23,6 +25,7 @@ test('el selector y las cuadrículas muestran el nombre actualizado de la carpet
 test('las cuadrículas siguen la habitación de la vista y conservan sus ajustes', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandCatalogCategories(page, ['Construcción', 'Aperturas'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
@@ -56,6 +59,7 @@ test('las cuadrículas siguen la habitación de la vista y conservan sus ajustes
 test('el selector isométrico centra la habitación y ajusta la altura', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
   const selector = page.getByLabel('Cámara enfocada en…')
@@ -80,6 +84,7 @@ test('el selector isométrico centra la habitación y ajusta la altura', async (
 
 test('transición frontal entre habitaciones laterales', async ({ page }, testInfo) => {
   await page.goto('/')
+  await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Pared B', exact: true }).click()
   await page.getByRole('button', { name: 'Frontal', exact: true }).click()
@@ -94,6 +99,7 @@ test('transición frontal entre habitaciones laterales', async ({ page }, testIn
 
 test('borrar la carpeta de habitación elimina el pack y se puede deshacer', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
   const folder = page.getByRole('button', { name: 'Carpeta Habitación 2', exact: true })
@@ -112,6 +118,7 @@ test('borrar la carpeta de habitación elimina el pack y se puede deshacer', asy
 test('la vista frontal conserva las plantas vecinas al centrar una habitación', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandCatalogCategories(page, ['Construcción'])
   for (let index = 0; index < 2; index++) {
     await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
     await page.getByRole('button', { name: 'Encima', exact: true }).click()
@@ -124,6 +131,7 @@ test('la vista frontal conserva las plantas vecinas al centrar una habitación',
 
 test('Espacio muestra los controles del pack enfocado sin duplicarlo como hijo', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
   const folder = page.getByRole('button', { name: 'Carpeta Habitación 2', exact: true })
@@ -151,6 +159,7 @@ test('Espacio muestra los controles del pack enfocado sin duplicarlo como hijo',
 
 test('controles del pack siguen el foco de cámara incluso al seleccionar otros objetos', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategories(page, ['Asientos', 'Construcción'])
   const space = page.locator('.room-section')
   const controls = space.getByRole('heading', { name: 'Posición de la habitación' })
   const selector = page.getByLabel('Cámara enfocada en…')
@@ -183,6 +192,7 @@ test('crea habitaciones en distintas caras y cambia de habitación en las vistas
   test.setTimeout(90_000) // Tres vistas, dos cambios de foco y seis capturas de canvas.
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandCatalogCategories(page, ['Construcción'])
   const create = async (direction: string) => {
     await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
     for (const wall of ['A', 'B', 'C', 'D']) await expect(page.getByRole('button', { name: `Pared ${wall}`, exact: true })).toBeVisible()
