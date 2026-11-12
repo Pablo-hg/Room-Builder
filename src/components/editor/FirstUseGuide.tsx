@@ -116,6 +116,14 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
       const roomToggle = document.querySelector<HTMLButtonElement>('.room-section__toggle')
       if (roomToggle?.getAttribute('aria-expanded') === 'false') roomToggle.click()
     }
+    // La guía de aperturas y muebles debe funcionar también si el usuario ha
+    // minimizado Diseño o Catálogo; no cambiamos el estado de cada familia.
+    if (stepIndex === 1 || stepIndex === 2) {
+      const designToggle = document.querySelector<HTMLButtonElement>('.catalog-heading .catalog-toggle-all')
+      if (designToggle?.getAttribute('aria-expanded') === 'false') designToggle.click()
+      const itemsToggle = document.querySelector<HTMLButtonElement>('.catalog-items__toggle')
+      if (itemsToggle?.getAttribute('aria-expanded') === 'false') itemsToggle.click()
+    }
     const target = document.querySelector<HTMLElement>(step.target)
       ?? (step.fallback ? document.querySelector<HTMLElement>(step.fallback) : null)
     const update = () => {

@@ -655,10 +655,6 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 }
 
 /* F1-03: pasos del catálogo, vistas y estado de guardado en pantallas estrechas. */
-.catalog-stage { display: grid; gap: 5px; border-top: 1px solid var(--line); padding: 12px 1px 0; }
-.catalog-stage:first-child { border-top: 0; padding-top: 0; }
-.catalog-stage strong { color: var(--forest); font-size: 14px; font-weight: 800; }
-.catalog-stage span { color: var(--muted); font-size: 13px; line-height: 1.5; }
 .statusbar__save { color: var(--forest); font-weight: 650; white-space: nowrap; }
 .statusbar__save--pending { color: var(--accent); }
 .statusbar__save--pending .status-dot { background: var(--accent); }

@@ -127,3 +127,19 @@ test('reabrir la guía recupera los paneles necesarios sin tocar el diseño', as
   await page.getByRole('button', { name: 'Saltar guía' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
+
+test('la guía abre Catálogo antes de señalar aperturas o muebles si estaba minimizado', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ahora no' }).click()
+  const sidebar = page.getByRole('complementary', { name: 'Catálogo de objetos' })
+  const catalog = sidebar.getByRole('button', { name: 'Catálogo', exact: true })
+  await catalog.click()
+  await expect(catalog).toHaveAttribute('aria-expanded', 'false')
+  await page.getByRole('button', { name: 'Ver guía de primer uso' }).click()
+  await page.getByRole('button', { name: 'Siguiente' }).click()
+  await expect(catalog).toHaveAttribute('aria-expanded', 'true')
+  await expect(sidebar.getByRole('button', { name: 'Aperturas', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Siguiente' }).click()
+  await expect(sidebar.getByRole('button', { name: 'Asientos', exact: true })).toBeVisible()
+})
+

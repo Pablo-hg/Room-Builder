@@ -90,3 +90,9 @@ En Isométrica y Libre, el arrastre del cuerpo de un mueble fijado a pared se pr
 ## F1-03: recuperar arrastre con Mayús (11/11/2026)
 
 Al comenzar un arrastre de mobiliario con **Mayús**, se conserva el clic para seleccionar/deseleccionar si no hay movimiento. Si supera el umbral de desplazamiento, la selección se actualiza antes de iniciar una nueva transacción de historial: así no se interrumpe el arrastre. Mientras se mantiene Mayús, la traslación sigue usando `cameraAwareShiftDrag`: desplazamiento en **Y** y en un solo eje horizontal dependiente de la cámara, con el segundo eje horizontal bloqueado. El gesto continúa hasta soltar el ratón y se deshace en una única operación. Se mantiene el movimiento directo sobre pared para objetos fijados si no se pulsa Mayús. Prueba dirigida añadida a `tests/furniture-gestures.spec.ts`.
+
+## F1-03 — Organización del panel lateral izquierdo (12/11/2026)
+
+La sección superior se identifica como **Diseño**, mantiene el título **Construye y amuebla** y la descripción existente. Bajo ella hay dos secciones plegables independientes: **Construcción** (Nueva habitación vacía, Suelo y Pared) y **Catálogo**, que reúne todas las categorías de aperturas, mobiliario y decoración existentes, con sus propios desplegables. Se retira el rótulo «Construir · Añadir objetos» y el bloque explicativo redundante «Añadir objetos».
+
+**Escena** incorpora un control accesible de minimizar/mostrar que oculta únicamente el árbol, su descripción y el botón de carpetas; las categorías de diseño y la visibilidad de cuadrícula siguen independientes. El encabezado de nivel raíz pasa a **Nivel principal** sin «Sin carpeta». Los pasos de aperturas y mobiliario de la guía de primer uso despliegan Diseño/Catálogo cuando están cerrados, conservando el resto de estados y las acciones existentes.
