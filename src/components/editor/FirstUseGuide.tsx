@@ -31,7 +31,7 @@ type GuideStep = {
 const steps: GuideStep[] = [
   {
     title: 'Empieza por las medidas',
-    description: 'En el panel derecho puedes ajustar anchura, profundidad y altura. La habitación ya existe: no necesitas crearla de nuevo.',
+    description: 'En el panel derecho puedes ajustar anchura, profundidad y altura.',
     target: '[data-tour="room-dimensions"]',
     fallback: '.room-section__toggle',
     cardPlacement: 'left',

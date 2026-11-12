@@ -15,6 +15,7 @@ test('el paso 1 ilumina desde Raíz hasta el slider de Altura y sitúa el texto 
   const spotlight = page.locator('.first-use-guide__spotlight')
 
   await expect(dialog).toBeVisible()
+  await expect(dialog).not.toContainText('La habitación ya existe')
   await expect(target).toBeVisible()
   await expect(target).toContainText('Raíz')
   await expect(target.getByRole('slider', { name: 'Anchura' })).toBeVisible()
