@@ -3,7 +3,12 @@ import { expect, test } from '@playwright/test'
 test('el paso 1 ilumina desde Raíz hasta el slider de Altura y sitúa el texto a su izquierda', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
-  await page.getByRole('button', { name: 'Empezar guía' }).click()
+  await page.getByRole('button', { name: 'Ahora no' }).click()
+  const roomToggle = page.locator('.room-section__toggle')
+  await roomToggle.click()
+  await expect(roomToggle).toHaveAttribute('aria-expanded', 'false')
+  await page.getByRole('button', { name: 'Ver guía de primer uso' }).click()
+  await expect(roomToggle).toHaveAttribute('aria-expanded', 'true')
 
   const dialog = page.getByRole('dialog', { name: 'Empieza por las medidas' })
   const target = page.locator('[data-tour="room-dimensions"]')
@@ -28,6 +33,8 @@ test('el paso 1 ilumina desde Raíz hasta el slider de Altura y sitúa el texto 
   expect(spotlightBox!.y).toBeLessThanOrEqual(targetBox!.y)
   expect(spotlightBox!.y + spotlightBox!.height).toBeGreaterThanOrEqual(targetBox!.y + targetBox!.height)
   expect(cardBox!.x + cardBox!.width).toBeLessThanOrEqual(spotlightBox!.x)
+  expect(targetBox!.y).toBeGreaterThanOrEqual(0)
+  expect(targetBox!.y + targetBox!.height).toBeLessThanOrEqual(900)
   expect(cardBox!.y).toBeGreaterThanOrEqual(0)
   expect(cardBox!.y + cardBox!.height).toBeLessThanOrEqual(900)
 })

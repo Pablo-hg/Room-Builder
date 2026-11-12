@@ -117,7 +117,6 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
     }
     const target = document.querySelector<HTMLElement>(step.target)
       ?? (step.fallback ? document.querySelector<HTMLElement>(step.fallback) : null)
-    target?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' })
     const update = () => {
       setViewport({ width: window.innerWidth, height: window.innerHeight })
       const element = document.querySelector<HTMLElement>(step.target)
@@ -131,7 +130,12 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
       setSpotlight(right > left && bottom > top && rect.width > 0 && rect.height > 0
         ? { left, top, width: right - left, height: bottom - top } : null)
     }
-    const frame = window.requestAnimationFrame(update)
+    const frame = window.requestAnimationFrame(() => {
+      const currentTarget = document.querySelector<HTMLElement>(step.target)
+        ?? (step.fallback ? document.querySelector<HTMLElement>(step.fallback) : null)
+      currentTarget?.scrollIntoView({ block: stepIndex === 0 ? 'center' : 'nearest', inline: 'nearest', behavior: 'auto' })
+      update()
+    })
     window.addEventListener('resize', update)
     window.addEventListener('scroll', update, true)
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update)
