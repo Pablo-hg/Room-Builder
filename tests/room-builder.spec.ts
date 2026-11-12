@@ -30,6 +30,7 @@ async function dragToRoot(page: Page, source: Locator, target: Locator) {
 
 test('permite cambiar vistas, añadir un objeto y guardar', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   await expect(page.getByText('Room Builder', { exact: true })).toBeVisible()
   await expect(page.getByText('La habitación está lista')).toBeVisible()
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
@@ -104,6 +105,7 @@ test('la transición de paneles está habilitada en escritorio sin afectar al re
 
 test('usa atajos para copiar, pegar, deshacer y rehacer objetos', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const armchairs = page.locator('.element-row').filter({ hasText: 'Sillón' })
   await expect(armchairs).toHaveCount(1)
@@ -219,6 +221,7 @@ test('crea carpetas, mueve elementos y las renombra o elimina', async ({ page })
 
 test('permite elevar un mueble desde el inspector', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
 
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
@@ -232,6 +235,7 @@ test('permite elevar un mueble desde el inspector', async ({ page }) => {
 test('permite mover un mueble lateralmente y en altura en vista frontal', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   await page.getByRole('button', { name: 'Frontal' }).click()
 
@@ -357,6 +361,7 @@ test('permite cambiar el color de cada pared y del suelo', async ({ page }) => {
 
 test('ofrece las cuatro orientaciones isométricas sin mover los datos', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Mesas y auxiliares')
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
   const coordinates = page.getByRole('complementary', { name: 'Inspector y configuración detallada' }).locator('.selected-heading p')
   const initialCoordinates = await coordinates.innerText()
@@ -412,6 +417,7 @@ test('invierte el sentido de giro de los controles isométricos', async ({ page 
 
 test('orbita desde un objeto con el botón central y lo deselecciona sin moverlo', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
   await expect(inspector.getByRole('heading', { name: 'Sillón', exact: true })).toBeVisible()
@@ -441,6 +447,7 @@ test('orbita desde un objeto con el botón central y lo deselecciona sin moverlo
 
 test('orbita desde suelo y exterior sin girar la cámara al arrastrar paredes', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   const scene = page.locator('.scene-panel')
   const canvas = scene.locator('canvas').first()
   const cameraState = () => page.evaluate(async () => {
@@ -533,6 +540,7 @@ test('orbita desde suelo y exterior sin girar la cámara al arrastrar paredes', 
 
 test('la vista libre orbita en dos ejes y mantiene la edición desde los paneles', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: 'Libre' }).click()
   await expect(page.getByRole('button', { name: 'Libre' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
@@ -621,6 +629,7 @@ test('la vista libre orbita en dos ejes y mantiene la edición desde los paneles
 
 test('permite volver a seleccionar un mueble después de pulsar fuera', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
 
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })

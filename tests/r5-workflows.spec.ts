@@ -8,6 +8,7 @@ import { readFile } from 'node:fs/promises'
 
 test('edita medidas, guarda y recupera ventanas y mobiliario', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategory(page, 'Aperturas')
   await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   const width = page.getByRole('textbox', { name: 'Introducir anchura del objeto en metros' })
