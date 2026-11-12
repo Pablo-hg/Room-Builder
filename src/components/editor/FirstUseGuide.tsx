@@ -31,14 +31,14 @@ type GuideStep = {
 const steps: GuideStep[] = [
   {
     title: 'Empieza por las medidas',
-    description: 'En el panel derecho puedes ajustar anchura, profundidad y altura.',
+    description: 'Aquí ajustas la anchura, la profundidad y la altura de la habitación.',
     target: '[data-tour="room-dimensions"]',
     fallback: '.room-section__toggle',
     cardPlacement: 'left',
   },
   {
     title: 'Explora el catálogo',
-    description: 'Aquí tienes todo lo necesario para construir y amueblar: crea habitaciones, suelos y paredes, añade puertas y ventanas y elige muebles y decoración.',
+    description: 'Despliega una categoría y pulsa Añadir. En Construcción y Aperturas tienes paredes, puertas y ventanas; el resto son muebles y decoración.',
     target: '[data-tour="catalog"]',
     fallback: '.catalog-heading',
     cardPlacement: 'right',
@@ -51,19 +51,19 @@ const steps: GuideStep[] = [
     cardPlacement: 'right',
   },
   {
-    title: 'Edita el elemento seleccionado',
-    description: 'Selecciona un objeto en la escena o en la lista de elementos. Sus medidas, posición y propiedades aparecen en el inspector derecho.',
+    title: 'Edita lo que selecciones',
+    description: 'Cuando selecciones un objeto, aquí aparecerán sus medidas, posición y propiedades para ajustarlos.',
     target: '.selection-section--inspector',
     fallback: '#settings-panel',
   },
   {
     title: 'Explora las distintas vistas',
-    description: 'Usa Isométrica y Plano para colocar elementos. Frontal, POV y Libre siguen disponibles para explorar el diseño con más detalle.',
+    description: 'Plano es la más cómoda para colocar con precisión e Isométrica, para ver el conjunto. Frontal, POV y Libre sirven para explorar el diseño.',
     target: '.view-switcher',
   },
   {
     title: 'Guarda tu diseño',
-    description: 'Pulsa Guardar para conservar el diseño en este navegador; el botón pasa a Guardado cuando no hay cambios pendientes. Desde el menú de diseños puedes exportarlo a JSON.',
+    description: 'Pulsa Guardar para conservarlo en este navegador; verás Guardado cuando no queden cambios. En Diseños abres tus proyectos o los exportas a JSON, y Deshacer corrige el último cambio. Puedes repetir esta guía desde el panel derecho.',
     target: '.save-actions',
   },
 ]
@@ -180,7 +180,7 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
   // La tarjeta crece con el texto: se mide para no depender de una altura fija.
   useEffect(() => {
     if (open && dialogRef.current) setCardHeight(dialogRef.current.offsetHeight)
-  }, [open, stepIndex, viewport.width])
+  }, [open, stepIndex, viewport.width, spotlight?.width])
 
   useEffect(() => {
     if (!open) return
@@ -223,8 +223,9 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
         ? Math.max(16, spotlight.left - cardWidth - 16)
         : Math.max(16, Math.min(viewport.width - cardWidth - 16, spotlight.left + spotlight.width / 2 - cardWidth / 2))
       : Math.max(16, (viewport.width - cardWidth) / 2)
+  // La tarjeta lateral se alinea con el foco sin salirse de la pantalla.
   const cardTop = sideCard
-    ? 16
+    ? Math.max(16, Math.min(spotlight!.top, viewport.height - cardHeight - 16))
     : spotlight
       ? step.cardPlacement === 'left'
         ? Math.max(cardHeight / 2 + 16, Math.min(viewport.height - cardHeight / 2 - 16, spotlight.top + spotlight.height / 2))
