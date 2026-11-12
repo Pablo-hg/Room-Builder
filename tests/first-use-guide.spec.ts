@@ -133,12 +133,9 @@ test('la guía explica Diseño y Escena y despliega ambos apartados si estaban m
   await page.getByRole('button', { name: 'Ahora no' }).click()
   const sidebar = page.getByRole('complementary', { name: 'Catálogo de objetos' })
 
-  // Deja minimizados Diseño, su Catálogo y Escena antes de iniciar el recorrido.
-  const catalog = sidebar.getByRole('button', { name: 'Catálogo', exact: true })
-  await catalog.click()
-  await expect(catalog).toHaveAttribute('aria-expanded', 'false')
-  await sidebar.getByRole('button', { name: 'Minimizar Diseño' }).click()
-  await expect(sidebar.getByRole('button', { name: 'Mostrar Diseño' })).toBeVisible()
+  // Deja minimizados Catálogo y Escena antes de iniciar el recorrido.
+  await sidebar.getByRole('button', { name: 'Minimizar Catálogo' }).click()
+  await expect(sidebar.getByRole('button', { name: 'Mostrar Catálogo' })).toBeVisible()
   await sidebar.getByRole('button', { name: 'Minimizar escena' }).click()
   await expect(sidebar.getByRole('button', { name: 'Mostrar escena' })).toBeVisible()
 
@@ -146,13 +143,12 @@ test('la guía explica Diseño y Escena y despliega ambos apartados si estaban m
   const dialog = page.getByRole('dialog', { name: 'Empieza por las medidas' })
   await page.getByRole('button', { name: 'Siguiente' }).click()
 
-  const design = sidebar.locator('[data-tour="design"]')
-  await expect(dialog).toContainText('Explora Diseño')
-  await expect(design).toBeVisible()
-  await expect(sidebar.getByRole('button', { name: 'Minimizar Diseño' })).toBeVisible()
-  await expect(catalog).toHaveAttribute('aria-expanded', 'true')
-  await expect(sidebar.locator('#catalog-items-list').getByRole('button', { name: 'Construcción', exact: true })).toBeVisible()
-  await expect(sidebar.locator('#catalog-items-list').getByRole('button', { name: 'Aperturas', exact: true })).toBeVisible()
+  const catalog = sidebar.locator('[data-tour="catalog"]')
+  await expect(dialog).toContainText('Explora el catálogo')
+  await expect(catalog).toBeVisible()
+  await expect(sidebar.getByRole('button', { name: 'Minimizar Catálogo' })).toBeVisible()
+  await expect(sidebar.locator('#catalog-content').getByRole('button', { name: 'Construcción', exact: true })).toBeVisible()
+  await expect(sidebar.locator('#catalog-content').getByRole('button', { name: 'Aperturas', exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'Siguiente' }).click()
   const scene = sidebar.locator('[data-tour="scene"]')
@@ -163,3 +159,29 @@ test('la guía explica Diseño y Escena y despliega ambos apartados si estaban m
   await expect(sidebar.getByRole('button', { name: 'Crear carpeta de elementos' })).toBeVisible()
 })
 
+
+test('la tarjeta de los pasos 2 y 3 queda a la derecha del menú en pantallas estrechas', async ({ page }) => {
+  for (const viewport of [{ width: 418, height: 638 }, { width: 406, height: 861 }]) {
+    await page.setViewportSize(viewport)
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Ahora no' }).click()
+    await page.getByRole('button', { name: 'Ver guía de primer uso' }).click()
+    await page.getByRole('button', { name: 'Siguiente' }).click()
+
+    for (const step of ['Explora el catálogo', 'Organiza la escena']) {
+      const dialog = page.getByRole('dialog', { name: step })
+      const spotlight = page.locator('.first-use-guide__spotlight')
+      await expect(dialog).toBeVisible()
+      await expect(spotlight).toBeVisible()
+      const cardBox = await dialog.boundingBox()
+      const spotlightBox = await spotlight.boundingBox()
+      expect(cardBox).not.toBeNull()
+      expect(spotlightBox).not.toBeNull()
+      expect(cardBox!.x).toBeGreaterThanOrEqual(spotlightBox!.x + spotlightBox!.width)
+      expect(cardBox!.x + cardBox!.width).toBeLessThanOrEqual(viewport.width)
+      expect(cardBox!.y).toBeGreaterThanOrEqual(0)
+      expect(cardBox!.y + cardBox!.height).toBeLessThanOrEqual(viewport.height)
+      if (step === 'Explora el catálogo') await page.getByRole('button', { name: 'Siguiente' }).click()
+    }
+  }
+})

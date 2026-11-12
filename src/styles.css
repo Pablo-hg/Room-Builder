@@ -306,8 +306,6 @@ body.plan-panning .scene-panel canvas { cursor: grabbing; }
 .catalog-family--collapsed h3 { margin-bottom: 0; }
 .catalog-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .catalog-heading .section-copy { margin-bottom: 0; }
-.catalog-group__categories { display: grid; gap: 16px; padding-left: 10px; border-left: 2px solid var(--line); }
-.catalog-group__categories > .catalog-family { min-width: 0; }
 .scene-section__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 .scene-section__heading .catalog-toggle-all { flex: 0 0 auto; }
 .scene-section__toggle--collapsed i { transform: rotate(-45deg); }
@@ -641,6 +639,15 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .first-use-guide__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 700; letter-spacing: .025em; color: var(--muted); }
 .first-use-guide__heading button { min-width: 36px; min-height: 36px; border: 0; border-radius: 9px; background: transparent; font-size: 24px; color: var(--ink); cursor: pointer; }
 .first-use-guide__card h2 { margin: 8px 0; font-size: 18px; line-height: 1.3; }
+.first-use-guide__card--side { padding: 12px; }
+.first-use-guide__card--side .first-use-guide__heading { gap: 4px; font-size: 11px; }
+.first-use-guide__card--side .first-use-guide__heading button { min-width: 28px; min-height: 28px; }
+.first-use-guide__card--side h2 { margin: 6px 0; font-size: 16px; }
+.first-use-guide__card--side p { font-size: 13px; line-height: 1.45; }
+.first-use-guide__card--side .first-use-guide__progress { gap: 3px; margin: 10px 0; }
+.first-use-guide__card--side .first-use-guide__actions { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.first-use-guide__card--side .first-use-guide__actions > div { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.first-use-guide__card--side .first-use-guide__actions button { width: 100%; min-height: 32px; padding: 5px 6px; font-size: 12px; }
 .first-use-guide__card p { margin: 0; font-size: 14px; line-height: 1.6; }
 .first-use-guide__progress { display: flex; gap: 5px; margin: 16px 0; }
 .first-use-guide__progress span { flex: 1; height: 4px; border-radius: 4px; background: #e5e0d8; }

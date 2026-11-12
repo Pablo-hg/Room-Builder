@@ -29,8 +29,8 @@ export function ObjectCatalogSection() {
   }
 
   return (
-        <section className="panel-section" data-tour="design">
-        <span className="eyebrow">Diseño</span>
+        <section className="panel-section" data-tour="catalog">
+        <span className="eyebrow">Catálogo</span>
         <div className="catalog-heading">
           <div>
             <h2>Construye y amuebla</h2>
@@ -40,28 +40,14 @@ export function ObjectCatalogSection() {
             type="button"
             className="catalog-family__toggle catalog-toggle-all"
             aria-expanded={!designCollapsed}
-            aria-controls="design-content"
-            aria-label={designCollapsed ? 'Mostrar Diseño' : 'Minimizar Diseño'}
+            aria-controls="catalog-content"
+            aria-label={designCollapsed ? 'Mostrar Catálogo' : 'Minimizar Catálogo'}
             onClick={() => setDesignCollapsed((collapsed) => !collapsed)}
           >
             <i aria-hidden="true" />
           </button>
         </div>
-        {!designCollapsed && <div className="catalog-families" id="design-content">
-          <section className={`catalog-family catalog-group${collapsedCategories.catalog ? ' catalog-family--collapsed' : ''}`} aria-labelledby="catalog-items">
-            <h3>
-              <button
-                id="catalog-items"
-                type="button"
-                className="catalog-family__toggle catalog-items__toggle"
-                aria-expanded={!collapsedCategories.catalog}
-                aria-controls="catalog-items-list"
-                onClick={() => toggleCategory('catalog')}
-              >
-                <span>Catálogo</span><i aria-hidden="true" />
-              </button>
-            </h3>
-            {!collapsedCategories.catalog && <div className="catalog-group__categories" id="catalog-items-list">
+        {!designCollapsed && <div className="catalog-families" id="catalog-content">
           <section className={`catalog-family ${collapsedCategories.structure ? 'catalog-family--collapsed' : ''}`} aria-labelledby="catalog-structure">
             <h3>
               <button
@@ -182,8 +168,6 @@ export function ObjectCatalogSection() {
               </section>
             )
           })}
-            </div>}
-          </section>
         </div>}
         </section>
   )

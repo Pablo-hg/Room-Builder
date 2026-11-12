@@ -25,7 +25,7 @@ type GuideStep = {
   description: string
   target: string
   fallback?: string
-  cardPlacement?: 'left'
+  cardPlacement?: 'left' | 'right'
 }
 
 const steps: GuideStep[] = [
@@ -37,16 +37,18 @@ const steps: GuideStep[] = [
     cardPlacement: 'left',
   },
   {
-    title: 'Explora Diseño',
-    description: 'En Diseño tienes las herramientas para construir y amueblar la habitación: crear habitaciones, suelos y paredes; añadir puertas y ventanas; y elegir muebles y decoración desde las categorías del catálogo.',
-    target: '[data-tour="design"]',
+    title: 'Explora el catálogo',
+    description: 'Aquí tienes todo lo necesario para construir y amueblar: crea habitaciones, suelos y paredes, añade puertas y ventanas y elige muebles y decoración.',
+    target: '[data-tour="catalog"]',
     fallback: '.catalog-heading',
+    cardPlacement: 'right',
   },
   {
     title: 'Organiza la escena',
-    description: 'En Escena puedes consultar y seleccionar los elementos de la habitación, organizarlos en carpetas y controlar su visibilidad o bloqueo.',
+    description: 'En Escena puedes consultar y seleccionar los elementos, organizarlos en carpetas y controlar su visibilidad o bloqueo.',
     target: '[data-tour="scene"]',
     fallback: '.elements-section',
+    cardPlacement: 'right',
   },
   {
     title: 'Edita el elemento seleccionado',
@@ -120,12 +122,7 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
     // Si estaban minimizados, los despliega antes de calcular el foco.
     const ensureStepSectionExpanded = () => {
       if (stepIndex === 1) {
-        const designToggle = document.querySelector<HTMLButtonElement>('.catalog-heading .catalog-toggle-all')
-        if (designToggle?.getAttribute('aria-expanded') === 'false') {
-          designToggle.click()
-          return
-        }
-        const catalogToggle = document.querySelector<HTMLButtonElement>('.catalog-items__toggle')
+        const catalogToggle = document.querySelector<HTMLButtonElement>('.catalog-heading .catalog-toggle-all')
         if (catalogToggle?.getAttribute('aria-expanded') === 'false') catalogToggle.click()
       }
       if (stepIndex === 2) {
@@ -210,19 +207,36 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
 
   const step = steps[stepIndex]
   const isMobile = viewport.width < 700
-  const cardWidth = Math.min(360, viewport.width - 32)
-  const cardLeft = spotlight
-    ? step.cardPlacement === 'left'
-      ? Math.max(16, spotlight.left - cardWidth - 16)
-      : Math.max(16, Math.min(viewport.width - cardWidth - 16, spotlight.left + spotlight.width / 2 - cardWidth / 2))
-    : Math.max(16, (viewport.width - cardWidth) / 2)
-  const cardTop = spotlight
-    ? step.cardPlacement === 'left'
-      ? Math.max(cardHeight / 2 + 16, Math.min(viewport.height - cardHeight / 2 - 16, spotlight.top + spotlight.height / 2))
-      : spotlight.top + spotlight.height + cardHeight + 28 < viewport.height
-        ? spotlight.top + spotlight.height + 14
-        : Math.max(16, spotlight.top - cardHeight - 14)
-    : Math.max(16, (viewport.height - 240) / 2)
+  const sideAvailableWidth = spotlight
+    ? viewport.width - (spotlight.left + spotlight.width) - 24
+    : 0
+  // En los pasos 2 y 3 la tarjeta ocupa solo el espacio de la vista 3D,
+  // a la derecha del panel resaltado, sin tapar sus categorías ni elementos.
+  const sideCard = step.cardPlacement === 'right' && sideAvailableWidth >= 120
+  const cardWidth = sideCard
+    ? Math.min(360, sideAvailableWidth)
+    : Math.min(360, viewport.width - 32)
+  const cardLeft = sideCard
+    ? spotlight!.left + spotlight!.width + 16
+    : spotlight
+      ? step.cardPlacement === 'left'
+        ? Math.max(16, spotlight.left - cardWidth - 16)
+        : Math.max(16, Math.min(viewport.width - cardWidth - 16, spotlight.left + spotlight.width / 2 - cardWidth / 2))
+      : Math.max(16, (viewport.width - cardWidth) / 2)
+  const cardTop = sideCard
+    ? 16
+    : spotlight
+      ? step.cardPlacement === 'left'
+        ? Math.max(cardHeight / 2 + 16, Math.min(viewport.height - cardHeight / 2 - 16, spotlight.top + spotlight.height / 2))
+        : spotlight.top + spotlight.height + cardHeight + 28 < viewport.height
+          ? spotlight.top + spotlight.height + 14
+          : Math.max(16, spotlight.top - cardHeight - 14)
+      : Math.max(16, (viewport.height - 240) / 2)
+  const cardStyle: CSSProperties | undefined = sideCard
+    ? { left: cardLeft, top: cardTop, bottom: 'auto', width: cardWidth }
+    : isMobile
+      ? undefined
+      : { left: cardLeft, top: cardTop, width: cardWidth, ...(step.cardPlacement === 'left' ? { transform: 'translateY(-50%)' } : {}) }
   const backdrop = (style: Style, key: string) => <div key={key} className="first-use-guide__shade" style={style} />
 
   return createPortal(
@@ -236,17 +250,13 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
       </> : backdrop({ inset: 0 }, 'all')}
       <div
         ref={dialogRef}
-        className="first-use-guide__card"
+        className={`first-use-guide__card${sideCard ? ' first-use-guide__card--side' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="first-use-guide-title"
         aria-describedby="first-use-guide-description"
         tabIndex={-1}
-        style={isMobile ? undefined : {
-          left: cardLeft,
-          top: cardTop,
-          ...(step.cardPlacement === 'left' ? { transform: 'translateY(-50%)' } : {}),
-        }}
+        style={cardStyle}
       >
         <div className="first-use-guide__heading">
           <span>Guía de inicio · {stepIndex + 1} de {steps.length}</span>
