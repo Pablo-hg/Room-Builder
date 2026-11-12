@@ -1,3 +1,5 @@
+import { expect, test } from '@playwright/test'
+
 test('el paso 1 ilumina desde Raíz hasta el slider de Altura y sitúa el texto a su izquierda', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
@@ -29,8 +31,6 @@ test('el paso 1 ilumina desde Raíz hasta el slider de Altura y sitúa el texto 
   expect(cardBox!.y).toBeGreaterThanOrEqual(0)
   expect(cardBox!.y + cardBox!.height).toBeLessThanOrEqual(900)
 })
-
-import { expect, test } from '@playwright/test'
 
 test('ofrece una guía opcional y permite recorrer los seis pasos y repetirla', async ({ page }) => {
   await page.goto('/')
