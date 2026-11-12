@@ -133,7 +133,6 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
         if (sceneToggle?.getAttribute('aria-expanded') === 'false') sceneToggle.click()
       }
     }
-    ensureStepSectionExpanded()
     const target = document.querySelector<HTMLElement>(step.target)
       ?? (step.fallback ? document.querySelector<HTMLElement>(step.fallback) : null)
     const update = () => {
@@ -167,6 +166,9 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
       })
       : null
     if (leftPanel) sectionObserver?.observe(leftPanel, { childList: true, subtree: true })
+    // Instalar el observador antes de desplegar: así detecta también el montaje
+    // del contenido de Catálogo tras abrir Diseño.
+    ensureStepSectionExpanded()
     return () => {
       window.cancelAnimationFrame(frame)
       window.removeEventListener('resize', update)
