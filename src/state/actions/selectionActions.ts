@@ -85,6 +85,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
       if (!state.selectedId || state.selectedId === 'door' || isFolderSelectionId(state.selectedId) || BASE_ROOM_SURFACE_IDS.includes(state.selectedId)) return {}
       recordInteraction('state.element.removed', {
         view: state.view,
+      if (state.selectedId && state.lockedElementIds.includes(state.selectedId)) return { notice: 'El elemento está bloqueado. Desbloquéalo para eliminarlo.' }
         selectedId: state.selectedId,
         details: { id: state.selectedId, name: elementName(state, state.selectedId) },
       })

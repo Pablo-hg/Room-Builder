@@ -208,6 +208,7 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
       for (const [id, folder] of Object.entries(state.elementFolderAssignments)) if (recursiveFolders.has(folder)) deletedIds.add(id)
       if (deletedIds.has('door')) return { notice: 'La puerta principal no se puede eliminar.' }
       if (BASE_ROOM_SURFACE_IDS.some((id) => deletedIds.has(id))) return { notice: 'Las superficies de la habitación principal no se pueden eliminar.' }
+      if ([...deletedIds].some((id) => state.lockedElementIds.includes(id))) return { notice: 'Hay elementos bloqueados en la selección. Desbloquéalos para eliminarlos.' }
       const survivingParent = (id: string | undefined): string | undefined => {
         let current = id
         const seen = new Set<string>()
