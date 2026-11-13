@@ -274,7 +274,8 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
             selectedId: state.selectedId,
             details: { id: pasted.id, kind: pasted.kind, name: pasted.name, x: pasted.x, z: pasted.z, source: 'clipboard' },
           })
-          return { furniture: [...state.furniture, pasted], selectedId: pasted.id, notice: `${pasted.name} pegado.` }
+          const folder = state.elementFolderAssignments[copy.id]
+          return { furniture: [...state.furniture, pasted], ...(folder ? { elementFolderAssignments: { ...state.elementFolderAssignments, [pasted.id]: folder } } : {}), selectedId: pasted.id, notice: `${pasted.name} pegado.` }
         }
   
         if (copy.freePosition) {
@@ -324,6 +325,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
           selectedId: id,
           notice: `${elementName(state, source.id)} pegado.`,
         }
+        const folder = state.elementFolderAssignments[source.id]
       })
       return true
     },
