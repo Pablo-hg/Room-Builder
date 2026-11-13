@@ -183,7 +183,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
   }
 
   return (
-    <group position={[item.x, visualY, item.z]}>
+    <group position={[item.x, visualY, item.z]} userData={{ elementId: item.id }}>
       <group
         rotation={[0, item.rotation, 0]}
         onPointerDown={handleDown}

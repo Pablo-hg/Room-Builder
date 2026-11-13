@@ -16,6 +16,7 @@ import type { RoomActionContext, RoomState } from '../types'
 type SelectionActions = Pick<
   RoomState,
   | 'selectElement'
+  | 'selectElements'
   | 'selectSceneListItem'
   | 'renameElement'
   | 'removeSelected'
@@ -44,6 +45,10 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
         },
       })
       return { selectedId, notice: '' }
+    }),
+    selectElements: (ids, additive = false) => set((state) => {
+      const selectedIds = [...new Set(additive ? [...state.selectedIds, ...ids] : ids)]
+      return { selectedIds, selectedId: selectedIds.length === 1 ? selectedIds[0] : null, selectionAnchor: selectedIds.at(-1) ?? null, notice: '' }
     }),
     selectSceneListItem: (id, mode, visibleIds) => set((state) => {
       if (!visibleIds.includes(id)) return {}
@@ -80,12 +85,12 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
       return {}
     }),
     removeSelected: () => set((state) => {
+      if (state.selectedId && state.lockedElementIds.includes(state.selectedId)) return { notice: 'El elemento está bloqueado. Desbloquéalo para eliminarlo.' }
       if (state.room.extraDoors?.some((door) => door.id === state.selectedId)) return { room: { ...state.room, extraDoors: state.room.extraDoors.filter((door) => door.id !== state.selectedId) }, selectedId: null }
       if (state.selectedId && state.structurePacks.some((pack) => pack.doors?.some((door) => door.id === state.selectedId))) return { structurePacks: state.structurePacks.map((pack) => ({ ...pack, ...(pack.doors ? { doors: pack.doors.filter((door) => door.id !== state.selectedId) } : {}) })), selectedId: null }
       if (!state.selectedId || state.selectedId === 'door' || isFolderSelectionId(state.selectedId) || BASE_ROOM_SURFACE_IDS.includes(state.selectedId)) return {}
       recordInteraction('state.element.removed', {
         view: state.view,
-      if (state.selectedId && state.lockedElementIds.includes(state.selectedId)) return { notice: 'El elemento está bloqueado. Desbloquéalo para eliminarlo.' }
         selectedId: state.selectedId,
         details: { id: state.selectedId, name: elementName(state, state.selectedId) },
       })
@@ -320,12 +325,13 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
           selectedId: state.selectedId,
           details: { id, name: elementName(state, source.id), wall: source.wall, offset: pasted.offset, source: 'clipboard' },
         })
+        const folder = state.elementFolderAssignments[source.id]
         return {
           room: { ...state.room, windows: [...state.room.windows, pasted] },
+          ...(folder ? { elementFolderAssignments: { ...state.elementFolderAssignments, [id]: folder } } : {}),
           selectedId: id,
           notice: `${elementName(state, source.id)} pegado.`,
         }
-        const folder = state.elementFolderAssignments[source.id]
       })
       return true
     },

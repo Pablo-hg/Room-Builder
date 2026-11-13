@@ -41,6 +41,7 @@ type CameraActions = Pick<
   | 'setTopCameraPosition'
   | 'resetTopCamera'
   | 'setPlanDetailsVisible'
+  | 'setAreaSelect'
   | 'lookAtWall'
   | 'setFrontCameraHeight'
   | 'lookFromIsoOrientation'
@@ -63,6 +64,7 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
     resetTopCamera: () => set({ topCameraX: 0, topCameraZ: 0, cameraZoom: 1 }),
     // Solo alterna la capa de cotas: no cambia cámara, selección ni diseño.
     setPlanDetailsVisible: (planDetailsVisible) => set({ planDetailsVisible }),
+    setAreaSelect: (areaSelect) => set({ areaSelect }),
     setView: (view) => set((state) => {
       recordInteraction('state.view.changed', {
         view: state.view,

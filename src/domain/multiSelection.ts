@@ -89,3 +89,20 @@ export function multiSelectionBounds(items: MultiItem[]) {
   const max = { x: Math.max(...items.map((item) => item.max.x)), y: Math.max(...items.map((item) => item.max.y)), z: Math.max(...items.map((item) => item.max.z)) }
   return { min, max, center: { x: (min.x + max.x) / 2, y: (min.y + max.y) / 2, z: (min.z + max.z) / 2 } }
 }
+
+/** Elementos que se pueden elegir en bloque (caja de selección, Ctrl+A): visibles y sin bloquear. */
+export function selectableItems(state: Parameters<typeof multiSelectionItems>[0]) {
+  const selectedIds = [
+    'door',
+    ...(state.room.extraDoors ?? []).map((door) => door.id),
+    ...state.furniture.map((item) => item.id),
+    ...state.room.windows.map((item) => item.id),
+    ...state.structurePacks.flatMap((pack) => [
+      ...pack.surfaces.map((surface) => structureSurfaceElementId(pack.id, surface.id)),
+      ...(pack.windows ?? []).map((item) => item.id),
+      ...(pack.doors ?? []).map((item) => item.id),
+    ]),
+  ]
+  const locked = (state as Partial<Pick<RoomState, 'lockedElementIds'>>).lockedElementIds ?? []
+  return multiSelectionItems({ ...state, selectedIds }).filter((item) => !locked.includes(item.id) && !(item.packId && locked.includes(item.packId)))
+}

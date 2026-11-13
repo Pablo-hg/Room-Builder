@@ -17,6 +17,8 @@ export interface RoomState {
   /** Plano detallado: estado visual de sesión; no se guarda ni entra en el historial. */
   planDetailsVisible: boolean
   setPlanDetailsVisible: (visible: boolean) => void
+  areaSelect: boolean
+  setAreaSelect: (active: boolean) => void
   activeRoomId: string | null
   setActiveRoomId: (id: string | null) => void
   isoAngle: number
@@ -97,6 +99,7 @@ export interface RoomState {
   removeWindow: (id: string) => void
   addFurniture: (kind: FurnitureKind) => void
   selectElement: (id: string | null) => void
+  selectElements: (ids: string[], additive?: boolean) => void
   selectSceneListItem: (id: string, mode: 'single' | 'toggle' | 'range', visibleIds: string[]) => void
   renameElement: (id: string, name: string) => void
   beginFurnitureMove: () => void

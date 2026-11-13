@@ -251,6 +251,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     topCameraX: 0,
     topCameraZ: 0,
     planDetailsVisible: false,
+    areaSelect: false,
     activeRoomId: null,
     setActiveRoomId: (activeRoomId) => set({ activeRoomId }),
     isoAngle: ISO_BASE_ANGLE,
