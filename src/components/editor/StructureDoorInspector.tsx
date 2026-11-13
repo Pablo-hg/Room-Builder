@@ -26,6 +26,6 @@ export function StructureDoorInspector({ pack, door }: { pack: StructurePack; do
     {Math.abs(wall.rotation) > 1e-6 && <PositionControl label="Posición lateral" value={door.offset} min={-limit} max={limit} step={0.01} disabled={locked || !!door.axisLocks?.x || !!door.axisLocks?.z} onChange={(offset) => update(door.id, { offset })} />}
     <ColorControl label="Color del objeto" value={door.color ?? '#ac704b'} disabled={locked} onChange={(color) => update(door.id, { color })} />
     <p className="section-copy">Edita la posición desde este inspector. La puerta sigue a su pared y conserva un hueco real.</p>
-    <button type="button" className="text-button danger" onClick={() => remove(door.id)}>Eliminar puerta</button>
+    <button type="button" className="text-button danger" disabled={locked} title={locked ? "Desbloquea el elemento para eliminarlo" : undefined} onClick={() => remove(door.id)}>Eliminar puerta</button>
   </section>
 }

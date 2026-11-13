@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useRoomStore } from '../../state/useRoomStore'
 import { useShallow } from 'zustand/react/shallow'
 import { selectEditorShortcuts } from '../../state/selectors'
+import { selectableItems } from '../../domain/multiSelection'
 import { folderElementIds, folderIdFromSelection, orderedSceneIds, sceneEntryParent } from '../../domain/elementFolders'
 
 export function useEditorShortcuts() {
@@ -70,6 +71,17 @@ export function useEditorShortcuts() {
         window.dispatchEvent(new CustomEvent('room-builder:create-subfolder', { detail: folderId }))
         return
       }
+      if (modifier && !event.altKey && !event.shiftKey && key === 'a') {
+        event.preventDefault()
+        current.selectElements(selectableItems(current).map((item) => item.id))
+        return
+      }
+      if (!modifier && !event.altKey && !event.shiftKey && event.key === 'Escape' && (current.areaSelect || current.selectedIds.length > 0)) {
+        if (current.areaSelect) current.setAreaSelect(false)
+        else current.selectElement(null)
+        window.dispatchEvent(new CustomEvent('room-builder:close-context'))
+        return
+      }
       if (modifier && key === 'z') {
         event.preventDefault()
         if (event.shiftKey) state.redo()
@@ -99,7 +111,7 @@ export function useEditorShortcuts() {
         return
       }
       if (modifier || event.altKey) return
-      if (key === 'r') state.rotateFurniture()
+      if (key === 'r') { if (current.selectedIds.length > 1) current.rotateSelectedFurnitureGroup(); else state.rotateFurniture() }
       if ((event.key === 'Delete' || event.key === 'Backspace') && current.selectedIds.length > 1) {
         event.preventDefault()
         current.removeSceneItems(current.selectedIds)

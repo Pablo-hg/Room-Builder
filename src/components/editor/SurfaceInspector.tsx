@@ -55,7 +55,7 @@ export function SurfaceInspector({ selectedSurface }: { selectedSurface: { pack:
       />
       <button type="button" className="text-button" onClick={() => selectElement(pack.id)}>Seleccionar pack completo</button>
       {locked && <p className="lock-hint">Superficie bloqueada: desbloquea el candado de la lista para moverla, girarla o redimensionarla.</p>}
-      <button type="button" className="text-button danger" onClick={() => removeStructureSurface(pack.id, surface.id)}>Eliminar superficie</button>
+      <button type="button" className="text-button danger" disabled={locked} title={locked ? "Desbloquea el elemento para eliminarlo" : undefined} onClick={() => removeStructureSurface(pack.id, surface.id)}>Eliminar superficie</button>
     </section>
   )
 

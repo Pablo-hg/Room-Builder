@@ -114,6 +114,10 @@ export function SettingsPanel({ onStartGuide }: { onStartGuide: () => void }) {
               <div><dt>Renombrar</dt><dd><kbd>F2</kbd></dd></div>
               <div><dt>Ordenar en la lista</dt><dd><kbd>Alt</kbd> + <kbd>Mayús</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd></dd></div>
               <div><dt>Crear subcarpeta</dt><dd><kbd>Alt</kbd> + <kbd>Mayús</kbd> + <kbd>N</kbd></dd></div>
+              <div><dt>Seleccionar todo</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>A</kbd></dd></div>
+              <div><dt>Deseleccionar</dt><dd><kbd>Esc</kbd></dd></div>
+              <div><dt>Seleccionar por área</dt><dd><kbd>Mayús</kbd> + arrastrar sobre el fondo</dd></div>
+              <div><dt>Elegir el objeto de debajo</dt><dd><kbd>Alt</kbd> + clic (repetir para recorrer)</dd></div>
               <div><dt>Girar elemento</dt><dd><kbd>R</kbd></dd></div>
               <div><dt>Eliminar elemento</dt><dd><kbd>Supr</kbd> / <kbd>Retroceso</kbd></dd></div>
             </dl>

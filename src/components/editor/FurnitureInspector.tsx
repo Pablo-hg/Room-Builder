@@ -70,7 +70,7 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
       />
       <div className="object-actions">
         {canRotate && <button type="button" onClick={rotateFurniture} disabled={locked || !!attachment}><span>↻</span> Girar 90°</button>}
-        <button type="button" className="danger" onClick={removeFurniture}><span>×</span> Eliminar</button>
+        <button type="button" className="danger" disabled={locked} title={locked ? "Desbloquea el elemento para eliminarlo" : undefined} onClick={removeFurniture}><span>×</span> Eliminar</button>
       </div>
       {locked
         ? <p className="lock-hint">Elemento bloqueado: desbloquea el candado de la lista para moverlo o girarlo.</p>
