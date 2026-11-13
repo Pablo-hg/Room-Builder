@@ -11,6 +11,43 @@ async function expandAllCatalogCategories(page: Page) {
   }
 }
 
+async function furnitureSceneState(page: Page, name: string) {
+  const result = await page.evaluate(async (elementName) => {
+    const storePath = '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ storePath)
+    const item = useRoomStore.getState().furniture.find((candidate) => candidate.name === elementName)
+    if (!item) throw new Error(`No se encontró el mueble ${elementName}`)
+    const transformedScene = await (await fetch('/src/components/RoomScene.tsx')).text()
+    const fiberPath = transformedScene.match(/from\s*["']([^"']*react-three_fiber[^"']*)["']/)?.[1]
+    if (!fiberPath) throw new Error('No se pudo resolver el módulo de la escena')
+    const { _roots } = await import(/* @vite-ignore */ fiberPath)
+    const canvas = document.querySelector<HTMLCanvasElement>('.scene-panel canvas')
+    const sceneState = canvas && _roots.get(canvas)?.store.getState()
+    if (!canvas || !sceneState) throw new Error('La escena todavía no está montada')
+    const bounds = canvas.getBoundingClientRect()
+    let rendered = false
+    let screenPoint: { x: number; y: number } | null = null
+    sceneState.scene.traverse((object) => {
+      if (object.userData.elementId !== item.id) return
+      rendered = true
+      const point = object.getWorldPosition(object.position.clone())
+      point.y += item.height / 2
+      point.project(sceneState.camera)
+      screenPoint = {
+        x: bounds.left + (point.x + 1) * bounds.width / 2,
+        y: bounds.top + (1 - point.y) * bounds.height / 2,
+      }
+    })
+    return {
+      id: item.id,
+      rendered,
+      position: { x: item.x, y: item.y, z: item.z },
+      screenPoint,
+    }
+  }, name)
+  return result
+}
+
 async function dragToRoot(page: Page, source: Locator, target: Locator) {
   await source.hover()
   await page.mouse.down()
@@ -150,16 +187,22 @@ test('permite minimizar la sección Tu habitación del inspector', async ({ page
   await expect(content).toBeVisible()
 })
 
-test('alterna la visibilidad y el candado de un elemento desde la lista', async ({ page }) => {
+test('ocultación y bloqueo respetan escena, lista e inspector', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   await expandCatalogCategory(page, 'Asientos')
+  await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
   const row = catalog.locator('.element-row').filter({ hasText: 'Silla' })
   const visibility = row.getByRole('button', { name: 'Ocultar Silla' })
-  const lock = row.getByRole('button', { name: 'Bloquear Silla' })
   const actions = row.locator('.element-actions')
+  const initialScene = await furnitureSceneState(page, 'Silla')
+  expect(initialScene.rendered).toBe(true)
+  if (!initialScene.screenPoint) throw new Error('No se pudo proyectar el mueble en la escena')
+  await page.mouse.move(initialScene.screenPoint.x, initialScene.screenPoint.y)
+  await expect.poll(() => page.evaluate(() => document.body.classList.contains('can-grab'))).toBe(true)
 
   await expect(actions).toHaveCSS('opacity', '0')
   await row.hover()
@@ -167,16 +210,44 @@ test('alterna la visibilidad y el candado de un elemento desde la lista', async 
   await visibility.focus()
   await expect(actions).toHaveCSS('opacity', '1')
   await expect(visibility).toBeVisible()
-  await lock.click()
-  await expect(row).toHaveClass(/element-row--locked/)
-  await expect(row.getByRole('button', { name: 'Desbloquear Silla' })).toHaveAttribute('aria-pressed', 'true')
-  await expect(inspector.getByLabel('Posición X', { exact: true })).toBeDisabled()
-  await row.getByRole('button', { name: 'Desbloquear Silla' }).click()
-  await expect(inspector.getByLabel('Posición X', { exact: true })).toBeEnabled()
 
   await visibility.click()
   await expect(row).toHaveClass(/element-row--hidden/)
-  await expect(row.getByRole('button', { name: 'Mostrar Silla' })).toBeVisible()
+  await expect(row.getByRole('button', { name: 'Mostrar Silla' })).toHaveAttribute('aria-pressed', 'false')
+  await expect.poll(async () => (await furnitureSceneState(page, 'Silla')).rendered).toBe(false)
+  await expect(inspector.getByRole('heading', { name: 'Nada seleccionado' })).toBeVisible()
+
+  await row.getByRole('button', { name: 'Mostrar Silla' }).click()
+  await expect(row).not.toHaveClass(/element-row--hidden/)
+  await expect.poll(async () => (await furnitureSceneState(page, 'Silla')).rendered).toBe(true)
+  await row.locator('.element-select').click()
+  await expect(inspector.getByRole('heading', { name: 'Silla', exact: true })).toBeVisible()
+
+  const rowLock = row.getByRole('button', { name: 'Bloquear Silla' })
+  await row.hover()
+  await rowLock.click()
+  await expect(row).toHaveClass(/element-row--locked/)
+  await expect(row.getByRole('button', { name: 'Desbloquear Silla' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(inspector.getByLabel('Posición X', { exact: true })).toBeDisabled()
+  await expect(inspector.getByLabel('Tamaño del objeto').getByRole('slider').first()).toBeDisabled()
+  const remove = inspector.getByRole('button', { name: /Eliminar/ })
+  await expect(remove).toBeDisabled()
+  await expect(remove).toHaveAttribute('title', 'Desbloquea el elemento para eliminarlo')
+  await expect(inspector).toContainText('Elemento bloqueado')
+
+  const lockedScene = await furnitureSceneState(page, 'Silla')
+  expect(lockedScene.rendered).toBe(true)
+  if (!lockedScene.screenPoint) throw new Error('No se pudo proyectar el mueble bloqueado')
+  await page.mouse.move(lockedScene.screenPoint.x, lockedScene.screenPoint.y)
+  await expect.poll(() => page.evaluate(() => document.body.classList.contains('can-grab'))).toBe(false)
+  await page.mouse.down()
+  await page.mouse.move(lockedScene.screenPoint.x + 80, lockedScene.screenPoint.y + 40, { steps: 5 })
+  await page.mouse.up()
+  await expect.poll(async () => (await furnitureSceneState(page, 'Silla')).position).toEqual(lockedScene.position)
+
+  await row.getByRole('button', { name: 'Desbloquear Silla' }).click()
+  await expect(row).not.toHaveClass(/element-row--locked/)
+  await expect(inspector.getByLabel('Posición X', { exact: true })).toBeEnabled()
 })
 
 test('crea carpetas, mueve elementos y las renombra o elimina', async ({ page }) => {
