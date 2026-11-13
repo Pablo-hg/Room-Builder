@@ -13,13 +13,14 @@ import { worldOpenings } from './wallConnections'
 type Axis = 'x' | 'y' | 'z'
 export type MultiItem = { id: string; name: string; color: string; min: Record<Axis, number>; max: Record<Axis, number>; axes: Axis[]; type: 'furniture' | 'opening' | 'surface'; packId?: string; surfaceId?: string; wall?: WallSide }
 
-export function multiSelectionItems(state: Pick<RoomState, 'room' | 'furniture' | 'structurePacks' | 'elementFolders' | 'elementFolderAssignments' | 'selectedIds'>): MultiItem[] {
+export function multiSelectionItems(state: Pick<RoomState, 'room' | 'furniture' | 'structurePacks' | 'elementFolders' | 'elementFolderAssignments' | 'selectedIds'> & Partial<Pick<RoomState, 'hiddenElementIds'>>): MultiItem[] {
   const ids = new Set<string>()
   for (const id of state.selectedIds) {
     const folder = folderIdFromSelection(id)
     if (folder) folderElementIds(state.elementFolderAssignments, folder, state.elementFolders).forEach((child) => ids.add(child))
     else ids.add(id)
   }
+  for (const id of state.hiddenElementIds ?? []) ids.delete(id)
   for (const pack of state.structurePacks) if (ids.has(pack.id)) {
     ids.delete(pack.id)
     pack.surfaces.forEach((surface) => ids.add(structureSurfaceElementId(pack.id, surface.id)))

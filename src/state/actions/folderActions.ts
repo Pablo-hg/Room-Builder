@@ -1,3 +1,4 @@
+import { selectionWithoutHidden } from '../../domain/selection'
 import { makeId, structureGridElementId, structureSurfaceElementId } from '../../domain/elementIds'
 import { BASE_ROOM_SURFACE_IDS, canMoveFolder, folderElementIds, folderIdFromSelection, folderRoomPack, folderSelectionId, orderedSceneIds, sceneEntryParent, ROOT_ROOM_FOLDER } from '../../domain/elementFolders'
 import { recordInteraction } from '../../debug/interactionLog'
@@ -253,7 +254,7 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
       const hidden = new Set(state.hiddenElementIds)
       const show = [...elements].every((id) => hidden.has(id))
       for (const id of elements) { if (show) hidden.delete(id); else hidden.add(id) }
-      return { hiddenElementIds: [...hidden], notice: '' }
+      return { hiddenElementIds: [...hidden], ...(show ? {} : selectionWithoutHidden(state, hidden)), notice: '' }
     }),
     toggleSceneItemsLock: (ids) => set((state) => {
       const elements = new Set(ids.flatMap((id) => { const folder = folderIdFromSelection(id); return folder ? folderElementIds(state.elementFolderAssignments, folder, state.elementFolders) : [id] }))
@@ -289,7 +290,7 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
       })
       return {
         hiddenElementIds: [...hidden],
-        selectedId: !allHidden && state.selectedId && elementIds.includes(state.selectedId) ? null : state.selectedId,
+        ...(allHidden ? {} : selectionWithoutHidden(state, new Set(elementIds))),
       }
     }),
     toggleElementFolderLock: (id) => set((state) => {

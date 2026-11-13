@@ -1,6 +1,6 @@
 import { rejectDiagnosticAction } from '../../diagnostics/actionScope'
 import { makeId, structureGridElementId, structureSurfaceElementId } from '../../domain/elementIds'
-import { elementName } from '../../domain/selection'
+import { elementName, selectionWithoutHidden } from '../../domain/selection'
 import { ROOM_LIMITS } from '../../domain/constants'
 import { isFolderSelectionId, withoutFolderAssignments } from '../../domain/elementFolders'
 import { canPlaceFurniture, clampFurnitureElevation, findAvailableOpeningOffset, findFreeFurniturePosition, validateOpenings, wallLength } from '../../domain/geometry'
@@ -156,8 +156,8 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
     copySelected: () => {
       const state = get()
       if (state.selectedIds.length > 1) {
-        const copies = state.selectedIds.map((id) => state.furniture.find((item) => item.id === id) ?? state.room.windows.find((item) => item.id === id) ?? packWindowById(state.structurePacks, id)?.window)
-        if (copies.some((item) => !item)) return false
+        const copies = state.selectedIds.filter((id) => !state.hiddenElementIds.includes(id)).map((id) => state.furniture.find((item) => item.id === id) ?? state.room.windows.find((item) => item.id === id) ?? packWindowById(state.structurePacks, id)?.window)
+        if (!copies.length || copies.some((item) => !item)) return false
         runtime.copiedElements = copies.map((item) => ({ ...item! }))
         runtime.copiedElement = null
         set({ notice: `${copies.length} elementos copiados.` })
@@ -355,7 +355,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
         hiddenElementIds: isHidden
           ? state.hiddenElementIds.filter((elementId) => elementId !== id)
           : [...state.hiddenElementIds, id],
-        selectedId: !isHidden && state.selectedId === id ? null : state.selectedId,
+        ...(isHidden ? {} : selectionWithoutHidden(state, new Set([id]))),
       }
     }),
     toggleElementLock: (id) => set((state) => {
