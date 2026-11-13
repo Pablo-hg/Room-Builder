@@ -667,7 +667,6 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .saved-design-help { margin: 10px 4px 3px; border-top: 1px solid #e9e5de; padding: 8px 4px; color: var(--muted); font-size: 13px; }
 .saved-design-help summary { cursor: pointer; font-weight: 650; }
 .saved-design-help p { margin: 7px 0 0; font-size: 12px; line-height: 1.5; }
-@media (max-width: 770px) { 
 /* Con tipografías más legibles, distribuir las cinco vistas en dos filas en móvil. */
 @media (max-width: 580px) {
   .view-switcher { flex-wrap: wrap; gap: 4px; }
