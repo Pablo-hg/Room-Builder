@@ -6,6 +6,7 @@ import { physicalWalls, wallIntersectionIsCut, type ConnectedWall, type WallWorl
 export interface FurnitureWallAttachment {
   wallId: string
   side: -1 | 1
+  /** Compatibilidad v11: ya no bloquea el desplazamiento sobre la pared. */
   lockLateral: boolean
 }
 type World = WallWorld & { furniture: FurnitureItem[]; lockedElementIds?: string[] }
@@ -48,10 +49,14 @@ export function furnitureWallAxes(world: WallWorld, item: FurnitureItem) {
   if (!item.wallAttachment) return { x: !locks.x, y: !locks.y, z: !locks.z }
   const wall = physicalWalls(world).find((wall) => wall.id === item.wallAttachment!.wallId)
   if (!wall) return { x: !locks.x, y: !locks.y, z: !locks.z }
-  // Normal movement must remain available: pushing away breaks the attachment.
-  const n = normal(wall)
-  return { x: !locks.x && (!item.wallAttachment.lockLateral || Math.abs(n.x) > epsilon),
-    y: !locks.y, z: !locks.z && (!item.wallAttachment.lockLateral || Math.abs(n.z) > epsilon) }
+  // Un mueble fijado solo puede desplazarse lateralmente (tangente) y en altura.
+  // La coordenada perpendicular no se edita; para despegarlo se desmarca el check.
+  const t = tangent(wall)
+  // Para paredes giradas, X y Z representan el mismo desplazamiento lateral.
+  // Mostrar uno solo evita aparentar tres grados de libertad.
+  const lateralAxis = Math.abs(t.x) >= Math.abs(t.z) ? 'x' : 'z'
+  return { x: !locks.x && lateralAxis === 'x', y: !locks.y,
+    z: !locks.z && lateralAxis === 'z' }
 }
 
 /** Only actual wall faces can support furniture; openings and wall ends cannot. */
@@ -84,6 +89,42 @@ export function validateFurnitureWallAttachments(world: World, version: number):
       || centre.y - item.height / 2 < wall.y - epsilon || centre.y + item.height / 2 > wall.y + wall.height + epsilon
       || wallIntersectionIsCut(world, wall.id, centre)) throw new Error('El mueble no está apoyado en su pared de fijación.')
   }
+}
+
+/** Encuentra una pared real apta y sitúa el mueble apoyado en su cara más cercana.
+ * La acción de fijar funciona también aunque el objeto no esté tocando la pared.
+ * Las aberturas y los extremos se siguen validando mediante furnitureWallContact.
+ */
+export function snapFurnitureToWall(world: WallWorld, item: FurnitureItem): { item: FurnitureItem; wallId: string; side: -1 | 1 } | null {
+  let best: { item: FurnitureItem; wallId: string; side: -1 | 1; distance: number } | null = null
+  for (const wall of physicalWalls(world)) {
+    const t = tangent(wall), n = normal(wall)
+    const position = local(item, wall)
+    const limit = wall.width / 2 - radius(item, t)
+    const verticalOffset = furnitureVisualYOffset(item, world)
+    const minY = wall.y - verticalOffset
+    const maxY = wall.y + wall.height - item.height - verticalOffset
+    if (limit < 0 || maxY < minY) continue
+    const start = Math.max(-limit, Math.min(limit, position.u))
+    const offsets = [start, start - 0.5, start + 0.5, start - 1, start + 1, -limit, limit]
+      .map((value) => Math.max(-limit, Math.min(limit, value)))
+    const sides: Array<-1 | 1> = position.v < 0 ? [-1, 1] : [1, -1]
+    for (const side of sides) {
+      const v = side * (wall.depth / 2 + radius(item, n))
+      for (const u of offsets) {
+        const candidate: FurnitureItem = {
+          ...item, x: wall.x + t.x * u + n.x * v,
+          y: Math.max(minY, Math.min(maxY, item.y)),
+          z: wall.z + t.z * u + n.z * v,
+        }
+        const contact = furnitureWallContact(world, candidate)
+        if (contact?.wall.id !== wall.id || contact.side !== side) continue
+        const distance = Math.hypot(candidate.x - item.x, candidate.y - item.y, candidate.z - item.z)
+        if (!best || distance < best.distance) best = { item: candidate, wallId: wall.id, side, distance }
+      }
+    }
+  }
+  return best ? { item: best.item, wallId: best.wallId, side: best.side } : null
 }
 
 /** A soft contact holds one position, then yields to continued normal movement. */
@@ -155,7 +196,8 @@ function onWall(world: WallWorld, old: FurnitureItem, candidate: FurnitureItem, 
   const extent = radius(candidate, tangent(wall))
   const limit = wall.width / 2 - extent
   if (limit < 0) return null
-  const locks = furnitureAxisLocks(old)
+  // Al activar la fijación, los bloqueos manuales previos dejan de aplicarse.
+  const locks = furnitureAxisLocks(candidate)
   const t = tangent(wall), n = normal(wall)
   const dx = candidate.x - old.x, dz = candidate.z - old.z
   // A numeric X/Z edit must reach that coordinate while the other coordinate follows the wall.
@@ -164,7 +206,7 @@ function onWall(world: WallWorld, old: FurnitureItem, candidate: FurnitureItem, 
     : Math.abs(dz) > epsilon && Math.abs(dx) < epsilon
       ? Math.abs(t.z) > epsilon ? before.u + dz / t.z : before.u
       : requested.u
-  let u = attachment.lockLateral ? before.u : Math.max(-limit, Math.min(limit, along))
+  let u = Math.max(-limit, Math.min(limit, along))
   if ((locks.x && Math.abs(t.x) > epsilon) || (locks.z && Math.abs(t.z) > epsilon)) u = before.u
   if (Math.abs(u) > limit + epsilon) return null
   const v = attachment.side * (wall.depth / 2 + radius(candidate, normal(wall)))
@@ -194,16 +236,6 @@ export function constrainFurnitureWalls(before: World, after: World, magnets: Fu
     if (!wall) { const { wallAttachment: _attachment, ...detached } = item; return detached }
     if (old.wallAttachment && item.rotation !== old.rotation) { failed = true; return item }
     const previousWall = oldWalls.get(wall.id)
-    const stationaryWall = previousWall && (['x', 'y', 'z', 'yaw'] as const).every((key) => previousWall[key] === wall[key])
-    if (old.wallAttachment && stationaryWall && sameShape(old, item)
-      && Math.abs(dot({ x: item.x - old.x, z: item.z - old.z }, normal(wall))) > epsilon) {
-      // Pushing normally breaks even a manually chosen attachment; axes remain editable.
-      const { wallAttachment: _attachment, ...free } = item
-      const contacts = magnets.get(item.id) ?? new Map<string, MagnetContact>()
-      contacts.set(wall.id, { side: old.wallAttachment.side, bypass: true, intent: { x: item.x, y: item.y, z: item.z } })
-      magnets.set(item.id, contacts)
-      return free
-    }
     let candidate = item, origin = old
     if (previousWall && (previousWall.x !== wall.x || previousWall.y !== wall.y || previousWall.z !== wall.z || previousWall.yaw !== wall.yaw)) {
       const p = local(old, previousWall), t = tangent(wall), n = normal(wall)

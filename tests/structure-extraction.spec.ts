@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { expandCatalogCategories } from './helpers/catalog'
 
 test('mueve un pack, redimensiona una superficie y deshace la edición', async ({ page }) => {
   await page.goto('/')
+  await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
   const inspector = page.locator('.selection-section--inspector')
@@ -27,6 +29,7 @@ test('mueve un pack, redimensiona una superficie y deshace la edición', async (
 test('arrastra el gizmo de una superficie y deshace el gesto', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
   await page.getByRole('button', { name: /Suelo · Editar/ }).click()

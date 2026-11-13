@@ -1,8 +1,12 @@
 import { expect, test } from '@playwright/test'
+import { expandCatalogCategories } from './helpers/catalog'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 test('muestra una advertencia visual al crear una pared que atraviesa un mueble', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: /Pared.*Objeto independiente/ }).click()
   await expect(page.getByRole('heading', { name: 'Pared independiente' })).toBeVisible()
@@ -11,6 +15,8 @@ test('muestra una advertencia visual al crear una pared que atraviesa un mueble'
 
 test('un mueble puede cruzar las paredes y el suelo y conservar su posición al soltar', async ({ page }, testInfo) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   const x = page.getByRole('textbox', { name: 'Introducir X en metros' })
   const y = page.getByRole('textbox', { name: 'Introducir Y en metros' })
@@ -29,6 +35,7 @@ test('un mueble puede cruzar las paredes y el suelo y conservar su posición al 
 test('el suelo del plano desplaza la cámara y el botón restablece posición y zoom', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   const canvas = page.locator('.scene-panel canvas').first()
   const box = await canvas.boundingBox()
@@ -48,13 +55,14 @@ test('el suelo del plano desplaza la cámara y el botón restablece posición y 
   await page.mouse.wheel(0, -120)
   await expect.poll(async () => (await cameraState()).cameraZoom).not.toBe(initial.cameraZoom)
   await page.getByRole('button', { name: 'Restablecer posición y zoom del plano' }).click()
-  await expect(page.getByRole('status')).toContainText('100%')
+  await expect(page.getByRole('status').filter({ hasText: '%' })).toContainText('100%')
   await expect.poll(cameraState).toEqual(initial)
 })
 
 test('el aro de giro de una pared tiene prioridad sobre un suelo que lo tapa', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: /Suelo.*Objeto independiente/ }).click()
   await page.getByRole('button', { name: /Pared.*Objeto independiente/ }).click()
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
@@ -76,6 +84,7 @@ test('el aro de giro de una pared tiene prioridad sobre un suelo que lo tapa', a
 for (const kind of ['Suelo', 'Pared']) {
   test(`${kind}: permite escribir dimensiones y restaura valores fuera de rango`, async ({ page }) => {
     await page.goto('/')
+    await expandAllCatalogCategories(page)
     await page.getByRole('button', { name: new RegExp(`${kind}.*Objeto independiente`) }).click()
     const width = page.getByRole('textbox', { name: 'Introducir Anchura en metros', exact: true })
     const thickness = page.getByRole('textbox', { name: 'Introducir Grosor en metros' })
@@ -104,6 +113,8 @@ for (const view of ['Isométrica', 'Libre', 'Plano', 'Frontal']) {
     test(`${kind}: crear, reseleccionar y mover en ${view}`, async ({ page }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' })
       await page.goto('/')
+      await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Aperturas'])
       await page.getByRole('button', { name: view, exact: true }).click()
       await page.getByRole('button', { name: new RegExp(`${kind}.*Objeto independiente`) }).click()
       const inspector = page.locator('.selection-section--inspector')
@@ -128,6 +139,7 @@ for (const kind of ['Suelo', 'Pared']) {
   test(`${kind}: arrastre del eje X en plano y deshacer`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/')
+    await expandAllCatalogCategories(page)
     await page.getByRole('button', { name: kind === 'Suelo' ? /Suelo.*Objeto independiente/ : /Pared.*Objeto independiente/ }).click()
     await page.getByRole('button', { name: 'Plano', exact: true }).click()
     const box = await page.locator('.scene-panel canvas').first().boundingBox()
@@ -149,6 +161,7 @@ for (const kind of ['Suelo', 'Pared']) {
   test(`${kind}: arrastre del eje Z en plano`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/')
+    await expandAllCatalogCategories(page)
     await page.getByRole('button', { name: new RegExp(`${kind}.*Objeto independiente`) }).click()
     await page.getByRole('button', { name: 'Plano', exact: true }).click()
     const box = await page.locator('.scene-panel canvas').first().boundingBox()
@@ -169,6 +182,8 @@ for (const kind of ['Suelo', 'Pared']) {
   test(`${kind}: reselección táctil en isométrica`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/')
+    await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Aperturas'])
     await page.getByRole('button', { name: new RegExp(`${kind}.*Objeto independiente`) }).click()
     await page.getByRole('button', { name: /Puerta Apertura/ }).click()
     const box = await page.locator('.scene-panel canvas').first().boundingBox()
@@ -184,6 +199,7 @@ for (const kind of ['Suelo', 'Pared']) {
   test(`${kind}: cuadrícula independiente visible y conmutable`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/')
+    await expandAllCatalogCategories(page)
     await page.getByRole('button', { name: new RegExp(`${kind}.*Objeto independiente`) }).click()
     const toggle = page.getByRole('switch', { name: `Mostrar cuadrícula de ${kind} 1`, exact: true })
     await expect(toggle).toHaveAttribute('aria-checked', 'true')

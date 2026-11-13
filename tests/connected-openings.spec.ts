@@ -4,6 +4,7 @@ import { createStructureSurface } from '../src/domain/structureRules'
 import { anchorWallOpenings } from '../src/domain/wallConnections'
 import { initialRoomFolder } from '../src/domain/elementFolders'
 import type { StructurePack } from '../src/domain/types'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 for (const width of [375, 1280]) for (const kind of ['window', 'door'] as const) {
   test(`apertura compartida única, recorrido, vistas y recarga: ${kind}, ${width}px`, async ({ page }) => {
@@ -27,6 +28,7 @@ for (const width of [375, 1280]) for (const kind of ['window', 'door'] as const)
       if (!localStorage.getItem('room-builder:v0.1:designs')) localStorage.setItem('room-builder:v0.1:designs', JSON.stringify([saved]))
     }, saved)
     await page.goto('/')
+    await expandAllCatalogCategories(page)
     const load = async () => {
       await page.getByRole('button', { name: 'Seleccionar diseño guardado' }).click()
       await page.getByRole('button', { name: 'Paredes conectadas', exact: true }).click()
@@ -58,7 +60,7 @@ for (const width of [375, 1280]) for (const kind of ['window', 'door'] as const)
       // Playwright ya captura automáticamente la escena al fallar; cinco
       // capturas por variante añadían esperas de canvas sin aserción funcional.
     }
-    await page.getByRole('button', { name: 'Guardar cambios', exact: true }).click()
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click()
     await page.reload()
     await load()
     await entry.click()

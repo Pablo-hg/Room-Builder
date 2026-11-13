@@ -101,9 +101,9 @@ export function SelectionInspector() {
 
   return (
     <section className="panel-section selection-section selection-section--inspector">
-      <span className="eyebrow">Inspector del elemento</span>
+      <span className="eyebrow">Editar selección</span>
       <h2>Nada seleccionado</h2>
-      <p className="empty-selection">Selecciona un mueble, la puerta o una ventana en la vista para consultar y editar sus propiedades.</p>
+      <p className="empty-selection">Selecciona un mueble, la puerta o una ventana en la escena o en la lista de elementos para cambiar sus propiedades. Para las medidas generales, utiliza la sección de tu habitación que aparece debajo.</p>
     </section>
   )
 }

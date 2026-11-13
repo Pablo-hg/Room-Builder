@@ -94,7 +94,7 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
     deleteElementFolder: (id, mode) => {
       if (id === ROOT_ROOM_FOLDER) { set({ notice: 'La carpeta raíz no se puede eliminar ni desagrupar.' }); return }
       const current = get()
-      if (mode !== 'ungroup' && folderRoomPack(current.elementFolders, current.elementFolderAssignments, current.structurePacks, id)) {
+      if (mode !== 'ungroup' && current.elementFolders.some((folder) => folder.id === id)) {
         get().removeSceneItems([folderSelectionId(id)])
         return
       }
@@ -114,7 +114,7 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
         }),
         elementFolderAssignments: Object.fromEntries(Object.entries(state.elementFolderAssignments).flatMap(([elementId, folderId]) => folderId !== id ? [[elementId, folderId]] : folder.parentId ? [[elementId, folder.parentId]] : [])),
         selectedId: state.selectedId === folderSelectionId(id) ? null : state.selectedId,
-        notice: mode === 'ungroup' ? `Carpeta «${folder.name}» desagrupada.` : `Carpeta «${folder.name}» eliminada. Los elementos siguen en la escena.`,
+        notice: mode === 'ungroup' ? `Carpeta «${folder.name}» desagrupada.` : `Carpeta «${folder.name}» eliminada.`,
       }
       })
     },
@@ -192,7 +192,8 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
       const selected = new Set(ids)
       if (selected.has(folderSelectionId(ROOT_ROOM_FOLDER))) return { notice: 'La carpeta raíz no se puede eliminar.' }
       const foldersToRemove = new Set(state.elementFolders.filter((folder) => selected.has(folderSelectionId(folder.id))).map((folder) => folder.id))
-      const recursiveFolders = new Set([...foldersToRemove].filter((id) => folderRoomPack(state.elementFolders, state.elementFolderAssignments, state.structurePacks, id)))
+      // Eliminar una carpeta elimina también su contenido; para conservarlo existe «Desagrupar».
+      const recursiveFolders = new Set(foldersToRemove)
       let expanded = true
       while (expanded) {
         expanded = false

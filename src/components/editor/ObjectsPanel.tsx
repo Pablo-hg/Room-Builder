@@ -17,6 +17,7 @@ export function ObjectsPanel() {
   const [draggedFolder, setDraggedFolder] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({})
+  const [sceneCollapsed, setSceneCollapsed] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ id: string; name: string; x: number; y: number } | null>(null)
   const contextTrigger = useRef<HTMLElement | null>(null)
   const longPress = useRef<{ timer: number; x: number; y: number } | null>(null)
@@ -380,21 +381,35 @@ export function ObjectsPanel() {
     <aside id="objects-panel" className="side-panel objects-panel" aria-label="Catálogo de objetos">
       <div className="side-panel__content objects-panel__content">
         <ObjectCatalogSection />
-        <section className="panel-section elements-section" aria-labelledby="elements-heading">
-        <span className="eyebrow">Escena</span>
-        <div className="elements-heading">
-          <h2 id="elements-heading">Elementos en la habitación</h2>
-          <button
-            type="button"
-            className="element-folder-create"
-            aria-label="Crear carpeta de elementos"
-            title="Crear carpeta"
-            onClick={() => createElementFolder('')}
-          >＋ Carpeta</button>
-        </div>
-        <p className="section-copy">Organiza los elementos en carpetas, ocúltalos o bloquéalos sin eliminarlos.</p>
-        {elementFolders.length > 0 && <p className={`element-group-label${dropTarget === 'root' ? ' element-group-label--drop-target' : ''}`} onDragOver={(event) => { if (!draggedElement && !draggedFolder) return; event.preventDefault(); setDropTarget('root') }} onDrop={(event) => { event.preventDefault(); moveSceneItems(draggedItems, null); setDraggedElement(null); setDraggedFolder(null); setDropTarget(null) }}>Nivel principal · Sin carpeta</p>}
-        <div className="element-list">{renderEntries(null)}</div>
+        <section className="panel-section elements-section" aria-labelledby="scene-heading" data-tour="scene">
+          <div className="scene-section__heading">
+            <span className="eyebrow" id="scene-heading">Escena</span>
+            <button
+              type="button"
+              className={`catalog-family__toggle catalog-toggle-all${sceneCollapsed ? ' scene-section__toggle--collapsed' : ''}`}
+              aria-label={sceneCollapsed ? 'Mostrar escena' : 'Minimizar escena'}
+              aria-expanded={!sceneCollapsed}
+              aria-controls="scene-elements-content"
+              onClick={() => setSceneCollapsed((collapsed) => !collapsed)}
+            >
+              <i aria-hidden="true" />
+            </button>
+          </div>
+          {!sceneCollapsed && <div id="scene-elements-content">
+            <div className="elements-heading">
+              <h2 id="elements-heading">Elementos en la habitación</h2>
+              <button
+                type="button"
+                className="element-folder-create"
+                aria-label="Crear carpeta de elementos"
+                title="Crear carpeta"
+                onClick={() => createElementFolder('')}
+              >＋ Carpeta</button>
+            </div>
+            <p className="section-copy">Organiza los elementos en carpetas, ocúltalos o bloquéalos sin eliminarlos.</p>
+            {elementFolders.length > 0 && <p className={`element-group-label${dropTarget === 'root' ? ' element-group-label--drop-target' : ''}`} onDragOver={(event) => { if (!draggedElement && !draggedFolder) return; event.preventDefault(); setDropTarget('root') }} onDrop={(event) => { event.preventDefault(); moveSceneItems(draggedItems, null); setDraggedElement(null); setDraggedFolder(null); setDropTarget(null) }}>Nivel principal</p>}
+            <div className="element-list">{renderEntries(null)}</div>
+          </div>}
         </section>
         <GridVisibilitySection />
       </div>

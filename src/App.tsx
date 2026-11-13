@@ -19,6 +19,7 @@ import { visibleWallsForView } from './components/editor/viewHelpers'
 import { EditorHeader } from './components/editor/EditorHeader'
 import { VIEW_OPTIONS } from './components/editor/viewOptions'
 import { useEditorShortcuts } from './components/editor/useEditorShortcuts'
+import { FirstUseGuide, FirstUseInvitation, rememberFirstUseGuide, shouldOfferFirstUseGuide } from './components/editor/FirstUseGuide'
 import './styles.css'
 
 const ORBIT_DRAG_SENSITIVITY = 0.009
@@ -305,6 +306,8 @@ function EditorNotice({ exportNotice }: { exportNotice: string }) {
 
 function App() {
   const initializeSavedDesigns = useRoomStore((state) => state.initializeSavedDesigns)
+  const hasUnsavedChanges = useRoomStore((state) => state.hasUnsavedChanges)
+  const selectedSavedDesignId = useRoomStore((state) => state.selectedSavedDesignId)
   const [settingsCollapsed, setSettingsCollapsed] = useState(false)
   const [objectsCollapsed, setObjectsCollapsed] = useState(false)
   const [objectsWidth, setObjectsWidth] = useState(264)
@@ -312,6 +315,16 @@ function App() {
   const [exportMode, setExportMode] = useState(false)
   const [exportRequest, setExportRequest] = useState(0)
   const [exportNotice, setExportNotice] = useState('')
+  const [guideOpen, setGuideOpen] = useState(false)
+  const [guideInvitation, setGuideInvitation] = useState(shouldOfferFirstUseGuide)
+  const startGuide = useCallback(() => {
+    // Mostrar los paneles que la guía necesita resaltar, sin cambiar el diseño.
+    setObjectsCollapsed(false)
+    setSettingsCollapsed(false)
+    setGuideInvitation(false)
+    setGuideOpen(true)
+  }, [])
+  const closeGuide = useCallback(() => { rememberFirstUseGuide(); setGuideInvitation(false); setGuideOpen(false) }, [])
   useEditorShortcuts()
   useEffect(() => { initializeSavedDesigns() }, [initializeSavedDesigns])
   useEffect(() => {
@@ -349,13 +362,15 @@ function App() {
           exportRequest={exportRequest}
           onExportComplete={handleExportComplete}
         />
-        <SettingsPanel />
+        <SettingsPanel onStartGuide={startGuide} />
       </main>
       <footer className="statusbar">
-        <span><i className="status-dot" /> Guardado local en tu navegador</span>
+        <span className={`statusbar__save${hasUnsavedChanges || !selectedSavedDesignId ? ' statusbar__save--pending' : ''}`} role="status" aria-live="polite"><i className="status-dot" aria-hidden="true" />{hasUnsavedChanges ? 'Cambios sin guardar · pulsa Guardar' : selectedSavedDesignId ? 'Diseño guardado en este navegador' : 'Diseño sin guardar · pulsa Guardar'}</span>
         <span>Cuadrado visible: 25 cm · ajuste: 5 cm</span>
       </footer>
       <EditorNotice exportNotice={exportNotice} />
+      {guideInvitation && <FirstUseInvitation onStart={startGuide} onDismiss={closeGuide} />}
+      <FirstUseGuide open={guideOpen} onClose={closeGuide} />
     </div>
   )
 }

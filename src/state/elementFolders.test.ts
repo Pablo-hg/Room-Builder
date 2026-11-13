@@ -28,19 +28,30 @@ test('crea carpetas, asigna elementos y lo conserva al guardar', () => {
   assert.equal(store.getState().elementFolderAssignments[id], folder.id)
 })
 
-test('elimina carpetas sin eliminar sus elementos y limpia asignaciones huérfanas', () => {
+test('eliminar una carpeta borra su contenido, desagrupar lo conserva y se limpian las asignaciones', () => {
   const store = createRoomStore()
   store.getState().addFurniture('chair')
   const id = store.getState().selectedId!
   store.getState().createElementFolder('Carpeta', id)
   const folderId = store.getState().elementFolders[0].id
 
-  store.getState().deleteElementFolder(folderId)
+  store.getState().deleteElementFolder(folderId, 'ungroup')
   assert.deepEqual(store.getState().elementFolders, [])
   assert.deepEqual(store.getState().elementFolderAssignments, {})
   assert.equal(store.getState().furniture.length, 1)
 
+  store.getState().createElementFolder('Borrable', id)
+  store.getState().deleteElementFolder(store.getState().elementFolders[0].id)
+  assert.deepEqual(store.getState().elementFolders, [])
+  assert.deepEqual(store.getState().elementFolderAssignments, {})
+  assert.equal(store.getState().furniture.length, 0)
+  store.getState().undo()
+  assert.equal(store.getState().furniture.length, 1)
+  assert.equal(store.getState().elementFolders.length, 1)
+  store.getState().deleteElementFolder(store.getState().elementFolders[0].id, 'ungroup')
+
   store.getState().createElementFolder('Otra', id)
+  store.setState({ selectedId: id, selectedIds: [id] })
   store.getState().removeFurniture()
   assert.deepEqual(store.getState().elementFolderAssignments, {})
   assert.equal(store.getState().elementFolders.length, 1)
@@ -76,7 +87,7 @@ test('anida carpetas, conserva jerarquía v3 y aplica acciones a descendientes',
   store.getState().toggleElementFolderLock(parent.id)
   assert.ok(store.getState().hiddenElementIds.includes(id))
   assert.ok(store.getState().lockedElementIds.includes(id))
-  store.getState().deleteElementFolder(parent.id)
+  store.getState().deleteElementFolder(parent.id, 'ungroup')
   assert.equal(store.getState().elementFolders[0].parentId, undefined)
   assert.equal(store.getState().elementFolderAssignments[id], child.id)
   store.getState().undo()

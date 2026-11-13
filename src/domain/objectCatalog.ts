@@ -106,7 +106,10 @@ export function furnitureAttachment(item: Pick<FurnitureItem, 'kind' | 'attachme
   return 'free'
 }
 
-export function canElevateFurniture(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy' | 'axisLocks'>): boolean {
+export function canElevateFurniture(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy' | 'axisLocks' | 'wallAttachment'>): boolean {
+  // Fijar a una pared libera siempre la altura, incluso en diseños antiguos
+  // donde la fijación no añadía axisLocks de forma explícita.
+  if (item.wallAttachment) return true
   return !furnitureAxisLocks(item).y && furnitureAttachment(item) === 'free'
 }
 

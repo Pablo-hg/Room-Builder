@@ -53,6 +53,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
       try {
         const savedDesigns = repository.read()
         set({ savedDesigns, selectedSavedDesignId: '' })
+        if (savedDesigns.length > 0) get().loadDesign(savedDesigns[0].id)
       } catch (error) {
         failDiagnosticAction('storage.read-failed')
         const detail = error instanceof Error && error.message.includes('no coincide') ? ` ${error.message}` : ''
@@ -210,7 +211,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
         set({ notice: writeFailureNotice(error, 'No se pudo acceder al almacenamiento local.') })
       }
     },
-    importDesign: (design) => {
+    importDesign: (design, open = false) => {
       const state = get()
       if (state.savedDesigns.length >= MAX_SAVED_DESIGNS) return 'Ya hay 5 diseños guardados. Elimina uno antes de importar otro.'
       const ids = new Set(state.savedDesigns.map((entry) => entry.id))
@@ -219,8 +220,13 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
       const imported = { ...structuredClone(design), id }
       const savedDesigns = [...state.savedDesigns, imported]
       try {
+        const data = open ? normalizeDesign(imported.data) : undefined
         repository.write(savedDesigns)
-        set({ savedDesigns, notice: `Diseño «${imported.name}» importado.` })
+        set({
+          ...(data ? { ...sceneFromDesign(data), selectedSavedDesignId: id, hasUnsavedChanges: false } : {}),
+          savedDesigns,
+          notice: `Diseño «${imported.name}» importado.`,
+        })
         recordInteraction('state.design.imported', { view: state.view, selectedId: state.selectedId, details: { id } })
         return null
       } catch (error) {

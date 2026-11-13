@@ -7,7 +7,7 @@ import { PackInspector } from './PackInspector'
 import { focusedRoom } from '../../domain/roomEditing'
 import { DiagnosticExportButton } from './DiagnosticExportButton'
 
-export function SettingsPanel() {
+export function SettingsPanel({ onStartGuide }: { onStartGuide: () => void }) {
   const state = useRoomStore()
   const cameraRoom = focusedRoom(state)
   const editableRoom = cameraRoom.editable
@@ -28,26 +28,30 @@ export function SettingsPanel() {
         <SelectionInspector />
         <section className="panel-section room-section">
           <span className="eyebrow">Espacio</span>
-          <h2 className="room-section__heading">
-            <button
-              type="button"
-              className="room-section__toggle"
-              aria-expanded={!roomSectionCollapsed}
-              aria-controls="room-section-content"
-              onClick={() => setRoomSectionCollapsed((collapsed) => !collapsed)}
-            >
-              <span>{cameraRoom.name}</span>
-              <span className="room-section__chevron" aria-hidden="true" />
-            </button>
-          </h2>
-          <div id="room-section-content" hidden={roomSectionCollapsed}>
-            <p className="section-copy">{editableRoom ? 'Habitación enfocada en la cámara. Las dimensiones solo modifican esta habitación.' : 'La habitación enfocada necesita una carpeta con suelo y cuatro paredes alineadas para editar sus dimensiones.'}</p>
-            <div className="dimension-visual" aria-hidden="true">
-              <span>{cameraRoom.size.depth.toFixed(1)} m</span><div><b>{cameraRoom.size.width.toFixed(1)} m</b><i>⌂</i></div>
+          <div className="room-dimensions-tour-target" data-tour="room-dimensions">
+            <h2 className="room-section__heading">
+              <button
+                type="button"
+                className="room-section__toggle"
+                aria-expanded={!roomSectionCollapsed}
+                aria-controls="room-section-content room-appearance-content"
+                onClick={() => setRoomSectionCollapsed((collapsed) => !collapsed)}
+              >
+                <span>{cameraRoom.name}</span>
+                <span className="room-section__chevron" aria-hidden="true" />
+              </button>
+            </h2>
+            <div id="room-section-content" hidden={roomSectionCollapsed}>
+              <p className="section-copy">{editableRoom ? 'Habitación enfocada en la cámara. Las dimensiones solo modifican esta habitación.' : 'La habitación enfocada necesita una carpeta con suelo y cuatro paredes alineadas para editar sus dimensiones.'}</p>
+              <div className="dimension-visual" aria-hidden="true">
+                <span>{cameraRoom.size.depth.toFixed(1)} m</span><div><b>{cameraRoom.size.width.toFixed(1)} m</b><i>⌂</i></div>
+              </div>
+              <DimensionControl field="width" label="Anchura" />
+              <DimensionControl field="depth" label="Profundidad" />
+              <DimensionControl field="height" label="Altura" />
             </div>
-            <DimensionControl field="width" label="Anchura" />
-            <DimensionControl field="depth" label="Profundidad" />
-            <DimensionControl field="height" label="Altura" />
+          </div>
+          <div id="room-appearance-content" hidden={roomSectionCollapsed}>
             <ColorControl
               label="Suelo"
               value={pack?.surfaces.find((surface) => surface.kind === 'floor')?.color ?? room.floorColor ?? DEFAULT_FLOOR_COLOR}
@@ -115,6 +119,11 @@ export function SettingsPanel() {
             </dl>
             <p className="shortcut-guide__hint">Copia, pega y duplica con un elemento seleccionado.</p>
           </div>
+        </section>
+        <section className="panel-section first-use-restart-section" aria-label="Ayuda para empezar">
+          <h3>¿Necesitas ayuda?</h3>
+          <p className="section-copy">Descubre dónde ajustar medidas, añadir objetos y guardar tu habitación.</p>
+          <button type="button" className="first-use-restart" onClick={onStartGuide}>Ver guía de primer uso</button>
         </section>
         <section className="panel-section diagnostic-export-section" aria-label="Diagnóstico local">
           <DiagnosticExportButton />

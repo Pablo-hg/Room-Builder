@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { expandCatalogCategories } from './helpers/catalog'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 test('escribe posiciones de muebles y rechaza valores fuera de rango o cancelados', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   const x = page.getByRole('textbox', { name: 'Introducir X en metros' })
   const y = page.getByRole('textbox', { name: 'Introducir Y en metros' })
@@ -31,6 +35,7 @@ test('escribe posiciones de muebles y rechaza valores fuera de rango o cancelado
 
 test('escribe posiciones de aperturas y superficies y recupera valores inválidos', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.locator('.element-select').filter({ hasText: 'Ventana 1' }).click()
   const lateral = page.getByRole('textbox', { name: 'Introducir X en metros' })
   const height = page.getByRole('textbox', { name: 'Introducir Y en metros' })
@@ -52,6 +57,8 @@ test('escribe posiciones de aperturas y superficies y recupera valores inválido
 
 test('escribe la posición de una selección múltiple y mantiene sus restricciones', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Mesas y auxiliares'])
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
   await page.locator('.element-select').filter({ hasText: 'Sillón' }).click()
@@ -68,6 +75,8 @@ test('escribe la posición de una selección múltiple y mantiene sus restriccio
 test('la flecha del eje X mueve la selección múltiple sin alterar el eje Z', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Mesas y auxiliares'])
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
@@ -97,6 +106,8 @@ test('la flecha del eje X mueve la selección múltiple sin alterar el eje Z', a
 test('arrastra dentro del volumen común y conserva la selección hasta pulsar fuera', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Mesas y auxiliares'])
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
@@ -131,6 +142,8 @@ test('arrastra dentro del volumen común y conserva la selección hasta pulsar f
 test('arrastra el volumen común mediante pantalla táctil', async ({ page, context }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Mesas y auxiliares'])
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
@@ -158,6 +171,8 @@ test('arrastra el volumen común mediante pantalla táctil', async ({ page, cont
 test('Ctrl, Meta y Mayús seleccionan y alternan un mueble pulsando en la vista', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Aperturas'])
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: /Puerta Apertura/ }).click()
@@ -184,6 +199,8 @@ test('Ctrl, Meta y Mayús seleccionan y alternan un mueble pulsando en la vista'
 test('Ctrl selecciona una superficie independiente sin perder la selección anterior', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Aperturas'])
   await page.getByRole('button', { name: /Suelo.*Objeto independiente/ }).click()
   await page.getByRole('button', { name: /Puerta Apertura/ }).click()
   const canvas = await page.locator('.scene-panel canvas').first().boundingBox()
@@ -197,6 +214,8 @@ test('Ctrl selecciona una superficie independiente sin perder la selección ante
 test('Ctrl selecciona una ventana en plano junto a un mueble', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   const canvas = await page.locator('.scene-panel canvas').first().boundingBox()
@@ -211,6 +230,8 @@ test('Ctrl selecciona una ventana en plano junto a un mueble', async ({ page }) 
 
 test('una selección mixta muestra dimensiones y colores y limita los ejes comunes', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   const door = page.locator('.element-select').filter({ hasText: 'Puerta' })
   const chair = page.locator('.element-select').filter({ hasText: 'Silla' })
@@ -243,6 +264,7 @@ test('una selección mixta muestra dimensiones y colores y limita los ejes comun
 
 test('edita por separado los colores de una ventana y una superficie seleccionadas', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: /Suelo.*Objeto independiente/ }).click()
   const surface = page.locator('.element-select').filter({ hasText: 'Suelo independiente' })
   const window = page.locator('.element-select').filter({ hasText: 'Ventana 1' })
@@ -265,6 +287,8 @@ test('edita por separado los colores de una ventana y una superficie seleccionad
 
 test('edita conjuntamente dos muebles seleccionados desde la escena', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Mesas y auxiliares'])
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
   const chair = page.locator('.element-select').filter({ hasText: 'Silla' })
@@ -286,6 +310,7 @@ test('edita conjuntamente dos muebles seleccionados desde la escena', async ({ p
 
 test('el zoom de POV no se aleja más del 100 % y no altera las otras vistas', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const scene = page.locator('.scene-panel')
   const zoom = page.locator('.zoom-indicator output')
   await scene.hover()
@@ -306,6 +331,8 @@ test('el zoom de POV no se aleja más del 100 % y no altera las otras vistas', a
 
 test('resuelve la selección del inspector para muebles, aperturas, packs y superficies', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Construcción', 'Aperturas'])
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
 
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
@@ -331,6 +358,7 @@ test('sitúa catálogo a la izquierda e inspector a la derecha y permite plegarl
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const objects = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
   const scene = page.locator('.scene-panel')
@@ -346,7 +374,7 @@ test('sitúa catálogo a la izquierda e inspector a la derecha y permite plegarl
   await expect(page.getByRole('button', { name: 'Mostrar panel derecho' })).toHaveAttribute('aria-controls', 'settings-panel')
   await page.getByRole('button', { name: 'Mostrar panel izquierdo' }).click()
   await page.getByRole('button', { name: 'Mostrar panel derecho' }).click()
-  await expect(objects.getByText('Pequeño catálogo')).toBeVisible()
+  await expect(objects.getByRole('heading', { name: 'Construye y amuebla' })).toBeVisible()
   await expect(inspector.getByRole('heading', { name: 'Nada seleccionado' })).toBeVisible()
   await page.setViewportSize({ width: 800, height: 900 })
   const [objectsTablet, inspectorTablet] = await Promise.all([objects.boundingBox(), inspector.boundingBox()])
@@ -362,6 +390,7 @@ test('ajusta la anchura de ambos paneles con ratón y teclado', async ({ page })
   await page.setViewportSize({ width: 1920, height: 900 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const left = page.getByRole('separator', { name: 'Cambiar anchura del panel izquierdo' })
   const right = page.getByRole('separator', { name: 'Cambiar anchura del panel derecho' })
   const leftPanel = page.locator('#objects-panel')
@@ -388,6 +417,8 @@ test('ajusta la anchura de ambos paneles con ratón y teclado', async ({ page })
 
 test('selecciona elementos y carpetas con Ctrl, Meta y Mayús en el orden visible', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await catalog.getByRole('button', { name: 'Crear carpeta de elementos' }).click()
@@ -420,6 +451,8 @@ test('selecciona elementos y carpetas con Ctrl, Meta y Mayús en el orden visibl
 
 test('Mayús clic traslada el foco sin seleccionar texto y mantiene el foco de teclado', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   const door = page.locator('.element-select').filter({ hasText: 'Puerta' })
   const chair = page.locator('.element-select').filter({ hasText: 'Silla' })

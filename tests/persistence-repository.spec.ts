@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 test('migra el diseño legacy una vez y recupera el espejo antiguo desde el menú', async ({ page }) => {
   const legacy = JSON.parse(readFileSync(new URL('./fixtures/persistence-v1/valid-legacy-optional-fields.json', import.meta.url), 'utf8'))
@@ -8,8 +9,9 @@ test('migra el diseño legacy una vez y recupera el espejo antiguo desde el men�
     if (!localStorage.getItem('room-builder:v0.1:design')) localStorage.setItem('room-builder:v0.1:design', JSON.stringify(data))
   }, legacy)
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const trigger = page.getByRole('button', { name: 'Seleccionar diseño guardado' })
-  await expect(trigger).toContainText('1/5')
+  await expect(trigger).toContainText('Diseño guardado anteriormente')
   const migrated = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs')!))
   expect(migrated).toHaveLength(1)
   expect(migrated[0].data).toEqual(legacy)
@@ -17,7 +19,7 @@ test('migra el diseño legacy una vez y recupera el espejo antiguo desde el men�
   await page.getByRole('button', { name: 'Diseño guardado anteriormente', exact: true }).click()
   await expect(page.getByRole('button', { name: /Mostrar Espejo rectangular|Ocultar Espejo rectangular/ })).toHaveAttribute('aria-pressed', 'true')
   await page.reload()
-  await expect(trigger).toContainText('1/5')
+  await expect(trigger).toContainText('Diseño guardado anteriormente')
   const reloaded = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs')!))
   expect(reloaded).toEqual(migrated)
   const original = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:design')!))
@@ -31,13 +33,14 @@ test('conserva los cinco diseños al editar y guardar uno y persiste renombrado 
     if (!localStorage.getItem('room-builder:v0.1:designs')) localStorage.setItem('room-builder:v0.1:designs', JSON.stringify(saved))
   }, designs)
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const trigger = page.getByRole('button', { name: 'Seleccionar diseño guardado' })
-  await expect(trigger).toContainText('5/5')
+  await expect(trigger).toContainText('Guardado 0')
   await trigger.click()
   await expect(page.getByRole('button', { name: 'Crear diseño' })).toBeDisabled()
   await page.getByRole('button', { name: 'Guardado 2', exact: true }).click()
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
-  await page.getByRole('button', { name: 'Guardar cambios' }).click()
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs')!))
   expect(saved.map((design: { id: string }) => design.id)).toEqual(designs.map((design) => design.id))
   for (const index of [0, 1, 3, 4]) expect(saved[index]).toEqual(designs[index])
@@ -51,7 +54,8 @@ test('conserva los cinco diseños al editar y guardar uno y persiste renombrado 
   await page.getByRole('menuitem', { name: 'Borrar' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Eliminar diseño' }).click()
   await page.reload()
-  await expect(trigger).toContainText('4/5')
+  await expect(trigger).toContainText('Guardado 0')
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs')!).length)).toBe(4)
   await trigger.click()
   await expect(page.getByRole('button', { name: 'Actualizado', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Guardado 4', exact: true })).toHaveCount(0)
