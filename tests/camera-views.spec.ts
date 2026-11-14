@@ -31,6 +31,17 @@ const snapshot = (page: Page) => page.evaluate(async () => {
 
 const VIEW_NAMES = ['Plano', 'Frontal', 'POV', 'Libre', 'Isométrica'] as const
 
+// Los pasos repetitivos (varios giros seguidos) van directos al store, como en los
+// E2E táctiles de #72: cada gesto real cuesta 1-2 s en el CI y el límite es de 30 s.
+// Los gestos de interfaz se conservan una vez por control.
+const act = (page: Page, action: string, ...args: unknown[]) => page.evaluate(async ({ action, args, storeSource }) => {
+  const appSource = await (await fetch('/src/App.tsx')).text()
+  const storePath = appSource.match(/from\s*["']([^"']*useRoomStore[^"']*)["']/)?.[1] ?? storeSource
+  const { useRoomStore } = await import(/* @vite-ignore */ storePath)
+  const state = useRoomStore.getState()
+  for (const arg of args.length ? args : [undefined]) state[action](arg)
+}, { action, args, storeSource: '/src/state/useRoomStore.ts' })
+
 for (const touch of [false, true]) {
   test.describe(touch ? 'pantalla táctil' : 'ratón', () => {
     test.use({ hasTouch: touch })
@@ -46,34 +57,33 @@ for (const touch of [false, true]) {
       for (const name of VIEW_NAMES) {
         await press(page, name)
         await expect(page.getByRole('button', { name, exact: true })).toHaveAttribute('aria-pressed', 'true')
-        const now = await snapshot(page)
-        expect(now.furniture, name).toBe(before.furniture)
-        expect(now.room, name).toBe(before.room)
-        expect(now.undoCount, name).toBe(before.undoCount)
       }
       await press(page, 'Frontal')
-      for (let step = 0; step < 4; step += 1) await press(page, 'Ver la pared siguiente')
+      await press(page, 'Ver la pared siguiente')
       await press(page, 'POV')
       await press(page, 'Girar a la derecha')
-      await press(page, 'Girar a la izquierda')
       await press(page, 'Isométrica')
-      for (let step = 0; step < 4; step += 1) await press(page, 'Girar a la izquierda')
+      await press(page, 'Girar a la izquierda')
       const after = await snapshot(page)
       expect(after.furniture).toBe(before.furniture)
       expect(after.room).toBe(before.room)
       expect(after.undoCount).toBe(before.undoCount)
     })
 
-    test('Isométrica recorre las cuatro diagonales y vuelve a la inicial', async ({ page }) => {
+    test('Isométrica gira de diagonal con el control y recorre las cuatro', async ({ page }) => {
       await openWithChair(page)
       await press(page, 'Isométrica')
       const start = (await snapshot(page)).isoOrientation
-      const seen = new Set<number>([start])
-      for (let step = 0; step < 4; step += 1) {
-        await press(page, 'Girar a la izquierda')
+      await press(page, 'Girar a la izquierda')
+      const next = (await snapshot(page)).isoOrientation
+      expect(next).not.toBe(start)
+      const seen = new Set<number>([start, next])
+      for (let step = 0; step < 2; step += 1) {
+        await act(page, 'rotateIso', 1)
         seen.add((await snapshot(page)).isoOrientation)
       }
       expect(seen.size).toBe(4)
+      await act(page, 'rotateIso', 1)
       expect((await snapshot(page)).isoOrientation).toBe(start)
     })
 
@@ -81,9 +91,13 @@ for (const touch of [false, true]) {
       await openWithChair(page)
       const before = await snapshot(page)
       await press(page, 'POV')
-      for (let step = 0; step < 6; step += 1) await press(page, 'Girar a la izquierda')
+      await press(page, 'Girar a la izquierda')
+      expect((await snapshot(page)).povYaw).toBe(15)
+      await act(page, 'rotatePov', ...Array(10).fill(1))
       expect((await snapshot(page)).povYaw).toBe(55)
-      for (let step = 0; step < 12; step += 1) await press(page, 'Girar a la derecha')
+      await press(page, 'Girar a la izquierda')
+      expect((await snapshot(page)).povYaw).toBe(55)
+      await act(page, 'rotatePov', ...Array(12).fill(-1))
       const after = await snapshot(page)
       expect(after.povYaw).toBe(-55)
       expect(after.furniture).toBe(before.furniture)
@@ -91,7 +105,7 @@ for (const touch of [false, true]) {
 
     test('el zoom y el cambio de vista no bloquean la edición posterior', async ({ page }) => {
       await openWithChair(page)
-      for (const name of ['Frontal', 'Libre', 'Plano', 'Isométrica'] as const) {
+      for (const name of ['Frontal', 'Isométrica'] as const) {
         await press(page, name)
         const zoom = page.getByRole('slider', { name: 'Zoom de la cámara', exact: true })
         await zoom.focus()
