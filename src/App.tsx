@@ -24,8 +24,13 @@ import './styles.css'
 
 const ORBIT_DRAG_SENSITIVITY = 0.009
 
-function wallsDescription(view: ViewMode, walls: WallSide[]) {
-  if (view === 'pov') return 'Cámara interior'
+function povDescription(yaw: number) {
+  const side = yaw === 0 ? 'mirando al frente' : `${Math.abs(yaw)}° a la ${yaw > 0 ? 'izquierda' : 'derecha'}${Math.abs(yaw) >= 55 ? ' (límite)' : ''}`
+  return `Desde la puerta · ${side}`
+}
+
+function wallsDescription(view: ViewMode, walls: WallSide[], povYaw = 0) {
+  if (view === 'pov') return povDescription(povYaw)
   if (view === 'top') return 'Vista superior de la habitación'
   const names = walls.map((wall) => WALL_LABELS[wall])
   if (view === 'front') {
@@ -98,9 +103,10 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
       onKeyDown={(event) => { const delta = event.key === 'ArrowRight' ? 16 : event.key === 'ArrowLeft' ? -16 : 0; if (delta) { event.preventDefault(); apply(width + direction * delta) } else if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); apply(event.key === 'Home' ? min : max) } }}
     />
   }
+  const hasUnsavedChanges = useRoomStore((store) => store.hasUnsavedChanges)
   const currentView = VIEW_OPTIONS.find((option) => option.id === state.view)!
   const visibleWalls = visibleWallsForView(state.view, state.isoOrientation, state.wallView, state.freeAzimuth)
-  const visibleWallsText = wallsDescription(state.view, visibleWalls)
+  const visibleWallsText = wallsDescription(state.view, visibleWalls, state.povYaw)
   const hasPlacedSceneContent = state.furniture.length > 0 || state.structurePacks.length > 0
     || state.room.windows.some((window) => !DEFAULT_ROOM.windows.some((defaultWindow) => defaultWindow.id === window.id))
     || Boolean(state.room.extraDoors?.length)
@@ -212,9 +218,11 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
           <div className="scene-topline">
             <div className="scene-topline__labels">
               <span className="view-badge"><i /> Vista {viewLabel}</span>
+              {hasUnsavedChanges && <span className="statusbar__save statusbar__save--pending" role="status" aria-live="polite"><i className="status-dot" aria-hidden="true" />Cambios sin guardar</span>}
               <span className="visible-walls-badge"><b aria-hidden="true">◫</b> {visibleWallsText}</span>
               <button type="button" className={`area-select-toggle${areaSelect ? ' is-active' : ''}`} aria-pressed={areaSelect} onClick={() => setAreaSelect(!areaSelect)} title="Arrastra sobre el fondo para seleccionar varios objetos (también con Mayús + arrastrar)">▢ Selección por área</button>
               <span className="grid-scale"><b aria-hidden="true">▦</b> Cuadrado: 25 cm · movimiento: 5 cm</span>
+              {!exportMode && <SceneCollisionPanel collisions={collisions} outside={outside} unsupported={unsupported} />}
             </div>
             <span className="room-size">{roomSize.width.toFixed(1)} × {roomSize.depth.toFixed(1)} m</span>
           </div>
@@ -244,7 +252,6 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
             onExportComplete={onExportComplete}
             exportDesignName={exportDesignName}
           />
-          {!exportMode && <SceneCollisionPanel collisions={collisions} outside={outside} unsupported={unsupported} />}
           {!hasPlacedSceneContent && state.view !== 'pov' && (
             <div className="empty-scene"><span>✦</span><strong>La habitación está lista</strong><small>Añade tu primera pieza desde el catálogo</small></div>
           )}
@@ -309,8 +316,6 @@ function EditorNotice({ exportNotice }: { exportNotice: string }) {
 
 function App() {
   const initializeSavedDesigns = useRoomStore((state) => state.initializeSavedDesigns)
-  const hasUnsavedChanges = useRoomStore((state) => state.hasUnsavedChanges)
-  const selectedSavedDesignId = useRoomStore((state) => state.selectedSavedDesignId)
   const [settingsCollapsed, setSettingsCollapsed] = useState(false)
   const [objectsCollapsed, setObjectsCollapsed] = useState(false)
   const [objectsWidth, setObjectsWidth] = useState(264)
@@ -367,10 +372,6 @@ function App() {
         />
         <SettingsPanel onStartGuide={startGuide} />
       </main>
-      <footer className="statusbar">
-        <span className={`statusbar__save${hasUnsavedChanges || !selectedSavedDesignId ? ' statusbar__save--pending' : ''}`} role="status" aria-live="polite"><i className="status-dot" aria-hidden="true" />{hasUnsavedChanges ? 'Cambios sin guardar · pulsa Guardar' : selectedSavedDesignId ? 'Diseño guardado en este navegador' : 'Diseño sin guardar · pulsa Guardar'}</span>
-        <span>Cuadrado visible: 25 cm · ajuste: 5 cm</span>
-      </footer>
       <EditorNotice exportNotice={exportNotice} />
       {guideInvitation && <FirstUseInvitation onStart={startGuide} onDismiss={closeGuide} />}
       <FirstUseGuide open={guideOpen} onClose={closeGuide} />

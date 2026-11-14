@@ -23,7 +23,7 @@ test('avisa antes de descartar la edición al cambiar de diseño y permite cance
   await page.getByRole('button', { name: 'Diseño 1', exact: true }).click()
   await modal.getByRole('button', { name: 'Descartar y continuar' }).click()
   await expect(selector).toContainText('Diseño 1')
-  await expect(page.locator('.statusbar__save')).not.toContainText('Cambios sin guardar')
+  await expect(page.locator('.statusbar__save')).toHaveCount(0)
 })
 
 test('exportar incluye cambios sin guardar sin alterar el diseño persistido', async ({ page }) => {
@@ -86,7 +86,10 @@ test('exportar e importar conserva carpetas anidadas y deja una selección váli
   await page.goto('/')
   await expandAllCatalogCategories(page)
   const furnitureIds = await page.evaluate(async () => {
-    const { useRoomStore } = await import(/* @vite-ignore */ '/src/state/useRoomStore.ts')
+    // Windows: la app importa el store como /@fs/...; /src/... sería otra instancia.
+    const appSource = await (await fetch('/src/App.tsx')).text()
+    const storePath = appSource.match(/from\s*["']([^"']*useRoomStore[^"']*)["']/)?.[1] ?? '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ storePath)
     const store = useRoomStore.getState()
     store.addFurniture('chair')
     const firstId = useRoomStore.getState().selectedId!
@@ -131,7 +134,10 @@ test('exportar e importar conserva carpetas anidadas y deja una selección váli
   expect(imported.data.furniture.map((item: { id: string }) => item.id)).toEqual(furnitureIds)
 
   const selectionAfterImport = await page.evaluate(async () => {
-    const { useRoomStore } = await import(/* @vite-ignore */ '/src/state/useRoomStore.ts')
+    // Windows: la app importa el store como /@fs/...; /src/... sería otra instancia.
+    const appSource = await (await fetch('/src/App.tsx')).text()
+    const storePath = appSource.match(/from\s*["']([^"']*useRoomStore[^"']*)["']/)?.[1] ?? '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ storePath)
     const state = useRoomStore.getState()
     const before = { selectedId: state.selectedId, selectedIds: state.selectedIds, selectionAnchor: state.selectionAnchor }
     state.selectElement(state.furniture[0]?.id ?? null)

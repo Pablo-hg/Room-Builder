@@ -238,7 +238,10 @@ test('Alt+clic recorre dos muebles superpuestos sin moverlos', async ({ page }) 
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
 
   const ids = await page.evaluate(async () => {
-    const { useRoomStore } = await import(/* @vite-ignore */ '/src/state/useRoomStore.ts')
+    // Windows: la app importa el store como /@fs/...; /src/... sería otra instancia.
+    const appSource = await (await fetch('/src/App.tsx')).text()
+    const storePath = appSource.match(/from\s*["']([^"']*useRoomStore[^"']*)["']/)?.[1] ?? '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ storePath)
     const state = useRoomStore.getState()
     const names = ['Sillón', 'Silla']
     const items = names.map((name) => state.furniture.find((item) => item.name === name))
@@ -261,7 +264,10 @@ test('Alt+clic recorre dos muebles superpuestos sin moverlos', async ({ page }) 
       getWorldPosition: (target: ScenePoint) => ScenePoint
     }
     type SceneIntersection = { object: SceneObject }
-    const { useRoomStore } = await import(/* @vite-ignore */ '/src/state/useRoomStore.ts')
+    // Windows: la app importa el store como /@fs/...; /src/... sería otra instancia.
+    const appSource = await (await fetch('/src/App.tsx')).text()
+    const storePath = appSource.match(/from\s*["']([^"']*useRoomStore[^"']*)["']/)?.[1] ?? '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ storePath)
     const transformedScene = await (await fetch('/src/components/RoomScene.tsx')).text()
     const fiberPath = transformedScene.match(/from\s*["']([^"']*react-three_fiber[^"']*)["']/)?.[1]
     if (!fiberPath) throw new Error('No se pudo resolver el módulo de la escena')
