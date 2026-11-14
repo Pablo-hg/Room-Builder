@@ -121,6 +121,7 @@ export interface RoomState {
   removeFurniture: () => void
   removeSelected: () => void
   copySelected: () => boolean
+  cutSelected: () => boolean
   pasteSelected: () => boolean
   toggleGridVisibility: (surface: GridSurface) => void
   setGridGroupVisibility: (scope: 'focused' | 'all', visible: boolean) => void
@@ -162,6 +163,10 @@ export interface RoomRuntime {
   redoHistory: PersistedDesign[]
   copiedElement: FurnitureItem | WindowConfig | null
   copiedElements: (FurnitureItem | WindowConfig)[] | null
+  /** Carpeta de cada elemento copiado en el momento de copiar o cortar. */
+  copiedFolders: Record<string, string>
+  /** El portapapeles viene de «Cortar»: el primer pegado conserva la posición original. */
+  copiedCut: boolean
   isUndoing: boolean
   activeGesture: {
     token: HistoryGestureToken

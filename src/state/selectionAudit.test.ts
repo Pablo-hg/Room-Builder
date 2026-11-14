@@ -244,3 +244,42 @@ test('selectElements sustituye o añade y mantiene selectedId coherente', () => 
   store.getState().selectElements([])
   assert.deepEqual(store.getState().selectedIds, [])
 })
+
+test('pegar con una carpeta seleccionada coloca la copia dentro de esa carpeta', () => {
+  const { store, ids } = storeWithChairs(1)
+  store.getState().createElementFolder('Destino')
+  const folder = store.getState().elementFolders.find((candidate) => candidate.name === 'Destino')!
+  store.getState().selectElement(ids[0])
+  assert.equal(store.getState().copySelected(), true)
+  store.getState().selectElement(`folder:${folder.id}`)
+  assert.equal(store.getState().pasteSelected(), true)
+  const pasted = store.getState().selectedId!
+  assert.notEqual(pasted, ids[0])
+  assert.equal(store.getState().elementFolderAssignments[pasted], folder.id)
+})
+
+test('cortar elimina el original y pegar lo recoloca en la carpeta seleccionada en su posición', () => {
+  const { store, ids } = storeWithChairs(1)
+  store.getState().createElementFolder('Destino')
+  const folder = store.getState().elementFolders.find((candidate) => candidate.name === 'Destino')!
+  const original = store.getState().furniture.find((item) => item.id === ids[0])!
+  store.getState().selectElement(ids[0])
+  assert.equal(store.getState().cutSelected(), true)
+  assert.equal(store.getState().furniture.length, 0)
+  store.getState().selectElement(`folder:${folder.id}`)
+  assert.equal(store.getState().pasteSelected(), true)
+  const pasted = store.getState().furniture[0]
+  assert.equal(store.getState().elementFolderAssignments[pasted.id], folder.id)
+  assert.deepEqual([pasted.x, pasted.z], [original.x, original.z])
+})
+
+test('cortar una selección con un elemento bloqueado no tiene efectos parciales', () => {
+  const { store, ids } = storeWithChairs(3)
+  store.getState().toggleElementLock(ids[1])
+  selectMany(store, ids)
+  const before = JSON.stringify(persistedDesign(store.getState()))
+  assert.equal(store.getState().cutSelected(), false)
+  assert.equal(JSON.stringify(persistedDesign(store.getState())).includes('"notice"'), false)
+  assert.equal(store.getState().furniture.length, 3)
+  assert.equal(JSON.stringify(persistedDesign(store.getState())), before)
+})

@@ -198,7 +198,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
           <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
         </mesh>
         <FurnitureModel item={item} />
-        {(outlined || collision) && <group position={[0, item.height / 2, 0]}><SelectionBounds width={item.width} height={item.height} depth={item.depth} collision={collision} /></group>}
+        {(outlined || collision) && <group position={[0, item.height / 2, 0]}><SelectionBounds width={item.width} height={item.height} depth={item.depth} collision={collision} focused={outlined} /></group>}
       </group>
       {selected && canDrag && !isWallPictureKind(item.kind) && (
         <>

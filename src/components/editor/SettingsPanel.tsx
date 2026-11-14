@@ -107,6 +107,7 @@ export function SettingsPanel({ onStartGuide }: { onStartGuide: () => void }) {
               <div><dt>Rehacer</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></dd></div>
               <div><dt>Guardar cambios</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>G</kbd></dd></div>
               <div><dt>Copiar elemento</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>C</kbd></dd></div>
+              <div><dt>Cortar elemento</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>X</kbd></dd></div>
               <div><dt>Pegar elemento</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>V</kbd></dd></div>
               <div><dt>Duplicar elemento</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>D</kbd></dd></div>
               <div><dt>Agrupar</dt><dd><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Alt</kbd> + <kbd>G</kbd></dd></div>

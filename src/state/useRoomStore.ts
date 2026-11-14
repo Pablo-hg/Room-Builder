@@ -43,6 +43,8 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     redoHistory: [],
     copiedElement: null,
     copiedElements: null,
+    copiedFolders: {},
+    copiedCut: false,
     isUndoing: false,
     activeGesture: null,
   }

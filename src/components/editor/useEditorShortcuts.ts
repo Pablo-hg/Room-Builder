@@ -98,6 +98,11 @@ export function useEditorShortcuts() {
         window.dispatchEvent(new CustomEvent('room-builder:close-context'))
         return
       }
+      if (modifier && !event.altKey && !event.shiftKey && key === 'x' && state.cutSelected()) {
+        event.preventDefault()
+        window.dispatchEvent(new CustomEvent('room-builder:close-context'))
+        return
+      }
       if (modifier && key === 'v' && state.pasteSelected()) {
         event.preventDefault()
         return
@@ -127,6 +132,6 @@ export function useEditorShortcuts() {
     }
     window.addEventListener('keydown', handleShortcut)
     return () => window.removeEventListener('keydown', handleShortcut)
-  }, [state.copySelected, state.pasteSelected, state.redo, state.removeSelected, state.rotateFurniture, state.undo])
+  }, [state.copySelected, state.cutSelected, state.pasteSelected, state.redo, state.removeSelected, state.rotateFurniture, state.undo])
 
 }
