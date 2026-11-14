@@ -2,6 +2,7 @@ import { useThree } from '@react-three/fiber'
 import { useEffect } from 'react'
 import * as THREE from 'three'
 import { useRoomStore } from '../state/useRoomStore'
+import { prioritizeTransformControls } from './interactionPriority'
 
 export function OrbitPointerController({ view }: { view: 'isometric' | 'free' | null }) {
   const { camera, gl, scene } = useThree()
@@ -22,8 +23,9 @@ export function OrbitPointerController({ view }: { view: 'isometric' | 'free' | 
         -((event.clientY - bounds.top) / bounds.height) * 2 + 1,
       )
       raycaster.setFromCamera(pointer, camera)
-      const firstVisibleHit = raycaster
-        .intersectObjects(scene.children, true)
+      // Los manipuladores tienen prioridad sobre el suelo aunque queden por debajo
+      // (objetos hundidos): igual que en los eventos de la escena.
+      const firstVisibleHit = prioritizeTransformControls(raycaster.intersectObjects(scene.children, true))
         .find(({ object }) => !(object instanceof THREE.Line))
       let hitOrbitSurface = firstVisibleHit?.object.userData.freeOrbitSurface === true
       let hitWall = typeof firstVisibleHit?.object.userData.wallId === 'string'

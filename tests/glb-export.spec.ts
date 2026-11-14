@@ -60,3 +60,23 @@ test('el adaptador excluye ocultos, líneas, sprites, cámaras, luces y hit area
   expect(gltf.meshes).toHaveLength(1)
   expect(gltf.cameras).toBeUndefined()
 })
+
+test('el GLB exportado es el mismo desde las cuatro diagonales aunque haya paredes ocultas en pantalla', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
+  await page.getByRole('button', { name: 'Isométrica', exact: true }).click()
+  const summaries: string[] = []
+  for (let diagonal = 0; diagonal < 4; diagonal += 1) {
+    if (diagonal > 0) await page.getByRole('button', { name: 'Girar a la izquierda' }).click()
+    await page.getByRole('button', { name: 'Seleccionar diseño guardado' }).click({ button: 'right' })
+    const pending = page.waitForEvent('download')
+    await page.getByRole('menuitem', { name: /Descargar 3D/ }).click()
+    const path = await (await pending).path()
+    if (!path) throw new Error('No se descargó el GLB')
+    const gltf = await readGlb(path)
+    summaries.push(JSON.stringify({ meshes: gltf.meshes.length, nodes: gltf.nodes.length, materials: gltf.materials?.length ?? 0 }))
+  }
+  expect(new Set(summaries).size).toBe(1)
+})

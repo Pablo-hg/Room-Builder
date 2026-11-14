@@ -66,6 +66,7 @@ export interface RoomState {
   rotateFront: (direction: -1 | 1) => void
   rotateIso: (direction: -1 | 1) => void
   rotatePov: (direction: -1 | 1) => void
+  centerPov: () => void
   setDimension: (key: 'width' | 'depth' | 'height', value: number) => void
   setSelectedRoomDimension: (key: 'width' | 'depth' | 'height', value: number) => void
   setFocusedRoomDimension: (key: 'width' | 'depth' | 'height', value: number) => void

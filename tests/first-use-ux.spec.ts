@@ -29,7 +29,7 @@ test('explica construir, añadir, editar y ver sin ocultar herramientas avanzada
   await expect(catalogContent.getByRole('button', { name: /Nueva habitación vacía/ })).toHaveCount(0)
 })
 
-test('el botón alterna entre Guardar y Guardado y el estado se muestra solo en la barra inferior', async ({ page }) => {
+test('el botón alterna entre Guardar y Guardado y el aviso de cambios sin guardar se muestra solo en la leyenda', async ({ page }) => {
   await page.goto('/')
   await expandCatalogCategory(page, 'Asientos')
   const footerStatus = page.locator('.statusbar__save')
@@ -39,8 +39,7 @@ test('el botón alterna entre Guardar y Guardado y el estado se muestra solo en 
   await expect(save).toHaveClass(/primary-button--ready/)
   await expect(save.locator('.save-button__icon')).toHaveText('▣')
   await expect(page.locator('.save-state')).toHaveCount(0)
-  await expect(footerStatus).toContainText('Diseño sin guardar · pulsa Guardar')
-  await expect(footerStatus).toHaveCSS('font-weight', '650')
+  await expect(footerStatus).toHaveCount(0)
 
   await save.click()
   const saved = page.getByRole('button', { name: 'Guardado', exact: true })
@@ -48,18 +47,18 @@ test('el botón alterna entre Guardar y Guardado y el estado se muestra solo en 
   await expect(saved).toHaveClass(/primary-button--saved/)
   await expect(saved.locator('.save-button__icon')).toHaveText('✓')
   await expect(page.locator('.save-state')).toHaveCount(0)
-  await expect(footerStatus).toContainText('Diseño guardado en este navegador')
+  await expect(footerStatus).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   const changed = page.getByRole('button', { name: 'Guardar', exact: true })
   await expect(changed).toBeEnabled()
   await expect(changed).toHaveClass(/primary-button--ready/)
   await expect(page.locator('.save-state')).toHaveCount(0)
-  await expect(footerStatus).toContainText('Cambios sin guardar · pulsa Guardar')
+  await expect(footerStatus).toContainText('Cambios sin guardar')
 
   await changed.click()
   await expect(page.getByRole('button', { name: 'Guardado', exact: true })).toBeDisabled()
-  await expect(footerStatus).toContainText('Diseño guardado en este navegador')
+  await expect(footerStatus).toHaveCount(0)
 })
 
 
@@ -137,7 +136,7 @@ test('flujo básico sin tutorial: medidas, apertura, mueble, guardar y volver a 
   await expandCatalogCategory(page, 'Asientos')
   await catalog.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Guardar' }).click()
-  await expect(page.locator('.statusbar__save')).toContainText('Diseño guardado')
+  await expect(page.locator('.statusbar__save')).toHaveCount(0)
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs')!))
   expect(saved).toHaveLength(1)
   expect(saved[0].data.room.width).toBe(6.25)
@@ -147,7 +146,7 @@ test('flujo básico sin tutorial: medidas, apertura, mueble, guardar y volver a 
   await page.reload()
   await page.getByRole('button', { name: 'Seleccionar diseño guardado' }).click()
   await page.getByRole('button', { name: 'Diseño 1', exact: true }).click()
-  await expect(page.locator('.statusbar__save')).toContainText('Diseño guardado')
+  await expect(page.locator('.statusbar__save')).toHaveCount(0)
   const roomWidth = inspector.getByRole('textbox', { name: 'Introducir anchura en metros' })
   await expect(roomWidth).toHaveValue('6.25')
   await expect(catalog.locator('.element-row').filter({ hasText: 'Silla' })).toHaveCount(1)

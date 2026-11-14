@@ -38,6 +38,7 @@ export function ViewControls() {
   const setIsoOrbitDragging = useRoomStore((state) => state.setIsoOrbitDragging)
   const rotateFront = useRoomStore((state) => state.rotateFront)
   const rotatePov = useRoomStore((state) => state.rotatePov)
+  const centerPov = useRoomStore((state) => state.centerPov)
   const roomHeight = useRoomStore((state) => state.room.height)
   const frontCameraHeight = useRoomStore((state) => state.frontCameraHeight)
   const setFrontCameraHeight = useRoomStore((state) => state.setFrontCameraHeight)
@@ -207,7 +208,7 @@ export function ViewControls() {
           )}
           <i aria-hidden="true">→</i>
         </button>
-      ) : <span>{`${povYaw > 0 ? '+' : ''}${povYaw}°`}</span>}
+      ) : <><span>{`${povYaw > 0 ? '+' : ''}${povYaw}°`}</span>{povYaw !== 0 && <button type="button" className="camera-center" onClick={() => centerPov()} aria-label="Mirar al frente" title="Mirar al frente">⊙</button>}</>}
       <button type="button" onClick={() => { selectElement(null); rotate(-1) }} aria-label="Girar a la derecha">↷</button>
     </div>{view === 'isometric' && <label className="iso-height-control">Centro de cámara <output>{isoCameraHeight.toFixed(1)} m</output><input type="range" aria-label="Altura del centro de cámara isométrica" min={Math.min(0, ...packs.map((pack) => pack.y))} max={Math.max(roomHeight, ...packs.map((pack) => pack.y + roomHeight))} step="0.125" value={isoCameraHeight} onChange={(event) => setIsoCameraHeight(Number(event.target.value))} /></label>}</>
   )
