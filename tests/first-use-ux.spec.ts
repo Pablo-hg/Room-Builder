@@ -29,7 +29,7 @@ test('explica construir, añadir, editar y ver sin ocultar herramientas avanzada
   await expect(catalogContent.getByRole('button', { name: /Nueva habitación vacía/ })).toHaveCount(0)
 })
 
-test('el botón alterna entre Guardar y Guardado y el aviso de cambios sin guardar se muestra solo en la leyenda', async ({ page }) => {
+test('el botón alterna entre Guardar y Guardado y el aviso de cambios sin guardar se muestra solo en la leyenda', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
   await expandCatalogCategory(page, 'Asientos')
   const footerStatus = page.locator('.statusbar__save')
@@ -120,7 +120,7 @@ test('aviso de cambios pendientes visible en móvil mediante la barra inferior',
 })
 
 
-test('flujo básico sin tutorial: medidas, apertura, mueble, guardar y volver a abrir', async ({ page }) => {
+test('flujo básico sin tutorial: medidas, apertura, mueble, guardar y volver a abrir', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
   // No es necesario ejecutar el tutorial para completar las operaciones.
   await page.getByRole('button', { name: 'Ahora no' }).click()

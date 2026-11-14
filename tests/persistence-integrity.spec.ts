@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { expandAllCatalogCategories } from './helpers/catalog'
 
-test('avisa antes de descartar la edición al cambiar de diseño y permite cancelar', async ({ page }) => {
+test('avisa antes de descartar la edición al cambiar de diseño y permite cancelar', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
   await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: 'Guardar', exact: true }).click()
@@ -82,7 +82,7 @@ test('cancelar una importación no altera ni el diseño abierto ni localStorage'
   await expect(selector).toContainText('Diseño 1')
 })
 
-test('exportar e importar conserva carpetas anidadas y deja una selección válida', async ({ page }) => {
+test('exportar e importar conserva carpetas anidadas y deja una selección válida', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
   await expandAllCatalogCategories(page)
   const furnitureIds = await page.evaluate(async () => {

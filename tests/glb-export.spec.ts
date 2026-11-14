@@ -11,7 +11,7 @@ async function readGlb(path: string) {
   return JSON.parse(data.toString('utf8', 20, 20 + data.readUInt32LE(12)).trim())
 }
 
-test('descarga la escena real en GLB con el nombre y la fecha actuales', async ({ page }) => {
+test('descarga la escena real en GLB con el nombre y la fecha actuales', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
   await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
@@ -21,6 +21,8 @@ test('descarga la escena real en GLB con el nombre y la fecha actuales', async (
   await page.getByRole('menuitem', { name: /Descargar 3D/ }).click()
   const download = await pending
   expect(download.suggestedFilename()).toBe(`room-builder-${date}.glb`)
+  // El aviso dura ~3 s: se comprueba antes de leer y validar el archivo, que bajo carga tarda más.
+  await expect(page.locator('.toast')).toContainText('Modelo 3D descargado en formato GLB')
   const path = await download.path()
   if (!path) throw new Error('No se descargó el GLB')
   const gltf = await readGlb(path)
@@ -28,10 +30,9 @@ test('descarga la escena real en GLB con el nombre y la fecha actuales', async (
   expect(gltf.meshes.length).toBeGreaterThan(0)
   expect(gltf.cameras).toBeUndefined()
   expect(gltf.meshes.every((mesh: { primitives: { mode: number }[] }) => mesh.primitives.every((primitive) => primitive.mode === 4))).toBe(true)
-  await expect(page.locator('.toast')).toContainText('Modelo 3D descargado en formato GLB')
 })
 
-test('el adaptador excluye ocultos, líneas, sprites, cámaras, luces y hit areas del GLB', async ({ page }) => {
+test('el adaptador excluye ocultos, líneas, sprites, cámaras, luces y hit areas del GLB', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
   await expandAllCatalogCategories(page)
   const pending = page.waitForEvent('download')

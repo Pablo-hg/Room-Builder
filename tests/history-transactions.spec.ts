@@ -131,7 +131,7 @@ test('perder captura cierra el gesto de superficie y separa la siguiente edició
   expect(errors).toEqual([])
 })
 
-test('un giro continuo desde el inspector se deshace y rehace en un paso', async ({ page }) => {
+test('un giro continuo desde el inspector se deshace y rehace en un paso', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
   await expandAllCatalogCategories(page)
   await expandCatalogCategories(page, ['Asientos'])

@@ -228,7 +228,7 @@ test('Ctrl selecciona una ventana en plano junto a un mueble', async ({ page }) 
   await expect(page.locator('.element-select').filter({ hasText: 'Sillón' })).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('Alt+clic recorre dos muebles superpuestos sin moverlos', async ({ page }) => {
+test('Alt+clic recorre dos muebles superpuestos sin moverlos', { tag: '@smoke' }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   await expandAllCatalogCategories(page)

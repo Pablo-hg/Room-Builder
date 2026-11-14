@@ -258,3 +258,14 @@ Las cinco vistas comparten una única `CameraRig`; `hiddenWallsForView` es la po
 - `glb-export.spec.ts`: añadido un E2E que exporta desde las cuatro diagonales y exige el mismo número de mallas, nodos y materiales. **Escrito y listado, no ejecutado.**
 - Selección con objetos encima en cada diagonal: sin cubrir; requiere validación manual o un E2E con proyección de cámara.
 - Validación visual humana.
+
+## 14/11/2026 — CI: E2E de humo en las PR y suite completa aparte
+
+Decisión del propietario tras la PR #77 (dev → main), donde fallaron los 4 fragmentos E2E por **timeouts de 30 s** (ninguna aserción funcional): 30 fallos de 189 en la primera ejecución y 1 en la segunda.
+
+- **Causa principal medida:** `expandAllCatalogCategories` desplegaba 9 familias con un clic cada una (≈8 s en local, más en CI) en 112 tests. Ahora lo hace en una operación del navegador (≈1 s). En el CI cada clic de Playwright cuesta ≈1,7 s; hipótesis (no demostrada): el render WebGL por software ocupa la CPU del runner.
+- **`persistence-repository.spec.ts:29`:** `test.slow()` (flujo de ≈13 clics que terminaba en 33 s).
+- **Nuevo reparto:** `ci.yml` ejecuta unitarias, build y **21 E2E etiquetados `@smoke`** (`npm run test:e2e:smoke`). `e2e-full.yml` ejecuta la suite completa en 4 fragmentos a mano (`workflow_dispatch`) y cada lunes; los `schedule` solo corren si el workflow está en la rama por defecto del repositorio.
+- AGENTS.md actualizado con la política y la regla de ≈10 gestos por test.
+- **Local en Windows:** abrir el terminal con `C:\` en mayúscula; con `c:\` Vite sirve los módulos como `/@fs/` y los tests que importan el store obtienen otra instancia.
+- **Sin ejecutar en CI** estos cambios de workflow: se comprobará al subirlos.

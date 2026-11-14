@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { expandAllCatalogCategories } from './helpers/catalog'
 
-test('migra el diseño legacy una vez y recupera el espejo antiguo desde el menú', async ({ page }) => {
+test('migra el diseño legacy una vez y recupera el espejo antiguo desde el menú', { tag: '@smoke' }, async ({ page }) => {
   const legacy = JSON.parse(readFileSync(new URL('./fixtures/persistence-v1/valid-legacy-optional-fields.json', import.meta.url), 'utf8'))
   legacy.furniture = [{ id: 'legacy-mirror', kind: 'mirror', name: 'Espejo antiguo', x: -2, y: 0, z: 0, rotation: 0, width: 0.75, depth: 0.15, height: 1, color: '#9a8067' }]
   await page.addInitScript((data) => {
@@ -27,6 +27,9 @@ test('migra el diseño legacy una vez y recupera el espejo antiguo desde el men�
 })
 
 test('conserva los cinco diseños al editar y guardar uno y persiste renombrado y borrado', async ({ page }) => {
+  // Flujo largo solo de interfaz (≈13 clics): en el CI cada clic cuesta ~1,7 s y
+  // el test terminaba en ~33 s con el límite en 30 s. No cambia lo que se comprueba.
+  test.slow()
   const data = JSON.parse(readFileSync(new URL('./fixtures/persistence-v1/valid-complete.json', import.meta.url), 'utf8'))
   const designs = Array.from({ length: 5 }, (_, index) => ({ id: `old:${index}`, name: `Guardado ${index}`, savedAt: '2026-10-28T10:00:00.000Z', data }))
   await page.addInitScript((saved) => {

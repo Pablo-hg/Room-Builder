@@ -51,7 +51,7 @@ for (const touch of [false, true]) {
       return touch ? target.tap() : target.click()
     }
 
-    test('cambiar de vista y orientar la cámara no altera el mobiliario ni el historial', async ({ page }) => {
+    test('cambiar de vista y orientar la cámara no altera el mobiliario ni el historial', { tag: '@smoke' }, async ({ page }) => {
       await openWithChair(page)
       const before = await snapshot(page)
       for (const name of VIEW_NAMES) {
@@ -120,7 +120,7 @@ for (const touch of [false, true]) {
   })
 }
 
-test('POV se puede centrar y la leyenda indica el giro', async ({ page }) => {
+test('POV se puede centrar y la leyenda indica el giro', { tag: '@smoke' }, async ({ page }) => {
   await openWithChair(page)
   await page.getByRole('button', { name: 'POV', exact: true }).click()
   await page.getByRole('button', { name: 'Girar a la izquierda' }).click()

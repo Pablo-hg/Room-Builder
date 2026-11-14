@@ -7,7 +7,7 @@ async function expandCatalogCategory(page: Page, category: string) {
 import { readFile } from 'node:fs/promises'
 import { expandAllCatalogCategories } from './helpers/catalog'
 
-test('edita medidas, guarda y recupera ventanas y mobiliario', async ({ page }) => {
+test('edita medidas, guarda y recupera ventanas y mobiliario', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
   await expandAllCatalogCategories(page)
   await expandCatalogCategory(page, 'Aperturas')

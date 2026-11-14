@@ -13,7 +13,7 @@ async function planWithChairs(page: Page, count: number) {
   return canvas
 }
 
-test('Mayús + arrastrar sobre el fondo selecciona varios objetos y Escape los deselecciona', async ({ page }) => {
+test('Mayús + arrastrar sobre el fondo selecciona varios objetos y Escape los deselecciona', { tag: '@smoke' }, async ({ page }) => {
   const canvas = await planWithChairs(page, 3)
   const cx = canvas.x + canvas.width / 2
   const cy = canvas.y + canvas.height / 2

@@ -65,7 +65,7 @@ async function dragToRoot(page: Page, source: Locator, target: Locator) {
   await page.mouse.up()
 }
 
-test('permite cambiar vistas, añadir un objeto y guardar', async ({ page }) => {
+test('permite cambiar vistas, añadir un objeto y guardar', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
   await expandCatalogCategory(page, 'Asientos')
   await expect(page.getByText('Room Builder', { exact: true })).toBeVisible()
@@ -140,7 +140,7 @@ test('la transición de paneles está habilitada en escritorio sin afectar al re
   await expect(workspace).not.toHaveClass(/workspace--objects-collapsed/)
 })
 
-test('usa atajos para copiar, pegar, deshacer y rehacer objetos', async ({ page }) => {
+test('usa atajos para copiar, pegar, deshacer y rehacer objetos', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
   await expandCatalogCategory(page, 'Asientos')
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
@@ -187,7 +187,7 @@ test('permite minimizar la sección Tu habitación del inspector', async ({ page
   await expect(content).toBeVisible()
 })
 
-test('ocultación y bloqueo respetan escena, lista e inspector', async ({ page }) => {
+test('ocultación y bloqueo respetan escena, lista e inspector', { tag: '@smoke' }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   await expandCatalogCategory(page, 'Asientos')
@@ -250,7 +250,7 @@ test('ocultación y bloqueo respetan escena, lista e inspector', async ({ page }
   await expect(inspector.getByLabel('Posición X', { exact: true })).toBeEnabled()
 })
 
-test('crea carpetas, mueve elementos y las renombra o elimina', async ({ page }) => {
+test('crea carpetas, mueve elementos y las renombra o elimina', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
   await expandAllCatalogCategories(page)
   await expandCatalogCategory(page, 'Asientos')
@@ -432,7 +432,7 @@ test('permite cambiar el color de cada pared y del suelo', async ({ page }) => {
   await expect(floorColor).toHaveValue('#334455')
 })
 
-test('ofrece las cuatro orientaciones isométricas sin mover los datos', async ({ page }) => {
+test('ofrece las cuatro orientaciones isométricas sin mover los datos', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
   await expandCatalogCategory(page, 'Mesas y auxiliares')
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
@@ -518,7 +518,7 @@ test('orbita desde un objeto con el botón central y lo deselecciona sin moverlo
   await expect(inspector.locator('.selected-heading p')).toHaveText(originalPosition)
 })
 
-test('orbita desde suelo y exterior sin girar la cámara al arrastrar paredes', async ({ page }) => {
+test('orbita desde suelo y exterior sin girar la cámara al arrastrar paredes', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
   await expandCatalogCategory(page, 'Asientos')
   const scene = page.locator('.scene-panel')

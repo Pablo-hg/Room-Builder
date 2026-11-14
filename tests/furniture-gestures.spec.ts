@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { expandAllCatalogCategories } from './helpers/catalog'
 
-test('la flecha X del control de ejes compartidos inicia el arrastre de ese eje', async ({ page }) => {
+test('la flecha X del control de ejes compartidos inicia el arrastre de ese eje', { tag: '@smoke' }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   await expandAllCatalogCategories(page)

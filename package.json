@@ -11,6 +11,7 @@
     "test": "tsx --test src/**/*.test.ts",
     "test:watch": "tsx --test --watch src/**/*.test.ts",
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test --grep @smoke",
     "capture:r0-baseline": "playwright test --config=playwright.baseline.config.ts"
   },
   "dependencies": {

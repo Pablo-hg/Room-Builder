@@ -1,0 +1,47 @@
+name: Room Builder E2E completa
+
+# Suite E2E completa (todos los tests, sin filtrar). No bloquea las PR: se lanza
+# a mano desde la pestaña Actions o cada lunes, y debe pasar antes de una release.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-chromium:
+    name: E2E Chromium (fragmento ${{ matrix.shard }}/4)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencias limpias
+        run: npm ci
+      - name: Instalar Chromium y dependencias del sistema
+        run: npx playwright install --with-deps chromium
+      - name: Inventario de la suite del fragmento
+        run: |
+          npx playwright --version
+          npx playwright test --list --shard=${{ matrix.shard }}/4
+      - name: Ejecutar el fragmento completo de E2E (sin filtros)
+        run: npm run test:e2e -- --workers=2 --shard=${{ matrix.shard }}/4
+      - name: Conservar trazas y capturas de fallos
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: room-builder-e2e-failures-${{ matrix.shard }}-de-4
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
