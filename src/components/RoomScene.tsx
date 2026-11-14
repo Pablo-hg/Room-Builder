@@ -3,6 +3,8 @@ import { useMemo, useRef, type RefObject } from 'react'
 import * as THREE from 'three'
 import { WALL_SIDES } from '../domain/constants'
 import { useRoomStore } from '../state/useRoomStore'
+import { OverlapFocus } from '../scene/OverlapFocus'
+import { MarqueeSelection } from '../scene/MarqueeSelection'
 import { OrbitPointerController } from '../scene/OrbitPointerController'
 export { FreeCameraCompass3D, RoomCompass3D } from '../scene/Compass'
 import { SceneExportController } from '../scene/SceneExportController'
@@ -208,6 +210,8 @@ export default function RoomScene(props: SceneProps & { collisionIds: ReadonlySe
       }}
     >
       <RoomWorld {...props} modelRootRef={modelRootRef} />
+      <MarqueeSelection enabled={!props.exportMode} />
+      <OverlapFocus enabled={!props.exportMode} />
       <OrbitPointerController view={props.view === 'isometric' || props.view === 'free' ? props.view : null} />
       <FreeCameraKeyboard active={props.view === 'free' && !props.exportMode} />
       <SceneExportController

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 test('development receiver validates envelopes and acknowledges retries with the same identity', async ({ request }) => {
   const endpoint = '/__room-builder/interaction-log'
@@ -16,6 +17,7 @@ test('development receiver validates envelopes and acknowledges retries with the
 
 test('browser diagnostics persist offline and export without developer controls or sharing', async ({ page, context }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await expect(page.getByRole('button', { name: 'Diagnósticos · desarrollo' })).toHaveCount(0)
   await page.evaluate(async () => {
     const runtimePath = '/src/diagnostics/runtime.ts'
@@ -54,6 +56,7 @@ test('browser diagnostics persist offline and export without developer controls 
 
 test('IndexedDB retention, duplicate IDs and recovery use real browser transactions', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const result = await page.evaluate(async () => {
     const repositoryPath = '/src/diagnostics/indexedDb.ts', enginePath = '/src/diagnostics/engine.ts'
     const { DiagnosticRepository } = await import(/* @vite-ignore */ repositoryPath)

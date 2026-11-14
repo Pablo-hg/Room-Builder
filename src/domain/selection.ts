@@ -65,3 +65,17 @@ export function elementName(state: SelectionSource, id: string | null) {
   if (selectedSurface) return structureSurfaceName(selectedSurface.surface)
   return selectedFurniture?.name ?? id
 }
+
+/** Quita de la selección los elementos que acaban de ocultarse; no toca nada si ninguno estaba seleccionado. */
+export function selectionWithoutHidden(
+  state: { selectedId: string | null; selectedIds: string[]; selectionAnchor: string | null },
+  hidden: ReadonlySet<string>,
+) {
+  const selectedIds = state.selectedIds.filter((id) => !hidden.has(id))
+  if (selectedIds.length === state.selectedIds.length && !(state.selectedId && hidden.has(state.selectedId))) return {}
+  return {
+    selectedIds,
+    selectedId: selectedIds.length === 1 ? selectedIds[0] : null,
+    selectionAnchor: state.selectionAnchor && selectedIds.includes(state.selectionAnchor) ? state.selectionAnchor : selectedIds.at(-1) ?? null,
+  }
+}

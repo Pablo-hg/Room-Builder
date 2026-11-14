@@ -1,3 +1,4 @@
+import { selectionWithoutHidden } from '../../domain/selection'
 import { makeId, structureGridElementId, structureSurfaceElementId } from '../../domain/elementIds'
 import { BASE_ROOM_SURFACE_IDS, canMoveFolder, folderElementIds, folderIdFromSelection, folderRoomPack, folderSelectionId, orderedSceneIds, sceneEntryParent, ROOT_ROOM_FOLDER } from '../../domain/elementFolders'
 import { recordInteraction } from '../../debug/interactionLog'
@@ -94,7 +95,7 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
     deleteElementFolder: (id, mode) => {
       if (id === ROOT_ROOM_FOLDER) { set({ notice: 'La carpeta raíz no se puede eliminar ni desagrupar.' }); return }
       const current = get()
-      if (mode !== 'ungroup' && folderRoomPack(current.elementFolders, current.elementFolderAssignments, current.structurePacks, id)) {
+      if (mode !== 'ungroup' && current.elementFolders.some((folder) => folder.id === id)) {
         get().removeSceneItems([folderSelectionId(id)])
         return
       }
@@ -114,7 +115,7 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
         }),
         elementFolderAssignments: Object.fromEntries(Object.entries(state.elementFolderAssignments).flatMap(([elementId, folderId]) => folderId !== id ? [[elementId, folderId]] : folder.parentId ? [[elementId, folder.parentId]] : [])),
         selectedId: state.selectedId === folderSelectionId(id) ? null : state.selectedId,
-        notice: mode === 'ungroup' ? `Carpeta «${folder.name}» desagrupada.` : `Carpeta «${folder.name}» eliminada. Los elementos siguen en la escena.`,
+        notice: mode === 'ungroup' ? `Carpeta «${folder.name}» desagrupada.` : `Carpeta «${folder.name}» eliminada.`,
       }
       })
     },
@@ -192,7 +193,8 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
       const selected = new Set(ids)
       if (selected.has(folderSelectionId(ROOT_ROOM_FOLDER))) return { notice: 'La carpeta raíz no se puede eliminar.' }
       const foldersToRemove = new Set(state.elementFolders.filter((folder) => selected.has(folderSelectionId(folder.id))).map((folder) => folder.id))
-      const recursiveFolders = new Set([...foldersToRemove].filter((id) => folderRoomPack(state.elementFolders, state.elementFolderAssignments, state.structurePacks, id)))
+      // Eliminar una carpeta elimina también su contenido; para conservarlo existe «Desagrupar».
+      const recursiveFolders = new Set(foldersToRemove)
       let expanded = true
       while (expanded) {
         expanded = false
@@ -207,6 +209,7 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
       for (const [id, folder] of Object.entries(state.elementFolderAssignments)) if (recursiveFolders.has(folder)) deletedIds.add(id)
       if (deletedIds.has('door')) return { notice: 'La puerta principal no se puede eliminar.' }
       if (BASE_ROOM_SURFACE_IDS.some((id) => deletedIds.has(id))) return { notice: 'Las superficies de la habitación principal no se pueden eliminar.' }
+      if ([...deletedIds].some((id) => state.lockedElementIds.includes(id))) return { notice: 'Hay elementos bloqueados en la selección. Desbloquéalos para eliminarlos.' }
       const survivingParent = (id: string | undefined): string | undefined => {
         let current = id
         const seen = new Set<string>()
@@ -251,7 +254,7 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
       const hidden = new Set(state.hiddenElementIds)
       const show = [...elements].every((id) => hidden.has(id))
       for (const id of elements) { if (show) hidden.delete(id); else hidden.add(id) }
-      return { hiddenElementIds: [...hidden], notice: '' }
+      return { hiddenElementIds: [...hidden], ...(show ? {} : selectionWithoutHidden(state, hidden)), notice: '' }
     }),
     toggleSceneItemsLock: (ids) => set((state) => {
       const elements = new Set(ids.flatMap((id) => { const folder = folderIdFromSelection(id); return folder ? folderElementIds(state.elementFolderAssignments, folder, state.elementFolders) : [id] }))
@@ -287,7 +290,7 @@ export function createFolderActions(context: Pick<RoomActionContext, 'set' | 'ge
       })
       return {
         hiddenElementIds: [...hidden],
-        selectedId: !allHidden && state.selectedId && elementIds.includes(state.selectedId) ? null : state.selectedId,
+        ...(allHidden ? {} : selectionWithoutHidden(state, new Set(elementIds))),
       }
     }),
     toggleElementFolderLock: (id) => set((state) => {

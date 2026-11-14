@@ -1,5 +1,19 @@
 # Experiencia de uso, interacción y cámaras
 
+## F1-03: guía interactiva opcional de primer uso (11/11/2026)
+
+**Implementación en rama `feature/F1-03-simplificar-uso-controles`, pendiente de pruebas manuales y certificación.**
+
+- En la primera apertura sin diseños locales, aparece una **invitación que no bloquea el editor**. El usuario puede empezar el recorrido, pulsar «Ahora no» o seguir trabajando; interactuar fuera de la invitación la descarta.
+- El recorrido visual resalta los controles reales del editor en **seis pasos**: medidas, puertas/ventanas, mobiliario, inspector de selección, vistas y guardado. En el paso 1, el foco abarca el selector de habitación (Raíz), la vista previa y los tres controles completos de Anchura, Profundidad y Altura; la tarjeta se coloca a la izquierda del foco en escritorio para no tapar las medidas. Si el bloque estaba plegado, se despliega al iniciar el paso. No crea objetos ni modifica la geometría, ni exige seguir una secuencia obligatoria.
+- «Siguiente», «Anterior», «Saltar guía» y «Finalizar» permiten salir en cualquier momento; Escape también cierra el recorrido. El diálogo gestiona el foco del teclado y se posiciona de forma adaptativa en escritorio y móvil.
+- El usuario puede iniciar el recorrido de nuevo desde **Inspector y configuración detallada → ¿Necesitas ayuda? → Ver guía de primer uso**.
+- La preferencia se guarda exclusivamente en `room-builder:first-use-guide:v1`. No altera `room-builder:v0.1:designs`, no requiere cuenta, red, herramientas de terceros ni cambios de formato. Los usuarios que ya tienen diseños locales no reciben una invitación inesperada.
+- Si el navegador bloquea `localStorage`, la guía no interfiere con el editor; puede reabrirse manualmente. No se utilizan CDN, scripts externos ni telemetría.
+
+**Criterio de calidad:** comprobar el recorrido mediante ratón, teclado (Tab, Mayús+Tab, Escape), vista de 390 px, paneles desplazables, recarga tras saltar y reapertura. No declarar aprobado sin dichas pruebas. No ocultar Frontal, Libre o funciones avanzadas ni sustituir los controles originales.
+
+
 > **Vigente 04/11/2026:** la comparación A/B se retiró del MVP por RB-040. El contenido antiguo de comparación está reemplazado por nota de compatibilidad. Según RB-039 y RB-041, los muebles se pueden atravesar y se muestra advertencia roja; no bloquear esos movimientos por colisión.
 
 
@@ -52,3 +66,33 @@ Un control solo debe aparecer si aporta valor inmediato en el contexto de la tar
 - [#45](https://github.com/Pablo-hg/Room-Builder/issues/45): imagen de plano con escala calibrada, líneas/esquinas sugeridas y trazado corregible; no interpretación automática.
 
 **Vivienda:** la vista Plano pasará de habitación individual a **planta global**, con selección de estancia y selector de nivel (#52/#53). No crear otra escena ni otra unidad de medida. La interacción detallada debe validarse con usuario antes de completar F4.
+
+## F1-03: claridad de controles y gestión de diseños (11/11/2026)
+
+**Implementación de la rama F1-03; pendiente de validación manual y E2E específicos.** Se diferencia la sección «Construir habitación» de «Añadir objetos» en el catálogo, manteniendo los mismos controles, iconos y categorías; el inspector vacío explica cómo editar una selección y dónde se encuentran las dimensiones. La barra de vistas identifica el grupo «Ver» sin ocultar las vistas avanzadas.
+
+El botón principal tiene únicamente dos estados: «Guardar» (ámbar y accionable mientras el diseño sea nuevo o tenga cambios pendientes) y «Guardado» (verde y desactivado cuando no hay cambios). Al modificar un diseño guardado vuelve a «Guardar»; al pulsarlo, vuelve a «Guardado». El estado informativo se muestra únicamente en la barra inferior izquierda (diseño sin guardar, cambios sin guardar o diseño guardado), con tipografía seminegrita para mejorar su visibilidad. Se elimina el texto de estado junto al selector para evitar duplicar mensajes; el botón conserva exclusivamente los textos «Guardar» y «Guardado». La biblioteca muestra un encabezado y conserva «Crear»/«Importar» como acciones directas; el texto explicativo se mueve a una ayuda desplegable para reducir ruido. La selección de un diseño que ya está abierto deja de volver a cargarlo y de generar una confirmación innecesaria, para no perder modificaciones accidentales. Se habilita navegación por flechas/Home/End dentro de la lista de diseños y apertura mediante flechas desde el selector. El formulario de creación indica inline cuando falta el nombre.
+
+**Contraste con referencias:** seguir un orden visual «medir/construir → amueblar → visualizar → guardar» de la comparativa de MyRoomPlanner y la sencillez de acceso al catálogo de Rooms.xyz/MakeRoom, sin clonar sus interfaces; conservar el inspector contextual de inspiración Figma y la estética de la guía visual vigente. No se cambian escenas, geometría, datos de guardado ni vistas.
+
+## Ajustes de legibilidad F1-03 (11/11/2026)
+
+Se eleva el tamaño de las tipografías pequeñas del editor (de 9–13 px a aproximadamente 11–14 px) para mejorar la lectura sin alterar su contenido. Se retira la palabra decorativa «Ver» del selector superior de vistas y el bloque introductorio redundante «Construir habitación»; se mantienen visibles todas las categorías, el selector de cámaras y sus controles.
+
+## F1-03: casilla única de fijación a pared
+
+El inspector de muebles muestra solo la casilla **Fijar a pared**, sin repetir título ni ofrecer las casillas «Bloquear movimiento lateral» y «Mantener altura». Al activarla, el mueble se apoya en la cara válida más cercana si aún no está en contacto; la geometría restringe el desplazamiento perpendicular a la pared, dejando libres altura y deslizamiento lateral. No se despega al empujarlo: para volver al movimiento XYZ libre se desmarca la casilla. Las fijaciones antiguas con `lockLateral` siguen leyéndose por compatibilidad, pero ya no fuerzan un bloqueo invisible de deslizamiento.
+
+## F1-03: arrastre directo de muebles fijados en vistas 3D (11/11/2026)
+
+En Isométrica y Libre, el arrastre del cuerpo de un mueble fijado a pared se proyecta sobre un plano vertical paralelo a su pared soporte: se mueve lateralmente y en altura con un solo gesto, **sin utilizar la flecha Y del gizmo**. El cursor conserva su punto de agarre para evitar saltos; no cambia la distancia perpendicular ni se despega el objeto. La vista Frontal mantiene su gesto vertical existente y Plano conserva el movimiento sobre el suelo, pues no permite percibir la altura. Los controles de giro, gestos con Mayús, historial y las posiciones numéricas siguen operativos. Cobertura unitaria dirigida en `src/scene/wallSurfaceDrag.test.ts`; revisar arrastre real en navegador antes de certificar.
+
+## F1-03: recuperar arrastre con Mayús (11/11/2026)
+
+Al comenzar un arrastre de mobiliario con **Mayús**, se conserva el clic para seleccionar/deseleccionar si no hay movimiento. Si supera el umbral de desplazamiento, la selección se actualiza antes de iniciar una nueva transacción de historial: así no se interrumpe el arrastre. Mientras se mantiene Mayús, la traslación sigue usando `cameraAwareShiftDrag`: desplazamiento en **Y** y en un solo eje horizontal dependiente de la cámara, con el segundo eje horizontal bloqueado. El gesto continúa hasta soltar el ratón y se deshace en una única operación. Se mantiene el movimiento directo sobre pared para objetos fijados si no se pulsa Mayús. Prueba dirigida añadida a `tests/furniture-gestures.spec.ts`.
+
+## F1-03 — Organización del panel lateral izquierdo (12/11/2026)
+
+La sección superior se identifica como **Catálogo**, mantiene el título **Construye y amuebla** y la descripción existente. No hay un subapartado padre adicional: **Construcción** (Nueva habitación vacía, Suelo y Pared), Aperturas y todas las familias de mobiliario y decoración cuelgan directamente de Catálogo, cada una con su propio desplegable. Al entrar en el editor o recargar la web, todas las categorías aparecen plegadas por defecto; el usuario puede desplegar de forma independiente solo las que vaya a utilizar. Este estado inicial se reinicia en cada carga y no modifica ni elimina objetos del diseño.
+
+**Escena** incorpora un control accesible de minimizar/mostrar que oculta únicamente el árbol, su descripción y el botón de carpetas; las categorías de diseño y la visibilidad de cuadrícula siguen independientes. El encabezado de nivel raíz pasa a **Nivel principal** sin «Sin carpeta». En la guía de primer uso, el paso 2 enfoca todo **Catálogo** y explica las opciones de construcción, aperturas, mobiliario y decoración; el paso 3 enfoca **Escena** y explica cómo consultar, seleccionar, organizar, ocultar y bloquear elementos. Las tarjetas informativas de ambos pasos se colocan a la derecha del panel resaltado para no ocultar el menú, adaptando su anchura a la vista disponible. Ambos apartados se despliegan automáticamente si estaban minimizados.

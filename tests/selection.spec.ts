@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { expandCatalogCategories } from './helpers/catalog'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 test('escribe posiciones de muebles y rechaza valores fuera de rango o cancelados', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   const x = page.getByRole('textbox', { name: 'Introducir X en metros' })
   const y = page.getByRole('textbox', { name: 'Introducir Y en metros' })
@@ -31,6 +35,7 @@ test('escribe posiciones de muebles y rechaza valores fuera de rango o cancelado
 
 test('escribe posiciones de aperturas y superficies y recupera valores inválidos', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.locator('.element-select').filter({ hasText: 'Ventana 1' }).click()
   const lateral = page.getByRole('textbox', { name: 'Introducir X en metros' })
   const height = page.getByRole('textbox', { name: 'Introducir Y en metros' })
@@ -52,6 +57,8 @@ test('escribe posiciones de aperturas y superficies y recupera valores inválido
 
 test('escribe la posición de una selección múltiple y mantiene sus restricciones', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Mesas y auxiliares'])
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
   await page.locator('.element-select').filter({ hasText: 'Sillón' }).click()
@@ -68,6 +75,8 @@ test('escribe la posición de una selección múltiple y mantiene sus restriccio
 test('la flecha del eje X mueve la selección múltiple sin alterar el eje Z', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Mesas y auxiliares'])
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
@@ -97,6 +106,8 @@ test('la flecha del eje X mueve la selección múltiple sin alterar el eje Z', a
 test('arrastra dentro del volumen común y conserva la selección hasta pulsar fuera', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Mesas y auxiliares'])
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
@@ -131,6 +142,8 @@ test('arrastra dentro del volumen común y conserva la selección hasta pulsar f
 test('arrastra el volumen común mediante pantalla táctil', async ({ page, context }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Mesas y auxiliares'])
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
@@ -158,6 +171,8 @@ test('arrastra el volumen común mediante pantalla táctil', async ({ page, cont
 test('Ctrl, Meta y Mayús seleccionan y alternan un mueble pulsando en la vista', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Aperturas'])
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: /Puerta Apertura/ }).click()
@@ -184,6 +199,8 @@ test('Ctrl, Meta y Mayús seleccionan y alternan un mueble pulsando en la vista'
 test('Ctrl selecciona una superficie independiente sin perder la selección anterior', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Aperturas'])
   await page.getByRole('button', { name: /Suelo.*Objeto independiente/ }).click()
   await page.getByRole('button', { name: /Puerta Apertura/ }).click()
   const canvas = await page.locator('.scene-panel canvas').first().boundingBox()
@@ -197,6 +214,8 @@ test('Ctrl selecciona una superficie independiente sin perder la selección ante
 test('Ctrl selecciona una ventana en plano junto a un mueble', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
   const canvas = await page.locator('.scene-panel canvas').first().boundingBox()
@@ -209,8 +228,107 @@ test('Ctrl selecciona una ventana en plano junto a un mueble', async ({ page }) 
   await expect(page.locator('.element-select').filter({ hasText: 'Sillón' })).toHaveAttribute('aria-pressed', 'true')
 })
 
+test('Alt+clic recorre dos muebles superpuestos sin moverlos', { tag: '@smoke' }, async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
+  await page.getByRole('button', { name: 'Plano', exact: true }).click()
+  await page.getByRole('button', { name: 'Sillón ＋ Añadir', exact: true }).click()
+  await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
+
+  const ids = await page.evaluate(async () => {
+    // Windows: la app importa el store como /@fs/...; /src/... sería otra instancia.
+    const appSource = await (await fetch('/src/App.tsx')).text()
+    const storePath = appSource.match(/from\s*["']([^"']*useRoomStore[^"']*)["']/)?.[1] ?? '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ storePath)
+    const state = useRoomStore.getState()
+    const names = ['Sillón', 'Silla']
+    const items = names.map((name) => state.furniture.find((item) => item.name === name))
+    if (items.some((item) => !item)) throw new Error('No se encontraron los dos muebles')
+    const itemIds = items.map((item) => item!.id)
+    useRoomStore.setState({
+      furniture: state.furniture.map((item) => itemIds.includes(item.id) ? { ...item, x: 0, z: 0 } : item),
+    })
+    return itemIds
+  })
+
+  const sofa = page.locator('.element-select').filter({ hasText: 'Sillón' })
+  await sofa.click()
+  const readOverlap = () => page.evaluate(async (itemIds) => {
+    type ScenePoint = { x: number; y: number; z: number; project: (camera: unknown) => ScenePoint }
+    type SceneObject = {
+      userData: Record<string, unknown>
+      parent: SceneObject | null
+      position: { clone: () => ScenePoint }
+      getWorldPosition: (target: ScenePoint) => ScenePoint
+    }
+    type SceneIntersection = { object: SceneObject }
+    // Windows: la app importa el store como /@fs/...; /src/... sería otra instancia.
+    const appSource = await (await fetch('/src/App.tsx')).text()
+    const storePath = appSource.match(/from\s*["']([^"']*useRoomStore[^"']*)["']/)?.[1] ?? '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ storePath)
+    const transformedScene = await (await fetch('/src/components/RoomScene.tsx')).text()
+    const fiberPath = transformedScene.match(/from\s*["']([^"']*react-three_fiber[^"']*)["']/)?.[1]
+    if (!fiberPath) throw new Error('No se pudo resolver el módulo de la escena')
+    const { _roots } = await import(/* @vite-ignore */ fiberPath)
+    const canvas = document.querySelector<HTMLCanvasElement>('.scene-panel canvas')
+    const sceneState = canvas && _roots.get(canvas)?.store.getState()
+    if (!canvas || !sceneState) throw new Error('La escena todavía no está montada')
+    const state = useRoomStore.getState()
+    const item = state.furniture.find((candidate) => candidate.id === itemIds[0])
+    let target: SceneObject | undefined
+    sceneState.scene.traverse((object: SceneObject) => {
+      if (object.userData.elementId === itemIds[0]) target = object
+    })
+    if (!item || !target) return { hits: [], selectedId: state.selectedId, positions: {} }
+    const point = target.getWorldPosition(target.position.clone())
+    point.y += item.height / 2
+    point.project(sceneState.camera)
+    const bounds = canvas.getBoundingClientRect()
+    const raycaster = new sceneState.raycaster.constructor()
+    raycaster.setFromCamera({ x: point.x, y: point.y }, sceneState.camera)
+    const hits = [...new Set(raycaster.intersectObjects(sceneState.scene.children, true).flatMap((hit: SceneIntersection) => {
+      for (let current = hit.object; current; current = current.parent) {
+        if (typeof current.userData.elementId === 'string') return [current.userData.elementId]
+      }
+      return []
+    }))]
+    return {
+      hits,
+      selectedId: state.selectedId,
+      point: { x: bounds.left + (point.x + 1) * bounds.width / 2, y: bounds.top + (1 - point.y) * bounds.height / 2 },
+      positions: Object.fromEntries(itemIds.map((id) => {
+        const furniture = state.furniture.find((candidate) => candidate.id === id)!
+        return [id, { x: furniture.x, y: furniture.y, z: furniture.z }]
+      })),
+    }
+  }, ids)
+
+  const before = await readOverlap()
+  await expect.poll(async () => (await readOverlap()).hits.sort()).toEqual([...ids].sort())
+  expect(before.selectedId).toBe(ids[0])
+  const overlap = await readOverlap()
+  if (!overlap.point) throw new Error('No se pudo proyectar el punto de solapamiento')
+
+  const nextId = overlap.hits[0] === overlap.selectedId ? overlap.hits[1] : overlap.hits[0]
+  await page.keyboard.down('Alt')
+  await page.mouse.click(overlap.point.x, overlap.point.y)
+  await page.keyboard.up('Alt')
+  await expect.poll(async () => (await readOverlap()).selectedId).toBe(nextId)
+
+  await page.keyboard.down('Alt')
+  await page.mouse.click(overlap.point.x, overlap.point.y)
+  await page.keyboard.up('Alt')
+  await expect.poll(async () => (await readOverlap()).selectedId).toBe(overlap.selectedId)
+  expect((await readOverlap()).positions).toEqual(overlap.positions)
+  await expect(sofa).toHaveAttribute('aria-pressed', 'true')
+})
+
 test('una selección mixta muestra dimensiones y colores y limita los ejes comunes', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   const door = page.locator('.element-select').filter({ hasText: 'Puerta' })
   const chair = page.locator('.element-select').filter({ hasText: 'Silla' })
@@ -243,6 +361,7 @@ test('una selección mixta muestra dimensiones y colores y limita los ejes comun
 
 test('edita por separado los colores de una ventana y una superficie seleccionadas', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: /Suelo.*Objeto independiente/ }).click()
   const surface = page.locator('.element-select').filter({ hasText: 'Suelo independiente' })
   const window = page.locator('.element-select').filter({ hasText: 'Ventana 1' })
@@ -265,6 +384,8 @@ test('edita por separado los colores de una ventana y una superficie seleccionad
 
 test('edita conjuntamente dos muebles seleccionados desde la escena', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Mesas y auxiliares'])
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await page.getByRole('button', { name: 'Mesa ＋ Añadir', exact: true }).click()
   const chair = page.locator('.element-select').filter({ hasText: 'Silla' })
@@ -286,6 +407,7 @@ test('edita conjuntamente dos muebles seleccionados desde la escena', async ({ p
 
 test('el zoom de POV no se aleja más del 100 % y no altera las otras vistas', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const scene = page.locator('.scene-panel')
   const zoom = page.locator('.zoom-indicator output')
   await scene.hover()
@@ -306,6 +428,8 @@ test('el zoom de POV no se aleja más del 100 % y no altera las otras vistas', a
 
 test('resuelve la selección del inspector para muebles, aperturas, packs y superficies', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos', 'Construcción', 'Aperturas'])
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
 
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
@@ -331,6 +455,7 @@ test('sitúa catálogo a la izquierda e inspector a la derecha y permite plegarl
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const objects = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
   const scene = page.locator('.scene-panel')
@@ -346,7 +471,7 @@ test('sitúa catálogo a la izquierda e inspector a la derecha y permite plegarl
   await expect(page.getByRole('button', { name: 'Mostrar panel derecho' })).toHaveAttribute('aria-controls', 'settings-panel')
   await page.getByRole('button', { name: 'Mostrar panel izquierdo' }).click()
   await page.getByRole('button', { name: 'Mostrar panel derecho' }).click()
-  await expect(objects.getByText('Pequeño catálogo')).toBeVisible()
+  await expect(objects.getByRole('heading', { name: 'Construye y amuebla' })).toBeVisible()
   await expect(inspector.getByRole('heading', { name: 'Nada seleccionado' })).toBeVisible()
   await page.setViewportSize({ width: 800, height: 900 })
   const [objectsTablet, inspectorTablet] = await Promise.all([objects.boundingBox(), inspector.boundingBox()])
@@ -362,6 +487,7 @@ test('ajusta la anchura de ambos paneles con ratón y teclado', async ({ page })
   await page.setViewportSize({ width: 1920, height: 900 })
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const left = page.getByRole('separator', { name: 'Cambiar anchura del panel izquierdo' })
   const right = page.getByRole('separator', { name: 'Cambiar anchura del panel derecho' })
   const leftPanel = page.locator('#objects-panel')
@@ -388,6 +514,8 @@ test('ajusta la anchura de ambos paneles con ratón y teclado', async ({ page })
 
 test('selecciona elementos y carpetas con Ctrl, Meta y Mayús en el orden visible', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   await catalog.getByRole('button', { name: 'Crear carpeta de elementos' }).click()
@@ -418,8 +546,68 @@ test('selecciona elementos y carpetas con Ctrl, Meta y Mayús en el orden visibl
   await expect(page.getByRole('heading', { name: 'Ventana', exact: true })).toBeVisible()
 })
 
+test('caso guiado con 10 objetos y dos carpetas mantiene la selección exacta', async ({ page }) => {
+  test.setTimeout(90_000)
+  await page.setViewportSize({ width: 1440, height: 1200 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
+  await page.getByRole('button', { name: 'Plano', exact: true }).click()
+
+  const catalog = page.getByRole('complementary', { name: 'Catálogo de objetos' })
+  const addChair = page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true })
+  for (let index = 0; index < 10; index += 1) await addChair.click()
+
+  const chairs = () => catalog.locator('.element-row').filter({ hasText: 'Silla' }).locator('.element-select')
+  const selectFourAndGroup = async (firstIndex: number) => {
+    const items = chairs()
+    await expect(items).toHaveCount(10)
+    await items.nth(firstIndex).click()
+    for (let index = firstIndex + 1; index < firstIndex + 4; index += 1) await items.nth(index).click({ modifiers: ['Control'] })
+    await expect(page.getByRole('heading', { name: '4 elementos seleccionados' })).toBeVisible()
+    await page.keyboard.press('Control+Alt+g')
+  }
+  const folderItems = async (name: string) => {
+    const collapse = catalog.getByRole('button', { name: `Minimizar carpeta ${name}`, exact: true })
+    const listId = await collapse.getAttribute('aria-controls')
+    if (!listId) throw new Error(`No se encontró la lista de ${name}`)
+    return catalog.locator(`#${listId} .element-select`)
+  }
+
+  await expect(chairs()).toHaveCount(10)
+  await selectFourAndGroup(0)
+  const firstFolderChairs = await folderItems('Carpeta 1')
+  await expect(firstFolderChairs).toHaveCount(4)
+  await selectFourAndGroup(4)
+  const secondFolderChairs = await folderItems('Carpeta 2')
+  await expect(secondFolderChairs).toHaveCount(4)
+  await expect(chairs()).toHaveCount(10)
+
+  await firstFolderChairs.nth(0).click()
+  await firstFolderChairs.nth(3).click({ modifiers: ['Shift'] })
+  await expect(page.getByRole('heading', { name: '4 elementos seleccionados' })).toBeVisible()
+  for (let index = 0; index < 4; index += 1) await expect(firstFolderChairs.nth(index)).toHaveAttribute('aria-pressed', 'true')
+  for (let index = 0; index < 4; index += 1) await expect(secondFolderChairs.nth(index)).toHaveAttribute('aria-pressed', 'false')
+  for (let index = 0; index < 2; index += 1) await expect(chairs().nth(index + 8)).toHaveAttribute('aria-pressed', 'false')
+
+  for (let index = 0; index < 4; index += 1) {
+    const secondIndex = (index + 1) % 4
+    await firstFolderChairs.nth(index).click()
+    await secondFolderChairs.nth(secondIndex).click({ modifiers: ['Control'] })
+    await expect(page.getByRole('heading', { name: '2 elementos seleccionados' })).toBeVisible()
+    for (let item = 0; item < 4; item += 1) {
+      await expect(firstFolderChairs.nth(item)).toHaveAttribute('aria-pressed', item === index ? 'true' : 'false')
+      await expect(secondFolderChairs.nth(item)).toHaveAttribute('aria-pressed', item === secondIndex ? 'true' : 'false')
+    }
+    for (let item = 0; item < 2; item += 1) await expect(chairs().nth(item + 8)).toHaveAttribute('aria-pressed', 'false')
+  }
+})
+
 test('Mayús clic traslada el foco sin seleccionar texto y mantiene el foco de teclado', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Silla ＋ Añadir', exact: true }).click()
   const door = page.locator('.element-select').filter({ hasText: 'Puerta' })
   const chair = page.locator('.element-select').filter({ hasText: 'Silla' })

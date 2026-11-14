@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 async function readGlb(path: string) {
   const data = await readFile(path)
@@ -10,8 +11,9 @@ async function readGlb(path: string) {
   return JSON.parse(data.toString('utf8', 20, 20 + data.readUInt32LE(12)).trim())
 }
 
-test('descarga la escena real en GLB con el nombre y la fecha actuales', async ({ page }) => {
+test('descarga la escena real en GLB con el nombre y la fecha actuales', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const date = await page.evaluate(() => new Date().toISOString().slice(0, 10))
   await page.getByRole('button', { name: 'Seleccionar diseño guardado' }).click({ button: 'right' })
@@ -19,6 +21,8 @@ test('descarga la escena real en GLB con el nombre y la fecha actuales', async (
   await page.getByRole('menuitem', { name: /Descargar 3D/ }).click()
   const download = await pending
   expect(download.suggestedFilename()).toBe(`room-builder-${date}.glb`)
+  // El aviso dura ~3 s: se comprueba antes de leer y validar el archivo, que bajo carga tarda más.
+  await expect(page.locator('.toast')).toContainText('Modelo 3D descargado en formato GLB')
   const path = await download.path()
   if (!path) throw new Error('No se descargó el GLB')
   const gltf = await readGlb(path)
@@ -26,11 +30,11 @@ test('descarga la escena real en GLB con el nombre y la fecha actuales', async (
   expect(gltf.meshes.length).toBeGreaterThan(0)
   expect(gltf.cameras).toBeUndefined()
   expect(gltf.meshes.every((mesh: { primitives: { mode: number }[] }) => mesh.primitives.every((primitive) => primitive.mode === 4))).toBe(true)
-  await expect(page.locator('.toast')).toContainText('Modelo 3D descargado en formato GLB')
 })
 
-test('el adaptador excluye ocultos, líneas, sprites, cámaras, luces y hit areas del GLB', async ({ page }) => {
+test('el adaptador excluye ocultos, líneas, sprites, cámaras, luces y hit areas del GLB', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const pending = page.waitForEvent('download')
   await page.evaluate(async () => {
     const adapterPath = '/src/scene/exportGlb.ts'
@@ -56,4 +60,24 @@ test('el adaptador excluye ocultos, líneas, sprites, cámaras, luces y hit area
   expect(gltf.nodes.map((node: { name?: string }) => node.name).filter(Boolean)).toEqual(['modelo-visible'])
   expect(gltf.meshes).toHaveLength(1)
   expect(gltf.cameras).toBeUndefined()
+})
+
+test('el GLB exportado es el mismo desde las cuatro diagonales aunque haya paredes ocultas en pantalla', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
+  await page.getByRole('button', { name: 'Isométrica', exact: true }).click()
+  const summaries: string[] = []
+  for (let diagonal = 0; diagonal < 4; diagonal += 1) {
+    if (diagonal > 0) await page.getByRole('button', { name: 'Girar a la izquierda' }).click()
+    await page.getByRole('button', { name: 'Seleccionar diseño guardado' }).click({ button: 'right' })
+    const pending = page.waitForEvent('download')
+    await page.getByRole('menuitem', { name: /Descargar 3D/ }).click()
+    const path = await (await pending).path()
+    if (!path) throw new Error('No se descargó el GLB')
+    const gltf = await readGlb(path)
+    summaries.push(JSON.stringify({ meshes: gltf.meshes.length, nodes: gltf.nodes.length, materials: gltf.materials?.length ?? 0 }))
+  }
+  expect(new Set(summaries).size).toBe(1)
 })

@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
-test('la flecha X del control de ejes compartidos inicia el arrastre de ese eje', async ({ page }) => {
+test('la flecha X del control de ejes compartidos inicia el arrastre de ese eje', { tag: '@smoke' }, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const position = async () => page.evaluate(async () => {
@@ -32,6 +34,7 @@ for (const target of ['cuerpo', 'eje X'] as const) {
     test(`agrupa el arrastre de mobiliario en un paso de historial: ${target}, ${gesture}`, async ({ page, context }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' })
       await page.goto('/')
+      await expandAllCatalogCategories(page)
       await page.getByRole('button', { name: 'Plano', exact: true }).click()
       await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
       const position = page.locator('.selection-section--inspector').getByLabel('Posición X', { exact: true })
@@ -92,3 +95,51 @@ for (const target of ['cuerpo', 'eje X'] as const) {
     })
   }
 }
+
+
+test('Mayús + arrastrar el cuerpo permite cambiar altura y solo un eje horizontal durante todo el gesto', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await page.getByRole('button', { name: 'Plano', exact: true }).click()
+  await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
+
+  const readPosition = () => page.evaluate(async () => {
+    const { useRoomStore } = await import(/* @vite-ignore */ '/src/state/useRoomStore.ts')
+    const state = useRoomStore.getState()
+    const chair = state.furniture.find((item) => item.id === state.selectedId)!
+    return { x: chair.x, y: chair.y, z: chair.z, undoCount: state.undoCount }
+  })
+  const before = await readPosition()
+  const canvas = await page.locator('.scene-panel canvas').first().boundingBox()
+  if (!canvas) throw new Error('Canvas no disponible')
+  // El centro coincide con el gizmo; este desplazamiento apunta al cuerpo.
+  const x = canvas.x + canvas.width / 2 + 12
+  const y = canvas.y + canvas.height / 2 + 12
+
+  await page.keyboard.down('Shift')
+  try {
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    // Superar los 4 px activa el arrastre y la selección sin perder el gesto.
+    await page.mouse.move(x + 18, y - 18, { steps: 4 })
+    const halfway = await readPosition()
+    await page.mouse.move(x + 60, y - 100, { steps: 10 })
+    await page.mouse.up()
+    const after = await readPosition()
+
+    expect(after.y).toBeGreaterThan(before.y)
+    expect(after.y).toBeGreaterThan(halfway.y)
+    expect(Number(after.x !== before.x) + Number(after.z !== before.z)).toBe(1)
+    expect(after.undoCount).toBe(before.undoCount + 1)
+    await page.getByRole('button', { name: 'Deshacer el último cambio' }).click()
+    await expect.poll(() => page.evaluate(async () => {
+      const { useRoomStore } = await import(/* @vite-ignore */ '/src/state/useRoomStore.ts')
+      const state = useRoomStore.getState()
+      const chair = state.furniture[0]
+      return { x: chair.x, y: chair.y, z: chair.z }
+    })).toEqual({ x: before.x, y: before.y, z: before.z })
+  } finally {
+    await page.keyboard.up('Shift')
+  }
+})

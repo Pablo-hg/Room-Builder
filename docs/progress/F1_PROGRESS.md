@@ -12,14 +12,14 @@ Informe único de la fase F1 (hito «F1 — Editor base»). Cada issue añade su
 - **Escena** — [`src/scene/PlanDimensions.tsx`](../../src/scene/PlanDimensions.tsx):
   - Dibuja la línea de cota exterior, los testigos y las marcas oblicuas de los extremos, con una etiqueta de fondo claro.
   - Las posiciones se expresan en metros del mundo, así que cada cota sigue en su pared al girar el Plano. Grosores, separación y tamaño del texto se recalculan en píxeles cada fotograma, por lo que se mantienen legibles con cualquier zoom o tamaño de pantalla.
-  - Orden desde la pared hacia fuera, con «Mostrar detalles»: trazo de pared → cota (a 8 px del trazo) → letra «PARED A–D» (8 px por detrás de la cota). En ese modo la letra la dibuja la capa de cotas y se oculta la etiqueta normal para no duplicarla. La letra mantiene su tamaño en metros. Al desmarcar, la letra vuelve a su posición habitual. *(Ajuste pedido por el propietario el 10/11/2026.)*
+  - Orden desde la pared hacia fuera, con «Mostrar detalles»: trazo de pared → cota (a 8 px del trazo) → letra «PARED A–D» (8 px por detrás de la cota). En ese modo la letra la dibuja la capa de cotas y se oculta la etiqueta normal para no duplicarla. La letra mantiene su tamaño en metros. Al desmarcar, la letra vuelve a su posición habitual. _(Ajuste pedido por el propietario el 10/11/2026.)_
   - Las cotas no interceptan el puntero (`raycast` nulo), así que no bloquean puertas, ventanas ni manipuladores.
   - No se dibujan en exportación, fuera de Plano ni cuando la base no está visible (foco en otra planta).
 - **UI/estado:** checkbox «Mostrar detalles» dentro de los controles de Plano ([`ViewControls.tsx`](../../src/components/editor/ViewControls.tsx)). Usa el estado de sesión `planDetailsVisible`:
   - no se persiste, no entra en el historial y no cambia cámara, zoom, encuadre ni selección;
   - por defecto está desmarcado, que equivale a «Plano normal»;
   - incluye un resumen `aria-live` con las cotas, para accesibilidad textual.
-- **Todas las habitaciones** *(ajuste pedido por el propietario el 10/11/2026)*:
+- **Todas las habitaciones** _(ajuste pedido por el propietario el 10/11/2026)_:
   - `planRoomDimensions` acota cada pared visible en el Plano de la habitación raíz y de cada habitación adicional (`floor-pack-*`).
   - Para cada habitación, el exterior se calcula respecto al centro de su suelo.
   - Las paredes independientes y las ocultas no se acotan.
@@ -80,6 +80,7 @@ Informe único de la fase F1 (hito «F1 — Editor base»). Cada issue añade su
    - `openingOverlapPolicy.test.ts` comprueba que «solapamientos entre puerta y ventana se permiten».
 
    `COLLISION_SYSTEM_PROPOSAL.md` describe esto como propuesta pendiente. No se ha cambiado nada.
+
 2. **Ventanas giradas.** `resizedWallObject` sigue rechazando que una ventana girada redimensionada se acerque a otra apertura a menos de `openingGap`, mientras que las aperturas sin girar pueden solaparse. La regla es incoherente según el giro y depende de la decisión anterior.
 3. **Rama base.** `AGENTS.md` indica partir de `main`, pero el remoto no tiene `main`: su rama por defecto es `feat/room-builder-v0.1`.
 
@@ -192,3 +193,79 @@ Por instrucción expresa del propietario, `.github/workflows/ci.yml` conserva `p
 - En conjunto se comprobaron **12 escenarios E2E distintos relacionados**. No se ejecutó toda la suite E2E local, no se añadieron `skip`, no se ampliaron timeouts y no se retiró cobertura funcional.
 - `tsc --noEmit -p tsconfig.app.json` y `git diff --check`: correctos. Las trazas y logs descargados se mantienen en `.cache/ci72/`, fuera del control de versiones.
 - Pendiente: resultado de la nueva CI completa que se disparará al subir este cambio a `dev`, origen de la PR hacia `main`. La validación dirigida no se presenta como certificación de toda la suite ni como validación visual humana.
+
+## #28 · [F1 · 04/09] Mejorar multiselección, jerarquía, carpetas y operaciones
+
+**Rama:** `feature/F1-04-mejoras-varias` (parte de `origin/dev` tras el merge de #73). **Estado:** IMPLEMENTADO, **sin validación visual humana** y sin CI (no hay PR hacia `main`). Sin integrar en `dev` ni en `main`.
+
+### Cambios (por commit)
+
+- `be342a9` · Eliminar respeta el bloqueo: los elementos bloqueados no se borran.
+- `3d9889e` · Al ocultar, la selección se mantiene coherente (no queda seleccionado lo oculto).
+- `458a6f4` · Al pegar un elemento suelto se conserva su carpeta.
+- `3e4dd4c` · Corrección de un bloque `@media` sin cerrar en `styles.css`.
+- `7929b23` · Selección por área (Mayús + arrastrar sobre el fondo y herramienta «Selección por área», con ratón y táctil) y foco de objetos superpuestos (Alt+clic). Nuevos `marqueeSelection`, `overlapFocus`, `MarqueeSelection.tsx`, `OverlapFocus.tsx`.
+- `5ec9927` · Atajos de selección (Ctrl+A, Escape) y acciones de eliminar desactivadas cuando no son válidas, con mensaje.
+- `419e579` · Auditoría de bloqueo, ocultación, pegado y jerarquía (`src/state/selectionAudit.test.ts`).
+- `430f618` · Pruebas de exportación/importación de carpetas anidadas y de selección de muebles superpuestos.
+
+### Contra los criterios de aceptación
+
+| Criterio                                                           | Cobertura                                                                                         |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| Caso guiado 8–12 objetos y 2 carpetas                              | E2E `selection.spec.ts` («caso guiado con 10 objetos y dos carpetas»)                             |
+| Ocultar/bloquear respetados por escena, lista e inspector          | `selectionAudit.test.ts` + E2E de selección por área y Suprimir                                   |
+| Undo/redo, guardado/carga y JSON con jerarquías y selección válida | `selectionAudit.test.ts` + `persistence-integrity.spec.ts`                                        |
+| E2E ratón y táctil, teclado y unitarias                            | `area-selection.spec.ts`, `selection.spec.ts`, `marqueeSelection.test.ts`, `overlapFocus.test.ts` |
+
+### Pruebas ejecutadas (14/11/2026, local)
+
+- `npm test`: **504/504 correctas**.
+- `tsc --noEmit -p tsconfig.app.json`: correcto.
+- E2E de `selection`, `area-selection` y `persistence-integrity` con workers paralelos: **17 correctas y 13 con timeout de 30 s**. Dos de los fallos se repitieron aislados: `selection.spec.ts:5` pasó y `area-selection.spec.ts:16` pasó con un worker (14,4 s). Interpretación provisional: carga del equipo con workers paralelos, **no demostrado** para los 13. La repetición completa con un worker se canceló a petición del propietario y **queda pendiente**.
+- No se ha ejecutado `npm run build` ni la suite E2E completa.
+
+### Pendiente
+
+- Validación visual y manual del propietario (selección por área, Alt+clic, bloqueo/ocultación en carpetas, copiar/pegar, undo/redo, JSON).
+- Repetir las tres suites E2E con `--workers=1` o dejar que las ejecute la CI al abrir la PR hacia `main`.
+
+## #29 · [F1 · 05/09] Unificar cámaras y controles de orientación
+
+**Estado:** EN CURSO, sin commit ni integración. Validación visual en la web realizada por el propietario (14/11/2026, comunicada por chat): leyenda y botón de POV, pie de página, aviso de cambios sin guardar, panel de incidencias y flechas del objeto hundido. Rama: `feature/f1-05-unificar-camara-controles`.
+
+### Auditoría
+
+Las cinco vistas comparten una única `CameraRig`; `hiddenWallsForView` es la política de ocultación para render y colocación de aperturas. No se ha creado una cámara 3D duplicada. El POV con WASD (#36) queda fuera: el controlador existente no se duplica.
+
+### Cambios
+
+- **Leyenda de POV:** «Desde la puerta · mirando al frente / N° a la izquierda|derecha (límite)». Antes solo ponía «Cámara interior».
+- **Pie de página eliminado** (estado de guardado y «Cuadrado visible: 25 cm»). El aviso «Cambios sin guardar» pasa a la leyenda superior y solo aparece cuando hay cambios; ya no se muestra «Diseño guardado» ni «Diseño sin guardar». Actualizados los E2E `first-use-ux.spec.ts` (sin ejecutar).
+- **Panel «Incidencias en la escena»:** pasa de posición fija a ir dentro de la columna de la leyenda, debajo de la última etiqueta, para no taparla.
+- **Órbita isométrica/libre:** `OrbitPointerController` aplica `prioritizeTransformControls`, de modo que las flechas y el anillo de un objeto hundido bajo el suelo reciben el clic en vez de orbitar la cámara. Seleccionar el objeto hundido pulsando sobre él (no desde la lista) sigue sin cubrirse: pendiente de decisión.
+- **POV:** acción de sesión `centerPov` y botón «Mirar al frente» cuando el giro no es 0. No toca diseño, historial ni zoom.
+
+### Pruebas
+
+- Nuevo `src/state/cameraInvariants.test.ts` (16 tests): la cámara no cambia diseño, historial ni selección; cuatro diagonales, Frontal, POV, zoom independiente, exportación con las cuatro paredes y centrado de POV. `npm test`: **523/523 correctas**; `tsc` correcto.
+- Nuevo `tests/camera-views.spec.ts` (10 tests, ratón y táctil, centrado de POV, capturas distintas por vista). **Escrito, listado con `--list` y NO ejecutado.**
+
+### Pendiente
+
+- Ejecutar el E2E nuevo (con un worker) y corregirlo si hace falta.
+- Capturas de la misma escena en cada vista, escritorio y táctil.
+- `glb-export.spec.ts`: añadido un E2E que exporta desde las cuatro diagonales y exige el mismo número de mallas, nodos y materiales. **Escrito y listado, no ejecutado.**
+- Selección con objetos encima en cada diagonal: sin cubrir; requiere validación manual o un E2E con proyección de cámara.
+- Validación visual humana.
+
+## 14/11/2026 — CI: E2E de humo en las PR y suite completa aparte
+
+Decisión del propietario tras la PR #77 (dev → main), donde fallaron los 4 fragmentos E2E por **timeouts de 30 s** (ninguna aserción funcional): 30 fallos de 189 en la primera ejecución y 1 en la segunda.
+
+- **Causa principal medida:** `expandAllCatalogCategories` desplegaba 9 familias con un clic cada una (≈8 s en local, más en CI) en 112 tests. Ahora lo hace en una operación del navegador (≈1 s). En el CI cada clic de Playwright cuesta ≈1,7 s; hipótesis (no demostrada): el render WebGL por software ocupa la CPU del runner.
+- **`persistence-repository.spec.ts:29`:** `test.slow()` (flujo de ≈13 clics que terminaba en 33 s).
+- **Nuevo reparto:** `ci.yml` ejecuta unitarias, build y **21 E2E etiquetados `@smoke`** (`npm run test:e2e:smoke`). `e2e-full.yml` ejecuta la suite completa en 4 fragmentos a mano (`workflow_dispatch`) y cada lunes; los `schedule` solo corren si el workflow está en la rama por defecto del repositorio.
+- AGENTS.md actualizado con la política y la regla de ≈10 gestos por test.
+- **Local en Windows:** abrir el terminal con `C:\` en mayúscula; con `c:\` Vite sirve los módulos como `/@fs/` y los tests que importan el store obtienen otra instancia.
+- **Sin ejecutar en CI** estos cambios de workflow: se comprobará al subirlos.

@@ -10,7 +10,11 @@ import { planRoomCreation } from '../../domain/roomCreation'
 // Catálogo: estado de las familias y acciones de alta, independiente del árbol
 // de escena para que la jerarquía/selección no controle el estado de expansión.
 export function ObjectCatalogSection() {
-  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = { structure: true, openings: true }
+    FURNITURE_FAMILIES.forEach(({ id }) => { initial[id] = true })
+    return initial
+  })
   const [catalogCollapsed, setCatalogCollapsed] = useState(false)
   const [choosingRoomPosition, setChoosingRoomPosition] = useState(false)
   const addFurniture = useRoomStore((state) => state.addFurniture)
@@ -29,25 +33,25 @@ export function ObjectCatalogSection() {
   }
 
   return (
-        <section className="panel-section">
-        <span className="eyebrow">Objetos</span>
+        <section className="panel-section" data-tour="catalog">
+        <span className="eyebrow">Catálogo</span>
         <div className="catalog-heading">
           <div>
-            <h2>Pequeño catálogo</h2>
-            {!catalogCollapsed && <p className="section-copy">Añade muebles, aperturas y decoración mural, o selecciona la puerta existente.</p>}
+            <h2>Construye y amuebla</h2>
+            {!catalogCollapsed && <p className="section-copy">Ajusta primero las medidas a la derecha, añade aperturas y después elige tus muebles. Puedes hacerlo en cualquier orden.</p>}
           </div>
           <button
             type="button"
             className="catalog-family__toggle catalog-toggle-all"
             aria-expanded={!catalogCollapsed}
-            aria-controls="catalog-families"
-            aria-label={catalogCollapsed ? 'Mostrar catálogo completo' : 'Minimizar catálogo completo'}
+            aria-controls="catalog-content"
+            aria-label={catalogCollapsed ? 'Mostrar Catálogo' : 'Minimizar Catálogo'}
             onClick={() => setCatalogCollapsed((collapsed) => !collapsed)}
           >
             <i aria-hidden="true" />
           </button>
         </div>
-        {!catalogCollapsed && <div className="catalog-families" id="catalog-families">
+        {!catalogCollapsed && <div className="catalog-families" id="catalog-content">
           <section className={`catalog-family ${collapsedCategories.structure ? 'catalog-family--collapsed' : ''}`} aria-labelledby="catalog-structure">
             <h3>
               <button
@@ -83,7 +87,7 @@ export function ObjectCatalogSection() {
               </button>
             </div>}
           </section>
-          <section className={`catalog-family ${collapsedCategories.openings ? 'catalog-family--collapsed' : ''}`} aria-labelledby="catalog-openings">
+              <section className={`catalog-family ${collapsedCategories.openings ? 'catalog-family--collapsed' : ''}`} aria-labelledby="catalog-openings">
             <h3>
               <button
                 id="catalog-openings"
@@ -117,6 +121,7 @@ export function ObjectCatalogSection() {
                 <h3>
                   <button
                     id={`catalog-${family.id}`}
+                    data-tour={family.id === FURNITURE_FAMILIES[0].id ? 'furniture' : undefined}
                     type="button"
                     className="catalog-family__toggle"
                     aria-expanded={!collapsedCategories[family.id]}

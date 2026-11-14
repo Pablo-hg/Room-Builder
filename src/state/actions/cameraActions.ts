@@ -41,6 +41,7 @@ type CameraActions = Pick<
   | 'setTopCameraPosition'
   | 'resetTopCamera'
   | 'setPlanDetailsVisible'
+  | 'setAreaSelect'
   | 'lookAtWall'
   | 'setFrontCameraHeight'
   | 'lookFromIsoOrientation'
@@ -54,6 +55,7 @@ type CameraActions = Pick<
   | 'rotateFront'
   | 'rotateIso'
   | 'rotatePov'
+  | 'centerPov'
 >
 
 export function createCameraActions(context: Pick<RoomActionContext, 'set'>): CameraActions {
@@ -63,6 +65,7 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
     resetTopCamera: () => set({ topCameraX: 0, topCameraZ: 0, cameraZoom: 1 }),
     // Solo alterna la capa de cotas: no cambia cámara, selección ni diseño.
     setPlanDetailsVisible: (planDetailsVisible) => set({ planDetailsVisible }),
+    setAreaSelect: (areaSelect) => set({ areaSelect }),
     setView: (view) => set((state) => {
       recordInteraction('state.view.changed', {
         view: state.view,
@@ -216,6 +219,8 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
       })
       return { isoAngle, isoOrientation: orientationForIsoAngle(isoAngle), isIsoOrbitDragging: false, wallView: null }
     }),
+    // Vuelve a mirar al frente desde la puerta; solo estado de sesión.
+    centerPov: () => set({ povYaw: 0 }),
     rotatePov: (direction) => set((state) => {
       const povYaw = Math.max(-55, Math.min(55, state.povYaw + direction * 15))
       recordInteraction('state.camera.orientation', {

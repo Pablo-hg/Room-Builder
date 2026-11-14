@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { expandCatalogCategories } from './helpers/catalog'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 test('perder el foco de la ventana cierra el arrastre del inspector antes de editar con teclado', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const position = page.locator('.selection-section--inspector').getByLabel('Posición X', { exact: true })
   const initial = await position.inputValue()
@@ -39,6 +43,7 @@ for (const finish of ['ratón', 'cancelación táctil'] as const) {
     page.on('pageerror', (error) => errors.push(error.message))
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/')
+    await expandAllCatalogCategories(page)
     const orientation = page.getByRole('button', { name: 'Ver en isométrica las paredes A y B', includeHidden: true })
     await orientation.focus()
     await orientation.press('Enter')
@@ -91,6 +96,8 @@ test('perder captura cierra el gesto de superficie y separa la siguiente edició
   page.on('pageerror', (error) => errors.push(error.message))
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Construcción'])
   await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
   await page.getByRole('button', { name: 'Encima', exact: true }).click()
   await page.getByRole('button', { name: /Suelo · Editar/ }).click()
@@ -124,8 +131,10 @@ test('perder captura cierra el gesto de superficie y separa la siguiente edició
   expect(errors).toEqual([])
 })
 
-test('un giro continuo desde el inspector se deshace y rehace en un paso', async ({ page }) => {
+test('un giro continuo desde el inspector se deshace y rehace en un paso', { tag: '@smoke' }, async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const dial = page.getByRole('slider', { name: 'Giro del mueble' })
   await dial.scrollIntoViewIfNeeded()
@@ -154,6 +163,8 @@ test('borrar durante un arrastre desmonta el gesto y mantiene separados sus dos 
   page.on('pageerror', (error) => errors.push(error.message))
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
+  await expandAllCatalogCategories(page)
+  await expandCatalogCategories(page, ['Asientos'])
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
   const position = page.locator('.selection-section--inspector').getByLabel('Posición X', { exact: true })

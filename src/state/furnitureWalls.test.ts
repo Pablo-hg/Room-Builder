@@ -28,11 +28,11 @@ test('contacto, fijación manual, movimiento lateral, altura y liberación pasan
   close(current().z, z)
   store.getState().setFurnitureWallLateralLock(id, true)
   store.getState().moveFurniture(id, 1.5, z)
-  close(current().x, 1.2)
+  close(current().x, 1.5)
   store.getState().setElementAxisLock(id, 'y', true)
   const y = current().y
   store.getState().moveFurnitureVertically(id, y + 0.5)
-  close(current().y, y)
+  close(current().y, y + 0.5) // un mueble fijado conserva siempre la altura editable
   store.getState().setFurnitureWallAttachment(id, false)
   store.getState().moveFurniture(id, 1.2, 0)
   close(current().z, 0)
@@ -76,14 +76,17 @@ test('cargar un diseño sin fijación no cambia posiciones ni añade el nuevo ca
   assert.deepEqual(normalizeDesign(legacy).furniture, legacy.furniture)
 })
 
-test('un objeto fijado se puede despegar y atravesar desde controles de 1 cm', () => {
+test('un objeto fijado no se despega al empujar en perpendicular; se libera desmarcando la casilla', () => {
   const { store, id, current } = fixture()
   store.getState().setFurnitureWallAttachment(id, true)
   const contact = current().z
   for (let step = 0; step < 90; step++) {
     store.getState().moveFurniture(id, current().x, current().z - 0.01)
   }
+  assert.ok(current().wallAttachment)
+  close(current().z, contact)
+  store.getState().setFurnitureWallAttachment(id, false)
   assert.equal(current().wallAttachment, undefined)
-  close(current().z, Math.round((contact - 0.9) * 100) / 100)
-  assert.ok(current().z < -store.getState().room.depth / 2)
+  store.getState().moveFurniture(id, current().x, contact - 0.9)
+  close(current().z, contact - 0.9)
 })

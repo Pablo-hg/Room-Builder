@@ -38,14 +38,10 @@ jobs:
         if: ${{ !cancelled() }}
         run: npm run build
 
-  e2e-chromium:
-    name: E2E Chromium (fragmento ${{ matrix.shard }}/4)
+  e2e-smoke:
+    name: E2E de humo (Chromium)
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -56,17 +52,19 @@ jobs:
         run: npm ci
       - name: Instalar Chromium y dependencias del sistema
         run: npx playwright install --with-deps chromium
-      - name: Inventario de la suite del fragmento
+      - name: Inventario de los tests de humo
         run: |
           npx playwright --version
-          npx playwright test --list --shard=${{ matrix.shard }}/4
-      - name: Ejecutar el fragmento completo de E2E (sin filtros)
-        run: npm run test:e2e -- --workers=2 --shard=${{ matrix.shard }}/4
+          npx playwright test --list --grep @smoke
+      # Solo los flujos críticos etiquetados con @smoke. La suite E2E completa se
+      # ejecuta aparte (.github/workflows/e2e-full.yml) y antes de cada release.
+      - name: Ejecutar los E2E de humo
+        run: npm run test:e2e:smoke -- --workers=2
       - name: Conservar trazas y capturas de fallos
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: room-builder-e2e-failures-${{ matrix.shard }}-de-4
+          name: room-builder-e2e-smoke-failures
           path: |
             test-results/
             playwright-report/

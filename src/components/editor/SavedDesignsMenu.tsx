@@ -15,6 +15,7 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
   const [savedDesignsOpen, setSavedDesignsOpen] = useState(false)
   const [createDesignOpen, setCreateDesignOpen] = useState(false)
   const [newDesignName, setNewDesignName] = useState('')
+  const [nameError, setNameError] = useState(false)
   const [renamingDesignId, setRenamingDesignId] = useState<string | null>(null)
   const [renamingDesignName, setRenamingDesignName] = useState('')
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null)
@@ -62,6 +63,12 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
   }
   const showError = (message: string) => { setFileNotice(''); setFileError(message); setSavedDesignsOpen(true) }
   const loadSavedDesign = (id: string) => {
+    // Seleccionar el diseño que ya está abierto no debe descartar su edición.
+    if (id === useRoomStore.getState().selectedSavedDesignId) {
+      setSavedDesignsOpen(false)
+      savedDesignTriggerRef.current?.focus()
+      return
+    }
     if (useRoomStore.getState().hasUnsavedChanges) {
       setSavedDesignsOpen(false)
       setPendingDiscard({ kind: 'load', id })
@@ -72,22 +79,38 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
     savedDesignTriggerRef.current?.focus()
   }
   const createBlankDesign = () => {
-    if (!newDesignName.trim()) { state.createDesign('blank', ''); return }
+    if (!newDesignName.trim()) { setNameError(true); return }
     if (useRoomStore.getState().hasUnsavedChanges) {
       setSavedDesignsOpen(false)
       setPendingDiscard({ kind: 'create', name: newDesignName.trim() })
       return
     }
-    state.createDesign('blank', newDesignName)
+    const previousCount = useRoomStore.getState().savedDesigns.length
+    state.createDesign('blank', newDesignName.trim())
+    const result = useRoomStore.getState()
+    if (result.savedDesigns.length === previousCount) { showError(result.notice || 'No se pudo crear el diseño.'); return }
+    setFileError('')
+    setFileNotice('')
     setCreateDesignOpen(false)
     setNewDesignName('')
+    // Mantener visible la biblioteca: permite renombrar la nueva entrada sin reabrirla.
+    setSavedDesignsOpen(true)
   }
   const confirmDiscard = () => {
     if (!pendingDiscard) return
     const current = useRoomStore.getState()
     if (pendingDiscard.kind === 'load') current.loadDesign(pendingDiscard.id)
     else {
+      const previousCount = current.savedDesigns.length
       current.createDesign('blank', pendingDiscard.name)
+      const result = useRoomStore.getState()
+      if (result.savedDesigns.length === previousCount) {
+        setPendingDiscard(null)
+        showError(result.notice || 'No se pudo crear el diseño.')
+        return
+      }
+      setFileError('')
+      setFileNotice('')
       setCreateDesignOpen(false)
       setNewDesignName('')
     }
@@ -157,18 +180,40 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
     const active = buttons.indexOf(document.activeElement as HTMLButtonElement)
     buttons[(active + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length]?.focus()
   }
+  const designListKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.target instanceof HTMLInputElement || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+    event.preventDefault()
+    event.stopPropagation()
+    const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
+    if (!buttons.length) return
+    const index = buttons.indexOf(document.activeElement as HTMLButtonElement)
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
+      : event.key === 'ArrowDown' ? (index + 1) % buttons.length : (index < 0 ? 0 : index + buttons.length - 1) % buttons.length
+    buttons[next]?.focus()
+  }
   const onContext = (event: ReactMouseEvent, designId: string | null) => { event.preventDefault(); event.stopPropagation(); openContext(event.clientX, event.clientY, designId) }
   const act = (action: () => void) => { setContext(null); action() }
 
   return <>
     <div className="saved-design-select" ref={savedDesignsRef} onContextMenu={(event) => onContext(event, state.selectedSavedDesignId || null)}>
       <div className="saved-design-selector-row">
-        <button type="button" className="saved-design-trigger" ref={savedDesignTriggerRef} aria-label="Seleccionar diseño guardado" aria-expanded={savedDesignsOpen} aria-haspopup="dialog" aria-controls="saved-designs-popup" onClick={() => { setContext(null); setSavedDesignsOpen((open) => !open) }}>
+        <button type="button" className="saved-design-trigger" ref={savedDesignTriggerRef} aria-label="Seleccionar diseño guardado" aria-expanded={savedDesignsOpen} aria-haspopup="dialog" aria-controls="saved-designs-popup" onKeyDown={(event) => {
+          if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+          event.preventDefault()
+          setContext(null)
+          setSavedDesignsOpen(true)
+          window.requestAnimationFrame(() => {
+            const buttons = Array.from(savedDesignsRef.current?.querySelectorAll<HTMLButtonElement>('.saved-design-menu button:not(:disabled)') ?? [])
+            if (event.key === 'ArrowUp') buttons[buttons.length - 1]?.focus()
+            else buttons[0]?.focus()
+          })
+        }} onClick={() => { setContext(null); setSavedDesignsOpen((open) => !open) }}>
           <span>{currentDesign?.name ?? `Diseños (${state.savedDesigns.length}/5)`}</span><span aria-hidden="true">▾</span>
         </button>
       </div>
       <input ref={fileInputRef} type="file" accept=".json,application/json" hidden onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; void readDesign(file) }} />
-      {savedDesignsOpen && <div id="saved-designs-popup" className="saved-design-menu" role="dialog" aria-label="Diseños guardados">
+      {savedDesignsOpen && <div id="saved-designs-popup" className="saved-design-menu" role="dialog" aria-label="Diseños guardados" onKeyDown={designListKeyDown}>
+        <p className="saved-design-menu__heading">Mis diseños <span>{state.savedDesigns.length}/5</span></p>
         {state.savedDesigns.length === 0 && !createDesignOpen && <p className="saved-design-empty">Aún no hay diseños guardados.</p>}
         {state.savedDesigns.map((design) => <div className="saved-design-item" key={design.id} onContextMenu={(event) => onContext(event, design.id)}>
           {renamingDesignId === design.id ? <div className="saved-design-rename">
@@ -180,15 +225,16 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
           </>}
         </div>)}
         <div className="saved-design-quick-actions">
-          <button type="button" className="saved-design-create-trigger" disabled={state.savedDesigns.length >= 5} onClick={() => { setNewDesignName(''); setCreateDesignOpen(true); setRenamingDesignId(null) }}>＋ Crear diseño</button>
+          <button type="button" className="saved-design-create-trigger" disabled={state.savedDesigns.length >= 5} onClick={() => { setFileError(''); setFileNotice(''); setNewDesignName(''); setNameError(false); setCreateDesignOpen(true); setRenamingDesignId(null) }}>＋ Crear diseño</button>
           <button type="button" className="saved-design-create-trigger" disabled={readingFile || state.savedDesigns.length >= 5} onClick={() => fileInputRef.current?.click()}>⇧ Importar diseño</button>
         </div>
         {createDesignOpen && <div className="saved-design-create">
-          <label><span>Nombre del diseño</span><input autoFocus maxLength={48} value={newDesignName} onChange={(event) => setNewDesignName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') { event.stopPropagation(); setCreateDesignOpen(false) } }} placeholder="Mi diseño" /></label>
+          <label><span>Nombre del diseño</span><input autoFocus maxLength={48} value={newDesignName} aria-invalid={nameError} aria-describedby={nameError ? 'new-design-name-error' : undefined} onChange={(event) => { setNewDesignName(event.target.value); if (event.target.value.trim()) setNameError(false) }} onKeyDown={(event) => { if (event.key === 'Escape') { event.stopPropagation(); setCreateDesignOpen(false) } }} placeholder="Mi diseño" /></label>
+          {nameError && <p id="new-design-name-error" className="saved-design-name-error" role="alert">Escribe un nombre para el diseño.</p>}
           <button type="button" className="saved-design-create-action" disabled={state.savedDesigns.length >= 5} onClick={createBlankDesign}>Crear en blanco</button>
           <button type="button" className="saved-design-cancel" onClick={() => setCreateDesignOpen(false)}>Cancelar</button>
         </div>}
-        <p className="saved-design-info">Se guardan en este navegador, no en cookies, y no caducan automáticamente. Se borran si los eliminas aquí o borras los datos del sitio; en navegación privada, al cerrar la sesión privada.</p>
+        <details className="saved-design-help"><summary>¿Dónde se guardan los diseños?</summary><p>Se guardan en este navegador, no en cookies, y no caducan automáticamente. Se borran si los eliminas aquí o borras los datos del sitio; en navegación privada, al cerrar la sesión privada.</p></details>
         {state.savedDesigns.length >= 5 && <p className="saved-design-info">La biblioteca está llena. Elimina un diseño para importar o crear otro.</p>}
         {readingFile && <p role="status">Leyendo archivo…</p>}
         {fileNotice && <p className="saved-design-info" role="status">{fileNotice}</p>}
@@ -221,8 +267,9 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
       <p id="import-design-copy">{preview.design.data.room.width} × {preview.design.data.room.depth} × {preview.design.data.room.height} m · {preview.design.data.furniture.length} muebles · versión {preview.sourceVersion}</p>
       {preview.removedVariants > 0 && <p>Se importará la distribución activa. Las {preview.removedVariants} variantes restantes no se conservarán.</p>}
       {state.savedDesigns.some((entry) => entry.id === preview.design.id) && <p>Ya existe este diseño: se importará como copia independiente.</p>}
+      {state.hasUnsavedChanges && <p>Al abrir el diseño importado se perderán los cambios sin guardar del diseño actual. Cancela para guardarlos o exportarlos antes.</p>}
       {fileError && <p className="design-file-error" role="alert">{fileError}</p>}
-      <div className="design-modal-actions"><button type="button" data-modal-initial onClick={() => { setPreview(null); setFileError('') }}>Cancelar</button><button type="button" className="design-modal-primary" onClick={(event) => { event.stopPropagation(); const error = useRoomStore.getState().importDesign(preview.design); if (error) setFileError(error); else { setPreview(null); setFileError(''); setFileNotice('Diseño importado.'); setSavedDesignsOpen(true) } }}>Confirmar importación</button></div>
+      <div className="design-modal-actions"><button type="button" data-modal-initial onClick={() => { setPreview(null); setFileError('') }}>Cancelar</button><button type="button" className="design-modal-primary" onClick={(event) => { event.stopPropagation(); const error = useRoomStore.getState().importDesign(preview.design, true); if (error) setFileError(error); else { setPreview(null); setFileError(''); setFileNotice('Diseño importado y abierto.'); setSavedDesignsOpen(true) } }}>Confirmar importación</button></div>
     </DesignModal>}
   </>
 }

@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 test('una sola tarjeta Puerta añade en la habitación enfocada; panel sigue a la cámara', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const catalog = page.locator('#catalog-grid-openings')
   await expect(catalog.getByRole('button', { name: /Puerta/ })).toHaveCount(1)
   await catalog.getByRole('button', { name: 'Puerta ＋ Añadir', exact: true }).click()
@@ -19,6 +21,7 @@ test('una sola tarjeta Puerta añade en la habitación enfocada; panel sigue a l
 
 test('barra de zoom admite teclado y conserva zoom independiente de Libre', async ({ page }) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const zoom = page.getByRole('slider', { name: 'Zoom de la cámara', exact: true })
   await expect(zoom).toHaveValue('1')
   await zoom.focus()
@@ -35,6 +38,7 @@ for (const width of [320, 375, 430, 640]) {
   test(`controles separados de la escena a ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/')
+    await expandAllCatalogCategories(page)
     await page.getByRole('button', { name: /Nueva habitación vacía/ }).click()
     await page.getByRole('button', { name: 'Encima', exact: true }).click()
     for (const view of ['Isométrica', 'Frontal', 'Libre', 'Plano']) {

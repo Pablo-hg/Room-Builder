@@ -335,6 +335,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       const pack = state.structurePacks.find((candidate) => candidate.id === id)
       if (!pack) return {}
       const surfaceIds = pack.surfaces.map((surface) => structureSurfaceElementId(pack.id, surface.id))
+      if (state.lockedElementIds.includes(pack.id) || surfaceIds.some((surfaceId) => state.lockedElementIds.includes(surfaceId))) return { notice: 'El elemento está bloqueado. Desbloquéalo para eliminarlo.' }
       const gridIds = pack.surfaces.map((surface) => structureGridElementId(pack.id, surface.id))
       const openingIds = [...(pack.doors ?? []), ...(pack.windows ?? [])].map((opening) => opening.id)
       const folderId = state.elementFolderAssignments[id]
@@ -359,6 +360,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       const pack = state.structurePacks.find((candidate) => candidate.id === packId)
       if (!pack || !pack.surfaces.some((surface) => surface.id === surfaceId)) return {}
       const selectedSurfaceId = structureSurfaceElementId(packId, surfaceId)
+      if (state.lockedElementIds.includes(selectedSurfaceId) || state.lockedElementIds.includes(packId)) return { notice: 'El elemento está bloqueado. Desbloquéalo para eliminarlo.' }
       const removeIndependentPack = (pack.id.startsWith('floor-object-') || pack.id.startsWith('wall-object-')) && pack.surfaces.length === 1
       recordInteraction('state.structure-surface.removed', {
         view: state.view,
@@ -502,6 +504,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
     }),
     removeWindow: (id) => set((state) => {
       const source = packWindowById(state.structurePacks, id)
+      if (state.lockedElementIds.includes(id) || (source && state.lockedElementIds.includes(source.pack.id))) return { notice: 'El elemento está bloqueado. Desbloquéalo para eliminarlo.' }
       if (source) return {
         structurePacks: state.structurePacks.map((pack) => pack.id === source.pack.id
           ? { ...pack, windows: pack.windows?.filter((window) => window.id !== id) } : pack),

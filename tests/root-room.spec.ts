@@ -1,13 +1,15 @@
 import { expect, test } from '@playwright/test'
+import { expandAllCatalogCategories } from './helpers/catalog'
 
 test('el lienzo nuevo muestra una raíz protegida con sus superficies y aperturas', async ({ page }, testInfo) => {
   await page.goto('/')
+  await expandAllCatalogCategories(page)
   const folder = page.getByRole('button', { name: 'Carpeta Raíz', exact: true })
   await expect(folder).toBeVisible()
   for (const name of ['Suelo', 'Pared A', 'Pared B', 'Pared C', 'Pared D']) await expect(page.getByRole('button', { name: `${name} Superficie de la habitación`, exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Puerta Apertura', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Ventana 1 Apertura · pared A', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Minimizar catálogo completo' }).click()
+  await page.getByRole('button', { name: 'Minimizar Catálogo' }).click()
   await page.screenshot({ path: testInfo.outputPath('raiz.png') })
   await folder.click({ button: 'right' })
   await expect(page.getByRole('menuitem', { name: /Borrar/ })).toBeDisabled()

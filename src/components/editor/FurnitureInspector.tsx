@@ -3,10 +3,10 @@ import { ROOM_LIMITS } from '../../domain/constants'
 import { FurnitureIcon } from '../iconCatalog'
 import { FURNITURE_CATALOG, hasUsefulFurnitureRotation, furnitureVisualYOffset } from '../../domain/objectCatalog'
 import { furnitureAxisLocks } from '../../domain/axisLocks'
-import { furnitureWallAxes, furnitureWallContact } from '../../domain/furnitureWalls'
+import { furnitureWallAxes } from '../../domain/furnitureWalls'
 import { ResizeControls } from './ResizeControls'
 import { useRoomStore } from '../../state/useRoomStore'
-import { AxisPositionControl, ColorControl, RotationControl } from './Controls'
+import { AxisPositionControl, ColorControl, PositionControl, RotationControl } from './Controls'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
 
@@ -19,8 +19,6 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
   const rotateFurniture = useRoomStore((state) => state.rotateFurniture)
   const removeFurniture = useRoomStore((state) => state.removeFurniture)
   const setWallAttachment = useRoomStore((state) => state.setFurnitureWallAttachment)
-  const setLateralLock = useRoomStore((state) => state.setFurnitureWallLateralLock)
-  const setAxisLock = useRoomStore((state) => state.setElementAxisLock)
   const resizeFurniture = useRoomStore((state) => state.resizeFurniture)
   const locked = useRoomStore((state) => state.lockedElementIds.includes(selectedFurniture.id))
   const room = useRoomStore((state) => state.room)
@@ -28,7 +26,6 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
   const locks = furnitureAxisLocks(selectedFurniture)
   const canRotate = hasUsefulFurnitureRotation(selectedFurniture.kind, selectedFurniture)
   const attachment = selectedFurniture.wallAttachment
-  const contact = furnitureWallContact({ room, structurePacks }, selectedFurniture)
   const available = furnitureWallAxes({ room, structurePacks }, selectedFurniture)
   const position = { ...selectedFurniture, y: selectedFurniture.y + furnitureVisualYOffset(selectedFurniture, { room, structurePacks }) }
   return (
@@ -41,16 +38,26 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
         <span><small>Altura</small><strong>{selectedFurniture.height.toFixed(2)} m</strong></span>
       </div>
       <ResizeControls capability={FURNITURE_CATALOG[selectedFurniture.kind]?.capabilities.resize} value={selectedFurniture} disabled={locked} onChange={(dimension, value) => resizeFurniture(selectedFurniture.id, dimension, value)} />
-      <fieldset className="wall-attachment-controls" disabled={locked}>
-        <legend>Fijación a pared</legend>
-        <label><input type="checkbox" checked={!!attachment} disabled={!attachment && !contact} onChange={(event) => setWallAttachment(selectedFurniture.id, event.target.checked)} /> Fijar a esta pared</label>
-        {attachment ? <>
-          <label><input type="checkbox" checked={attachment.lockLateral} onChange={(event) => setLateralLock(selectedFurniture.id, event.target.checked)} /> Bloquear movimiento lateral</label>
-          <label><input type="checkbox" checked={locks.y} onChange={(event) => setAxisLock(selectedFurniture.id, 'y', event.target.checked)} /> Mantener altura</label>
-          <p className="rotation-hint">Se desliza por la pared. Empuja hacia ella o hacia fuera para despegarlo; puedes atravesarla.</p>
-        </> : <p className="rotation-hint">{contact ? 'Contacto magnético. Sigue moviendo para atravesar la pared o marca el check para deslizarlo por ella.' : 'Al acercarlo a una pared se ajusta suavemente. Si sigues moviendo, puede atravesarla.'}</p>}
-      </fieldset>
-      {(['x', 'y', 'z'] as const).map((axis) => <AxisPositionControl key={axis} id={selectedFurniture.id} axis={axis} label={`Posición ${axis.toUpperCase()}`} min={Math.min(-10, position[axis])} max={Math.max(10, position[axis])} step={ROOM_LIMITS.placementStep} value={position[axis]} locked={locks[axis]} unavailable={!!attachment && !available[axis] && !locks[axis]} disabled={locked} onChange={(value) => axis === 'y' ? moveFurnitureVertically(selectedFurniture.id, value - furnitureVisualYOffset(selectedFurniture, { room, structurePacks })) : moveFurniture(selectedFurniture.id, axis === 'x' ? value : selectedFurniture.x, axis === 'z' ? value : selectedFurniture.z)} />)}
+      <div className="wall-attachment-controls">
+        <label><input type="checkbox" checked={!!attachment} disabled={locked} onChange={(event) => setWallAttachment(selectedFurniture.id, event.target.checked)} /> Fijar a pared</label>
+        <p className="rotation-hint">{attachment
+          ? 'El objeto permanece en esta pared. Puedes moverlo lateralmente y en altura; desmarca la casilla para despegarlo.'
+          : 'Activa la casilla para situarlo en la pared válida más cercana. Sin fijar, el ajuste magnético permite atravesar las paredes.'}</p>
+      </div>
+      {(['x', 'y', 'z'] as const).map((axis) => {
+        const props = {
+          label: `Posición ${axis.toUpperCase()}`,
+          min: Math.min(-10, position[axis]), max: Math.max(10, position[axis]),
+          step: ROOM_LIMITS.placementStep, value: position[axis],
+          disabled: locked || (!!attachment && !available[axis]),
+          onChange: (value: number) => axis === 'y'
+            ? moveFurnitureVertically(selectedFurniture.id, value - furnitureVisualYOffset(selectedFurniture, { room, structurePacks }))
+            : moveFurniture(selectedFurniture.id, axis === 'x' ? value : selectedFurniture.x, axis === 'z' ? value : selectedFurniture.z),
+        }
+        return attachment
+          ? <PositionControl key={axis} {...props} axis={axis} />
+          : <AxisPositionControl key={axis} {...props} id={selectedFurniture.id} axis={axis} locked={locks[axis]} />
+      })}
       {canRotate && <RotationControl
         rotation={selectedFurniture.rotation}
         onChange={(rotation) => setFurnitureRotation(selectedFurniture.id, rotation)}
@@ -63,11 +70,11 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
       />
       <div className="object-actions">
         {canRotate && <button type="button" onClick={rotateFurniture} disabled={locked || !!attachment}><span>↻</span> Girar 90°</button>}
-        <button type="button" className="danger" onClick={removeFurniture}><span>×</span> Eliminar</button>
+        <button type="button" className="danger" disabled={locked} title={locked ? "Desbloquea el elemento para eliminarlo" : undefined} onClick={removeFurniture}><span>×</span> Eliminar</button>
       </div>
       {locked
         ? <p className="lock-hint">Elemento bloqueado: desbloquea el candado de la lista para moverlo o girarlo.</p>
-        : <p className="rotation-hint">La posición Y es la altura absoluta de la base. Desbloquea un eje para moverlo; al bloquearlo conserva su posición.{canRotate ? ' Usa el aro para girar.' : ''}</p>}
+        : <p className="rotation-hint">La posición Y indica la altura absoluta de la base. {attachment ? 'Para moverlo libremente en los tres ejes, desmarca «Fijar a pared».' : 'Puedes bloquear cada eje para conservar su posición.'}{canRotate && !attachment ? ' Usa el aro para girar.' : ''}</p>}
     </section>
   )
 
