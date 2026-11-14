@@ -1,8 +1,8 @@
 import { rejectDiagnosticAction } from '../../diagnostics/actionScope'
 import { makeId, structureGridElementId, structureSurfaceElementId } from '../../domain/elementIds'
-import { elementName } from '../../domain/selection'
+import { elementName, selectionWithoutHidden } from '../../domain/selection'
 import { ROOM_LIMITS } from '../../domain/constants'
-import { isFolderSelectionId, withoutFolderAssignments } from '../../domain/elementFolders'
+import { folderIdFromSelection, isFolderSelectionId, withoutFolderAssignments } from '../../domain/elementFolders'
 import { canPlaceFurniture, clampFurnitureElevation, findAvailableOpeningOffset, findFreeFurniturePosition, validateOpenings, wallLength } from '../../domain/geometry'
 import { snapMeasurement } from '../../domain/measurements'
 import { setGridGroup } from '../../domain/gridGroups'
@@ -16,10 +16,12 @@ import type { RoomActionContext, RoomState } from '../types'
 type SelectionActions = Pick<
   RoomState,
   | 'selectElement'
+  | 'selectElements'
   | 'selectSceneListItem'
   | 'renameElement'
   | 'removeSelected'
   | 'copySelected'
+  | 'cutSelected'
   | 'pasteSelected'
   | 'toggleGridVisibility'
   | 'setGridGroupVisibility'
@@ -30,6 +32,13 @@ type SelectionActions = Pick<
 
 export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 'get' | 'runtime'>): SelectionActions {
   const { set, get, runtime } = context
+  const folderSnapshot = (state: RoomState, ids: string[]) => Object.fromEntries(ids.flatMap((id) => state.elementFolderAssignments[id] ? [[id, state.elementFolderAssignments[id]]] : []))
+  // Con una carpeta seleccionada, el pegado entra en ella; si no, conserva la carpeta de origen.
+  const pasteFolder = (state: RoomState, sourceId: string) => {
+    const target = folderIdFromSelection(state.selectedId)
+    if (target && state.elementFolders.some((folder) => folder.id === target)) return target
+    return state.elementFolderAssignments[sourceId] ?? runtime.copiedFolders[sourceId]
+  }
   return {
     selectElement: (selectedId) => set((state) => {
       recordInteraction('state.selection.requested', {
@@ -44,6 +53,10 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
         },
       })
       return { selectedId, notice: '' }
+    }),
+    selectElements: (ids, additive = false) => set((state) => {
+      const selectedIds = [...new Set(additive ? [...state.selectedIds, ...ids] : ids)]
+      return { selectedIds, selectedId: selectedIds.length === 1 ? selectedIds[0] : null, selectionAnchor: selectedIds.at(-1) ?? null, notice: '' }
     }),
     selectSceneListItem: (id, mode, visibleIds) => set((state) => {
       if (!visibleIds.includes(id)) return {}
@@ -80,6 +93,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
       return {}
     }),
     removeSelected: () => set((state) => {
+      if (state.selectedId && state.lockedElementIds.includes(state.selectedId)) return { notice: 'El elemento está bloqueado. Desbloquéalo para eliminarlo.' }
       if (state.room.extraDoors?.some((door) => door.id === state.selectedId)) return { room: { ...state.room, extraDoors: state.room.extraDoors.filter((door) => door.id !== state.selectedId) }, selectedId: null }
       if (state.selectedId && state.structurePacks.some((pack) => pack.doors?.some((door) => door.id === state.selectedId))) return { structurePacks: state.structurePacks.map((pack) => ({ ...pack, ...(pack.doors ? { doors: pack.doors.filter((door) => door.id !== state.selectedId) } : {}) })), selectedId: null }
       if (!state.selectedId || state.selectedId === 'door' || isFolderSelectionId(state.selectedId) || BASE_ROOM_SURFACE_IDS.includes(state.selectedId)) return {}
@@ -155,10 +169,12 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
     copySelected: () => {
       const state = get()
       if (state.selectedIds.length > 1) {
-        const copies = state.selectedIds.map((id) => state.furniture.find((item) => item.id === id) ?? state.room.windows.find((item) => item.id === id) ?? packWindowById(state.structurePacks, id)?.window)
-        if (copies.some((item) => !item)) return false
+        const copies = state.selectedIds.filter((id) => !state.hiddenElementIds.includes(id)).map((id) => state.furniture.find((item) => item.id === id) ?? state.room.windows.find((item) => item.id === id) ?? packWindowById(state.structurePacks, id)?.window)
+        if (!copies.length || copies.some((item) => !item)) return false
         runtime.copiedElements = copies.map((item) => ({ ...item! }))
         runtime.copiedElement = null
+        runtime.copiedCut = false
+        runtime.copiedFolders = folderSnapshot(state, copies.map((item) => item!.id))
         set({ notice: `${copies.length} elementos copiados.` })
         return true
       }
@@ -166,6 +182,8 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
       if (furniture) {
         runtime.copiedElements = null
         runtime.copiedElement = { ...furniture }
+        runtime.copiedCut = false
+        runtime.copiedFolders = folderSnapshot(state, [furniture.id])
         set({ notice: `${furniture.name} copiado.` })
         return true
       }
@@ -174,12 +192,29 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
       if (window) {
         runtime.copiedElements = null
         runtime.copiedElement = { ...window }
+        runtime.copiedCut = false
+        runtime.copiedFolders = folderSnapshot(state, [window.id])
         set({ notice: `${elementName(state, window.id)} copiado.` })
         return true
       }
       return false
     },
+    cutSelected: () => {
+      const state = get()
+      const ids = state.selectedIds.length > 1 ? state.selectedIds.filter((id) => !state.hiddenElementIds.includes(id)) : state.selectedId ? [state.selectedId] : []
+      if (!ids.length) return false
+      if (ids.some((id) => state.lockedElementIds.includes(id))) { set({ notice: 'Hay elementos bloqueados en la selección. Desbloquéalos para cortarlos.' }); return false }
+      if (!get().copySelected()) return false
+      get().removeSceneItems(ids)
+      runtime.copiedCut = true
+      set({ notice: ids.length > 1 ? `${ids.length} elementos cortados.` : 'Elemento cortado.' })
+      return true
+    },
     pasteSelected: () => {
+      const cut = runtime.copiedCut
+      const nudge = cut ? 0 : 0.5
+      try { return pasteClipboard() } finally { runtime.copiedCut = false }
+      function pasteClipboard() {
       if (runtime.copiedElements) {
         const copies = runtime.copiedElements
         set((state) => {
@@ -194,7 +229,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
               const item: FurnitureItem = { ...copy, id: makeId(copy.kind), attachmentPolicy: 'by-type' }
               delete item.wallAttachment
               if (!item.axisLocks) item.y = canElevateFurniture(item) ? snapMeasurement(item.y) : clampFurnitureElevation(item, state.room, false)
-              const offsets = [[0.5, 0.5], [0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5], [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5]] as const
+              const offsets: ReadonlyArray<readonly [number, number]> = [...(cut ? [[0, 0] as const] : []), [0.5, 0.5], [0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5], [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5]]
               const room = { ...state.room, windows }
               const position = offsets.map(([x, z]) => ({ x: snapMeasurement(copy.x + x), z: snapMeasurement(copy.z + z) }))
                 .find((candidate) => canPlaceFurniture({ ...item, ...candidate }, furniture)) ?? findFreeFurniturePosition(item, room, furniture)
@@ -205,13 +240,13 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
               const id = makeId('window')
               const owner = packWindowById(state.structurePacks, copy.id)
               if (copy.freePosition) {
-                const pasted = { ...copy, id, freePosition: { ...copy.freePosition, x: snapMeasurement(copy.freePosition.x + 0.5), z: snapMeasurement(copy.freePosition.z + 0.5) } }
+                const pasted = { ...copy, id, freePosition: { ...copy.freePosition, x: snapMeasurement(copy.freePosition.x + nudge), z: snapMeasurement(copy.freePosition.z + nudge) } }
                 if (owner) {
                   structurePacks = structurePacks.map((pack) => pack.id === owner.pack.id ? { ...pack, windows: [...(pack.windows ?? []), pasted] } : pack)
                   changedPacks = true
                 } else windows.push(pasted)
                 pastedIds.push(id)
-                const folder = state.elementFolderAssignments[copy.id]
+                const folder = pasteFolder(state, copy.id)
                 if (folder) assignments[id] = folder
                 continue
               }
@@ -219,7 +254,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
                 const pack = structurePacks.find((candidate) => candidate.id === owner.pack.id)!
                 const offset = findAvailableOpeningOffset(
                   pack.surfaces.find((surface) => surface.kind === 'wall' && surface.wall === copy.wall)?.width ?? 0,
-                  copy.width, copy.offset + 0.5,
+                  copy.width, copy.offset + nudge,
                   (value) => !structureWindowError({ ...pack, windows: [...(pack.windows ?? []), { ...copy, id, offset: value }] }),
                 )
                 if (offset === null) return { notice: 'No hay espacio para duplicar toda la selección.' }
@@ -230,7 +265,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
               } else {
                 const room = { ...state.room, windows }
                 const length = wallLength(room, copy.wall)
-                const pasted = [0.5, -0.5, 1, -1, 1.5, -1.5, 2, -2]
+                const pasted = [...(cut ? [0] : []), 0.5, -0.5, 1, -1, 1.5, -1.5, 2, -2]
                   .map((delta) => ({ ...copy, id, offset: snapMeasurement(copy.offset + delta), sill: snapMeasurement(copy.sill) }))
                   .find((candidate) => !validateOpenings({ ...room, windows: [...windows, candidate] }))
                 if (!pasted || Math.abs(pasted.offset) + pasted.width / 2 > length / 2 - ROOM_LIMITS.edgeMargin) return { notice: 'No hay espacio para duplicar toda la selección.' }
@@ -238,7 +273,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
               }
               pastedIds.push(id)
             }
-            const folder = state.elementFolderAssignments[copy.id]
+            const folder = pasteFolder(state, copy.id)
             if (folder) assignments[pastedIds[pastedIds.length - 1]] = folder
           }
           return { room: { ...state.room, windows }, furniture, ...(changedPacks ? { structurePacks } : {}), elementFolderAssignments: assignments, selectedId: null, selectedIds: pastedIds, selectionAnchor: pastedIds[0] ?? null, notice: `${pastedIds.length} elementos pegados.` }
@@ -252,10 +287,11 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
           const item: FurnitureItem = { ...copy, id: makeId(copy.kind), attachmentPolicy: 'by-type' }
           delete item.wallAttachment
           if (!item.axisLocks) item.y = canElevateFurniture(item) ? snapMeasurement(item.y) : clampFurnitureElevation(item, state.room, false)
-          const offsets = [
+          const offsets: ReadonlyArray<readonly [number, number]> = [
+            ...(cut ? [[0, 0] as const] : []),
             [0.5, 0.5], [0.5, 0], [0, 0.5], [-0.5, 0], [0, -0.5],
             [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5],
-          ] as const
+          ]
           const position = offsets
             .map(([x, z]) => ({ x: snapMeasurement(copy.x + x), z: snapMeasurement(copy.z + z) }))
             .find((candidate) => canPlaceFurniture({ ...item, ...candidate }, state.furniture))
@@ -273,14 +309,15 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
             selectedId: state.selectedId,
             details: { id: pasted.id, kind: pasted.kind, name: pasted.name, x: pasted.x, z: pasted.z, source: 'clipboard' },
           })
-          return { furniture: [...state.furniture, pasted], selectedId: pasted.id, notice: `${pasted.name} pegado.` }
+          const folder = pasteFolder(state, copy.id)
+          return { furniture: [...state.furniture, pasted], ...(folder ? { elementFolderAssignments: { ...state.elementFolderAssignments, [pasted.id]: folder } } : {}), selectedId: pasted.id, notice: `${pasted.name} pegado.` }
         }
   
         if (copy.freePosition) {
           const id = makeId('window')
-          const pasted = { ...copy, id, freePosition: { ...copy.freePosition, x: snapMeasurement(copy.freePosition.x + 0.5), z: snapMeasurement(copy.freePosition.z + 0.5) } }
+          const pasted = { ...copy, id, freePosition: { ...copy.freePosition, x: snapMeasurement(copy.freePosition.x + nudge), z: snapMeasurement(copy.freePosition.z + nudge) } }
           const owner = packWindowById(state.structurePacks, copy.id)
-          const folder = state.elementFolderAssignments[copy.id]
+          const folder = pasteFolder(state, copy.id)
           return { ...(owner ? { structurePacks: state.structurePacks.map((pack) => pack.id === owner.pack.id ? { ...pack, windows: [...(pack.windows ?? []), pasted] } : pack) }
             : { room: { ...state.room, windows: [...state.room.windows, pasted] } }),
             ...(folder ? { elementFolderAssignments: { ...state.elementFolderAssignments, [id]: folder } } : {}), selectedId: id, notice: 'Elemento mural pegado.' }
@@ -290,11 +327,11 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
           const { pack, window } = packSource
           const id = makeId('window')
           const targetSurface = pack.surfaces.find((surface) => surface.kind === 'wall' && surface.wall === window.wall)
-          const offset = targetSurface && findAvailableOpeningOffset(targetSurface.width, window.width, window.offset + 0.5,
+          const offset = targetSurface && findAvailableOpeningOffset(targetSurface.width, window.width, window.offset + nudge,
             (value) => !structureWindowError({ ...pack, windows: [...(pack.windows ?? []), { ...window, id, offset: value }] }))
           if (offset === null || offset === undefined) return { notice: 'No hay espacio en la pared para pegar este elemento.' }
           const pasted = { ...window, id, offset }
-          const folder = state.elementFolderAssignments[window.id]
+          const folder = pasteFolder(state, window.id)
           return {
             structurePacks: state.structurePacks.map((candidate) => candidate.id === pack.id
               ? { ...candidate, windows: [...(candidate.windows ?? []), pasted] } : candidate),
@@ -306,7 +343,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
         const source = sourceIndex >= 0 ? state.room.windows[sourceIndex] : copy
         const id = makeId('window')
         const length = wallLength(state.room, source.wall)
-        const offsets = [0.5, -0.5, 1, -1, 1.5, -1.5, 2, -2]
+        const offsets = [...(cut ? [0] : []), 0.5, -0.5, 1, -1, 1.5, -1.5, 2, -2]
         const pasted = offsets
           .map((delta) => ({ ...source, id, offset: snapMeasurement(source.offset + delta), sill: snapMeasurement(source.sill) }))
           .find((candidate) => !validateOpenings({ ...state.room, windows: [...state.room.windows, candidate] }))
@@ -318,13 +355,16 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
           selectedId: state.selectedId,
           details: { id, name: elementName(state, source.id), wall: source.wall, offset: pasted.offset, source: 'clipboard' },
         })
+        const folder = pasteFolder(state, source.id)
         return {
           room: { ...state.room, windows: [...state.room.windows, pasted] },
+          ...(folder ? { elementFolderAssignments: { ...state.elementFolderAssignments, [id]: folder } } : {}),
           selectedId: id,
           notice: `${elementName(state, source.id)} pegado.`,
         }
       })
       return true
+      }
     },
     toggleGridVisibility: (surface) => set((state) => {
       const visible = !state.gridVisibility[surface]
@@ -354,7 +394,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
         hiddenElementIds: isHidden
           ? state.hiddenElementIds.filter((elementId) => elementId !== id)
           : [...state.hiddenElementIds, id],
-        selectedId: !isHidden && state.selectedId === id ? null : state.selectedId,
+        ...(isHidden ? {} : selectionWithoutHidden(state, new Set([id]))),
       }
     }),
     toggleElementLock: (id) => set((state) => {

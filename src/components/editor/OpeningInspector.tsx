@@ -107,8 +107,8 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
       {locked
         ? <p className="lock-hint">Elemento bloqueado: desbloquea el candado de la lista para moverlo o girarlo.</p>
         : <p className="rotation-hint">{capabilities.rotation.enabled ? 'Arrastra los ejes para mover el elemento y el aro naranja para girarlo.' : 'Arrastra las flechas horizontales para moverla a izquierda o derecha.'}</p>}
-      {selectedOpening.kind === 'window' && capabilities.removable && <button type="button" className="text-button danger" onClick={() => removeWindow(selectedOpening.id)}>Eliminar {openingName.toLowerCase()}</button>}
-      {selectedOpening.kind === 'door' && selectedOpening.id !== 'door' && <button type="button" className="text-button danger" onClick={() => removeStructureDoor(selectedOpening.id)}>Eliminar puerta</button>}
+      {selectedOpening.kind === 'window' && capabilities.removable && <button type="button" className="text-button danger" disabled={locked} title={locked ? "Desbloquea el elemento para eliminarlo" : undefined} onClick={() => removeWindow(selectedOpening.id)}>Eliminar {openingName.toLowerCase()}</button>}
+      {selectedOpening.kind === 'door' && selectedOpening.id !== 'door' && <button type="button" className="text-button danger" disabled={locked} title={locked ? "Desbloquea el elemento para eliminarlo" : undefined} onClick={() => removeStructureDoor(selectedOpening.id)}>Eliminar puerta</button>}
     </section>
   )
 

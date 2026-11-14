@@ -57,6 +57,7 @@ export function selectEditorHeader(state: RoomState) {
 export function selectEditorShortcuts(state: RoomState) {
   return {
     copySelected: state.copySelected,
+    cutSelected: state.cutSelected,
     pasteSelected: state.pasteSelected,
     redo: state.redo,
     removeSelected: state.removeSelected,

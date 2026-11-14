@@ -667,9 +667,13 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .saved-design-help { margin: 10px 4px 3px; border-top: 1px solid #e9e5de; padding: 8px 4px; color: var(--muted); font-size: 13px; }
 .saved-design-help summary { cursor: pointer; font-weight: 650; }
 .saved-design-help p { margin: 7px 0 0; font-size: 12px; line-height: 1.5; }
-@media (max-width: 770px) { 
 /* Con tipografías más legibles, distribuir las cinco vistas en dos filas en móvil. */
 @media (max-width: 580px) {
   .view-switcher { flex-wrap: wrap; gap: 4px; }
   .view-switcher button { flex: 1 1 30%; min-width: 86px; min-height: 38px; }
 }
+
+.marquee-box { position: absolute; z-index: 4; pointer-events: none; border: 1.5px solid #3f7d5a; background: rgba(63,125,90,.14); border-radius: 3px; }
+.area-select-toggle { pointer-events: auto; min-height: 34px; padding: 8px 11px; border: 1px solid rgba(83,80,72,.14); border-radius: 15px; background: rgba(255,253,249,.88); color: #3f5547; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.area-select-toggle.is-active { background: #3f7d5a; border-color: #3f7d5a; color: #fff; }
+.area-select-toggle:focus-visible { outline: 2px solid #3f7d5a; outline-offset: 2px; }

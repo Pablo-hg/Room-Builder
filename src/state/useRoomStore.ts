@@ -43,6 +43,8 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     redoHistory: [],
     copiedElement: null,
     copiedElements: null,
+    copiedFolders: {},
+    copiedCut: false,
     isUndoing: false,
     activeGesture: null,
   }
@@ -251,6 +253,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     topCameraX: 0,
     topCameraZ: 0,
     planDetailsVisible: false,
+    areaSelect: false,
     activeRoomId: null,
     setActiveRoomId: (activeRoomId) => set({ activeRoomId }),
     isoAngle: ISO_BASE_ANGLE,

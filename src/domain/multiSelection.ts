@@ -13,13 +13,14 @@ import { worldOpenings } from './wallConnections'
 type Axis = 'x' | 'y' | 'z'
 export type MultiItem = { id: string; name: string; color: string; min: Record<Axis, number>; max: Record<Axis, number>; axes: Axis[]; type: 'furniture' | 'opening' | 'surface'; packId?: string; surfaceId?: string; wall?: WallSide }
 
-export function multiSelectionItems(state: Pick<RoomState, 'room' | 'furniture' | 'structurePacks' | 'elementFolders' | 'elementFolderAssignments' | 'selectedIds'>): MultiItem[] {
+export function multiSelectionItems(state: Pick<RoomState, 'room' | 'furniture' | 'structurePacks' | 'elementFolders' | 'elementFolderAssignments' | 'selectedIds'> & Partial<Pick<RoomState, 'hiddenElementIds'>>): MultiItem[] {
   const ids = new Set<string>()
   for (const id of state.selectedIds) {
     const folder = folderIdFromSelection(id)
     if (folder) folderElementIds(state.elementFolderAssignments, folder, state.elementFolders).forEach((child) => ids.add(child))
     else ids.add(id)
   }
+  for (const id of state.hiddenElementIds ?? []) ids.delete(id)
   for (const pack of state.structurePacks) if (ids.has(pack.id)) {
     ids.delete(pack.id)
     pack.surfaces.forEach((surface) => ids.add(structureSurfaceElementId(pack.id, surface.id)))
@@ -87,4 +88,21 @@ export function multiSelectionBounds(items: MultiItem[]) {
   const min = { x: Math.min(...items.map((item) => item.min.x)), y: Math.min(...items.map((item) => item.min.y)), z: Math.min(...items.map((item) => item.min.z)) }
   const max = { x: Math.max(...items.map((item) => item.max.x)), y: Math.max(...items.map((item) => item.max.y)), z: Math.max(...items.map((item) => item.max.z)) }
   return { min, max, center: { x: (min.x + max.x) / 2, y: (min.y + max.y) / 2, z: (min.z + max.z) / 2 } }
+}
+
+/** Elementos que se pueden elegir en bloque (caja de selección, Ctrl+A): visibles y sin bloquear. */
+export function selectableItems(state: Parameters<typeof multiSelectionItems>[0]) {
+  const selectedIds = [
+    'door',
+    ...(state.room.extraDoors ?? []).map((door) => door.id),
+    ...state.furniture.map((item) => item.id),
+    ...state.room.windows.map((item) => item.id),
+    ...state.structurePacks.flatMap((pack) => [
+      ...pack.surfaces.map((surface) => structureSurfaceElementId(pack.id, surface.id)),
+      ...(pack.windows ?? []).map((item) => item.id),
+      ...(pack.doors ?? []).map((item) => item.id),
+    ]),
+  ]
+  const locked = (state as Partial<Pick<RoomState, 'lockedElementIds'>>).lockedElementIds ?? []
+  return multiSelectionItems({ ...state, selectedIds }).filter((item) => !locked.includes(item.id) && !(item.packId && locked.includes(item.packId)))
 }

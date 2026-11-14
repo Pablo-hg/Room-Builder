@@ -17,6 +17,8 @@ export interface RoomState {
   /** Plano detallado: estado visual de sesión; no se guarda ni entra en el historial. */
   planDetailsVisible: boolean
   setPlanDetailsVisible: (visible: boolean) => void
+  areaSelect: boolean
+  setAreaSelect: (active: boolean) => void
   activeRoomId: string | null
   setActiveRoomId: (id: string | null) => void
   isoAngle: number
@@ -97,6 +99,7 @@ export interface RoomState {
   removeWindow: (id: string) => void
   addFurniture: (kind: FurnitureKind) => void
   selectElement: (id: string | null) => void
+  selectElements: (ids: string[], additive?: boolean) => void
   selectSceneListItem: (id: string, mode: 'single' | 'toggle' | 'range', visibleIds: string[]) => void
   renameElement: (id: string, name: string) => void
   beginFurnitureMove: () => void
@@ -118,6 +121,7 @@ export interface RoomState {
   removeFurniture: () => void
   removeSelected: () => void
   copySelected: () => boolean
+  cutSelected: () => boolean
   pasteSelected: () => boolean
   toggleGridVisibility: (surface: GridSurface) => void
   setGridGroupVisibility: (scope: 'focused' | 'all', visible: boolean) => void
@@ -159,6 +163,10 @@ export interface RoomRuntime {
   redoHistory: PersistedDesign[]
   copiedElement: FurnitureItem | WindowConfig | null
   copiedElements: (FurnitureItem | WindowConfig)[] | null
+  /** Carpeta de cada elemento copiado en el momento de copiar o cortar. */
+  copiedFolders: Record<string, string>
+  /** El portapapeles viene de «Cortar»: el primer pegado conserva la posición original. */
+  copiedCut: boolean
   isUndoing: boolean
   activeGesture: {
     token: HistoryGestureToken

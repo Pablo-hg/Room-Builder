@@ -80,7 +80,7 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode, kin
   }
   const outside = !!window.freePosition && boxOutsideBuilding({ room, structurePacks: packs }, wallObjectBox(room, window, pack))
   return <>
-    <group position={[position.x, position.y, position.z]} rotation={[0, position.yaw, 0]} onPointerDown={start} onPointerMove={moving} onPointerUp={end} onPointerCancel={(event) => { gesture.cancel(); end(event) }}>
+    <group position={[position.x, position.y, position.z]} rotation={[0, position.yaw, 0]} userData={{ elementId: window.id }} onPointerDown={start} onPointerMove={moving} onPointerUp={end} onPointerCancel={(event) => { gesture.cancel(); end(event) }}>
       {view === 'top' && !exportMode
         ? <PlanWallSymbol kind={kind} width={window.width} height={window.height} shape={window.shape} color={window.color ?? '#c88f58'} />
         : <OpeningDetail room={room} opening={{ ...window, kind, offset: 0, bottom: 0, color: window.color ?? '#c88f58' }} wall={window.wall} selected={false} locked interactive={false} />}

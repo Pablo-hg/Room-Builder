@@ -289,6 +289,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       return update
     }),
     removeFurniture: () => set((state) => {
+      if (state.selectedId && state.lockedElementIds.includes(state.selectedId)) return { notice: 'El elemento está bloqueado. Desbloquéalo para eliminarlo.' }
       if (state.selectedId) recordInteraction('state.element.removed', {
         view: state.view,
         selectedId: state.selectedId,

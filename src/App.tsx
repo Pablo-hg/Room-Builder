@@ -61,6 +61,8 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
 }) {
   const state = useRoomStore(useShallow(selectEditorScene))
   const hiddenElementIds = useRoomStore((current) => current.hiddenElementIds)
+  const areaSelect = useRoomStore((current) => current.areaSelect)
+  const setAreaSelect = useRoomStore((current) => current.setAreaSelect)
   const collisions = useMemo(() => detectSceneCollisions({ room: state.room, furniture: state.furniture, structurePacks: state.structurePacks, hiddenElementIds }), [state.room, state.furniture, state.structurePacks, hiddenElementIds])
   const collisionIds = useMemo(() => collisionElementIds(collisions), [collisions])
   const outside = useMemo(() => detectOutsideRoom({ room: state.room, furniture: state.furniture, structurePacks: state.structurePacks, hiddenElementIds }), [state.room, state.furniture, state.structurePacks, hiddenElementIds])
@@ -211,6 +213,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
             <div className="scene-topline__labels">
               <span className="view-badge"><i /> Vista {viewLabel}</span>
               <span className="visible-walls-badge"><b aria-hidden="true">◫</b> {visibleWallsText}</span>
+              <button type="button" className={`area-select-toggle${areaSelect ? ' is-active' : ''}`} aria-pressed={areaSelect} onClick={() => setAreaSelect(!areaSelect)} title="Arrastra sobre el fondo para seleccionar varios objetos (también con Mayús + arrastrar)">▢ Selección por área</button>
               <span className="grid-scale"><b aria-hidden="true">▦</b> Cuadrado: 25 cm · movimiento: 5 cm</span>
             </div>
             <span className="room-size">{roomSize.width.toFixed(1)} × {roomSize.depth.toFixed(1)} m</span>

@@ -87,7 +87,8 @@ export function createStructureDoorActions({ set }: RoomActionContext): Pick<Roo
       const error = structureDoorError(next)
       return error ? { notice: error } : { structurePacks: state.structurePacks.map((candidate) => candidate.id === pack.id ? next : candidate), notice: '' }
     }),
-    removeStructureDoor: (id) => set((state) => ({
+    removeStructureDoor: (id) => set((state) => state.lockedElementIds.includes(id) || state.structurePacks.some((pack) => state.lockedElementIds.includes(pack.id) && pack.doors?.some((door) => door.id === id))
+      ? { notice: 'El elemento está bloqueado. Desbloquéalo para eliminarlo.' } : ({
       ...(state.room.extraDoors ? { room: { ...state.room, extraDoors: state.room.extraDoors.filter((door) => door.id !== id) } } : {}),
       structurePacks: state.structurePacks.map((pack) => ({ ...pack, ...(pack.doors ? { doors: pack.doors.filter((door) => door.id !== id) } : {}) })),
       hiddenElementIds: state.hiddenElementIds.filter((candidate) => candidate !== id), lockedElementIds: state.lockedElementIds.filter((candidate) => candidate !== id),

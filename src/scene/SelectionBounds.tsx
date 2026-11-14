@@ -5,19 +5,19 @@ import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js'
 
 /** A non-interactive outline in the selected element's local coordinates. */
-export function SelectionBounds({ width, height, depth, collision = false }: { width: number; height: number; depth: number; collision?: boolean }) {
+export function SelectionBounds({ width, height, depth, collision = false, focused = false }: { width: number; height: number; depth: number; collision?: boolean; focused?: boolean }) {
   const line = useMemo(() => {
     const box = new THREE.BoxGeometry(width, height, depth)
     const edges = new THREE.EdgesGeometry(box)
     const geometry = new LineSegmentsGeometry().fromEdgesGeometry(edges)
     box.dispose()
     edges.dispose()
-    const material = new LineMaterial({ color: collision ? '#e04444' : '#588b79', linewidth: 2.5, depthTest: false, depthWrite: false, toneMapped: false })
+    const material = new LineMaterial({ color: collision ? (focused ? '#2fa84f' : '#e04444') : '#588b79', linewidth: 2.5, depthTest: false, depthWrite: false, toneMapped: false })
     const result = new LineSegments2(geometry, material)
     result.raycast = () => undefined
     result.renderOrder = 8
     return result
-  }, [width, height, depth, collision])
+  }, [width, height, depth, collision, focused])
   useEffect(() => () => { line.geometry.dispose(); line.material.dispose() }, [line])
 
   return <primitive object={line} />

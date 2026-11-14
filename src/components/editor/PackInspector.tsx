@@ -61,7 +61,7 @@ export function PackInspector({ selectedPack }: { selectedPack: RoomState['struc
           ))}
         </>
       )}
-      <button type="button" className="text-button danger" onClick={() => removeStructurePack(selectedPack.id)}>Eliminar habitación completa</button>
+      <button type="button" className="text-button danger" disabled={locked} title={locked ? "Desbloquea el elemento para eliminarlo" : undefined} onClick={() => removeStructurePack(selectedPack.id)}>Eliminar habitación completa</button>
     </div>
   )
 }

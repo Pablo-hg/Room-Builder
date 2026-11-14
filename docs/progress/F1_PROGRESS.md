@@ -192,3 +192,39 @@ Por instrucción expresa del propietario, `.github/workflows/ci.yml` conserva `p
 - En conjunto se comprobaron **12 escenarios E2E distintos relacionados**. No se ejecutó toda la suite E2E local, no se añadieron `skip`, no se ampliaron timeouts y no se retiró cobertura funcional.
 - `tsc --noEmit -p tsconfig.app.json` y `git diff --check`: correctos. Las trazas y logs descargados se mantienen en `.cache/ci72/`, fuera del control de versiones.
 - Pendiente: resultado de la nueva CI completa que se disparará al subir este cambio a `dev`, origen de la PR hacia `main`. La validación dirigida no se presenta como certificación de toda la suite ni como validación visual humana.
+
+## #28 · [F1 · 04/09] Mejorar multiselección, jerarquía, carpetas y operaciones
+
+**Rama:** `feature/F1-04-mejoras-varias` (parte de `origin/dev` tras el merge de #73). **Estado:** IMPLEMENTADO, **sin validación visual humana** y sin CI (no hay PR hacia `main`). Sin integrar en `dev` ni en `main`.
+
+### Cambios (por commit)
+
+- `be342a9` · Eliminar respeta el bloqueo: los elementos bloqueados no se borran.
+- `3d9889e` · Al ocultar, la selección se mantiene coherente (no queda seleccionado lo oculto).
+- `458a6f4` · Al pegar un elemento suelto se conserva su carpeta.
+- `3e4dd4c` · Corrección de un bloque `@media` sin cerrar en `styles.css`.
+- `7929b23` · Selección por área (Mayús + arrastrar sobre el fondo y herramienta «Selección por área», con ratón y táctil) y foco de objetos superpuestos (Alt+clic). Nuevos `marqueeSelection`, `overlapFocus`, `MarqueeSelection.tsx`, `OverlapFocus.tsx`.
+- `5ec9927` · Atajos de selección (Ctrl+A, Escape) y acciones de eliminar desactivadas cuando no son válidas, con mensaje.
+- `419e579` · Auditoría de bloqueo, ocultación, pegado y jerarquía (`src/state/selectionAudit.test.ts`).
+- `430f618` · Pruebas de exportación/importación de carpetas anidadas y de selección de muebles superpuestos.
+
+### Contra los criterios de aceptación
+
+| Criterio | Cobertura |
+|---|---|
+| Caso guiado 8–12 objetos y 2 carpetas | E2E `selection.spec.ts` («caso guiado con 10 objetos y dos carpetas») |
+| Ocultar/bloquear respetados por escena, lista e inspector | `selectionAudit.test.ts` + E2E de selección por área y Suprimir |
+| Undo/redo, guardado/carga y JSON con jerarquías y selección válida | `selectionAudit.test.ts` + `persistence-integrity.spec.ts` |
+| E2E ratón y táctil, teclado y unitarias | `area-selection.spec.ts`, `selection.spec.ts`, `marqueeSelection.test.ts`, `overlapFocus.test.ts` |
+
+### Pruebas ejecutadas (14/11/2026, local)
+
+- `npm test`: **504/504 correctas**.
+- `tsc --noEmit -p tsconfig.app.json`: correcto.
+- E2E de `selection`, `area-selection` y `persistence-integrity` con workers paralelos: **17 correctas y 13 con timeout de 30 s**. Dos de los fallos se repitieron aislados: `selection.spec.ts:5` pasó y `area-selection.spec.ts:16` pasó con un worker (14,4 s). Interpretación provisional: carga del equipo con workers paralelos, **no demostrado** para los 13. La repetición completa con un worker se canceló a petición del propietario y **queda pendiente**.
+- No se ha ejecutado `npm run build` ni la suite E2E completa.
+
+### Pendiente
+
+- Validación visual y manual del propietario (selección por área, Alt+clic, bloqueo/ocultación en carpetas, copiar/pegar, undo/redo, JSON).
+- Repetir las tres suites E2E con `--workers=1` o dejar que las ejecute la CI al abrir la PR hacia `main`.
