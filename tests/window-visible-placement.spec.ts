@@ -23,7 +23,11 @@ for (const width of [375, 1280]) {
         await expect(inspector.getByRole('heading', { name, exact: true })).toBeVisible()
         await expect(inspector.getByRole('group', { name: 'Pared', exact: true }).getByRole('button', { name: 'B', exact: true })).toHaveAttribute('aria-pressed', 'true')
         const y = Number(await inspector.getByRole('textbox', { name: 'Introducir Y en metros', exact: true }).inputValue())
-        expect(y).toBeCloseTo(secondary ? 3.765 : 1, 6)
+        // La colocación es aleatoria en altura (alféizar libre dentro de la pared): se comprueba el rango
+        // válido de la planta, no un valor fijo. El suelo de la planta superior queda a 2,765 m.
+        const floor = secondary ? 2.765 : 0
+        expect(y).toBeGreaterThanOrEqual(floor - 1e-6)
+        expect(y).toBeLessThanOrEqual(floor + 2.7 - 0.08)
         await page.locator('.scene-panel').screenshot({ path: testInfo.outputPath(`seleccion-${name}-${secondary ? 'pack' : 'raiz'}-${width}.png`) })
       }
     })

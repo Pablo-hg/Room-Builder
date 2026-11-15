@@ -35,3 +35,20 @@ test('el título visible permanece dentro del canvas en pantalla pequeña', asyn
   expect(labelBox.x + labelBox.width).toBeLessThanOrEqual(canvasBox.x + canvasBox.width)
   expect(labelBox.y + labelBox.height).toBeLessThanOrEqual(canvasBox.y + canvasBox.height)
 })
+
+test('en Plano el título no tapa el centro de la habitación, donde queda el mobiliario y sus gizmos', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ahora no' }).click()
+  await page.getByRole('button', { name: 'Plano', exact: true }).click()
+  const label = page.getByRole('button', { name: 'Seleccionar habitación Raíz', exact: true })
+  await expect(label).toBeVisible()
+  const labelBox = (await label.boundingBox())!
+  const canvasBox = (await page.locator('.scene-panel canvas').first().boundingBox())!
+  const centre = { x: canvasBox.x + canvasBox.width / 2, y: canvasBox.y + canvasBox.height / 2 }
+  // Margen de 40 px alrededor del centro: cubre el cuerpo y el arranque de los gizmos.
+  const covers = labelBox.x < centre.x + 40 && labelBox.x + labelBox.width > centre.x - 40
+    && labelBox.y < centre.y + 40 && labelBox.y + labelBox.height > centre.y - 40
+  expect(covers).toBe(false)
+  expect(labelBox.x).toBeGreaterThanOrEqual(canvasBox.x)
+  expect(labelBox.y).toBeGreaterThanOrEqual(canvasBox.y)
+})

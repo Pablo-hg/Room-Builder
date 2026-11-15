@@ -50,6 +50,10 @@ test('recupera nombres de aperturas desde un diseño guardado v2', () => {
   const data = { ...JSON.parse(JSON.stringify(persistedDesign(original.getState()))), version: 2 }
   delete data.room.door.wallPosition
   for (const window of data.room.windows) delete window.wallPosition
+  // Un diseño v2 real tiene la ventana dentro del margen de la pared. La colocación automática actual
+  // es aleatoria y puede quedar más cerca del borde (válida con anclajes v10, no sin ellos), así que
+  // se fija un desplazamiento de v2 en lugar de depender del azar.
+  data.room.windows.find((window: { id: string }) => window.id === windowId).offset = 0
   const repository = { read: () => [{ id: 'guardado', name: 'Casa', savedAt: '', data }], write: () => {} }
   const restored = createRoomStore(repository)
   restored.getState().initializeSavedDesigns()
