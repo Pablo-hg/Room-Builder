@@ -603,6 +603,8 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
 .diagnostic-export-section { padding-block: 14px; }
+.scene-error { position: absolute; inset: 1rem; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; padding: 1.5rem; background: var(--panel-bg, #f3efe8); text-align: center; }
+.scene-error p { max-width: 32rem; margin: 0; }
 .diagnostic-export__button { width: 100%; }
 .wall-attachment-controls {
   display: grid;
@@ -685,6 +687,9 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .area-select-toggle { pointer-events: auto; min-height: 34px; padding: 8px 11px; border: 1px solid rgba(83,80,72,.14); border-radius: 15px; background: rgba(255,253,249,.88); color: #3f5547; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .area-select-toggle.is-active { background: #3f7d5a; border-color: #3f7d5a; color: #fff; }
 .area-select-toggle:focus-visible { outline: 2px solid #3f7d5a; outline-offset: 2px; }
+.room-name-label { position: absolute; left: 0; top: 0; z-index: 3; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid rgba(64,87,72,.32); border-radius: 999px; padding: 6px 12px; background: rgba(255,253,249,.96); color: #405748; font-family: inherit; font-size: 13px; font-weight: 700; box-shadow: 0 2px 6px rgba(42,57,48,.18); cursor: pointer; }
+.room-name-label[aria-pressed="true"] { color: #fffdf9; background: #405748; border-color: #405748; }
+.room-name-label:focus-visible { outline: 2px solid #3f7d5a; outline-offset: 3px; }
 
 
 /* ── Zonas táctiles mínimas (F1 · #31, WCAG 2.5.8) ─────────────────────────────

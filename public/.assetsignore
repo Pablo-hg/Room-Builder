@@ -1,0 +1,3 @@
+# Archivos de configuración de Cloudflare que no deben publicarse como assets.
+_headers
+.assetsignore

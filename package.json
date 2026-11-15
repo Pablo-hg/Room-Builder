@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "diagnostics": "tsx tools/diagnostics/read.ts",
-    "build": "tsc -b && vite build && node scripts/verify-diagnostics-bundle.mjs",
+    "build": "tsc -b && vite build && node scripts/verify-diagnostics-bundle.mjs && node scripts/generate-third-party-notices.mjs",
     "preview": "vite preview",
     "test": "tsx --test src/**/*.test.ts",
     "test:watch": "tsx --test --watch src/**/*.test.ts",

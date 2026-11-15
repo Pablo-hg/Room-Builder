@@ -1,5 +1,5 @@
 import { type ThreeEvent, useThree } from '@react-three/fiber'
-import { useMemo, useRef, useState } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { canElevateFurniture, furnitureVisualYOffset, hasUsefulFurnitureRotation, isWallPictureKind } from '../domain/objectCatalog'
 import type { FurnitureItem, WallSide } from '../domain/types'
@@ -12,22 +12,25 @@ import { moveFromOrigin, snapMovement } from '../domain/measurements'
 import { FurnitureModel } from './FurnitureModels'
 import { AxisMoveGizmo, FrontAxisMoveGizmo, RotationHandle, FrontRotationHandle } from './FurnitureGizmos'
 import { SelectionBounds } from './SelectionBounds'
-import { furnitureHasSpatialWarning } from '../domain/structureCollisions'
+import { furnitureSpatialWarningIds } from '../domain/structureCollisions'
 import { cameraAwareShiftDrag } from './cameraAwareShiftDrag'
 import { physicalWalls } from '../domain/wallConnections'
 import { beginWallSurfaceDrag, moveWallSurfaceDrag, type WallSurfaceDrag } from './wallSurfaceDrag'
 
-export function FurnitureObject({ item, selected, outlined, canDrag, planView, frontWall, showCollision = true, colliding = false }: { item: FurnitureItem; selected: boolean; outlined: boolean; canDrag: boolean; planView: boolean; frontWall: WallSide | null; showCollision?: boolean; colliding?: boolean }) {
+function FurnitureObjectView({ item, selected, outlined, canDrag, planView, frontWall, showCollision = true, colliding = false }: { item: FurnitureItem; selected: boolean; outlined: boolean; canDrag: boolean; planView: boolean; frontWall: WallSide | null; showCollision?: boolean; colliding?: boolean }) {
   const gesture = useHistoryGesture(item.id)
   const moveFurniture = useRoomStore((state) => state.moveFurniture)
   const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
-  const spatialWarning = useRoomStore((state) => showCollision && furnitureHasSpatialWarning(state, item))
+  const room = useRoomStore((state) => state.room)
+  const structurePacks = useRoomStore((state) => state.structurePacks)
+  // One shared computation per world state; each object only re-renders when
+  // its own warning flips, so camera gestures and dragging another object do
+  // not re-render the whole furniture list (#32).
+  const spatialWarning = useRoomStore((state) => showCollision && furnitureSpatialWarningIds(state).has(item.id))
   const collision = spatialWarning || colliding
   const { camera, size } = useThree()
   const [dragging, setDragging] = useState(false)
   const canMoveVertically = canElevateFurniture(item)
-  const room = useRoomStore((state) => state.room)
-  const structurePacks = useRoomStore((state) => state.structurePacks)
   const visualY = item.y + furnitureVisualYOffset(item, { room, structurePacks })
   const floorPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), -visualY), [visualY])
   const attachedWall = useMemo(() => item.wallAttachment
@@ -211,3 +214,7 @@ export function FurnitureObject({ item, selected, outlined, canDrag, planView, f
     </group>
   )
 }
+
+// Las props son primitivas o el propio mueble (inmutable en el store): un
+// cambio de cámara re-renderiza RoomWorld, pero no cada mueble (#32).
+export const FurnitureObject = memo(FurnitureObjectView)

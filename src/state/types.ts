@@ -166,6 +166,7 @@ export interface RoomRuntime {
   copiedElements: (FurnitureItem | WindowConfig)[] | null
   /** Carpeta de cada elemento copiado en el momento de copiar o cortar. */
   copiedFolders: Record<string, string>
+  copiedRoomOrigins: Record<string, { x: number; y: number; z: number }>
   /** El portapapeles viene de «Cortar»: el primer pegado conserva la posición original. */
   copiedCut: boolean
   isUndoing: boolean

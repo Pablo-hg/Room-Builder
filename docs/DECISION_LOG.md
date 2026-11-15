@@ -39,7 +39,7 @@
 | RB-014 | Generador de muebles a partir de texto | EXPERIMENTAL | Existe GENERADOR_OBJETOS.md, no implementado |
 | RB-015 | Soporte pleno de casas, plantas, escaleras y geometría irregular | PENDIENTE | Visión futura; límites por definir |
 | RB-016 | Paleta cromática exacta, tokens, ejemplos/asset pack de referencia | PENDIENTE | La dirección visual sí está acordada |
-| RB-017 | Cantidad de muebles, metas de rendimiento y dispositivos mínimos | PENDIENTE | Validar al medir |
+| RB-017 | Cantidad de muebles, metas de rendimiento y dispositivos mínimos | DIRECCIÓN CONFIRMADA; mínimos PENDIENTES | 15/11/2026: el propietario pide fluidez en dispositivos actuales corrientes y equipos de gama media de hace 5–10 años; concretar dispositivos, límites y umbrales mediante medición. No implica compatibilidad ya verificada. |
 | RB-018 | Publicación pública, licencias del código/assets, modalidades de distribución | PENDIENTE | Repositorio público; distribución/licencias pendientes de formalizar |
 | RB-019 | Refactor por fases sin nuevas funciones ni alteración visual | PROPUESTO | Ver REFACTOR_PLAN |
 | RB-020 | No simular exactitud arquitectónica/estructural ni usar datos privados externos | CONFIRMADO como principio | Visualización orientativa |

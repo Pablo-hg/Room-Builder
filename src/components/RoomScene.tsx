@@ -13,6 +13,7 @@ import type { SceneProps } from '../scene/types'
 import { wallVisibility } from '../scene/wallVisibility'
 import { SoftWall } from '../scene/Walls'
 import { RoomShell, StudioLight, WallIdentityLabel } from '../scene/RoomShell'
+import { RoomNameLabel } from '../scene/RoomNameLabel'
 import { recordSceneInteraction } from '../scene/sceneInteraction'
 import { FurnitureObject } from '../scene/FurnitureObject'
 import { StructureSurfaceObject } from '../scene/StructureSurface'
@@ -59,7 +60,8 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
   const { hidden, labeledWalls, gridWalls } = wallVisibility(props)
   const renderedPacks = props.structurePacks.filter((pack) => !focusedView || (pack.id.startsWith('floor-pack-') ? Math.abs(pack.y - level) < 0.01 : pack.surfaces.some((surface) => { const y = pack.y + surface.y + (surface.kind === 'wall' ? props.room.height / 2 : surface.kind === 'ceiling' ? props.room.height : 0); return y >= level - 0.01 && y < level + props.room.height })))
   const renderedPackIds = new Set(renderedPacks.filter((pack) => !hiddenElementIds.includes(pack.id)).map((pack) => pack.id))
-  const visibleWallIds = new Set(physicalWalls({ room: props.room, structurePacks: props.structurePacks }).filter((wall) => {
+  const wallFrames = physicalWalls({ room: props.room, structurePacks: props.structurePacks })
+  const visibleWallIds = new Set(wallFrames.filter((wall) => {
     if (hiddenElementIds.includes(wall.id)) return false
     if (!wall.packId) return showBase && !hidden.includes(wall.side)
     if (!renderedPackIds.has(wall.packId)) return false
@@ -128,7 +130,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
             collisionIds={props.collisionIds}
           />
         ))}
-        {!showPlanDimensions && baseWallLabels.map((wall) => <WallIdentityLabel key={`base-label-${wall}`} room={props.room} wall={wall} view={props.view} wallView={props.wallView} />)}
+        {!showPlanDimensions && baseWallLabels.map((wall) => wallFrames.find((frame) => frame.id === baseWallId(wall))).filter((frame) => frame !== undefined).map((frame) => <WallIdentityLabel key={`base-label-${frame.id}`} frame={frame} view={props.view} />)}
         {renderedPacks.map((pack) => (
           <group key={pack.id} position={[pack.x, pack.y, pack.z]} visible={!hiddenElementIds.includes(pack.id)}>
             {pack.surfaces.map((surface) => {
@@ -152,7 +154,6 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
                   collisionIds={props.collisionIds}
                   onSelect={() => selectElement(surfaceId)}
                 />
-                {!showPlanDimensions && pack.id === activeRoom?.id && !props.exportMode && surface.kind === 'wall' && surface.wall && labeledWalls.includes(surface.wall) && !hiddenElementIds.includes(surfaceId) && <group position={[surface.x, surface.y, surface.z]}><WallIdentityLabel room={props.room} wall={surface.wall} view={props.view} wallView={props.wallView} /></group>}
                 </group>
               )
             })}
@@ -175,6 +176,14 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
         ))}
         {!props.exportMode && groupSelected && <MultiFurnitureGizmo items={multiItems} locked={[...selectedIds, ...multiItems.map((item) => item.id)].some((id) => lockedElementIds.includes(id))} view={props.view} wall={props.wallView} />}
       </RoomShell>
+      {!props.exportMode && !showPlanDimensions && activeRoomWallLabelIds.map((id) => wallFrames.find((frame) => frame.id === id)).filter((frame) => frame !== undefined).map((frame) => <WallIdentityLabel key={`pack-label-${frame.id}`} frame={frame} view={props.view} />)}
+      {!props.exportMode && showBase && folders.filter((folder) => folder.id === ROOT_ROOM_FOLDER).map((folder) => <RoomNameLabel key={folder.id} folderId={folder.id} name={folder.name} position={[0, props.room.height + 0.35, 0]} extent={props.room} />)}
+      {!props.exportMode && renderedPacks.filter((pack) => pack.id.startsWith('floor-pack-') && !hiddenElementIds.includes(pack.id)).map((pack) => {
+        const box = packRoomBox(pack, props.room)
+        const folder = folders.find((item) => item.id === assignments[pack.id])
+        if (!box || !folder) return null
+        return <RoomNameLabel key={folder.id} folderId={folder.id} name={folder.name} position={[pack.x + box.x, pack.y + box.y + box.height + 0.35, pack.z + box.z]} extent={box} />
+      })}
       {/* Plano: el fondo vacío también permite desplazar la vista. */}
       {props.view === 'top' && !props.exportMode && <PlanPanSurface y={level - 1} />}
       {/* Plano: las demás plantas se dibujan a izquierda y derecha, como en una lámina de arquitectura. */}
@@ -184,7 +193,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
   )
 }
 
-export default function RoomScene(props: SceneProps & { collisionIds: ReadonlySet<string> }) {
+export default function RoomScene(props: SceneProps & { collisionIds: ReadonlySet<string>; onRightAreaHeld: (held: boolean) => void }) {
   const perspective = props.view === 'pov' || props.view === 'free'
   const selectElement = useRoomStore((state) => state.selectElement)
   const modelRootRef = useRef<THREE.Group>(null)
@@ -210,7 +219,7 @@ export default function RoomScene(props: SceneProps & { collisionIds: ReadonlySe
       }}
     >
       <RoomWorld {...props} modelRootRef={modelRootRef} />
-      <MarqueeSelection enabled={!props.exportMode} />
+      <MarqueeSelection enabled={!props.exportMode} onRightHeld={props.onRightAreaHeld} />
       <OverlapFocus enabled={!props.exportMode} />
       <OrbitPointerController view={props.view === 'isometric' || props.view === 'free' ? props.view : null} />
       <FreeCameraKeyboard active={props.view === 'free' && !props.exportMode} />

@@ -191,3 +191,17 @@ export function furnitureHasSpatialWarning(world: World, item: FurnitureItem) {
     || allSurfaces(world).some(({ surface, box: surfaceBounds }) => surfaceOverlapsFurniture(surface, surfaceBounds, item, world))
     || world.furniture.some((other) => other.id !== item.id && overlaps(box, furnitureBox(other, world)))
 }
+
+let warningCache: { room: RoomConfig; furniture: FurnitureItem[]; structurePacks: StructurePack[]; ids: ReadonlySet<string> } | null = null
+
+/**
+ * Ids de muebles con advertencia espacial, calculados una vez por estado del
+ * mundo. Cada objeto de la escena consulta este conjunto en lugar de repetir
+ * la comprobación de todos contra todos en cada actualización del store (#32).
+ */
+export function furnitureSpatialWarningIds(world: World): ReadonlySet<string> {
+  if (warningCache && warningCache.room === world.room && warningCache.furniture === world.furniture && warningCache.structurePacks === world.structurePacks) return warningCache.ids
+  const ids = new Set(world.furniture.filter((item) => furnitureHasSpatialWarning(world, item)).map((item) => item.id))
+  warningCache = { room: world.room, furniture: world.furniture, structurePacks: world.structurePacks, ids }
+  return ids
+}
