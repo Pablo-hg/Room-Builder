@@ -31,7 +31,8 @@ export function SceneContextMenu({ id, name, x, y, siblings, onClose, onRename, 
   const move = (target: string | null) => act(() => { if (multiple) state.moveSceneItems(ids, target); else if (folderId) state.moveElementFolder(folderId, target); else state.moveElementToFolder(id, target) })
   const position = { left: Math.max(8, Math.min(x, window.innerWidth - 254)), top: Math.max(8, Math.min(y, window.innerHeight - 360)) }
   return createPortal(<div ref={menuRef} className="scene-context-menu" role="menu" aria-label={multiple ? `Acciones de ${ids.length} elementos` : `Acciones de ${name}`} style={position} onContextMenu={(event) => event.preventDefault()} onKeyDown={(event) => {
-    if (event.key === 'Escape') { event.preventDefault(); if (moving) setMoving(false); else onClose(); return }
+    // Cerrar el menú no debe llegar al atajo global de Escape (deseleccionar).
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (moving) setMoving(false); else onClose(); return }
     if (event.altKey || event.shiftKey || event.ctrlKey || event.metaKey || (event.key !== 'ArrowDown' && event.key !== 'ArrowUp')) return
     event.preventDefault()
     const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]:not(:disabled)'))

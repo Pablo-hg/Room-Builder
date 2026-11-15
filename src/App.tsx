@@ -281,7 +281,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
                 { label: 'Eje Z positivo', azimuth: Math.PI / 2, elevation: 0 },
                 { label: 'Eje Z negativo', azimuth: -Math.PI / 2, elevation: 0 },
               ].map(({ label, azimuth, elevation }) => (
-                <button key={label} type="button" className="visually-hidden" onClick={() => state.lookFromFreeOrbit(azimuth, elevation)}>
+                <button key={label} type="button" className="visually-hidden-focusable compass-keyboard-option" onClick={() => state.lookFromFreeOrbit(azimuth, elevation)}>
                   Alinear cámara con {label}
                 </button>
               ))
@@ -291,7 +291,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
               { orientation: 2, walls: 'B y C' },
               { orientation: 3, walls: 'C y D' },
             ].map(({ orientation, walls }) => (
-              <button key={orientation} type="button" className="visually-hidden" onClick={() => state.lookFromIsoOrientation(orientation)}>
+              <button key={orientation} type="button" className="visually-hidden-focusable compass-keyboard-option" onClick={() => state.lookFromIsoOrientation(orientation)}>
                 Ver en isométrica las paredes {walls}
               </button>
             ))}
