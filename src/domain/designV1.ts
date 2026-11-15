@@ -1,3 +1,4 @@
+import type { PlanMeasure } from './planMeasures'
 import type { ElementFolder, FurnitureItem, GridSurface, RoomConfig, StructurePack } from './types'
 
 /**
@@ -9,9 +10,12 @@ import type { ElementFolder, FurnitureItem, GridSurface, RoomConfig, StructurePa
  * La versión 12 (15/11/2026) marca la geometría con las paredes de habitación por fuera
  * del suelo. Todo diseño nuevo se guarda como v12; los anteriores (1–11) se migran al
  * cargarlos (ver persistence/wallLayoutMigration.ts).
+ *
+ * La versión 13 (#38) añade `measurements`: cotas manuales guardadas en el Plano. Solo se escribe v13
+ * cuando el diseño tiene alguna cota; sin ellas sigue siendo v12 (la migración 12→13 es la identidad).
  */
 export interface PersistedDesign {
-  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13
   room: RoomConfig
   furniture: FurnitureItem[]
   structurePacks?: StructurePack[]
@@ -22,6 +26,7 @@ export interface PersistedDesign {
   elementFolders?: ElementFolder[]
   elementFolderAssignments?: Record<string, string>
   sceneElementOrder?: string[]
+  measurements?: PlanMeasure[]
 }
 
 export interface SavedDesign {
@@ -43,12 +48,14 @@ export type DesignState = Required<Omit<PersistedDesign, 'version'>>
 
 /** Versión con las paredes de habitación por fuera del suelo. */
 export const WALLS_OUTSIDE_VERSION = 12
+/** Versión con cotas manuales guardadas (#38). */
+export const MEASUREMENTS_VERSION = 13
 
 export function persistedDesign(state: DesignState): PersistedDesign {
   // Hasta v11 la versión era la mínima según las funciones usadas. Desde v12 todo diseño
   // se guarda como v12: su geometría de paredes no es la de las versiones anteriores.
   return {
-    version: WALLS_OUTSIDE_VERSION,
+    version: state.measurements.length ? MEASUREMENTS_VERSION : WALLS_OUTSIDE_VERSION,
     room: state.room,
     furniture: state.furniture,
     structurePacks: state.structurePacks,
@@ -59,6 +66,7 @@ export function persistedDesign(state: DesignState): PersistedDesign {
     elementFolders: state.elementFolders,
     elementFolderAssignments: state.elementFolderAssignments,
     sceneElementOrder: state.sceneElementOrder,
+    measurements: state.measurements,
   }
 }
 
@@ -75,6 +83,7 @@ export function persistedDesignSignature(design: PersistedDesign) {
     elementFolders: design.elementFolders ?? [],
     elementFolderAssignments: design.elementFolderAssignments ?? {},
     sceneElementOrder: design.sceneElementOrder ?? [],
+    measurements: design.measurements ?? [],
   }, (_key, value: unknown) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return value
     return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0))
@@ -86,7 +95,7 @@ export function persistedDesignSignature(design: PersistedDesign) {
 export function isPersistedDesign(value: unknown): value is PersistedDesign {
   if (!value || typeof value !== 'object') return false
   const design = value as Partial<PersistedDesign>
-  return (design.version === 1 || design.version === 2 || design.version === 3 || design.version === 4 || design.version === 5 || design.version === 6 || design.version === 7 || design.version === 8 || design.version === 9 || design.version === 10 || design.version === 11 || design.version === 12)
+  return (design.version === 1 || design.version === 2 || design.version === 3 || design.version === 4 || design.version === 5 || design.version === 6 || design.version === 7 || design.version === 8 || design.version === 9 || design.version === 10 || design.version === 11 || design.version === 12 || design.version === 13)
     && !!design.room
     && typeof design.room === 'object'
     && Array.isArray(design.furniture)

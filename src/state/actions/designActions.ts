@@ -37,12 +37,16 @@ const blankDesignData = (): PersistedDesign => persistedDesign({
   lockedElementIds: [],
   ...initialRoomFolder(DEFAULT_ROOM),
   sceneElementOrder: [],
+  measurements: [],
 })
 
 const sceneFromDesign = (data: PersistedDesign) => ({
   ...data,
   structurePacks: data.structurePacks ?? [],
   ...normalizeDesignPreferences(data),
+  measurements: data.measurements ?? [],
+  // La herramienta y su medida en curso no viajan entre diseños.
+  measureDraft: null,
   selectedId: null,
 })
 
@@ -147,6 +151,8 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           elementFolders: data.elementFolders ?? [],
           elementFolderAssignments: data.elementFolderAssignments ?? {},
           sceneElementOrder: data.sceneElementOrder ?? [],
+          measurements: data.measurements ?? [],
+          measureDraft: null,
           selectedId: null,
           hasUnsavedChanges: false,
           notice: mode === 'blank' ? 'Diseño nuevo creado en blanco.' : 'Copia del diseño creada.',

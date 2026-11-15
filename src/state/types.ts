@@ -1,5 +1,6 @@
 import type { ElementFolder, FurnitureItem, FurnitureKind, GridSurface, PersistedDesign, RoomConfig, StructurePack, StructureSurfaceKey, ViewMode, WallSide, WindowConfig, WindowShape } from '../domain/types'
 import type { SavedDesign } from '../domain/designV1'
+import type { MeasureEnd, PlanMeasure, PlanPoint } from '../domain/planMeasures'
 import type { DesignRepository } from '../persistence/localDesignRepository'
 
 export interface RoomState {
@@ -17,6 +18,17 @@ export interface RoomState {
   /** Plano detallado: estado visual de sesión; no se guarda ni entra en el historial. */
   planDetailsVisible: boolean
   setPlanDetailsVisible: (visible: boolean) => void
+  setMeasureToolActive: (active: boolean) => void
+  setMeasureAxis: (axis: 'free' | 'horizontal' | 'vertical') => void
+  setMeasureSnap: (snap: boolean) => void
+  setMeasureDraft: (draft: { start: MeasureEnd; end: MeasureEnd | null } | null) => void
+  /** Devuelve el id de la cota creada, o `null` si no era válida. */
+  addMeasure: (start: MeasureEnd, end: MeasureEnd, name?: string) => string | null
+  saveMeasureDraft: (name?: string) => string | null
+  updateMeasure: (id: string, patch: { name?: string; hidden?: boolean; start?: PlanPoint; end?: PlanPoint }) => void
+  /** Da por revisada la advertencia de una cota cuyo referente desapareció. */
+  acknowledgeMeasure: (id: string) => void
+  removeMeasure: (id: string) => void
   areaSelect: boolean
   setAreaSelect: (active: boolean) => void
   activeRoomId: string | null
@@ -39,6 +51,13 @@ export interface RoomState {
   povYaw: number
   gridSnap: boolean
   gridVisibility: Record<GridSurface, boolean>
+  /** Cotas manuales guardadas en el diseño (#38). */
+  measurements: PlanMeasure[]
+  /** Herramienta Medir: estado de sesión, ni se guarda ni entra en el historial. */
+  measureToolActive: boolean
+  measureAxis: 'free' | 'horizontal' | 'vertical'
+  measureSnap: boolean
+  measureDraft: { start: MeasureEnd; end: MeasureEnd | null } | null
   hiddenElementIds: string[]
   lockedElementIds: string[]
   elementFolders: ElementFolder[]

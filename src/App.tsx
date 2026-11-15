@@ -14,6 +14,7 @@ import { SettingsPanel } from './components/editor/SettingsPanel'
 import { ObjectsPanel } from './components/editor/ObjectsPanel'
 import { ViewControls } from './components/editor/ViewControls'
 import { RoomViewSelector } from './components/editor/RoomViewSelector'
+import { MeasureToolPanel } from './components/editor/MeasureControls'
 import { ZoomControl } from './components/editor/ZoomControl'
 import { packRoomBox } from './domain/roomEditing'
 import { visibleWallsForView } from './components/editor/viewHelpers'
@@ -230,6 +231,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
             <span className="room-size">{roomSize.width.toFixed(1)} × {roomSize.depth.toFixed(1)} m</span>
           </div>
           <RoomViewSelector />
+          <MeasureToolPanel />
           </div>
           <div className="scene-stage">
           <SceneErrorBoundary onRetry={() => setSceneAttempt((attempt) => attempt + 1)} exporting={exportMode} onExportUnavailable={() => onExportComplete(new Error('No se puede exportar el modelo 3D mientras la escena no está disponible.'))}><RoomScene

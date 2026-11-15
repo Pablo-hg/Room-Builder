@@ -18,7 +18,7 @@ export function createHistoryActions(context: Pick<RoomActionContext, 'set' | 'g
   const { set, get, runtime } = context
   const restoreDesign = (design: ReturnType<typeof persistedDesign>) => {
     runtime.isUndoing = true
-    set({ ...design, structurePacks: design.structurePacks ?? [] })
+    set({ ...design, structurePacks: design.structurePacks ?? [], measurements: design.measurements ?? [], measureDraft: null })
     runtime.isUndoing = false
   }
   const endGesture = (token?: HistoryGestureToken) => {
@@ -43,6 +43,8 @@ export function createHistoryActions(context: Pick<RoomActionContext, 'set' | 'g
       set({
         ...previous,
         structurePacks: previous.structurePacks ?? [],
+        measurements: previous.measurements ?? [],
+        measureDraft: null,
         selectedId: null,
         undoCount: runtime.undoHistory.length,
         redoCount: runtime.redoHistory.length,
@@ -62,6 +64,8 @@ export function createHistoryActions(context: Pick<RoomActionContext, 'set' | 'g
       set({
         ...next,
         structurePacks: next.structurePacks ?? [],
+        measurements: next.measurements ?? [],
+        measureDraft: null,
         selectedId: null,
         undoCount: runtime.undoHistory.length,
         redoCount: runtime.redoHistory.length,
