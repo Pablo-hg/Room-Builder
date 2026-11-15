@@ -219,7 +219,7 @@ function onWall(world: WallWorld, old: FurnitureItem, candidate: FurnitureItem, 
 }
 
 /** Shared guard for inspector, pointer, keyboard, groups, rotation and resize. Loading/undo bypass it. */
-export function constrainFurnitureWalls(before: World, after: World, magnets: FurnitureWallMagnets = new Map(), source?: 'pointer'): { furniture: FurnitureItem[]; notice?: string } | null {
+export function constrainFurnitureWalls(before: World, after: World, magnets: FurnitureWallMagnets = new Map(), source?: 'pointer', wallMagnet = true): { furniture: FurnitureItem[]; notice?: string } | null {
   const oldItems = new Map(before.furniture.map((item) => [item.id, item]))
   const oldWalls = new Map(physicalWalls(before).map((wall) => [wall.id, wall]))
   const walls = physicalWalls(after)
@@ -259,7 +259,8 @@ export function constrainFurnitureWalls(before: World, after: World, magnets: Fu
     const old = oldItems.get(item.id)
     return old && sameShape(old, item) && (old.x !== item.x || old.y !== item.y || old.z !== item.z)
   })
-  const snapped = moved.map((item) => ({ item, result: softWallSnap(after, oldItems.get(item.id)!, item, magnets, source) }))
+  // Con el magnetismo apagado (o Alt pulsada) el contacto con la pared no atrae; el arrastre sigue al puntero.
+  const snapped = moved.map((item) => ({ item, result: wallMagnet ? softWallSnap(after, oldItems.get(item.id)!, item, magnets, source) : item }))
   if (moved.length > 1) {
     // A group receives one common correction; its members never drift apart.
     const correction = snapped.find(({ item, result }) => Math.hypot(result.x - item.x, result.z - item.z) > epsilon)

@@ -20,8 +20,12 @@ export function snapMeasurement(value: number): number {
   return Math.round(value * 100) / 100
 }
 
+let movementSnap = true
+/** Sincronizado con el ajuste «Ajuste a 5 cm» (#37): activado, los arrastres avanzan de 5 en 5 cm; desactivado, de 1 en 1 cm. */
+export function setMovementSnap(enabled: boolean) { movementSnap = enabled }
+
 export function snapMovement(delta: number): number {
-  return Math.round(delta * 20) / 20
+  return movementSnap ? Math.round(delta * 20) / 20 : snapMeasurement(delta)
 }
 
 export function moveFromOrigin(value: number, origin: number): number {
