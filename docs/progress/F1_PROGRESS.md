@@ -464,3 +464,11 @@ Las URLs de vista previa probadas para `dev` y esta rama devuelven 404: indicio 
 **Actualización: caché y tarea de licencia.**
 - *Caché:* por decisión del propietario se añade `public/_headers`, que Vite copia a `dist/`, con `Cache-Control: public, max-age=31536000, immutable` para `/assets/*`. Esos archivos llevan un hash de contenido en el nombre; `index.html` mantiene la cabecera por defecto (`max-age=0, must-revalidate`), que es como se detectan las versiones nuevas. Se añade `public/.assetsignore` para que `_headers` y el propio `.assetsignore` no se suban como recursos públicos. Según la documentación de Workers (actualizada el 12/11/2026), las reglas de `_headers` sustituyen la cabecera por defecto, no se aplican a respuestas generadas por código del Worker (este proyecto no tiene) y admiten hasta 100 reglas. Build correcta con ambos archivos en `dist/`. **No se ha comprobado en Cloudflare:** solo surtirá efecto al publicarse desde `main`. Entonces habrá que verificar que `/assets/*.js` responde con la nueva cabecera, que `index.html` conserva la anterior y que `/_headers` no se sirve.
 - *Licencia:* creada la tarea especial #80, sin Milestone ni etiquetas, como la épica #23, para decidir RB-018.
+
+## 15/11/2026 — #33 Validación E2E y checkpoint v0.2: arranque
+
+Rama `feature/f1-09-validacion-ckeckpoint`. Detalle completo, gates, resultados y checklist en [F1_CHECKPOINT_V02.md](F1_CHECKPOINT_V02.md). Resumen: **checkpoint NO certificado** (RB-054 PROPUESTO).
+
+- Corregido el defecto real que rompía los dos E2E táctiles del eje X: la etiqueta de nombre de habitación tapaba el mobiliario central en Plano.
+- Nuevo E2E de recorrido completo `tests/checkpoint-v02.spec.ts`. Unitarias 567/567. **Suite E2E completa en local: 249/249** con el código final. Los fallos intermedios eran tests obsoletos o dependientes del azar de la colocación de ventanas (`window-visible-placement`, `free-wall-objects`) y un cálculo propio del test de Alt+clic; no un defecto de la app en ese caso.
+- Pendiente: cierre de #30–#32, `e2e-full.yml` en Linux, prueba humana y decisión sobre cómo registrar v0.2. Nada de esto se ha subido ni commiteado.

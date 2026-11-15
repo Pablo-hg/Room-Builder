@@ -12,6 +12,7 @@ export function RoomNameLabel({ folderId, name, position, extent }: { folderId: 
   const button = useRef<HTMLButtonElement | null>(null)
   const dimensions = useRef({ width: 100, height: 30 })
   const point = useMemo(() => new THREE.Vector3(), [])
+  const direction = useMemo(() => new THREE.Vector3(), [])
   const corners = useMemo(() => Array.from({ length: 8 }, () => new THREE.Vector3()), [])
 
   useEffect(() => {
@@ -64,8 +65,13 @@ export function RoomNameLabel({ folderId, name, position, extent }: { folderId: 
       const { width, height } = dimensions.current
       // Keep labels clear of the sidebar toggles that overlay the canvas edges.
       const edge = Math.min(40, Math.max(4, (size.width - width) / 2))
-      const x = Math.max(width / 2 + edge, Math.min(size.width - width / 2 - edge, (point.x + 1) * size.width / 2))
-      const idealY = Math.max(height + 4, Math.min(size.height - 4, (1 - point.y) * size.height / 2))
+      // En Plano el punto proyectado cae en el centro de la habitación y taparía lo que haya
+      // allí (y capturaría el gesto táctil de un mueble o de su gizmo). Se ancla a la esquina
+      // superior (centrada) de la huella de la habitación, lejos de los indicadores de la esquina.
+      const planView = camera instanceof THREE.OrthographicCamera && camera.getWorldDirection(direction).y < -0.98
+      const planX = ((minX + maxX) / 2 + 1) * size.width / 2
+      const x = Math.max(width / 2 + edge, Math.min(size.width - width / 2 - edge, planView ? planX : (point.x + 1) * size.width / 2))
+      const idealY = Math.max(height + 4, Math.min(size.height - 4, planView ? (1 - maxY) * size.height / 2 + height + 8 : (1 - point.y) * size.height / 2))
       const earlier: Array<{ x: number; y: number; width: number; height: number }> = []
       for (let sibling = element.previousElementSibling; sibling; sibling = sibling.previousElementSibling) {
         if (!(sibling instanceof HTMLElement) || sibling.className !== 'room-name-label' || sibling.style.visibility === 'hidden') continue
