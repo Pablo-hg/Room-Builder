@@ -66,7 +66,7 @@ for (const width of [375, 1280]) for (const kind of ['window', 'door'] as const)
     await entry.click()
     await expect(x).toHaveValue('1.50')
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('room-builder:v0.1:designs')!)[0].data)
-    expect(stored.version).toBe(10)
+    expect(stored.version).toBe(12) // desde v12 todo diseño se guarda como v12
     const objects = [...stored.room.windows, ...(stored.room.extraDoors ?? []), ...stored.structurePacks.flatMap((pack: { windows?: unknown[]; doors?: unknown[] }) => [...(pack.windows ?? []), ...(pack.doors ?? [])])]
     expect(objects.filter((object: { id: string }) => object.id === 'connected')).toHaveLength(1)
   })

@@ -269,3 +269,206 @@ Decisión del propietario tras la PR #77 (dev → main), donde fallaron los 4 fr
 - AGENTS.md actualizado con la política y la regla de ≈10 gestos por test.
 - **Local en Windows:** abrir el terminal con `C:\` en mayúscula; con `c:\` Vite sirve los módulos como `/@fs/` y los tests que importan el store obtienen otra instancia.
 - **Sin ejecutar en CI** estos cambios de workflow: se comprobará al subirlos.
+
+## 14/11/2026 — Paredes de habitación por fuera del suelo (paso A de 4)
+
+Decisión del propietario: la cara interior de cada pared de habitación coincide con el borde del suelo y el inicio de la cuadrícula (antes la pared estaba centrada en el borde y tapaba ~6 cm del primer cuadrado). La medida de la habitación pasa a ser el espacio libre interior. Habitaciones contiguas: una única pared compartida. Grosor de las paredes nuevas unificado a 0,12 m. Rama `feature/F1-06-auditar-catalogo`, a petición del propietario.
+
+**Paso A (geometría), hecho:**
+
+- `roomEditing.ts`: `roomWallOutset`, `physicalSurfacePosition`, `isRoomPackId` y `roomWallCornerExtension`. Los datos guardados no cambian: siguen referidos al borde del suelo; solo el centro físico de la pared se desplaza medio grosor hacia fuera.
+- Las paredes norte y sur se alargan un grosor por cada extremo para cubrir las esquinas exteriores (sin ello quedaba un hueco de 12 × 12 cm, visible en Plano). Las cotas del Plano siguen midiendo la habitación.
+- Aplicado en `physicalWalls`, render de paredes (`Walls.tsx`, `StructureSurface.tsx`), puertas y ventanas por defecto (`structureDoors`, `structureWindows`, `wallObjectPlacement`, plano de arrastre y símbolo de Plano en `Openings.tsx`), colisiones de superficies, selección múltiple y volumen del edificio.
+- `ROOM_WALL_THICKNESS = 0,12`; las paredes nuevas (habitaciones y paredes independientes) usan ese grosor. Los suelos conservan 0,13 m.
+- Tests actualizados a la nueva geometría (cara interior en el borde del suelo, grosor 0,12): `furnitureWalls`, `planDimensions`, `buildingVolume`, `independentSurfaces`. `npm test`: **540/540**. `tsc -p tsconfig.app.json`: sin errores (el `tsc --noEmit` raíz no comprueba nada porque `tsconfig.json` solo tiene referencias).
+- Capturas en local (Isométrica, Frontal, Plano) coherentes con la imagen de referencia del propietario. **Sin validación humana.**
+
+**Pendiente y riesgo conocido:** los diseños guardados antes del cambio con muebles fijados a una pared (v11) o con puertas/ventanas ancladas (`wallPosition`, v10) quedan desplazados medio grosor; los muebles fijados pueden impedir la carga («El mueble no está apoyado en su pared de fijación»). Necesita migración (paso C) antes de integrar. Pasos B (crear habitaciones contiguas separadas un grosor) y C (migración, incluida la separación de habitaciones contiguas guardadas) sin hacer. E2E sin ejecutar.
+
+### 15/11/2026 — Pasos B y C: habitaciones contiguas y migración v12
+
+- **Paso B:** `planRoomCreation` separa una habitación contigua (este/oeste/norte/sur) su anchura o fondo **más un grosor de pared**, para que ambas compartan una única pared en la frontera. Arriba/abajo no cambia.
+- **Paso C (formato):** nueva versión de diseño **v12** (`WALLS_OUTSIDE_VERSION`). Hasta v11 la versión era la mínima según funciones; desde v12 todo diseño se guarda como v12, porque es el único modo de distinguir la geometría antigua. `isPersistedDesign` y el validador de archivos JSON aceptan v12.
+- **Migración** `src/persistence/wallLayoutMigration.ts`, aplicada en `normalizeDesign` (única entrada de carga: diseños locales, importación JSON y firmas de guardado):
+  1. Habitaciones contiguas antiguas: cada habitación se desplaza un grosor por cada frontera de contacto entre ella y la principal, con sus muebles, puertas y ventanas ancladas, objetos murales libres y suelos/paredes independientes que contiene.
+  2. Puertas y ventanas ancladas (`wallPosition`) y muebles fijados a paredes de habitación se desplazan medio grosor hacia fuera para seguir en su pared.
+  - No muta la entrada y no se repite sobre un v12. Limitación: las fronteras se calculan como planos de contacto; en distribuciones no alineadas en cuadrícula una frontera puede desplazar habitaciones que no la tocan.
+- `ProjectV2` (`projectMigration.ts`) solo se usa en tests; se amplía su tipo a v12 sin más cambios.
+- Tests: nuevo `wallLayoutMigration.test.ts` (6) y actualizados los que esperaban v10/v11 tras guardar o la separación antigua entre habitaciones. `npm test`: **546/546**; `tsc -p tsconfig.app.json` correcto; `npm run build` correcto. Capturas locales de dos habitaciones contiguas (Isométrica y Plano) con una única pared compartida. **E2E sin ejecutar; validación humana pendiente.**
+
+### 15/11/2026 — Iconos generados: orden de pintado correcto
+
+El icono del mueble de TV no coincidía con su 3D (faltaba una puerta y asomaba una franja de la caja interior). Causa: el generador ordenaba los triángulos por la profundidad de su centro, que falla con caras grandes junto a piezas pequeñas delante. `modelIcon.ts` ordena ahora por la profundidad real de cada par de triángulos en su zona de solape (orden topológico; el centro solo desempata). Mejora también sofá, escritorio y otros. Generación: ≤ 22 ms por icono.
+
+### 15/11/2026 — Cierre de #30 (catálogo, modelos y estilo diorama)
+
+- Objetos de pared con modelo puro en `WallObjectModels.tsx` e icono generado desde él (solo los cuadros mantienen icono 2D). Estándares de modelos comprobados por `modelStandards.test.ts` para todo el catálogo, presente o futuro; reglas y alta de objetos en `VISUAL_STYLE_GUIDE.md`. Lámpara de techo antigua ya no aparece «fuera de la vivienda». Script de capturas `r2-catalog.spec.ts` reparado y ampliado a los objetos de pared. Detalle en [F1_CATALOG_AUDIT.md](F1_CATALOG_AUDIT.md).
+- Última comprobación automática: `npm test` 553/553, `tsc -p tsconfig.app.json` y `npm run build` correctos (antes de la indicación de no ejecutar más pruebas). Capturas del catálogo: 32 objetos × 3 vistas sin errores.
+- **Validación visual del propietario: superada** («visualmente todo ok»). Inventario: los 33 objetos marcados como validados (lista `VALIDATED` en `scripts/catalog-inventory.ts`).
+- **Pendiente:** E2E (humo en la CI de la PR hacia `main`; suite completa antes de #54) y commit, a la espera de autorización del propietario. Sin PR.
+- **E2E relacionados (15/11/2026, local, a petición del propietario):** 16 specs; 141 correctos y 6 fallos por cambios intencionados (versión 12, «Lámpara de pie», grosor 0,12 m). Expectativas actualizadas en 4 specs (`connected-openings`, `furniture-attachments`, `independent-surfaces`, `rename-element`) y repetidos: todos correctos con un worker (con dos workers en Windows hubo tiempos agotados sin fallos funcionales).
+
+## 15/11/2026 — #31 Accesibilidad, responsive y uso táctil (en curso)
+
+Rama `feature/f1-07-completar-accesibilidad` (sobre `dev`, con #30 integrada). Detalle en [F1_A11Y_AUDIT.md](F1_A11Y_AUDIT.md).
+
+- Auditoría automática a 320/375/667h/768/1024/1440 px, recorrido con teclado y flujo P0 solo con teclado: sin desbordamiento horizontal, controles cortados ni trampas de foco; el flujo P0 se completa con teclado.
+- Corregido: Escape del menú contextual deseleccionaba; foco perdido al cerrar guía/aviso; anillo de foco al 25 % (1,48:1) → `--focus-ring` sólido (7–8:1) y en la caja completa de las filas de la escena; alternativas de la brújula enfocables pero invisibles; menú de diseños abierto con el foco fuera; error de medida sin enlazar; zonas táctiles de 24 px (32 px en táctil); cabecera móvil compacta en dos filas.
+- Tests: nuevo `tests/a11y-keyboard.spec.ts` (8/8, uno `@smoke`). E2E existentes de las zonas tocadas (10 specs): 88/88 con un worker. `tsc -p tsconfig.app.json` correcto. Unitarias no ejecutadas (sin cambios de lógica de dominio).
+- Pendiente: validación humana con la checklist del informe.
+
+## 15/11/2026 — #32 Rendimiento y despliegue: preparación
+
+Rama `feature/f1-08-optiomizar-rendimineto`, punto de partida `123fdfd`. Inspección estática inicial; no se han ejecutado build, pruebas ni mediciones en esta continuación. La cifra de 1.447,19 kB de F0 es histórica y el `dist` local no está asociado a un commit verificable. No usar ninguno como baseline actual.
+
+### Protocolo pendiente de ejecución
+
+1. Registrar commit y estado limpio, versiones de Node y navegador, sistema, CPU/GPU, resolución, escala, conexión y si se usa aceleración gráfica o renderizado por software. Usar el mismo equipo y condiciones para el antes y el después.
+2. Construir desde instalación reproducible (`npm ci`, `npm run build`) cuando se autorice; conservar salida de Vite y tamaños de cada archivo de `dist/assets`, tanto sin comprimir como transferidos. Servir con `npm run preview` y comprobar la URL directa. El directorio `dist` existente debe regenerarse para atribuirlo al commit.
+3. Preparar tres diseños exportables con exactamente 1, 15 y 50 objetos, documentando tipos, posiciones y contenido estructural; usar los mismos archivos en todas las repeticiones. Registrar la versión del formato y no sustituir diseños personales. Si no se pueden crear 50 objetos en condiciones comparables, documentar la limitación.
+4. En cada escenario, medir al menos tres cargas frías con caché desactivada y tres recargas con caché, registrando mediana y rango, tiempo hasta editor utilizable y tráfico de red. En una sesión estable, registrar intervalos entre fotogramas durante cámara y movimiento de objeto, duración de operaciones y bloqueos largos mediante herramientas del navegador. Medir memoria solo cuando el navegador la ofrezca, indicando método y limitaciones. Conservar capturas o trazas, sin incluir diseños personales ni diagnósticos privados.
+5. Comparar las mismas operaciones y escenas tras cada cambio; identificar la causa antes de optimizar. Establecer umbrales propuestos a partir de los resultados y hardware objetivo, todavía pendiente en RB-017. El perfil anterior de R3 usa desarrollo y cobertura de funciones: no sustituye esta medición de producción.
+6. Verificar con la build servida creación y guardado, recarga, almacenamiento bloqueado o lleno, ausencia de WebGL y pérdida de contexto, y funcionamiento sin red después de completar la carga. Registrar resultado y recuperación de datos. Esto no demuestra reapertura offline ni añade una PWA.
+7. Revisar peticiones de red, licencias de dependencias y recursos, contenido de `dist` y exclusión de trazas y herramientas de desarrollo. El diagnóstico local en IndexedDB y su exportación son una decisión vigente; no deben confundirse con el receptor de desarrollo ni con telemetría.
+
+### Hallazgos iniciales y pendientes
+
+- La escena usa React Three Fiber y Three.js; el exportador GLB se importa de forma estática. Es un candidato a carga diferida, no una mejora medida. Las colisiones de diagnóstico también merecen perfilado en escenas densas.
+- El código captura errores de escritura local. No se ha identificado un tratamiento explícito de fallo o pérdida de contexto WebGL; requiere comprobación práctica y diseño de recuperación que preserve el trabajo.
+- `wrangler.jsonc` configura Workers con assets de `dist` y fallback SPA, mientras la issue menciona Pages. Falta confirmar el destino efectivo, documentar preview y rollback, y comprobar una URL real; no se ha verificado ningún despliegue.
+- `npm run build` ya incluye una comprobación de exclusión de herramientas de diagnóstico de desarrollo. Es una comprobación por cadenas, no una auditoría completa de los archivos publicados. La política de licencia y distribución del proyecto continúa pendiente (RB-018).
+- Pendientes: mediciones, pruebas funcionales y de fallos, auditoría de licencias, optimizaciones basadas en evidencia y validación humana. La CI de PR a `main` y el gate final #54 siguen siendo independientes de estas medidas.
+
+### Primera ejecución autorizada
+
+En una copia aislada del commit `123fdfd`, Node 22.21.0 y npm 10.9.4: `npm ci` desde caché y `npm run build` correctos; Vite 6.4.5 genera JS de 1.621,43 kB (gzip 456,60 kB) y CSS de 60,61 kB (gzip 11,81 kB). Persiste el aviso de chunk superior a 500 kB; la comprobación de exclusión de herramientas de diagnóstico de desarrollo pasó. Unitarias: 553/553. La vista previa local devolvió HTTP 200. Chromium automatizado abrió el editor, guardó un diseño de prueba y lo recuperó al recargar; se observó un 404 de `favicon.ico`. Esto no valida un despliegue público ni escenarios de rendimiento.
+
+La primera `npm ci` en el directorio principal falló al retirar `esbuild.exe`, mantenido por un proceso activo. `npm install --offline` completó la recuperación de dependencias, con avisos de limpieza de dos carpetas temporales bloqueadas. La medición 1/15/50, memoria, fallos y pruebas offline siguen pendientes; tampoco se han aplicado optimizaciones ni se ha establecido un umbral.
+
+### Medición y comprobaciones posteriores
+
+Build de referencia `123fdfd`; Chromium automatizado, Windows, 1280 × 720, GPU NVIDIA GTX 1060, WebGL ANGLE D3D11, preview HTTP local. Diseños de prueba en el almacenamiento de una sesión aislada: habitación 5,5 × 4,5 m con puerta y ventana, y 1/15/50 sillas idénticas, espaciadas 0,52 m. Tres recargas con caché y tres cambios Plano → Isométrica por diseño; el número de filas de escena fue 8/22/57 (incluye 7 elementos estructurales). Tiempos en milisegundos:
+
+| Sillas | Recarga hasta elemento `main`, mediana (rango) | Cambio de vista hasta dos `requestAnimationFrame`, mediana (rango) | Heap JS observado, rango aproximado |
+| --- | --- | --- | --- |
+| 1 | 103 (90–185) | 48 (47–224) | 21–43 MB |
+| 15 | 110 (98–120) | 207 (205–215) | 30–56 MB |
+| 50 | 128 (124–136) | 291 (132–307) | 73–86 MB |
+
+La recarga hasta `main` no mide la primera carga fría ni garantiza que el 3D haya terminado. El cambio de vista incluye espera de Playwright y dos fotogramas, no es un FPS ni una medición pura de render. El heap es una instantánea afectada por GC, no memoria total/GPU. En reposo se observaron intervalos de fotograma medianos de 5,6 ms en las tres escenas; no prueban fluidez durante arrastre. Una ejecución de arrastre de cámara con 20 pasos tardó 246/265/410 ms para 1/15/50 objetos, incluyendo automatización: es exploratoria, no un FPS ni una muestra estadística. En tres navegaciones posteriores con caché desactivada, sobre localhost y con 50 objetos, `DOMContentLoaded` tardó 131/79/78 ms y los dos recursos transfirieron 469.434 bytes; no representa red real ni un perfil frío del dispositivo. Son señales de esta máquina, no límites del producto. Quedan pendientes perfiles de gestos repetidos, dispositivos más modestos y la decisión RB-017 sobre umbrales.
+
+Para repetir esta aproximación: construir y servir la versión objetivo; abrir una sesión aislada con Playwright CLI, crear y guardar un diseño desechable con una silla, y ejecutar en PowerShell `$code = (Get-Content scripts/playwright-profile/issue32-measure.js -Raw -Encoding UTF8).Trim()`, seguido de `playwright-cli -s=issue32 run-code $code`. El script sustituye los muebles del primer diseño en esa sesión: nunca ejecutarlo sobre datos personales. Registrar versión, navegador, GPU, resolución y salida. No modifica el repositorio ni establece un benchmark de CI. Procedimiento ejecutado de nuevo satisfactoriamente sobre la build final.
+
+- Offline tras carga: en la sesión aislada se añadió y guardó una silla con la red desactivada y sin peticiones observadas. No se probó ni promete reapertura sin red.
+- Al hacer fallar `localStorage.setItem`, aparece el aviso de almacenamiento y la edición queda marcada como no guardada en memoria. Es una simulación concreta, no cubre todos los errores posibles.
+- Sin WebGL, la aplicación original quedaba en blanco. Se añadieron límites de error alrededor de escena y brújula: el resto del editor y el guardado quedan disponibles, con aviso y reintento. Prueba E2E focalizada: 1/1, incluido el error claro al solicitar GLB sin escena; reintento tras restaurar WebGL simulado: dos canvas y aviso retirado. Al simular pérdida de contexto con `WEBGL_lose_context`, apareció el aviso; no se ha certificado una pérdida real en dispositivos físicos.
+- Una variante aislada cargó el exportador GLB bajo demanda: JS inicial 1.588,63 kB / 447,11 kB gzip, más chunk de 35,25 kB / 10,51 kB gzip, frente a 1.622,65 kB / 456,95 kB gzip en la build final. Se descartó: la primera exportación necesitaría descargar el chunk, afectando al funcionamiento sin red. No se ha demostrado una mejora de carga perceptible. Próximos perfiles: iconos de catálogo, colisiones y render durante gestos antes de optimizar.
+- La build final pasó, incluida la verificación de exclusión de herramientas de diagnóstico de desarrollo; inspeccionar contenido y rutas del despliegue real sigue pendiente. Los diagnósticos locales previstos para producción no se han retirado. El favicon inexistente produjo un 404 en preview.
+- Revisión de metadatos de dependencias instaladas de ejecución: MIT, salvo `ieee754` BSD-3-Clause; las licencias y avisos efectivos deben conservarse y comprobarse para la distribución. No se ha formalizado licencia del proyecto ni auditado la procedencia de todos los recursos (RB-018).
+
+### Preparación del despliegue
+
+El repositorio configura actualmente **Cloudflare Workers con assets estáticos**, no un proyecto Pages: `wrangler.jsonc` apunta a `dist` y define fallback SPA. Confirmar la elección y el destino real antes de desplegar. Preparación local: `npm ci`, `npm run build` y `npm run preview`; la URL de preview es local y no demuestra el sitio publicado. Una publicación requerirá la aprobación expresa del propietario y el gate #54 cuando corresponda.
+
+Para el despliegue autorizado, consultar el procedimiento vigente de [assets estáticos y SPA de Workers](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/) y registrar versión, ruta y dominio. Para volver a una versión anterior, [Cloudflare documenta rollback de Workers](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/); comprobar previamente compatibilidad de datos y disponibilidad de assets de páginas abiertas. El formato actual v12 puede no ser legible por builds anteriores: exportar una copia JSON antes de una prueba de rollback y no prometer que una versión vieja abra diseños nuevos. No se ha desplegado ni probado rollback real.
+
+### Continuación: creación en paredes visibles
+
+Por petición del propietario, la creación busca primero huecos libres en todas las paredes visibles; si no quedan, permite superposición en una pared visible válida. Solo si ninguna visible admite el objeto se prueban paredes ocultas. Se mantienen las restricciones de geometría, paredes ocultas manualmente y candados. Pruebas focalizadas: 13/13 de colocación y 32/32 de movimiento, anclaje y compatibilidad. Build aislada correcta (JS 1.622,73 kB; gzip 457,00 kB). En Chromium se añadieron diez cuadros: se ocuparon ambas paredes visibles antes de solapar y se mostró el panel de incidencias. Pendiente confirmación visual del propietario.
+
+**Actualización posterior:** la creación explora posiciones aleatorias en horizontal y altura; si no encuentra sitio por muestreo, prueba candidatos junto a los bordes de objetos y pared, antes de pasar a la siguiente pared. Si las visibles no admiten las posiciones probadas sin colisión, escoge una visible al azar y permite solape válido. Los validadores existentes siguen comprobando soporte y colisiones. La búsqueda por candidatos no demuestra encontrar todos los huecos posibles en geometrías giradas o irregulares: esta limitación queda pendiente de resolver antes de afirmar ocupación máxima exacta. Comprobación en Chromium con siete cuadros medianos: alturas y posiciones distintas, pasando a la segunda pared; prueba unitaria de hueco superior y 15 pruebas focalizadas aprobadas. Suite anterior al último ajuste de pruebas: 556/556; build posterior al código correcta. Pendiente validación del propietario.
+
+### Continuación: pegar en la habitación seleccionada
+
+Al seleccionar una habitación en Escena, copiar/cortar y pegar traslada el contenido a esa habitación con coordenadas relativas al origen, sin cambiar el foco de cámara. La operación respeta el destino en Raíz y habitaciones contiguas o en otra planta; conserva IDs al cortar y reancla objetos murales. Si el destino está bloqueado o no tiene espacio válido, no se realiza un pegado parcial y el contenido cortado continúa en el portapapeles. La selección de carpetas que no son habitaciones mantiene el comportamiento anterior.
+
+Comprobación focalizada: 43/43 pruebas de selección, pegado, anclajes e historial, incluyendo multiselección, fallo con reintento y persistencia. E2E Chromium: 1/1 con Ctrl+X, selección de carpeta y Ctrl+V, verificando además que la cámara no cambia. Build aislada correcta (aviso de bundle preexistente). Pendiente la prueba manual del propietario en su navegador.
+
+### Continuación: selección por área con botón derecho
+
+Mantener el botón derecho sobre el canvas activa temporalmente la selección por área; arrastrar dibuja el rectángulo y al soltar vuelve al estado previo de la herramienta manual. Un clic corto sigue seleccionando el elemento bajo el puntero. El gesto puede empezar sobre un objeto sin desplazarlo y se cancela al perder el foco o la captura. Conserva la restricción previa de selección por área en POV. Build aislada correcta; en Chromium pasaron las seis pruebas iniciales de área, incluida selección táctil y con Mayús, y cuatro pruebas focalizadas tras el ajuste final de cancelación, incluidos gesto sobre objeto e Isométrica. Pendiente validación manual del propietario.
+
+### Objetivo de dispositivos indicado por el propietario
+
+El 15/11/2026 el propietario establece como dirección que el editor sea fluido en dispositivos actuales corrientes y en equipos de gama media de entre cinco y diez años de antigüedad. Es una meta de diseño, no una certificación de todos esos dispositivos: faltan una muestra representativa, navegadores, especificaciones mínimas concretas y umbrales medidos (RB-017). Las mediciones con GTX 1060 recogidas arriba no acreditan por sí solas esa compatibilidad; hay que medir carga, memoria y gestos en equipos representativos, incluidas las escenas de 1/15/50 objetos, y corregir cuellos de botella observados.
+
+### Prueba visual: nombres de habitaciones y paredes
+
+Por petición del propietario se prueba la opción de nombres flotantes sobre las habitaciones. Cada nombre usa la carpeta existente de Escena, refleja sus cambios de nombre y selecciona esa carpeta sin modificar el foco de cámara; es un botón accesible por teclado. Se evita que las etiquetas visibles se corten o se superpongan cuando es posible. Las identificaciones de paredes pasan de placas flotantes a texto sobre la superficie; en Plano se muestra el texto sobre el trazo. No se añaden datos al formato persistido ni etiquetas al modelo exportado.
+
+Build aislada correcta. Tres comprobaciones E2E focalizadas aprobaron selección/nombre, pantalla estrecha y Plano detallado; también pasó la prueba focalizada previa de selección por área con botón derecho. Revisadas capturas de escritorio con cinco habitaciones y móvil. Es una propuesta implementada localmente pendiente de valoración visual y prueba manual del propietario; no certifica todos los tamaños, vistas ni dispositivos.
+
+### Continuación: perfil de gestos y primeras optimizaciones
+
+Mismo equipo (Windows, GTX 1060, ANGLE D3D11, Chromium de Playwright sin interfaz, 1280 × 720), build de producción servida con `vite preview`. Escenas desechables con 1/15/50 sillas en vista Isométrica; gestos: órbita con botón central (4 pasadas × 30 pasos) y arrastre de una silla (2 × 30 pasos). Mediana de tres repeticiones, sin limitar la CPU y con limitación ×4 por CDP. **La limitación ×4 es una simulación y no equivale a un equipo antiguo real.** Arnés reproducible: `scripts/playwright-profile/issue32-gestures.cjs`.
+
+Perfil de CPU (build sin minificar, 50 sillas, órbita, ~2,5 s ocupados): render de Three.js ~1,1 s (mapa de sombras ~0,29 s), reconciliación React/R3F ~0,56 s y `persistedDesignSignature` ~0,1 s. Causas identificadas:
+
+1. El `set` del store serializaba dos veces el diseño completo en **cada** actualización, incluidas las de cámara, y durante un arrastre volvía a normalizar el diseño guardado en cada paso.
+2. El ángulo de cámara llega como prop a `RoomScene`, así que cada paso de órbita re-renderizaba todos los muebles.
+3. Las advertencias espaciales se calculaban por mueble (todos contra todos) en cada actualización del store.
+
+Cambios aplicados (sin cambios de formato, aspecto ni comportamiento):
+
+- `useRoomStore`: si ningún campo persistido cambia de referencia, se omite la firma (el resultado sería idéntico); la firma del diseño guardado se cachea por objeto de datos (`WeakMap`) y se reutiliza la firma calculada.
+- `furnitureSpatialWarningIds` en `structureCollisions`: un cálculo compartido por estado del mundo (caché por identidad de `room`, `furniture` y `structurePacks`); cada mueble se suscribe solo a su booleano. Sustituye la suscripción a toda la lista de muebles de la continuación anterior, que obligaba a re-renderizar todos al arrastrar uno.
+- `FurnitureObject` envuelto en `React.memo`.
+
+| 50 sillas | Antes | Después |
+| --- | --- | --- |
+| Órbita ×4: fotograma mediano / p95 | 83 / 117 ms | 50 / 83 ms |
+| Arrastre ×4: fotograma mediano / p95 | 67 / 167 ms | 50 / 133 ms |
+| Órbita sin limitar: tiempo de script | 1.896 ms | 1.241 ms |
+| Arrastre sin limitar: tiempo de script | 1.750 ms | 1.270 ms |
+| Reconciliación React en órbita (perfil) | 564 ms | 206 ms |
+
+Con 15 sillas ×4, la órbita pasa de 19 a 5 fotogramas por encima de 50 ms. Sin limitar, las tres escenas mantienen 60 fps en ambos gestos, antes y después. Pruebas: unitaria nueva de `furnitureSpatialWarningIds` y 178/178 unitarias focalizadas de store, historial, persistencia y colisiones; `tsc` correcto; build correcta. E2E focalizado `furniture-gestures` + `persistence-integrity`: 12/14. **Fallan las dos variantes táctiles del arrastre por eje X** (el objeto no se mueve). Fallan igual con `FurnitureObject.tsx` de HEAD, así que no las causa `memo`; queda pendiente localizar la causa entre los cambios locales sin commit de esta rama. Hipótesis no verificada: la etiqueta flotante de nombre de habitación queda en el centro del plano, donde toca la prueba.
+
+Hallazgos pendientes de decisión (no aplicados porque afectan a la arquitectura o al aspecto visual):
+
+- **Render continuo en reposo:** el Canvas usa `frameloop` continuo. Con 50 sillas se emiten ~42.000 llamadas de dibujo por segundo sin interacción (habitación vacía: ~45 por fotograma; cada silla añade ~13, entre la pasada normal y la de sombras). Renderizar bajo demanda reduciría el consumo en reposo (batería y temperatura en portátiles), pero exige invalidar el render en todas las animaciones con `useFrame` (cámara, teclado libre, etiquetas).
+- **Sombras:** ~12 % del render durante gestos. Opciones: congelar el mapa de sombras durante la órbita o actualizarlo solo cuando cambie el mundo, con riesgo de sombras desfasadas al ocultar paredes por orientación.
+- **Llamadas de dibujo por objeto:** fusionar geometrías o usar instancias para los modelos repetidos; cambio de mayor alcance.
+- Siguen pendientes las mediciones en hardware modesto real y los umbrales (RB-017).
+
+### Continuación: licencias y despliegue
+
+**Destino confirmado por el propietario (15/11/2026):** Cloudflare Workers, servicio `room-builder`, entorno *production*, desplegado mediante Workers Builds conectado al repositorio (enlace del panel facilitado por el propietario). Sustituye la mención a Pages de la issue. El panel requiere su sesión y no se ha podido consultar: no se han verificado la rama de producción, los comandos configurados, las builds de ramas no productivas ni la URL pública. Que exista una build de producción indica que ya hay una versión publicada; no se ha comprobado su contenido ni su versión.
+
+**Recursos:** la app no carga fuentes, imágenes, modelos ni otros recursos externos. Los modelos 3D se generan por código e `Inter` solo se usa si está instalada en el equipo (pila de fuentes del sistema). No hay recursos de terceros fuera de las dependencias npm.
+
+**Dependencias de ejecución** (14, sin contar los paquetes solo de tipos): todas MIT, salvo `ieee754` (BSD-3-Clause), que entra a través de `buffer` en `@react-three/fiber`. Estas licencias exigen conservar el aviso de copyright, pero el bundle minificado solo mantenía la cabecera de React. Corrección: `scripts/generate-third-party-notices.mjs`, añadido al final de `npm run build`, genera `dist/THIRD_PARTY_LICENSES.txt` con el texto de licencia de cada paquete. Para `@react-three/fiber`, cuyo paquete npm no incluye archivo de licencia, indica la licencia MIT y enlaza su repositorio. No añade dependencias. Build correcta: 14 paquetes, y `dist/` contiene solo `index.html`, `assets/` y el archivo de licencias, sin mapas de código fuente.
+
+**Documentación:** nueva sección *Despliegue* en `README.md` con destino, comandos esperados, aislamiento de diseños por dominio (`localStorage` ligado al origen: vista previa, `workers.dev` y dominio propio no comparten diseños) y rollback mediante *Deployments* o `wrangler rollback`, con copia JSON previa por compatibilidad de formato.
+
+Pendiente:
+- Licencia del propio código y de sus modelos procedimentales (RB-018), a decidir por el propietario.
+- Confirmar en el panel la rama de producción y si las ramas no productivas generan URLs de vista previa públicas. Si la rama de producción es `main` con despliegue automático, cada integración publica sin pasar por el gate #54.
+- Comprobar la URL pública: carga directa, recarga en rutas, guardado local y ausencia de diagnósticos.
+- Favicon inexistente (404).
+- Probar un rollback real.
+
+**Actualización: configuración y URL pública.** Captura del panel facilitada por el propietario: repositorio `Pablo-hg/Room-Builder`, rama de producción `main`, builds activas, build `npm run build`, despliegue `npx wrangler deploy`, raíz `/`, rutas vigiladas `*` y sin variables ni secretos. **Cada integración en `main` publica automáticamente.**
+
+Comprobación de solo lectura de <https://room-builder.phghorcajada.workers.dev/> el 15/11/2026, con Chromium aislado y un diseño desechable:
+- HTTP 200; canvas visible en ~3,2 s desde Madrid.
+- Assets JS y CSS servidos con Brotli, sin referencias a mapas de código fuente y sin las cadenas de las herramientas de diagnóstico de desarrollo.
+- Ninguna petición a otros dominios y ningún error de página.
+- Guardar una silla y recargar la conserva.
+- Rutas directas e inexistentes devuelven la página de la app (fallback SPA). `/package.json`, `/wrangler.jsonc`, `/src/main.tsx`, `/.git/config`, `/logs/` y `/__room-builder/interaction-log` no exponen contenido: devuelven la misma página. `/favicon.ico` y `/THIRD_PARTY_LICENSES.txt` también devuelven esa página, porque no existen en la versión publicada.
+
+La versión publicada coincide con `origin/main` (`26d1cd0`, PR #77): guarda diseños v10. Las PR #78 y #79, con el formato v12, están en `dev`. **Riesgo concreto:** al integrar `dev` en `main`, los diseños que se abran en producción pasarán a v12, y un rollback a la versión actual no podrá leerlos, porque solo acepta v1–v11. Antes de esa integración conviene exportar los diseños importantes.
+
+Las URLs de vista previa probadas para `dev` y esta rama devuelven 404: indicio de que las ramas no productivas no se publican, pendiente de confirmar en la pestaña *Previews Base*. Los assets con hash se sirven con `max-age=0, must-revalidate`; marcarlos como inmutables con un archivo `_headers` evitaría revalidaciones (propuesta, no aplicada).
+
+**Actualización: caché y tarea de licencia.**
+- *Caché:* por decisión del propietario se añade `public/_headers`, que Vite copia a `dist/`, con `Cache-Control: public, max-age=31536000, immutable` para `/assets/*`. Esos archivos llevan un hash de contenido en el nombre; `index.html` mantiene la cabecera por defecto (`max-age=0, must-revalidate`), que es como se detectan las versiones nuevas. Se añade `public/.assetsignore` para que `_headers` y el propio `.assetsignore` no se suban como recursos públicos. Según la documentación de Workers (actualizada el 12/11/2026), las reglas de `_headers` sustituyen la cabecera por defecto, no se aplican a respuestas generadas por código del Worker (este proyecto no tiene) y admiten hasta 100 reglas. Build correcta con ambos archivos en `dist/`. **No se ha comprobado en Cloudflare:** solo surtirá efecto al publicarse desde `main`. Entonces habrá que verificar que `/assets/*.js` responde con la nueva cabecera, que `index.html` conserva la anterior y que `/_headers` no se sirve.
+- *Licencia:* creada la tarea especial #80, sin Milestone ni etiquetas, como la épica #23, para decidir RB-018.
+
+## 15/11/2026 — #33 Validación E2E y checkpoint v0.2: arranque
+
+Rama `feature/f1-09-validacion-ckeckpoint`. Detalle completo, gates, resultados y checklist en [F1_CHECKPOINT_V02.md](F1_CHECKPOINT_V02.md). Resumen: **checkpoint NO certificado** (RB-054 PROPUESTO).
+
+- Corregido el defecto real que rompía los dos E2E táctiles del eje X: la etiqueta de nombre de habitación tapaba el mobiliario central en Plano.
+- Nuevo E2E de recorrido completo `tests/checkpoint-v02.spec.ts`. Unitarias 567/567. **Suite E2E completa en local: 249/249** con el código final. Los fallos intermedios eran tests obsoletos o dependientes del azar de la colocación de ventanas (`window-visible-placement`, `free-wall-objects`) y un cálculo propio del test de Alt+clic; no un defecto de la app en ese caso.
+- Pendiente: cierre de #30–#32, `e2e-full.yml` en Linux, prueba humana y decisión sobre cómo registrar v0.2. Nada de esto se ha subido ni commiteado.

@@ -81,7 +81,7 @@ test('anida carpetas, conserva jerarquía v3 y aplica acciones a descendientes',
   store.getState().createElementFolder('Hija', id, parent.id)
   const child = store.getState().elementFolders[1]
   const design = persistedDesign(store.getState())
-  assert.equal(design.version, 10)
+  assert.equal(design.version, 12)
   assert.deepEqual(normalizeDesignPreferences(design).elementFolders, [parent, child])
   store.getState().toggleElementFolderVisibility(parent.id)
   store.getState().toggleElementFolderLock(parent.id)

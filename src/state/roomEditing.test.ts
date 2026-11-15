@@ -5,6 +5,7 @@ import { BASE_ROOM_SURFACE_IDS, folderSelectionId, ROOT_ROOM_FOLDER } from '../d
 import { packRoomBox, selectedEditableRoom, surfacePosition } from '../domain/roomEditing'
 import { elementName } from '../domain/selection'
 import { structureSurfaceElementId } from '../domain/elementIds'
+import { ROOM_WALL_THICKNESS } from '../domain/constants'
 import { persistedDesign } from '../domain/designV1'
 import { normalizeDesign } from '../persistence/designMigrations'
 import { parseDesignFile, serializeDesignFile } from '../persistence/designFile'
@@ -82,7 +83,8 @@ test('crear junto a una habitación redimensionada respeta sus medidas y posici�
   const first = store.getState().structurePacks[0]
   store.getState().addStructurePack('east')
   const next = store.getState().structurePacks[1]
-  assert.equal(next.x - first.x, 7)
+  // Contigua al este: su anchura más un grosor de pared compartida.
+  assert.ok(Math.abs(next.x - first.x - (7 + ROOM_WALL_THICKNESS)) < 1e-9)
   assert.equal(packRoomBox(next, store.getState().room)?.width, 7)
   assert.equal(packRoomBox(next, store.getState().room)?.height, 4)
 })
@@ -116,7 +118,7 @@ test('añade varias puertas con huecos reales en la pared indicada y conserva JS
   assert.equal(openings[0].kind, 'door')
   assert.equal(openings[0].bottom, 0)
   const data = persistedDesign(store.getState())
-  assert.equal(data.version, 10)
+  assert.equal(data.version, 12)
   const design = { id: 'doors', name: 'Puertas', savedAt: '2026-11-07T12:00:00.000Z', data }
   assert.deepEqual(normalizeDesign(data).structurePacks, data.structurePacks)
   assert.deepEqual(parseDesignFile(serializeDesignFile(design)).design.data.structurePacks, data.structurePacks)

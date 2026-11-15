@@ -195,7 +195,13 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
   const act = (action: () => void) => { setContext(null); action() }
 
   return <>
-    <div className="saved-design-select" ref={savedDesignsRef} onContextMenu={(event) => onContext(event, state.selectedSavedDesignId || null)}>
+    <div className="saved-design-select" ref={savedDesignsRef} onContextMenu={(event) => onContext(event, state.selectedSavedDesignId || null)} onBlur={(event) => {
+      // Un menú desplegable no modal se cierra cuando el foco de teclado sale de él (Tab),
+      // salvo hacia sus propios portales: menú contextual o diálogos de confirmación.
+      const next = event.relatedTarget
+      if (!savedDesignsOpen || !(next instanceof Element) || savedDesignsRef.current?.contains(next) || next.closest('.design-context-menu, .design-modal-backdrop')) return
+      setSavedDesignsOpen(false)
+    }}>
       <div className="saved-design-selector-row">
         <button type="button" className="saved-design-trigger" ref={savedDesignTriggerRef} aria-label="Seleccionar diseño guardado" aria-expanded={savedDesignsOpen} aria-haspopup="dialog" aria-controls="saved-designs-popup" onKeyDown={(event) => {
           if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return

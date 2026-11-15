@@ -128,7 +128,7 @@ export interface ProjectMetadataV2 {
   createdAt: string
   updatedAt: string
   source: 'v1-design' | 'new'
-  migratedFromVersion?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11
+  migratedFromVersion?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
 }
 
 export interface ProjectV2 {

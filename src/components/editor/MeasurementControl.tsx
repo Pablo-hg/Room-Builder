@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { isMeasurementStep, MEASUREMENT_INVALID_NOTICE, MEASUREMENT_STEP, MEASUREMENT_STEP_NOTICE, measurementCentimetres, measurementMetres, parseMeasurement, snapMeasurement, stepMeasurement } from '../../domain/measurements'
 import { beginMeasurementLog, finishMeasurementLog } from '../../debug/interactionLog'
 import { diagnostics } from '../../diagnostics/engine'
@@ -25,6 +25,7 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
 }) {
   const [draft, setDraft] = useState(measurementMetres(value))
   const [error, setError] = useState('')
+  const errorId = useId()
   const skipBlur = useRef(false)
   const draftRef = useRef(draft)
   const valueRef = useRef(value)
@@ -179,7 +180,7 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
     else state.undo()
   }}>
     <span><span style={{ color: textColor }}>{label}</span><span className="position-number" style={{ color: textColor }}>
-      <input type="text" inputMode="decimal" style={{ color: textColor }} aria-label={inputLabel ?? `Introducir ${label.toLowerCase()} en metros`} aria-invalid={!!error}
+      <input type="text" inputMode="decimal" style={{ color: textColor }} aria-label={inputLabel ?? `Introducir ${label.toLowerCase()} en metros`} aria-invalid={!!error} aria-describedby={error ? errorId : undefined}
         value={draft} disabled={disabled} onChange={(event) => { draftRef.current = event.target.value; setDraft(event.target.value); setError('') }}
         onKeyDown={(event) => {
           if (event.key === 'Enter') { event.preventDefault(); stopHold(); commit(); finishEdit() }
@@ -194,8 +195,9 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
         onBlur={() => { stopHold(); if (skipBlur.current) skipBlur.current = false; else commit() }} />
       <span aria-hidden="true">m</span>
       <span className="measurement-stepper" role="group" aria-label={`Ajustar ${label.toLowerCase()} en pasos de 1 cm`}>
-        {stepper(1)}
+        {/* En fila: bajar ▼ y subir ▲, el mismo orden visual y de tabulación. */}
         {stepper(-1)}
+        {stepper(1)}
       </span>
     </span></span>
       <input type="range" aria-label={label} min={Math.ceil((min - 1e-9) / MEASUREMENT_STEP) * MEASUREMENT_STEP}
@@ -212,6 +214,6 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
         apply(clamp(Number(event.target.value)))
       }} />
     <small className="measurement-equivalent" style={{ color: textColor }}>{!isMeasurementStep(value) ? '≈ ' : ''}{measurementCentimetres(value)} cm{!isMeasurementStep(value) ? ' · valor anterior conservado' : ''}</small>
-    {error && <small className="measurement-error" role="alert">{error}</small>}
+    {error && <small id={errorId} className="measurement-error" role="alert">{error}</small>}
   </div>
 }

@@ -9,6 +9,7 @@ import { validateFurnitureWallAttachments } from '../domain/furnitureWalls'
 import { structureDoorsWorldError } from '../domain/structureDoors'
 import { structureGridElementId, structureSurfaceElementId } from '../domain/elementIds'
 import { BASE_ROOM_SURFACE_IDS, folderSelectionId } from '../domain/elementFolders'
+import { migrateWallLayout } from './wallLayoutMigration'
 
 /**
  * Aplana un v5 local de la etapa de variantes a su variante activa.
@@ -64,9 +65,11 @@ export function normalizeDesign(value: unknown): PersistedDesign {
     const preset = FURNITURE_PRESETS[item.kind]
     return { ...item, width: item.width ?? preset?.width, depth: item.depth ?? preset?.depth, height: item.height ?? preset?.height, y: item.y ?? 0 }
   })
-  validateFurniture(furniture, migrated.room)
-  validateFurnitureWallAttachments({ room: migrated.room, structurePacks, furniture }, source.version)
-  return { ...source, room: migrated.room, structurePacks, furniture, ...normalizeDesignPreferences(source) }
+  // v1–v11 → v12: paredes de habitación por fuera del suelo.
+  const laidOut = migrateWallLayout({ ...source, room: migrated.room, structurePacks, furniture })
+  validateFurniture(laidOut.furniture, laidOut.room)
+  validateFurnitureWallAttachments({ room: laidOut.room, structurePacks: laidOut.structurePacks ?? [], furniture: laidOut.furniture }, source.version)
+  return { ...laidOut, ...normalizeDesignPreferences(source) }
 }
 
 /** Un objeto marcado por tipo no puede guardarse con una altura incompatible con su anclaje. */

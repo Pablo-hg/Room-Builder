@@ -8,6 +8,8 @@ export const DEFAULT_FLOOR_COLOR = '#dcc3a3'
 export const ROOT_FLOOR_THICKNESS = 0.08
 export const ROOT_PLATFORM_THICKNESS = 0.14
 export const ROOT_PLATFORM_Y = -0.11
+/** Grosor de las paredes de habitación (principal y nuevas). */
+export const ROOM_WALL_THICKNESS = 0.12
 export const FRONT_CAMERA_MIN_HEIGHT = 1.35
 export const FRONT_CAMERA_MAX_HEIGHT = 10
 export const WALL_LABELS: Record<WallSide, string> = {

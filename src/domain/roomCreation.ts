@@ -2,6 +2,7 @@ import { BASE_ROOM_SURFACE_IDS, ROOT_ROOM_FOLDER } from './elementFolders'
 import { structureSurfaceElementId } from './elementIds'
 import { packRoomBox, rebasePack, roomVerticalBounds, surfacePosition, worldRoomBoxes } from './roomEditing'
 import { createStructureSurface } from './structureRules'
+import { ROOM_WALL_THICKNESS } from './constants'
 import type { StructurePack, StructureSurfaceKey } from './types'
 import type { RoomState } from '../state/types'
 
@@ -21,11 +22,14 @@ export function planRoomCreation(state: CreationState, direction?: RoomCreationD
   const template = { ...state.room, ...(referenceBox ? { width: referenceBox.width, depth: referenceBox.depth, height: referenceBox.height } : {}) }
   const origin = { x: (reference?.x ?? 0) + (referenceBox?.x ?? 0), y: (reference?.y ?? 0) + (referenceBox?.y ?? 0), z: (reference?.z ?? 0) + (referenceBox?.z ?? 0) }
   const surfaceIds: StructureSurfaceKey[] = ['floor', 'ceiling', 'wall-north', 'wall-east', 'wall-south', 'wall-west']
+  // Las paredes van por fuera del suelo: una habitación contigua se separa además un
+  // grosor de pared para que ambas compartan una única pared en la frontera.
+  const gap = ROOM_WALL_THICKNESS
   const pack: StructurePack = rebasePack({
     id: '__room-preview__', name: '',
-    x: origin.x + (direction === 'east' ? template.width : direction === 'west' ? -template.width : 0),
+    x: origin.x + (direction === 'east' ? template.width + gap : direction === 'west' ? -template.width - gap : 0),
     y: direction ? origin.y : 0,
-    z: origin.z + (direction === 'south' ? template.depth : direction === 'north' ? -template.depth : 0),
+    z: origin.z + (direction === 'south' ? template.depth + gap : direction === 'north' ? -template.depth - gap : 0),
     surfaces: surfaceIds.map((id) => {
       const surface = createStructureSurface(template, id)
       // The top face of a new ceiling ends at the wall top, not half a slab above.

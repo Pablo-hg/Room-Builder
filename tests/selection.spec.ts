@@ -290,7 +290,9 @@ test('Alt+clic recorre dos muebles superpuestos sin moverlos', { tag: '@smoke' }
     raycaster.setFromCamera({ x: point.x, y: point.y }, sceneState.camera)
     const hits = [...new Set(raycaster.intersectObjects(sceneState.scene.children, true).flatMap((hit: SceneIntersection) => {
       for (let current = hit.object; current; current = current.parent) {
-        if (typeof current.userData.elementId === 'string') return [current.userData.elementId]
+        // El rayo de este test cuenta también el suelo base (room-floor); el ciclo real de Alt+clic de la app
+        // no lo recorre (comprobado: sillón → silla → sillón sin filtro en la app). Se ignora para comparar lo mismo.
+        if (typeof current.userData.elementId === 'string') return current.userData.elementId === 'room-floor' ? [] : [current.userData.elementId]
       }
       return []
     }))]

@@ -34,6 +34,21 @@ function editorNotice(notice: string): string {
   return wallLimit.test(notice) ? '' : notice
 }
 
+// Los datos de un diseño guardado son inmutables en el store: su firma se
+// calcula una vez y no en cada paso de un arrastre. Una entrada inválida da
+// firma vacía y no impide editar el diseño actual.
+const savedSignatures = new WeakMap<object, string>()
+function savedDesignSignature(data: unknown) {
+  if (!data || typeof data !== 'object') return ''
+  let signature = savedSignatures.get(data)
+  if (signature === undefined) {
+    try { signature = persistedDesignSignature(normalizeDesign(data)) }
+    catch { signature = '' }
+    savedSignatures.set(data, signature)
+  }
+  return signature
+}
+
 export const createRoomStore = (repository: DesignRepository = createLocalDesignRepository()) => create<RoomState>((storeSet, get) => {
   // Camera navigation is session state, never part of a saved design or undo entry.
   let roomFocusHistory: Array<string | null> = [null]
@@ -44,6 +59,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     copiedElement: null,
     copiedElements: null,
     copiedFolders: {},
+    copiedRoomOrigins: {},
     copiedCut: false,
     isUndoing: false,
     activeGesture: null,
@@ -218,20 +234,22 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
       if (error) { rejectDiagnosticAction('structure-door-invalid'); storeSet({ notice: editorNotice(error) }); return }
     }
     roomFocusHistory = nextFocusHistory
-    const designChanged = persistedDesignSignature(persistedDesign(current)) !== persistedDesignSignature(persistedDesign(nextState))
+    const previousDesign = persistedDesign(current)
+    const nextDesign = persistedDesign(nextState)
+    // Cámara, selección y paneles no tocan campos persistidos: si todas las
+    // referencias coinciden, la firma también, y se evita serializar el diseño
+    // completo en cada paso de un gesto (#32).
+    const persistedFieldsTouched = (Object.keys(nextDesign) as (keyof typeof nextDesign)[]).some((key) => previousDesign[key] !== nextDesign[key])
+    const nextSignature = persistedFieldsTouched ? persistedDesignSignature(nextDesign) : ''
+    const designChanged = persistedFieldsTouched && persistedDesignSignature(previousDesign) !== nextSignature
     if (designChanged) {
-      recordHistoryChange(runtime, persistedDesign(current))
+      recordHistoryChange(runtime, previousDesign)
       const activeDesign = nextState.savedDesigns.find((design) => design.id === nextState.selectedSavedDesignId)
-      let savedSignature = ''
-      if (activeDesign) {
-        try { savedSignature = persistedDesignSignature(normalizeDesign(activeDesign.data)) }
-        catch { /* Una entrada inválida no impide editar el diseño actual. */ }
-      }
       storeSet({
         ...nextUpdate,
         undoCount: runtime.undoHistory.length,
         redoCount: runtime.redoHistory.length,
-        hasUnsavedChanges: nextUpdate.hasUnsavedChanges ?? (!activeDesign || persistedDesignSignature(persistedDesign(nextState)) !== savedSignature),
+        hasUnsavedChanges: nextUpdate.hasUnsavedChanges ?? (!activeDesign || nextSignature !== savedDesignSignature(activeDesign.data)),
       })
       return
     }

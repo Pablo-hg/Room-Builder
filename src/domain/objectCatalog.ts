@@ -70,7 +70,7 @@ const FURNITURE_DEFINITIONS: Record<FurnitureKind, FurnitureDefinition> = {
   cabinet: { base: { kind: 'cabinet', name: 'Aparador', width: 1.5, depth: 0.5, height: 0.9, color: '#748d84' }, family: 'storage', capabilities: FLOOR_CAPABILITIES },
   bookshelf: { base: { kind: 'bookshelf', name: 'Estantería', width: 1, depth: 0.25, height: 1.8, color: '#9b7354' }, family: 'storage', capabilities: FLOOR_CAPABILITIES },
   wardrobe: { base: { kind: 'wardrobe', name: 'Armario de ropa', width: 1.5, depth: 0.5, height: 2, color: '#87988d' }, family: 'storage', capabilities: FLOOR_CAPABILITIES },
-  lamp: { base: { kind: 'lamp', name: 'Lámpara', width: 0.5, depth: 0.5, height: 1.65, color: '#d3a755' }, family: 'lighting', capabilities: FLOOR_CAPABILITIES },
+  lamp: { base: { kind: 'lamp', name: 'Lámpara de pie', width: 0.5, depth: 0.5, height: 1.65, color: '#d3a755' }, family: 'lighting', capabilities: FLOOR_CAPABILITIES },
   wastebasket: { base: { kind: 'wastebasket', name: 'Papelera', width: 0.5, depth: 0.5, height: 0.5, color: '#738980' }, family: 'accessories', capabilities: FLOOR_CAPABILITIES },
   vase: { base: { kind: 'vase', name: 'Jarrón', width: 0.5, depth: 0.5, height: 0.5, color: '#b97862' }, family: 'accessories', capabilities: FLOOR_CAPABILITIES },
   tableLamp: { base: { kind: 'tableLamp', name: 'Lámpara de mesa', width: 0.5, depth: 0.5, height: 0.6, color: '#d3a755' }, family: 'lighting', capabilities: FLOOR_CAPABILITIES },
@@ -117,7 +117,9 @@ export function canElevateFurniture(item: Pick<FurnitureItem, 'kind' | 'attachme
 export function furnitureVisualYOffset(item: Pick<FurnitureItem, 'kind' | 'attachmentPolicy' | 'axisLocks'> & Partial<Pick<FurnitureItem, 'x' | 'y' | 'z'>>, world?: PlacementWorld): number {
   if (item.axisLocks) return 0
   const attachment = furnitureAttachment(item)
-  const legacyOffset = attachment === 'floor' || attachment === 'ceiling' ? 0 : 0.02
+  // Una lámpara de techo nunca lleva el realce heredado de 2 cm: en diseños antiguos la
+  // empujaba por encima del techo y aparecía «fuera de la vivienda».
+  const legacyOffset = attachment === 'floor' || attachment === 'ceiling' || isCeilingMountedFurniture(item.kind) ? 0 : 0.02
   if (isFloorBoundFurniture(item.kind)) {
     const top = world && item.x !== undefined && item.y !== undefined && item.z !== undefined
       ? supportingFloorTop({ x: item.x, y: item.y, z: item.z }, world) : 0.04
@@ -230,6 +232,30 @@ export function openingKindForShape(shape: WindowShape): Exclude<OpeningKind, 'd
   if (shape === 'circular') return 'circularWindow'
   return shape
 }
+
+export type StandaloneOpeningKind = Exclude<OpeningKind, 'pictureSmall' | 'pictureMedium' | 'pictureLarge'>
+
+/** Forma persistida (WindowShape) con la que se añade cada apertura; la puerta no tiene forma de ventana. */
+export function openingShapeForKind(kind: Exclude<StandaloneOpeningKind, 'door'>): WindowShape {
+  if (kind === 'window') return 'rectangular'
+  if (kind === 'circularWindow') return 'circular'
+  return kind
+}
+
+/**
+ * Ubicación en el menú Catálogo de las aperturas y elementos murales que no son
+ * muebles. Única fuente: el menú, el inventario y los tests la leen de aquí.
+ * El orden es el de aparición dentro de su grupo.
+ */
+export const STANDALONE_OPENING_MENU: readonly { kind: StandaloneOpeningKind; group: 'openings' | FurnitureFamily }[] = [
+  { kind: 'door', group: 'openings' },
+  { kind: 'window', group: 'openings' },
+  { kind: 'circularWindow', group: 'openings' },
+  { kind: 'wallSconce', group: 'wallDecor' },
+  { kind: 'mirrorRectangular', group: 'wallDecor' },
+  { kind: 'mirrorCircular', group: 'wallDecor' },
+  { kind: 'wallShelf', group: 'storage' },
+]
 
 export function isWindowShape(value: unknown): value is WindowShape {
   return value === 'rectangular'

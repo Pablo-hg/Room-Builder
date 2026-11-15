@@ -68,6 +68,9 @@ test('una pared inclinada que cruza los dos muros adyacentes puede cerrar un pol
   const wall = inner.surfaces.find((surface) => surface.id === 'wall-east')!
   wall.x -= 0.5
   wall.rotation = 0.10
+  // Con las paredes por fuera del suelo, una pared del largo exacto del suelo girada ya
+  // no alcanza a las contiguas: se alarga para que realmente las cruce.
+  wall.width += 0.3
   const world = { room: DEFAULT_ROOM, structurePacks: [inner] }
   assert.equal(boxOutsideBuilding(world, { ...box, x: DEFAULT_ROOM.width, z: 0 }), false)
 })
@@ -77,7 +80,9 @@ test('una pared inclinada que cruza los dos muros adyacentes puede cerrar un pol
 test('un muro exterior más grueso cierra el recinto por contacto entre sólidos, sin cruce de ejes centrales', () => {
   const roomPack = pack('east', DEFAULT_ROOM.width)
   const wall = roomPack.surfaces.find((surface) => surface.id === 'wall-east')!
-  wall.x += 0.28
+  // Separada 5 cm del suelo: su cara interior toca solo los extremos de las paredes norte y
+  // sur (que cubren las esquinas), y su eje central queda lejos de ellas.
+  wall.x += 0.05
   wall.depth = 0.85
   const world = { room: DEFAULT_ROOM, structurePacks: [roomPack] }
   assert.equal(boxOutsideBuilding(world, { ...box, x: DEFAULT_ROOM.width, z: 0 }), false)

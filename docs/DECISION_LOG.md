@@ -1,5 +1,12 @@
 # Registro de decisiones — Room Builder
 
+> **CONFIRMADO por el propietario, 14–15/11/2026 (#30, rama `feature/F1-06-auditar-catalogo`; implementación local, validación funcional y visual pendiente):**
+> - **Paredes de habitación por fuera del suelo:** la cara interior de la pared coincide con el borde del suelo y la cuadrícula; la medida de la habitación es el espacio interior. Habitaciones contiguas separadas un grosor con **una única pared compartida**. Grosor de paredes nuevas unificado a **0,12 m**. Diseños guardados: formato **v12** con migración al cargar, incluida la separación de habitaciones contiguas. Detalle en [DATA_AND_FORMATS](DATA_AND_FORMATS.md).
+> - **Iconos generados desde el modelo 3D:** el icono de cada objeto se proyecta desde su propio modelo con la cámara isométrica de la escena; no se dibujan a mano (salvo los tres cuadros, que siguen en 2D). Los modelos de pared pasan a `WallObjectModels.tsx`, compartidos por escena e icono.
+> - **Estándares de modelos comprobados por tests** para todo objeto del catálogo, presente o futuro (`modelStandards.test.ts`); reglas y alta de objetos en [VISUAL_STYLE_GUIDE](../VISUAL_STYLE_GUIDE.md).
+> - **Lámparas y aplique sin luz ni brillo propio.** Correcciones de modelos: jarrón nuevo apoyado en el suelo, pantallas a dos caras, estantería sin caras coplanares y con libros, reflejo del espejo dentro del cristal.
+> - Etiqueta visible «Lámpara de pie» para `lamp` (clave sin cambios). El televisor sigue en Accesorios; las prioridades de cobertura por estancia pasan a #75 como propuesta.
+
 > **Corrección local solicitada el 11/11/2026:** en Plano se elimina el sufijo «editando» y se conserva el trazo de pared al 50 %, alineando su cara interior con la pared física para no introducir huecos visuales. Los arrastres de ratón mantienen el contacto magnético exacto aunque sus objetivos avancen a pasos de 5 cm; no se altera el grosor de las paredes ni se redondean los diseños guardados. La cámara calcula las transiciones a Plano respecto a la habitación enfocada, incluida su planta. Implementación local y comprobación estática; validación funcional/visual pendiente en [F1](progress/F1_PROGRESS.md).
 
 > **Corrección CONFIRMADA por el propietario, 11/11/2026, posterior a la primera implementación:** los muebles vuelven a poder atravesar paredes. El contacto es un imán suave, no un tope: ayuda a alinear, incluso contra dos caras de una esquina, y cede al seguir moviendo con ratón o controles de posición. Una fijación manual también se despega al empujar en la dirección normal; los bloqueos de ejes elegidos por el usuario se conservan. En Plano el trazo usa el grosor físico para no tapar el borde de un objeto alineado. Esta decisión sustituye la detención rígida descrita en la entrada anterior y mantiene los solapes de RB-039/RB-041. Implementado localmente en `feature/F1-02-validad-cosas`; validación funcional y visual pendiente. Véase la continuación del [informe F1](progress/F1_PROGRESS.md).
@@ -32,7 +39,7 @@
 | RB-014 | Generador de muebles a partir de texto | EXPERIMENTAL | Existe GENERADOR_OBJETOS.md, no implementado |
 | RB-015 | Soporte pleno de casas, plantas, escaleras y geometría irregular | PENDIENTE | Visión futura; límites por definir |
 | RB-016 | Paleta cromática exacta, tokens, ejemplos/asset pack de referencia | PENDIENTE | La dirección visual sí está acordada |
-| RB-017 | Cantidad de muebles, metas de rendimiento y dispositivos mínimos | PENDIENTE | Validar al medir |
+| RB-017 | Cantidad de muebles, metas de rendimiento y dispositivos mínimos | DIRECCIÓN CONFIRMADA; mínimos PENDIENTES | 15/11/2026: el propietario pide fluidez en dispositivos actuales corrientes y equipos de gama media de hace 5–10 años; concretar dispositivos, límites y umbrales mediante medición. No implica compatibilidad ya verificada. |
 | RB-018 | Publicación pública, licencias del código/assets, modalidades de distribución | PENDIENTE | Repositorio público; distribución/licencias pendientes de formalizar |
 | RB-019 | Refactor por fases sin nuevas funciones ni alteración visual | PROPUESTO | Ver REFACTOR_PLAN |
 | RB-020 | No simular exactitud arquitectónica/estructural ni usar datos privados externos | CONFIRMADO como principio | Visualización orientativa |
@@ -69,6 +76,7 @@
 | RB-051 | Editor modular de muebles por primitivas, agrupación, duplicación y materiales (sin edición avanzada de mallas) | APROBADO para MVP completo; pendiente | [#47](https://github.com/Pablo-hg/Room-Builder/issues/47) · Decisión B |
 | RB-052 | El conjunto de todas las issues abiertas #23–#41 seleccionadas, #45/#47 y #51–#54 define el MVP local completo; v0.2 es checkpoint, gate final #54 | CONFIRMADO como alcance y planificación, 04/11/2026 | [MVP_MASTER_PLAN.md](MVP_MASTER_PLAN.md), épica #23; publicar solo con validación y autorización |
 | RB-053 | Límites de edición de cada habitación: anchura y profundidad 0,01–50 m, altura 0,01–15 m. La importación sigue aceptando cotas de hasta 100 m para no romper diseños antiguos; al editarlos se ajustan a los nuevos máximos | CONFIRMADO por el propietario (10/11/2026); implementado, pendiente de validación | [#26](https://github.com/Pablo-hg/Room-Builder/issues/26) · `ROOM_LIMITS`; además, el plano lejano de la cámara se adapta a la escena para que las salas grandes no salgan cortadas |
+| RB-054 | Checkpoint estable v0.2 (#33): base certificada del editor de una habitación, sin implicar MVP completo ni publicación | PROPUESTO; NO certificado (15/11/2026) | [F1_CHECKPOINT_V02.md](progress/F1_CHECKPOINT_V02.md). Se registrará como CONFIRMADO cuando: #30, #31 y #32 estén cerradas; la suite E2E completa pase también en Linux con `e2e-full.yml` (en local ya pasa 249/249 con el código final); y el propietario complete la prueba humana. Forma de registro pendiente (recomendado: tag de git sobre `dev`): integrar en `main` publica automáticamente y pasa los diseños de v10 a v12. |
 
 ## Aclaraciones
 

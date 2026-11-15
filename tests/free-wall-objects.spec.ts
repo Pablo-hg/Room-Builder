@@ -46,10 +46,18 @@ for (const width of [375, 1280]) {
     await move(page, 'X', '0')
     await expect(page.getByRole('button', { name: /^Ventana 2 Apertura/ })).toHaveCount(1)
     await expect(inspector(page).getByRole('textbox', { name: 'Introducir X en metros', exact: true })).toHaveValue('0.00')
-    await page.getByRole('button', { name: 'Deshacer el último cambio', exact: true }).click()
-    await expect(page.getByRole('button', { name: /^Ventana Apertura/ })).toHaveCount(1)
-    await page.getByRole('button', { name: 'Rehacer el último cambio deshecho', exact: true }).click()
-    await expect(page.getByRole('button', { name: /^Ventana 2 Apertura/ })).toHaveCount(1)
+    // Mover Z y X a 0 son uno o dos pasos de historial según la posición aleatoria de partida (si X ya
+    // vale 0 el segundo no cambia nada), así que se deshace/rehace hasta recuperar cada estado.
+    const original = page.getByRole('button', { name: /^Ventana Apertura/ })
+    const moved = page.getByRole('button', { name: /^Ventana 2 Apertura/ })
+    for (let step = 0; step < 3 && await original.count() === 0; step += 1) {
+      await page.getByRole('button', { name: 'Deshacer el último cambio', exact: true }).click()
+    }
+    await expect(original).toHaveCount(1)
+    for (let step = 0; step < 3 && await moved.count() === 0; step += 1) {
+      await page.getByRole('button', { name: 'Rehacer el último cambio deshecho', exact: true }).click()
+    }
+    await expect(moved).toHaveCount(1)
   })
 }
 

@@ -3,6 +3,7 @@ import { DEFAULT_ROOM, WALL_LABELS } from './domain/constants'
 import { sideWallsForFrontView, visibleWallsForOrientation } from './domain/geometry'
 import type { ViewMode, WallSide } from './domain/types'
 import RoomScene, { FreeCameraCompass3D, RoomCompass3D } from './components/RoomScene'
+import { SceneErrorBoundary } from './components/SceneErrorBoundary'
 import InteractionLogger from './components/InteractionLogger'
 import { useRoomStore } from './state/useRoomStore'
 import { collisionElementIds, detectOutsideRoom, detectSceneCollisions, detectUnsupportedOpenings } from './domain/sceneCollisions'
@@ -64,6 +65,8 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
   exportRequest: number
   onExportComplete: (error?: Error) => void
 }) {
+  const [sceneAttempt, setSceneAttempt] = useState(0)
+  const [rightAreaHeld, setRightAreaHeld] = useState(false)
   const state = useRoomStore(useShallow(selectEditorScene))
   const hiddenElementIds = useRoomStore((current) => current.hiddenElementIds)
   const areaSelect = useRoomStore((current) => current.areaSelect)
@@ -180,7 +183,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
             else state.setFreeOrbitDragging(false)
           }}
           onContextMenu={(event) => {
-            if (isOrbitCanvasTarget(event.target)) event.preventDefault()
+            if (event.target instanceof HTMLCanvasElement) event.preventDefault()
           }}
           onWheel={(event) => {
             if (event.ctrlKey) return
@@ -220,7 +223,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
               <span className="view-badge"><i /> Vista {viewLabel}</span>
               {hasUnsavedChanges && <span className="statusbar__save statusbar__save--pending" role="status" aria-live="polite"><i className="status-dot" aria-hidden="true" />Cambios sin guardar</span>}
               <span className="visible-walls-badge"><b aria-hidden="true">◫</b> {visibleWallsText}</span>
-              <button type="button" className={`area-select-toggle${areaSelect ? ' is-active' : ''}`} aria-pressed={areaSelect} onClick={() => setAreaSelect(!areaSelect)} title="Arrastra sobre el fondo para seleccionar varios objetos (también con Mayús + arrastrar)">▢ Selección por área</button>
+              <button type="button" className={`area-select-toggle${areaSelect || rightAreaHeld ? ' is-active' : ''}`} aria-pressed={areaSelect || rightAreaHeld} onClick={() => setAreaSelect(!areaSelect)} title="Arrastra para seleccionar varios objetos; también puedes mantener el botón derecho o usar Mayús + arrastrar sobre el fondo">▢ Selección por área</button>
               <span className="grid-scale"><b aria-hidden="true">▦</b> Cuadrado: 25 cm · movimiento: 5 cm</span>
               {!exportMode && <SceneCollisionPanel collisions={collisions} outside={outside} unsupported={unsupported} />}
             </div>
@@ -229,7 +232,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
           <RoomViewSelector />
           </div>
           <div className="scene-stage">
-          <RoomScene
+          <SceneErrorBoundary onRetry={() => setSceneAttempt((attempt) => attempt + 1)} exporting={exportMode} onExportUnavailable={() => onExportComplete(new Error('No se puede exportar el modelo 3D mientras la escena no está disponible.'))}><RoomScene
             room={state.room}
             view={state.view}
             orientation={state.view === 'top' ? state.topOrientation : state.isoOrientation}
@@ -247,16 +250,17 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
             furniture={state.furniture}
             structurePacks={state.structurePacks}
             collisionIds={spatialIssueIds}
+            onRightAreaHeld={setRightAreaHeld}
             exportMode={exportMode}
             exportRequest={exportRequest}
             onExportComplete={onExportComplete}
             exportDesignName={exportDesignName}
-          />
+          /></SceneErrorBoundary>
           {!hasPlacedSceneContent && state.view !== 'pov' && (
             <div className="empty-scene"><span>✦</span><strong>La habitación está lista</strong><small>Añade tu primera pieza desde el catálogo</small></div>
           )}
           <div className="compass" role="group" aria-label={compassLabel(state.view, state.isoOrientation, state.freeAzimuth, state.freeElevation)}>
-            {state.view === 'free' ? (
+            <SceneErrorBoundary key={sceneAttempt} compact>{state.view === 'free' ? (
               <FreeCameraCompass3D
                 azimuth={state.freeAzimuth}
                 elevation={state.freeElevation}
@@ -271,7 +275,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
                 onTopView={() => state.setView('top')}
                 onWallView={state.lookAtWall}
               />
-            )}
+            )}</SceneErrorBoundary>
             {state.view === 'free' ? (
               [
                 { label: 'Eje X positivo', azimuth: 0, elevation: 0 },
@@ -281,7 +285,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
                 { label: 'Eje Z positivo', azimuth: Math.PI / 2, elevation: 0 },
                 { label: 'Eje Z negativo', azimuth: -Math.PI / 2, elevation: 0 },
               ].map(({ label, azimuth, elevation }) => (
-                <button key={label} type="button" className="visually-hidden" onClick={() => state.lookFromFreeOrbit(azimuth, elevation)}>
+                <button key={label} type="button" className="visually-hidden-focusable compass-keyboard-option" onClick={() => state.lookFromFreeOrbit(azimuth, elevation)}>
                   Alinear cámara con {label}
                 </button>
               ))
@@ -291,7 +295,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
               { orientation: 2, walls: 'B y C' },
               { orientation: 3, walls: 'C y D' },
             ].map(({ orientation, walls }) => (
-              <button key={orientation} type="button" className="visually-hidden" onClick={() => state.lookFromIsoOrientation(orientation)}>
+              <button key={orientation} type="button" className="visually-hidden-focusable compass-keyboard-option" onClick={() => state.lookFromIsoOrientation(orientation)}>
                 Ver en isométrica las paredes {walls}
               </button>
             ))}

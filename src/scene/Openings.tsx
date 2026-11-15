@@ -2,6 +2,7 @@ import type { ThreeEvent } from '@react-three/fiber'
 import { useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { moveFromOrigin } from '../domain/measurements'
+import { ROOM_WALL_THICKNESS } from '../domain/constants'
 import { snapFurnitureRotation } from '../domain/geometry'
 import { isWallMirrorShape, openingCapabilities, OPENING_CATALOG, openingKindForShape } from '../domain/objectCatalog'
 import type { RoomConfig, WallOpening, WallSide } from '../domain/types'
@@ -9,11 +10,11 @@ import { useHistoryGesture } from '../state/useHistoryGesture'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
 import { useRoomStore } from '../state/useRoomStore'
 import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
-import { colorTone } from './colorTone'
 import { SelectionBounds } from './SelectionBounds'
 import { AXIS_COLORS } from './axisColors'
 import { AxisAnchor } from './AxisAnchor'
 import type { structureWindowFrame } from '../domain/structureWindows'
+import { circularWindowModel, doorModel, mirrorModel, pictureModel, WALL_SCONCE_BASE, wallSconceModel, wallShelfModel, windowModel } from './WallObjectModels'
 
 type PackWindowFrame = NonNullable<ReturnType<typeof structureWindowFrame>>
 
@@ -44,10 +45,12 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
       return new THREE.Plane().setFromNormalAndCoplanarPoint(normal, new THREE.Vector3(frame.x, frame.floorY, frame.z))
     }
     if (planView) return new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.035)
-    if (wall === 'north') return new THREE.Plane(new THREE.Vector3(0, 0, 1), room.depth / 2)
-    if (wall === 'south') return new THREE.Plane(new THREE.Vector3(0, 0, 1), -room.depth / 2)
-    if (wall === 'east') return new THREE.Plane(new THREE.Vector3(1, 0, 0), -room.width / 2)
-    return new THREE.Plane(new THREE.Vector3(1, 0, 0), room.width / 2)
+    // Plano central de la pared principal, medio grosor por fuera del borde del suelo.
+    const half = ROOM_WALL_THICKNESS / 2
+    if (wall === 'north') return new THREE.Plane(new THREE.Vector3(0, 0, 1), room.depth / 2 + half)
+    if (wall === 'south') return new THREE.Plane(new THREE.Vector3(0, 0, 1), -room.depth / 2 - half)
+    if (wall === 'east') return new THREE.Plane(new THREE.Vector3(1, 0, 0), -room.width / 2 - half)
+    return new THREE.Plane(new THREE.Vector3(1, 0, 0), room.width / 2 + half)
   }, [planView, room.depth, room.width, wall, frame])
 
   const offsetAtPoint = (position: THREE.Vector3) => {
@@ -392,10 +395,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
   const canMoveHorizontal = capabilities.translation.includes('wall-horizontal')
   const canMoveVertical = capabilities.translation.includes('wall-vertical')
   const baseColor = opening.color ?? '#c88f58'
-  const darkColor = colorTone(baseColor, -0.2)
-  const lightColor = colorTone(baseColor, 0.32)
   if (opening.kind === 'door') {
-    const frameWidth = 0.07
     return (
       <group position={[opening.offset, 0, 0.02]} {...detailEvents}>
         {selected && !locked && (
@@ -408,27 +408,13 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
           </group>
         )}
         <group position={[0, opening.height / 2, 0]} rotation={[0, 0, opening.rotation]}>
-          <mesh position={[-opening.width / 2 + frameWidth / 2, 0, 0.05]}>
-            <boxGeometry args={[frameWidth, opening.height, 0.16]} />
-            <meshStandardMaterial color={darkColor} />
-          </mesh>
-          <mesh position={[opening.width / 2 - frameWidth / 2, 0, 0.05]}>
-            <boxGeometry args={[frameWidth, opening.height, 0.16]} />
-            <meshStandardMaterial color={darkColor} />
-          </mesh>
-          <mesh position={[0, opening.height / 2, 0.05]}>
-            <boxGeometry args={[opening.width, 0.08, 0.16]} />
-            <meshStandardMaterial color={darkColor} />
-          </mesh>
+          {doorModel({ width: opening.width, height: opening.height, color: baseColor })}
         </group>
       </group>
     )
   }
 
-  const frameWidth = Math.min(0.07, opening.width * 0.12, opening.height * 0.12)
   if (opening.shape === 'wallShelf') {
-    const shelfDepth = 0.25
-    const shelfColor = baseColor
     return (
       <group position={[opening.offset, opening.bottom + opening.height / 2, 0.08]} {...detailEvents}>
         {selected && !locked && (
@@ -443,20 +429,12 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
           </>
         )}
         <group rotation={[0, 0, opening.rotation]}>
-          <mesh position={[0, 0, 0.015]} castShadow><boxGeometry args={[opening.width, opening.height, 0.05]} /><meshStandardMaterial color={darkColor} roughness={0.88} /></mesh>
-          {[-opening.height * 0.28, opening.height * 0.28].map((height) => (
-            <mesh key={height} position={[0, height, shelfDepth / 2]} castShadow><boxGeometry args={[opening.width, Math.min(0.075, opening.height * 0.15), shelfDepth]} /><meshStandardMaterial color={shelfColor} roughness={0.78} /></mesh>
-          ))}
-          {[-1, 1].map((side) => <mesh key={side} position={[side * opening.width * 0.46, 0, shelfDepth / 2]} castShadow><boxGeometry args={[Math.min(0.065, opening.width * 0.08), opening.height, shelfDepth]} /><meshStandardMaterial color={shelfColor} roughness={0.78} /></mesh>)}
-          {[-0.3, 0, 0.3].map((x, index) => <mesh key={x} position={[x * opening.width, opening.height * 0.25, shelfDepth * 0.5]} castShadow><boxGeometry args={[Math.min(0.11, opening.width * 0.15), Math.min(0.2 + index * 0.035, opening.height * 0.4), shelfDepth * 0.55]} /><meshStandardMaterial color={colorTone(baseColor, [-0.12, 0.22, -0.28][index])} /></mesh>)}
+          {wallShelfModel({ width: opening.width, height: opening.height, color: baseColor })}
         </group>
       </group>
     )
   }
   if (opening.shape && isWallMirrorShape(opening.shape)) {
-    const frameWidth = Math.min(0.065, opening.width * 0.12, opening.height * 0.12)
-    const circular = opening.shape === 'mirrorCircular'
-    const radius = Math.min(opening.width, opening.height) / 2
     return (
       <group position={[opening.offset, opening.bottom + opening.height / 2, 0.07]} {...detailEvents}>
         {selected && !locked && (
@@ -471,20 +449,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
           </>
         )}
         <group rotation={[0, 0, opening.rotation]}>
-          {circular ? (
-            <>
-              <mesh castShadow><circleGeometry args={[radius, 48]} /><meshStandardMaterial color={darkColor} roughness={0.78} /></mesh>
-              <mesh position={[0, 0, 0.018]}><circleGeometry args={[radius - frameWidth, 48]} /><meshStandardMaterial color="#dce7e4" metalness={0.18} roughness={0.28} /></mesh>
-              <mesh position={[0, 0, 0.026]}><ringGeometry args={[radius - frameWidth, radius, 48]} /><meshStandardMaterial color={baseColor} roughness={0.8} /></mesh>
-              <mesh position={[-radius * 0.2, radius * 0.12, 0.03]} rotation={[0, 0, -0.55]}><planeGeometry args={[frameWidth * 0.65, radius * 1.1]} /><meshStandardMaterial color="#fffdf9" transparent opacity={0.55} /></mesh>
-            </>
-          ) : (
-            <>
-              <mesh castShadow><boxGeometry args={[opening.width, opening.height, 0.06]} /><meshStandardMaterial color={darkColor} roughness={0.8} /></mesh>
-              <mesh position={[0, 0, 0.034]}><boxGeometry args={[opening.width - frameWidth * 2, opening.height - frameWidth * 2, 0.012]} /><meshStandardMaterial color="#dce7e4" metalness={0.18} roughness={0.28} /></mesh>
-              <mesh position={[-opening.width * 0.2, opening.height * 0.12, 0.043]} rotation={[0, 0, -0.55]}><planeGeometry args={[frameWidth * 0.65, opening.height * 0.62]} /><meshStandardMaterial color="#fffdf9" transparent opacity={0.55} /></mesh>
-            </>
-          )}
+          {mirrorModel({ width: opening.width, height: opening.height, color: baseColor, circular: opening.shape === 'mirrorCircular' })}
         </group>
       </group>
     )
@@ -503,19 +468,13 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
             />
           </>
         )}
-        <group rotation={[0, 0, opening.rotation]} scale={[opening.width / OPENING_CATALOG.wallSconce.width, opening.height / OPENING_CATALOG.wallSconce.height, 1]}>
-          <mesh position={[0, 0, 0.015]} castShadow><boxGeometry args={[0.16, 0.26, 0.055]} /><meshStandardMaterial color={darkColor} roughness={0.8} /></mesh>
-          <mesh position={[0, 0, 0.07]} rotation={[Math.PI / 2, 0, 0]} castShadow><cylinderGeometry args={[0.025, 0.025, 0.12, 12]} /><meshStandardMaterial color={darkColor} metalness={0.2} roughness={0.55} /></mesh>
-          <mesh position={[0, -0.035, 0.16]} rotation={[Math.PI / 2, 0, 0]} castShadow><coneGeometry args={[0.16, 0.22, 24, 1, true]} /><meshStandardMaterial color={baseColor} side={THREE.DoubleSide} roughness={0.72} /></mesh>
-          <mesh position={[0, -0.145, 0.16]} rotation={[Math.PI / 2, 0, 0]}><circleGeometry args={[0.135, 24]} /><meshStandardMaterial color={colorTone(baseColor, 0.38)} side={THREE.DoubleSide} emissive={colorTone(baseColor, 0.25)} emissiveIntensity={0.22} /></mesh>
-          <pointLight position={[0, -0.18, 0.18]} color="#ffe0a6" intensity={0.25} distance={1.8} />
+        <group rotation={[0, 0, opening.rotation]} scale={[opening.width / WALL_SCONCE_BASE.width, opening.height / WALL_SCONCE_BASE.height, 1]}>
+          {wallSconceModel({ color: baseColor })}
         </group>
       </group>
     )
   }
   if (opening.shape === 'pictureSmall' || opening.shape === 'pictureMedium' || opening.shape === 'pictureLarge') {
-    const frameWidth = Math.min(0.07, opening.width * 0.12, opening.height * 0.12)
-    const accent = colorTone(baseColor, -0.08)
     return (
       <group position={[opening.offset, opening.bottom + opening.height / 2, 0.07]} {...detailEvents}>
         {selected && !locked && (
@@ -530,32 +489,12 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
           </>
         )}
         <group rotation={[0, 0, opening.rotation]}>
-          <mesh castShadow>
-            <boxGeometry args={[opening.width, opening.height, 0.055]} />
-            <meshStandardMaterial color={darkColor} roughness={0.78} />
-          </mesh>
-          <mesh position={[0, 0, 0.034]}>
-            <boxGeometry args={[opening.width - frameWidth * 2, opening.height - frameWidth * 2, 0.014]} />
-            <meshStandardMaterial color={lightColor} roughness={0.92} />
-          </mesh>
-          <mesh position={[-opening.width * 0.2, opening.height * 0.16, 0.044]}>
-            <circleGeometry args={[Math.min(opening.width, opening.height) * 0.17, 24]} />
-            <meshStandardMaterial color={colorTone(baseColor, 0.42)} />
-          </mesh>
-          <mesh position={[opening.width * 0.13, -opening.height * 0.1, 0.045]} rotation={[0, 0, 0.2]}>
-            <planeGeometry args={[opening.width * 0.42, opening.height * 0.28]} />
-            <meshStandardMaterial color={accent} />
-          </mesh>
-          <mesh position={[-opening.width * 0.13, -opening.height * 0.22, 0.046]} rotation={[0, 0, -0.16]}>
-            <planeGeometry args={[opening.width * 0.32, opening.height * 0.16]} />
-            <meshStandardMaterial color={colorTone(baseColor, -0.3)} />
-          </mesh>
+          {pictureModel({ width: opening.width, height: opening.height, color: baseColor })}
         </group>
       </group>
     )
   }
   if (opening.shape === 'circular') {
-    const radius = Math.min(opening.width, opening.height) / 2
     return (
       <group position={[opening.offset, opening.bottom + opening.height / 2, 0.01]} {...detailEvents}>
         {selected && !locked && (
@@ -570,22 +509,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
           </>
         )}
         <group rotation={[0, 0, opening.rotation]}>
-          <mesh>
-            <circleGeometry args={[radius - frameWidth, 64]} />
-            <meshStandardMaterial color={lightColor} transparent opacity={0.62} roughness={0.15} side={THREE.DoubleSide} />
-          </mesh>
-          <mesh position={[0, 0, 0.04]}>
-            <ringGeometry args={[radius - frameWidth, radius, 64]} />
-            <meshStandardMaterial color={baseColor} roughness={0.72} side={THREE.DoubleSide} />
-          </mesh>
-          <mesh position={[0, 0, 0.05]}>
-            <boxGeometry args={[frameWidth * 0.72, (radius - frameWidth) * 2, 0.065]} />
-            <meshStandardMaterial color={lightColor} />
-          </mesh>
-          <mesh position={[0, 0, 0.05]}>
-            <boxGeometry args={[(radius - frameWidth) * 2, frameWidth * 0.72, 0.065]} />
-            <meshStandardMaterial color={lightColor} />
-          </mesh>
+          {circularWindowModel({ width: opening.width, height: opening.height, color: baseColor })}
         </group>
       </group>
     )
@@ -604,26 +528,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
         </>
       )}
       <group rotation={[0, 0, opening.rotation]}>
-        <mesh>
-          <boxGeometry args={[opening.width - frameWidth * 2, opening.height - frameWidth * 2, 0.035]} />
-          <meshStandardMaterial color={lightColor} transparent opacity={0.62} roughness={0.15} />
-        </mesh>
-        <mesh position={[0, 0, 0.026]}>
-          <boxGeometry args={[Math.min(0.055, opening.width * 0.12), opening.height, 0.07]} />
-          <meshStandardMaterial color={lightColor} />
-        </mesh>
-        {[-1, 1].map((side) => (
-          <mesh key={side} position={[side * (opening.width / 2 - frameWidth / 2), 0, 0.035]}>
-            <boxGeometry args={[frameWidth, opening.height, 0.09]} />
-            <meshStandardMaterial color={baseColor} />
-          </mesh>
-        ))}
-        {[-1, 1].map((side) => (
-          <mesh key={side} position={[0, side * (opening.height / 2 - frameWidth / 2), 0.035]}>
-            <boxGeometry args={[opening.width, frameWidth, 0.09]} />
-            <meshStandardMaterial color={baseColor} />
-          </mesh>
-        ))}
+        {windowModel({ width: opening.width, height: opening.height, color: baseColor })}
       </group>
     </group>
   )
@@ -639,17 +544,18 @@ export function PlanOpening({ room, opening, wall, groupSelected = false, collid
   const canMoveHorizontal = openingCapabilities(opening.kind).translation.includes('wall-horizontal')
   const color = selected ? '#ea6f4c' : opening.kind === 'door' ? '#e9895b' : '#65b7c2'
   let position: [number, number, number]
-  if (wall === 'north') position = [opening.offset, 0.035, -room.depth / 2]
-  else if (wall === 'south') position = [opening.offset, 0.035, room.depth / 2]
-  else if (wall === 'east') position = [room.width / 2, 0.035, opening.offset]
-  else position = [-room.width / 2, 0.035, opening.offset]
+  const half = ROOM_WALL_THICKNESS / 2
+  if (wall === 'north') position = [opening.offset, 0.035, -room.depth / 2 - half]
+  else if (wall === 'south') position = [opening.offset, 0.035, room.depth / 2 + half]
+  else if (wall === 'east') position = [room.width / 2 + half, 0.035, opening.offset]
+  else position = [-room.width / 2 - half, 0.035, opening.offset]
   return (
     <group position={position} rotation={horizontal ? [0, 0, 0] : [0, Math.PI / 2, 0]} {...interaction.events}>
       <mesh renderOrder={selected ? 6 : 0}>
         <boxGeometry args={[opening.width, selected ? 0.09 : 0.055, selected ? 0.16 : 0.1]} />
         <meshBasicMaterial color={color} />
       </mesh>
-      {((outlined && !groupSelected) || colliding) && <SelectionBounds width={opening.width} height={selected ? 0.09 : 0.055} depth={selected ? 0.16 : 0.1} collision={colliding} />}
+      {((outlined && !groupSelected) || colliding) && <SelectionBounds width={opening.width} height={selected ? 0.09 : 0.055} depth={selected ? 0.16 : 0.1} collision={colliding} focused={outlined} />}
       {selected && !locked && (
         <OpeningMoveGizmo opening={opening} dragEventsForAxis={interaction.dragEventsForAxis} horizontal={canMoveHorizontal} planView />
       )}

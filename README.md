@@ -26,6 +26,17 @@ npm run build
 npm run preview
 ```
 
+`npm run build` deja en `dist/` la página, los recursos con hash y `THIRD_PARTY_LICENSES.txt` (avisos de licencia de las librerías incluidas). También comprueba que las herramientas de diagnóstico de desarrollo no entren en el bundle público.
+
+## Despliegue
+
+- **Destino:** Cloudflare Workers, servicio `room-builder`, con assets estáticos de `dist/` y fallback SPA (`wrangler.jsonc`). URL de producción: <https://room-builder.phghorcajada.workers.dev/>. No hay backend; los diseños se guardan en el navegador.
+- **Workers Builds** (configuración del panel a 15/11/2026): rama de producción `main`, comando de build `npm run build` (Cloudflare instala antes las dependencias), comando de despliegue `npx wrangler deploy`, directorio raíz `/`. **Cada integración en `main` se publica automáticamente**, por lo que integrar en `main` equivale a publicar.
+- **Caché:** `public/_headers` marca `/assets/*` como inmutable durante un año. Esos archivos llevan un hash de su contenido en el nombre, así que una versión nueva usa nombres nuevos. `index.html` conserva la cabecera por defecto de Cloudflare (`max-age=0, must-revalidate`) y se revalida en cada visita, que es como se detectan las versiones nuevas. `public/.assetsignore` evita que esos archivos de configuración se publiquen como recursos.
+- **Publicar** una versión pública requiere autorización expresa del propietario y, para la publicación final, el gate #54.
+- **Los diseños son por dirección:** se guardan en `localStorage`, ligado al dominio. Una URL de vista previa, `*.workers.dev` o un dominio propio no comparten diseños entre sí; para pasar de una a otra, exportar y luego importar el JSON.
+- **Volver a una versión anterior:** en el panel del Worker, *Deployments* → elegir la versión → *Rollback*, o `npx wrangler rollback <id-de-versión>`. Antes, exportar una copia JSON de los diseños: una versión antigua puede no abrir diseños guardados con el formato actual (v12).
+
 ## Controles
 
 - **Paredes A–D:** la interfaz identifica las paredes en sentido horario como A, B, C y D. Cada pared visible muestra una placa 3D sobre su borde superior.

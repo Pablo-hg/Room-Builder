@@ -3,6 +3,7 @@ import { structureSurfaceElementId } from './elementIds'
 import { furnitureVisualYOffset } from './objectCatalog'
 import { boxOutsideBuilding } from './buildingVolume'
 import { wallIntersectionIsCut } from './wallConnections'
+import { physicalSurfacePosition } from './roomEditing'
 
 type Box = { id: string; x: number; y: number; z: number; width: number; height: number; depth: number; rotation: number }
 type World = { room: RoomConfig; furniture: FurnitureItem[]; structurePacks: StructurePack[] }
@@ -14,11 +15,12 @@ function furnitureBox(item: FurnitureItem, world: World): Box {
 
 function surfaceBox(room: RoomConfig, pack: StructurePack, surface: StructureSurface): Box {
   const wall = surface.wall ?? 'north'
+  const [x, y, z] = physicalSurfacePosition(room, surface, pack.id)
   return {
     id: structureSurfaceElementId(pack.id, surface.id),
-    x: pack.x + surface.x + (surface.kind === 'wall' ? wall === 'east' ? room.width / 2 : wall === 'west' ? -room.width / 2 : 0 : 0),
-    y: pack.y + surface.y + (surface.kind === 'wall' ? room.height / 2 : surface.kind === 'ceiling' ? room.height : 0),
-    z: pack.z + surface.z + (surface.kind === 'wall' ? wall === 'north' ? -room.depth / 2 : wall === 'south' ? room.depth / 2 : 0 : 0),
+    x: pack.x + x,
+    y: pack.y + y,
+    z: pack.z + z,
     width: surface.width, height: surface.height, depth: surface.depth,
     rotation: surface.kind === 'wall' ? ({ north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 }[wall] + surface.rotation) : 0,
   }
@@ -188,4 +190,18 @@ export function furnitureHasSpatialWarning(world: World, item: FurnitureItem) {
   return furnitureOutsideRoom(world, item)
     || allSurfaces(world).some(({ surface, box: surfaceBounds }) => surfaceOverlapsFurniture(surface, surfaceBounds, item, world))
     || world.furniture.some((other) => other.id !== item.id && overlaps(box, furnitureBox(other, world)))
+}
+
+let warningCache: { room: RoomConfig; furniture: FurnitureItem[]; structurePacks: StructurePack[]; ids: ReadonlySet<string> } | null = null
+
+/**
+ * Ids de muebles con advertencia espacial, calculados una vez por estado del
+ * mundo. Cada objeto de la escena consulta este conjunto en lugar de repetir
+ * la comprobación de todos contra todos en cada actualización del store (#32).
+ */
+export function furnitureSpatialWarningIds(world: World): ReadonlySet<string> {
+  if (warningCache && warningCache.room === world.room && warningCache.furniture === world.furniture && warningCache.structurePacks === world.structurePacks) return warningCache.ids
+  const ids = new Set(world.furniture.filter((item) => furnitureHasSpatialWarning(world, item)).map((item) => item.id))
+  warningCache = { room: world.room, furniture: world.furniture, structurePacks: world.structurePacks, ids }
+  return ids
 }

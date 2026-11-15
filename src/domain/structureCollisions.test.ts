@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { DEFAULT_ROOM } from './constants'
 import { FURNITURE_PRESETS } from './objectCatalog'
 import { createStructureSurface } from './structureRules'
-import { furnitureHasSpatialWarning, independentSurfaceHasSpatialWarning, surfaceIntersectsFurniture } from './structureCollisions'
+import { furnitureHasSpatialWarning, furnitureSpatialWarningIds, independentSurfaceHasSpatialWarning, surfaceIntersectsFurniture } from './structureCollisions'
 import { structureSurfaceElementId } from './elementIds'
 import type { FurnitureItem, StructurePack } from './types'
 
@@ -42,4 +42,17 @@ test('avisa si una superficie independiente se encuentra fuera, sin penalizar un
   const current = { room: DEFAULT_ROOM, furniture: [], structurePacks: [floor, pack] }
   assert.equal(independentSurfaceHasSpatialWarning(current, id), false)
   assert.equal(independentSurfaceHasSpatialWarning({ ...current, structurePacks: [{ ...floor, x: 1 }, pack] }, id), true)
+})
+
+test('el conjunto de advertencias coincide con la comprobación por objeto y se recalcula al cambiar el mundo', () => {
+  const overlapping = { ...chair, id: 'second', x: 0.1 }
+  const far = { ...chair, id: 'far', x: -1.5 }
+  const crowded = { ...world, furniture: [chair, overlapping, far] }
+  const ids = furnitureSpatialWarningIds(crowded)
+  assert.deepEqual([...ids].sort(), crowded.furniture.filter((item) => furnitureHasSpatialWarning(crowded, item)).map((item) => item.id).sort())
+  assert.deepEqual([...ids].sort(), ['chair', 'second'])
+  // Mismas referencias: se reutiliza el resultado; nueva lista: se recalcula.
+  assert.equal(furnitureSpatialWarningIds({ ...crowded }), ids)
+  const separated = { ...crowded, furniture: [chair, { ...overlapping, x: 1 }, far] }
+  assert.deepEqual([...furnitureSpatialWarningIds(separated)], [])
 })

@@ -25,42 +25,44 @@ La interfaz combina fondos papel y crema (`--paper`, `--cream`), tinta verde gri
 
 ## Objetos 3D
 
-Los modelos se implementan en `src/scene/FurnitureModels.tsx` y los elementos murales/aperturas en `src/scene/Openings.tsx`.
+Los modelos son funciones puras de primitivas: muebles en `src/scene/FurnitureModels.tsx` y objetos de pared (puerta, ventanas, espejos, aplique, estantería de pared y cuadros) en `src/scene/WallObjectModels.tsx`. `Openings.tsx` solo añade la colocación y la interacción. **El mismo modelo dibuja la escena y genera el icono**: no hay una segunda versión de ningún objeto.
 
-- Usar geometría simple (cajas, cilindros, planos y formas básicas) ensamblada para representar piezas reconocibles: asiento y respaldo, tablero y patas, colchón y cabecero, marco y lámina, etc.
-- Respetar las dimensiones en metros del catálogo. Centrar el objeto en su huella horizontal y apoyar los muebles de suelo en `y = 0`; los elementos de pared deben conservar su colocación y orientación sobre la pared.
-- Mantener proporciones plausibles respecto a la habitación y a otros objetos. Las piezas que forman un mismo objeto deben quedar dentro de su ancho, fondo y altura definidos, salvo detalles mínimos justificados.
-- Usar `castShadow` en las piezas que deban proyectar sombra. Evitar geometría innecesaria, superficies superpuestas que parpadeen y detalles que sobresalgan de forma accidental.
-- Conservar una lectura consistente en perspectiva, planta, frontal e interior. La forma no debe depender de una sola cámara para resultar identificable.
-- Los elementos montados en pared (cuadros, estantería) deben tener un espesor discreto y una cara frontal con detalles; puertas y ventanas deben distinguir marco, hoja/cristal y divisiones sin confundirse con un mueble.
+- **Solo piezas simples:** `group`, `mesh`, geometrías básicas (caja, cilindro, cono, esfera, círculo, anillo, plano, toro, torno y cápsula) y `meshStandardMaterial`/`meshBasicMaterial`. Sin componentes con hooks ni luces: las lámparas no iluminan la escena (decisión del propietario, 14/11/2026).
+- **Medidas del catálogo:** el volumen del modelo no supera en más de un 15 % el ancho, alto o fondo declarados, ni queda por debajo del 60 % de su huella (85 % de su altura en muebles de suelo).
+- **Apoyo y pivote:** centrado en su huella horizontal. Los muebles de suelo apoyan en `y = 0`; los de techo tocan el techo. Los objetos de pared quedan centrados en su medida y por delante de la pared.
+- **Color:** todas las piezas usan tonos derivados del color del objeto (`colorTone`). Únicos colores fijos permitidos: cristal de espejo `#dce7e4`, reflejo `#fffdf9` y tierra de maceta `#59493c`.
+- **Minimalismo:** como máximo 450 caras visibles en el icono generado; curvas con pocos segmentos.
+- **Sin caras coplanares solapadas:** encajar las piezas (por ejemplo, fondo y baldas entre los laterales), para que no parpadeen al mover la cámara. Las superficies abiertas (pantallas de lámpara, papelera) se dibujan por las dos caras.
+- Mantener proporciones plausibles y una lectura consistente en Plano, Isométrica, Frontal y POV. Los objetos de pared tienen un espesor discreto y una cara frontal con detalles; puertas y ventanas distinguen marco, cristal y divisiones.
+
+Estas reglas las comprueba `src/scene/modelStandards.test.ts` para **todos** los objetos del catálogo, incluidos los que se añadan.
 
 ## Iconos y miniaturas
 
-Los iconos vectoriales se definen en el registro central `ICON_CATALOG` de `src/components/iconCatalog.tsx`; `FurnitureIcon` y `OpeningIcon` los muestran tanto en el catálogo como en el inspector. No dibujar una segunda versión de un icono con pseudo-elementos CSS ni duplicar la geometría en componentes.
+Los iconos del catálogo, el inspector y la lista de escena **se generan desde el modelo 3D** (`src/components/modelIcon.ts`): se proyecta el modelo con la cámara isométrica de la escena (azimut 45°, elevación ≈26°) y un sombreado plano calibrado con ella (cara superior algo más clara, frontal casi igual, lateral derecha más oscura). No se dibujan a mano.
 
-- Mantener el lienzo compacto común de **38 × 33 px**, con el objeto centrado, margen visible y proporción reconocible. En el inspector se conserva el mismo tamaño para evitar recortes.
-- Reutilizar el mismo componente para catálogo e inspector; no crear una segunda ilustración para una misma pieza.
-- Usar SVG con un `viewBox` compartido de `0 0 48 42`; el tamaño reducido exige priorizar contorno, orientación y señales identificativas.
-- Obtener el color principal de los muebles desde `FURNITURE_CATALOG`. Los fondos pueden ser una versión clara del color principal; contornos, patas y detalles pueden usar tonos secundarios coherentes con el modelo.
-- Mantener todas las piezas dentro del `viewBox`; no recortar accidentalmente contornos, marcos, patas ni tiradores.
-- Los iconos son decorativos: conservar el marcado accesible existente con `aria-hidden="true"`; el nombre de la pieza debe seguir estando visible como texto.
+- Lienzo SVG compartido `0 0 48 42` (se muestra a 38 × 33 px), con 4 de margen; el objeto se encuadra llenando el marco. Fondo redondeado tintado con el color del objeto.
+- El icono sigue el color del objeto (se recalcula con caché por tipo y color).
+- Excepción: los tres cuadros mantienen un icono 2D dibujado en `ICON_CATALOG` (decisión del propietario), con el paisaje siempre dentro del lienzo interior del marco.
+- Los iconos son decorativos (`aria-hidden="true"`); el nombre de la pieza sigue visible como texto.
 
-## Regla de correspondencia 3D–icono
+`src/components/modelIcon.test.ts` comprueba que cada objeto tiene icono generado, encuadrado y del color del objeto.
 
-Antes de dar por terminado un nuevo elemento, verificar juntos el modelo y la miniatura:
+## Alta de un objeto nuevo
 
-1. Tienen la misma silueta esencial y orientación reconocible.
-2. Comparten el color principal definido en el catálogo.
-3. Los detalles que los identifican en el modelo también aparecen simplificados en la miniatura.
-4. Sus dimensiones, huella y colocación corresponden al tipo de objeto (suelo o pared).
-5. Se ven completos y distinguibles en el catálogo y el inspector, y en las vistas relevantes de la escena.
+1. Definirlo en `src/domain/objectCatalog.ts`: clave estable, nombre visible único en español, familia, medidas en metros, color base y anclaje.
+2. Escribir su modelo con primitivas en `FurnitureModels.tsx` (mueble) o `WallObjectModels.tsx` (objeto de pared) y registrarlo en `FURNITURE_MODELS` o `standaloneOpeningModel`.
+3. No dibujar icono: se genera solo. Revisar en el Catálogo que se reconoce.
+4. Ejecutar los tests de catálogo, modelos e iconos (`objectCatalog`, `catalogItems`, `modelStandards`, `modelIcon`, `FurnitureModels`) y regenerar el inventario (`npx tsx scripts/catalog-inventory.ts`). Añadir su firma en `src/scene/fixtures/furniture-model-signatures.json`.
+5. Comprobarlo en Plano, Isométrica, Frontal y POV: apoyo, selección, hover, gizmos, duplicado y redimensionado.
 
-Si se cambia el tipo, color, dimensiones o detalles visibles de un objeto existente, actualizar las dos representaciones en el mismo cambio. Para un objeto nuevo, registrar su definición en el catálogo, implementar su representación 3D y su miniatura, e incluir las aperturas en su representación correspondiente. No añadir primero una de las dos versiones para dejar la otra como tarea posterior.
+Si se cambia el tipo, color, medidas o detalles visibles de un objeto existente, el icono cambia con él; actualizar a propósito su firma de modelo y anotarlo.
 
 ## Referencias del proyecto
 
 - Catálogo, dimensiones y colores base: `src/domain/objectCatalog.ts`.
-- Registro único de iconos SVG y componentes reutilizables: `src/components/iconCatalog.tsx`.
-- Modelos 3D y aperturas: `src/scene/FurnitureModels.tsx` y `src/scene/Openings.tsx`.
+- Modelos 3D: `src/scene/FurnitureModels.tsx` y `src/scene/WallObjectModels.tsx`; colocación e interacción de los objetos de pared: `src/scene/Openings.tsx`.
+- Generación de iconos: `src/components/modelIcon.ts`; componentes de icono: `src/components/iconCatalog.tsx`.
+- Estándares comprobados: `src/scene/modelStandards.test.ts` y `src/components/modelIcon.test.ts`.
 - Composición del catálogo y del inspector: `src/components/editor`.
 - Estilo compartido del lienzo SVG: `src/styles.css`.

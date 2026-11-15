@@ -24,8 +24,6 @@ const EXTENSION_GAP_PX = 3
 const EXTENSION_OVERSHOOT_PX = 6
 /** Separación en pantalla entre el trazo de la pared y la etiqueta de la cota. */
 const WALL_TO_DIMENSION_GAP_PX = 8
-/** Separación en pantalla entre la etiqueta de la cota y la letra de la pared. */
-const DIMENSION_TO_WALL_LABEL_GAP_PX = 8
 
 const noRaycast = () => undefined
 
@@ -99,7 +97,7 @@ function DimensionLine({ dimension, y, showWallLabel }: { dimension: PlanDimensi
     // Medida perpendicular a la pared que ocupa la etiqueta en pantalla.
     // Si la etiqueta se oculta, la línea se acerca a la pared igualmente.
     const labelDepthPx = mode === 'hidden' ? 0 : runsHorizontally ? LABEL_HEIGHT_PX : shown.widthPx
-    // Orden desde la pared hacia fuera: trazo de pared → cota → letra «PARED X».
+    // El trazo de pared y la cota permanecen separados.
     const traceFace = planWallTraceThickness(dimension.thickness) / 2 - planWallTraceInset(dimension.thickness)
     const offset = traceFace + (labelDepthPx / 2 + WALL_TO_DIMENSION_GAP_PX) * unit
     const side = dimension.outwardSign
@@ -130,11 +128,8 @@ function DimensionLine({ dimension, y, showWallLabel }: { dimension: PlanDimensi
       label.current.scale.set(shown.widthPx * unit, LABEL_HEIGHT_PX * unit, 1)
     }
     if (wallLabel.current) {
-      // La letra conserva su tamaño en metros, igual que en el Plano normal.
-      const [labelWidth, labelHeight] = WALL_IDENTITY_LABEL_SIZE
-      const wallLabelHalfDepth = (runsHorizontally ? labelHeight : labelWidth) / 2
-      const outerEdge = Math.max(offset + (labelDepthPx / 2) * unit, extensionEnd)
-      wallLabel.current.position.set(0, 0.02, side * (outerEdge + DIMENSION_TO_WALL_LABEL_GAP_PX * unit + wallLabelHalfDepth))
+      // El texto identifica la pared sobre su trazo; la cota permanece separada.
+      wallLabel.current.position.set(0, 0.02, 0)
     }
   })
 
@@ -159,8 +154,7 @@ function DimensionLine({ dimension, y, showWallLabel }: { dimension: PlanDimensi
 }
 
 /**
- * `wallLabels`: ids de las paredes cuya letra «PARED X» dibuja esta capa por
- * detrás de la cota. La escena oculta entonces su etiqueta normal.
+ * `wallLabels`: ids de las paredes cuyo texto dibuja esta capa sobre su trazo.
  */
 export function PlanDimensions({ dimensions, y, wallLabels }: { dimensions: readonly PlanDimension[]; y: number; wallLabels: ReadonlySet<string> }) {
   return <group name="plan-dimensions">

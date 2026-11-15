@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { DEFAULT_FLOOR_COLOR, ROOT_FLOOR_THICKNESS, ROOT_PLATFORM_THICKNESS, ROOT_PLATFORM_Y, WALL_LABELS } from '../domain/constants'
 import type { RoomConfig, ViewMode, WallSide } from '../domain/types'
+import type { ConnectedWall } from '../domain/wallConnections'
 import { useRoomStore } from '../state/useRoomStore'
 import { FloorGrid } from './FloorGrid'
 import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
@@ -28,7 +29,7 @@ export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, 
   const panHandlers = { onPointerMove: movePan, onPointerUp: endPan, onPointerCancel: endPan, onLostPointerCapture: lostPan }
   return (
     <group ref={modelRootRef}>
-      {showBase && !floorHidden && <mesh receiveShadow userData={{ freeOrbitSurface: true, planPannable: true }} onPointerDown={(event) => {
+      {showBase && !floorHidden && <mesh receiveShadow userData={{ freeOrbitSurface: true, planPannable: true, elementId: BASE_FLOOR_ID }} onPointerDown={(event) => {
         event.stopPropagation()
         recordSceneInteraction('background.pointer-down', { target: 'floor' })
         selectSceneObject(BASE_FLOOR_ID, event.nativeEvent)
@@ -78,51 +79,24 @@ export function StudioLight({ room }: { room: RoomConfig }) {
   )
 }
 
-/** Tamaño en metros de la etiqueta «PARED X» (ancho × alto del sprite). */
-export const WALL_IDENTITY_LABEL_SIZE: readonly [number, number] = [0.69, 0.52]
+/** Tamaño en metros del texto de pared. */
+export const WALL_IDENTITY_LABEL_SIZE: readonly [number, number] = [0.32, 0.32]
 
-/** Textura compartida de la etiqueta «PARED X»; se libera al desmontar. */
+/** Textura compartida de la letra de pared; se libera al desmontar. */
 export function useWallIdentityTexture(wall: WallSide) {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas')
-    canvas.width = 256
-    canvas.height = 192
+    canvas.width = 96
+    canvas.height = 96
     const context = canvas.getContext('2d')
     if (context) {
       context.clearRect(0, 0, canvas.width, canvas.height)
 
-      context.save()
-      context.shadowColor = 'rgba(42, 57, 48, 0.16)'
-      context.shadowBlur = 10
-      context.shadowOffsetY = 5
-      context.beginPath()
-      context.roundRect(16, 10, 224, 168, 26)
-      context.fillStyle = 'rgba(255, 253, 249, 0.98)'
-      context.fill()
-      context.restore()
-
-      context.save()
-      context.beginPath()
-      context.roundRect(16, 10, 224, 168, 26)
-      context.clip()
-      context.fillStyle = '#52705d'
-      context.fillRect(16, 10, 224, 56)
-      context.restore()
-
-      context.beginPath()
-      context.roundRect(16, 10, 224, 168, 26)
-      context.lineWidth = 4
-      context.strokeStyle = 'rgba(64, 87, 72, 0.38)'
-      context.stroke()
-
       context.textAlign = 'center'
       context.textBaseline = 'middle'
-      context.fillStyle = '#fffdf9'
-      context.font = '800 22px Arial, sans-serif'
-      context.fillText('PARED', 128, 38)
       context.fillStyle = '#405748'
-      context.font = '900 78px Arial, sans-serif'
-      context.fillText(WALL_LABELS[wall], 128, 123)
+      context.font = '700 70px Arial, sans-serif'
+      context.fillText(WALL_LABELS[wall], 48, 48)
     }
     const nextTexture = new THREE.CanvasTexture(canvas)
     nextTexture.colorSpace = THREE.SRGBColorSpace
@@ -133,22 +107,15 @@ export function useWallIdentityTexture(wall: WallSide) {
   return texture
 }
 
-export function WallIdentityLabel({ room, wall, view, wallView }: { room: RoomConfig; wall: WallSide; view: ViewMode; wallView: WallSide | null }) {
-  const texture = useWallIdentityTexture(wall)
-  const isFrontSideWall = view === 'front' && wall !== (wallView ?? 'north')
-  const height = isFrontSideWall ? room.height / 2 : room.height + 0.44
-  const wallOffset = 0.6
-  const position: [number, number, number] = wall === 'north'
-    ? [0, height, -room.depth / 2 - wallOffset]
-    : wall === 'south'
-      ? [0, height, room.depth / 2 + wallOffset]
-      : wall === 'east'
-        ? [room.width / 2 + wallOffset, height, 0]
-        : [-room.width / 2 - wallOffset, height, 0]
-
-  return (
-    <sprite position={position} scale={[...WALL_IDENTITY_LABEL_SIZE, 1]} renderOrder={30} raycast={() => undefined}>
-      <spriteMaterial map={texture} transparent depthTest={false} depthWrite={false} toneMapped={false} />
-    </sprite>
-  )
+export function WallIdentityLabel({ frame, view }: { frame: ConnectedWall; view: ViewMode }) {
+  const texture = useWallIdentityTexture(frame.side)
+  if (view === 'top') return <sprite position={[frame.x, frame.y + frame.height + 0.04, frame.z]} scale={[...WALL_IDENTITY_LABEL_SIZE, 1]} renderOrder={30} raycast={() => undefined}>
+    <spriteMaterial map={texture} transparent depthTest={false} depthWrite={false} toneMapped={false} />
+  </sprite>
+  const inset = frame.depth / 2 + 0.012
+  return <mesh position={[frame.x + Math.sin(frame.yaw) * inset, frame.y + frame.height - 0.23, frame.z + Math.cos(frame.yaw) * inset]}
+    rotation={[0, frame.yaw, 0]} renderOrder={3} raycast={() => undefined}>
+    <planeGeometry args={[...WALL_IDENTITY_LABEL_SIZE]} />
+    <meshBasicMaterial map={texture} transparent depthWrite={false} toneMapped={false} />
+  </mesh>
 }

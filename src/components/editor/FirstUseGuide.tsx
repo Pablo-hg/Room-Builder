@@ -71,6 +71,18 @@ const steps: GuideStep[] = [
 type Spotlight = { left: number; top: number; width: number; height: number }
 type Style = CSSProperties
 
+/**
+ * Destino del foco al cerrar la invitación o la guía sin un origen válido: el botón para
+ * repetir la guía (donde el aviso dice que se puede abrir) o, si no está visible, el primer
+ * control visible. Evita que el foco caiga en el documento y se pierda.
+ */
+export function focusAfterGuide() {
+  for (const selector of ['.first-use-restart', 'a[href], button:not(:disabled)']) {
+    const target = [...document.querySelectorAll<HTMLElement>(selector)].find((element) => element.offsetParent !== null)
+    if (target) { target.focus({ preventScroll: true }); return }
+  }
+}
+
 export function FirstUseInvitation({ onStart, onDismiss }: { onStart: () => void; onDismiss: () => void }) {
   const invitationRef = useRef<HTMLElement>(null)
   // La invitación no debe bloquear el uso del editor: cualquier interacción
@@ -88,7 +100,8 @@ export function FirstUseInvitation({ onStart, onDismiss }: { onStart: () => void
       <p>Descubre el editor con una guía visual de {steps.length} pasos. Puedes saltártela y abrirla después desde el panel derecho.</p>
       <div className="first-use-invitation__actions">
         <button type="button" className="first-use-invitation__primary" onClick={onStart}>Empezar guía</button>
-        <button type="button" onClick={onDismiss}>Ahora no</button>
+        {/* Con teclado (detail 0) el botón desaparece con el foco dentro: se recoloca tras desmontar la invitación. */}
+        <button type="button" onClick={(event) => { const keyboard = event.detail === 0; onDismiss(); if (keyboard) requestAnimationFrame(focusAfterGuide) }}>Ahora no</button>
       </div>
     </aside>
   )
@@ -104,10 +117,13 @@ export function FirstUseGuide({ open, onClose }: { open: boolean; onClose: () =>
 
   useEffect(() => {
     if (!open) { setStepIndex(0); return }
-    returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    // Al abrirla desde la invitación, el botón ya se ha desmontado y el foco está en el
+    // documento: ese no es un origen válido al que volver.
+    const origin = document.activeElement
+    returnFocus.current = origin instanceof HTMLElement && origin !== document.body ? origin : null
     return () => {
       if (returnFocus.current?.isConnected) returnFocus.current.focus()
-      else document.querySelector<HTMLButtonElement>('.first-use-restart')?.focus()
+      else requestAnimationFrame(focusAfterGuide)
     }
   }, [open])
 
