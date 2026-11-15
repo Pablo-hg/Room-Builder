@@ -7,8 +7,8 @@ import { FurnitureIcon, ICON_CATALOG, OpeningIcon } from './iconCatalog'
 
 const openingKinds = ['door', 'window', 'circularWindow', 'wallShelf', 'mirrorRectangular', 'mirrorCircular', 'wallSconce'] as const
 
-test('the SVG icon catalog covers all furniture and standalone openings', () => {
-  const expectedKinds = [...Object.keys(FURNITURE_CATALOG), ...openingKinds].sort()
+test('los iconos dibujados a mano solo quedan para los cuadros (2D por decisión del propietario)', () => {
+  const expectedKinds = Object.keys(FURNITURE_CATALOG).filter((kind) => kind.startsWith('picture')).sort()
   assert.deepEqual(Object.keys(ICON_CATALOG).sort(), expectedKinds)
 
   for (const definition of Object.values(ICON_CATALOG)) {

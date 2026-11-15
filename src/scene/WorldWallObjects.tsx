@@ -85,7 +85,7 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode, kin
         ? <PlanWallSymbol kind={kind} width={window.width} height={window.height} shape={window.shape} color={window.color ?? '#c88f58'} />
         : <OpeningDetail room={room} opening={{ ...window, kind, offset: 0, bottom: 0, color: window.color ?? '#c88f58' }} wall={window.wall} selected={false} locked interactive={false} />}
       {!exportMode && <mesh position={[0, window.height / 2, 0]}><boxGeometry args={[window.width, window.height, 0.16]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>}
-      {!exportMode && (selected || collision || outside) && <group position={selectionFrame.localCenter} rotation={[0, 0, window.rotation]}><SelectionBounds width={window.width} height={window.height} depth={selectionFrame.depth} collision={collision || outside} /></group>}
+      {!exportMode && (selected || collision || outside) && <group position={selectionFrame.localCenter} rotation={[0, 0, window.rotation]}><SelectionBounds width={window.width} height={window.height} depth={selectionFrame.depth} collision={collision || outside} focused={selected} /></group>}
     </group>
     {!exportMode && selected && !multiple && !locked && view !== 'pov' && <WallObjectGizmo id={window.id} position={position} anchor={selectionFrame.handleBase} height={window.height} locks={movementLocks} />}
   </>

@@ -15,7 +15,7 @@ const item = (patch: Partial<FurnitureItem> = {}): FurnitureItem => ({
   axisLocks: { x: false, y: false, z: false }, ...patch,
 })
 const world = (furniture = [item()], structurePacks: StructurePack[] = []) => ({ room: { ...cloneRoom(), windows: [] }, furniture, structurePacks })
-const northContact = (source: ReturnType<typeof world>) => -source.room.depth / 2 + 0.06 + source.furniture[0].depth / 2
+const northContact = (source: ReturnType<typeof world>) => -source.room.depth / 2 + source.furniture[0].depth / 2
 
 test('se ajusta cerca de la cara y permite atravesar libremente al continuar', () => {
   const before = world()
@@ -31,9 +31,9 @@ test('se ajusta cerca de la cara y permite atravesar libremente al continuar', (
 test('usa el volumen girado y la altura: permite pasar por encima de una pared', () => {
   const rotated = item({ rotation: Math.PI / 4, width: 0.8, depth: 0.2 })
   const before = world([rotated])
-  const target = -before.room.depth / 2 + 0.06 + Math.SQRT1_2 * 0.5
+  const target = -before.room.depth / 2 + Math.SQRT1_2 * 0.5
   const result = constrainFurnitureWalls(before, { ...before, furniture: [{ ...rotated, z: target + 0.03 }] })!
-  close(result.furniture[0].z, -before.room.depth / 2 + 0.06 + Math.SQRT1_2 * 0.5)
+  close(result.furniture[0].z, -before.room.depth / 2 + Math.SQRT1_2 * 0.5)
   const high = world([item({ y: 5 })])
   close(constrainFurnitureWalls(high, { ...high, furniture: [item({ y: 5, z: -20 })] })!.furniture[0].z, -20)
 })
@@ -65,7 +65,7 @@ test('arrastrar en paralelo mantiene el contacto; empujar normalmente lo libera'
 })
 
 test('esquina A-D: el trazo fino conserva las caras interiores sin huecos visuales', () => {
-  const source = world(), targetZ = northContact(source), targetX = -source.room.width / 2 + 0.06 + 0.2
+  const source = world(), targetZ = northContact(source), targetX = -source.room.width / 2 + 0.2
   const result = constrainFurnitureWalls(source, { ...source, furniture: [item({ x: targetX + 0.03, z: targetZ + 0.03 })] })!
   const aligned = result.furniture[0]
   close(aligned.x, targetX)
@@ -84,7 +84,7 @@ test('esquina A-D: el trazo fino conserva las caras interiores sin huecos visual
   close(north.thickness, northWall.depth * 0.5)
 })
 
-test('ratón a pasos de 5 cm: contacto exacto con paredes de 13 cm y sin liberación por eventos repetidos', () => {
+test('ratón a pasos de 5 cm: contacto exacto con paredes de 12 cm y sin liberación por eventos repetidos', () => {
   const room = cloneRoom()
   const pack: StructurePack = { id: 'floor-pack-offset', name: 'Planta -1', x: 10, y: -3, z: 10,
     surfaces: ['floor', 'wall-north', 'wall-west'].map((key) => createStructureSurface(room, key as 'floor' | 'wall-north' | 'wall-west')) }
@@ -92,7 +92,7 @@ test('ratón a pasos de 5 cm: contacto exacto con paredes de 13 cm y sin liberac
   const walls = physicalWalls(source), north = walls.find((wall) => wall.packId && wall.side === 'north')!
   const west = walls.find((wall) => wall.packId && wall.side === 'west')!
   const targetX = west.x + west.depth / 2 + 0.2, targetZ = north.z + north.depth / 2 + 0.2
-  assert.equal(north.depth, 0.13)
+  assert.equal(north.depth, 0.12)
   const request = item({ x: Math.round(targetX * 20) / 20, y: -2.96, z: Math.round(targetZ * 20) / 20 })
   const magnets: FurnitureWallMagnets = new Map()
   let current = source

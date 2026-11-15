@@ -89,7 +89,7 @@ for (const kind of ['door', 'window'] as const) {
     const store = fixture(kind)
     store.getState().moveWallObject('connected', 'x', 3)
     const data = persistedDesign(store.getState())
-    assert.equal(data.version, 10)
+    assert.equal(data.version, 12)
     const saved = { id: 'connected-design', name: 'Conectadas', savedAt: '2026-11-08T12:00:00Z', data }
     const parsed = parseDesignFile(serializeDesignFile(saved)).design.data
     assert.deepEqual(parsed.structurePacks, data.structurePacks)

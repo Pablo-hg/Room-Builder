@@ -1,4 +1,4 @@
-import { ROOT_FLOOR_THICKNESS, ROOT_PLATFORM_THICKNESS, ROOT_PLATFORM_Y } from './constants'
+import { ROOM_WALL_THICKNESS, ROOT_FLOOR_THICKNESS, ROOT_PLATFORM_THICKNESS, ROOT_PLATFORM_Y } from './constants'
 import { roomVerticalBounds } from './roomEditing'
 import { enclosedPackFootprint } from './roomEnclosure'
 import { subtractPolygon, wallRectangle, type WallPolygon } from './connectedWallGeometry'
@@ -15,7 +15,8 @@ const rectangle = (minX: number, maxX: number, minZ: number, maxZ: number) => wa
 export function buildingVolumes(world: World): Volume[] {
   const root = world.room
   const volumes: Volume[] = [{
-    polygon: rectangle(-root.width / 2 - 0.06, root.width / 2 + 0.06, -root.depth / 2 - 0.06, root.depth / 2 + 0.06),
+    // Hasta la cara exterior de las paredes, que van enteras por fuera del suelo.
+    polygon: rectangle(-root.width / 2 - ROOM_WALL_THICKNESS, root.width / 2 + ROOM_WALL_THICKNESS, -root.depth / 2 - ROOM_WALL_THICKNESS, root.depth / 2 + ROOM_WALL_THICKNESS),
     minY: -ROOT_FLOOR_THICKNESS / 2, maxY: root.height,
   }]
   for (const pack of world.structurePacks) {

@@ -2,13 +2,52 @@ import { BASE_ROOM_SURFACE_IDS, folderElementIds, folderIdFromSelection, ROOT_RO
 import { structureSurfaceElementId } from './elementIds'
 import { ROOT_FLOOR_THICKNESS, ROOT_PLATFORM_THICKNESS, ROOT_PLATFORM_Y, WALL_SIDES } from './constants'
 import type { RoomState } from '../state/types'
-import type { RoomConfig, StructurePack, StructureSurface } from './types'
+import type { RoomConfig, StructurePack, StructureSurface, WallSide } from './types'
 
 const close = (a: number, b: number) => Math.abs(a - b) < 1e-6
 export function surfacePosition(room: RoomConfig, surface: StructureSurface): [number, number, number] {
   return [surface.x + (surface.wall === 'east' ? room.width / 2 : surface.wall === 'west' ? -room.width / 2 : 0),
     surface.y + (surface.kind === 'wall' ? room.height / 2 : surface.kind === 'ceiling' ? room.height : 0),
     surface.z + (surface.wall === 'south' ? room.depth / 2 : surface.wall === 'north' ? -room.depth / 2 : 0)]
+}
+
+/**
+ * Habitaciones: las creadas desde Construcción y el paquete virtual de la habitación
+ * principal (`__root__`, ver `rootDoorPack`). No incluye suelos ni paredes independientes.
+ */
+export const isRoomPackId = (packId: string | undefined) => !!packId && (packId.startsWith('floor-pack-') || packId === '__root__')
+
+/**
+ * Desplazamiento hacia fuera del centro de una pared de habitación. Las paredes de
+ * habitación quedan enteras fuera del suelo: su cara interior coincide con el borde del
+ * suelo y con el inicio de la cuadrícula. `yaw` 0 es la pared norte (interior hacia +Z).
+ */
+export function roomWallOutset(yaw: number, depth: number): [number, number] {
+  return [-Math.sin(yaw) * depth / 2, -Math.cos(yaw) * depth / 2]
+}
+
+/**
+ * Largo físico extra de una pared de habitación. Con las paredes por fuera del suelo, las
+ * esquinas exteriores (grosor × grosor) quedarían vacías: las paredes norte y sur se
+ * alargan un grosor por cada extremo para cubrirlas. Este y oeste conservan el largo del
+ * suelo. Solo afecta a la geometría física; la medida guardada no cambia.
+ */
+export function roomWallCornerExtension(side: WallSide, depth: number): number {
+  return side === 'north' || side === 'south' ? depth * 2 : 0
+}
+
+const SIDE_YAW ={ north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 } as const
+
+/**
+ * Centro físico de una superficie de un paquete. Coincide con `surfacePosition` salvo en
+ * las paredes de habitación, que se desplazan medio grosor hacia fuera. Los datos
+ * guardados no cambian: siguen referidos al borde del suelo.
+ */
+export function physicalSurfacePosition(room: RoomConfig, surface: StructureSurface, packId: string | undefined): [number, number, number] {
+  const [x, y, z] = surfacePosition(room, surface)
+  if (surface.kind !== 'wall' || !surface.wall || !isRoomPackId(packId)) return [x, y, z]
+  const [dx, dz] = roomWallOutset(SIDE_YAW[surface.wall] + surface.rotation, surface.depth)
+  return [x + dx, y, z + dz]
 }
 
 /** Solid vertical envelope, independent of visibility. Surface origins are centres. */

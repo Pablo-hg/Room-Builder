@@ -1,5 +1,6 @@
 import { structureWindowFrame } from './structureWindows'
-import { worldRoomBoxes } from './roomEditing'
+import { roomWallOutset, worldRoomBoxes } from './roomEditing'
+import { ROOM_WALL_THICKNESS } from './constants'
 import type { RoomConfig, StructurePack, WindowConfig } from './types'
 
 export type WallObjectWorld = { room: RoomConfig; structurePacks: StructurePack[] }
@@ -14,8 +15,10 @@ export function wallObjectPosition(room: RoomConfig, window: WindowConfig, pack?
   if (window.wallPosition) return window.wallPosition
   const frame = pack ? structureWindowFrame(room, pack, window.wall) : null
   const yaw = frame?.yaw ?? ({ north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 }[window.wall])
-  const x = frame?.x ?? (window.wall === 'east' ? room.width / 2 : window.wall === 'west' ? -room.width / 2 : 0)
-  const z = frame?.z ?? (window.wall === 'north' ? -room.depth / 2 : window.wall === 'south' ? room.depth / 2 : 0)
+  // Sin paquete: pared de la habitación principal, con su centro medio grosor por fuera.
+  const [outsetX, outsetZ] = roomWallOutset(yaw, ROOM_WALL_THICKNESS)
+  const x = frame?.x ?? (window.wall === 'east' ? room.width / 2 : window.wall === 'west' ? -room.width / 2 : 0) + outsetX
+  const z = frame?.z ?? (window.wall === 'north' ? -room.depth / 2 : window.wall === 'south' ? room.depth / 2 : 0) + outsetZ
   return { x: x + Math.cos(yaw) * window.offset, y: (frame?.floorY ?? 0) + window.sill,
     z: z - Math.sin(yaw) * window.offset, yaw }
 }

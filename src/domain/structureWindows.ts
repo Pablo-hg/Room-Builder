@@ -1,6 +1,6 @@
 import { ROOM_LIMITS, WALL_LABELS, WALL_SIDES } from './constants'
 import { isWindowShape } from './objectCatalog'
-import { surfacePosition } from './roomEditing'
+import { physicalSurfacePosition } from './roomEditing'
 import { validateAxisLocks } from './axisLocks'
 import { validateFreeWallPosition, validateWallPosition } from './freeWallPosition'
 import type { RoomConfig, StructurePack, StructureSurface, WallOpening, WallSide, WindowConfig } from './types'
@@ -19,7 +19,7 @@ export function structurePackOpenings(pack: StructurePack, surface: StructureSur
 export function structureWindowFrame(room: RoomConfig, pack: StructurePack, wallSide: WallSide) {
   const wall = pack.surfaces.find((surface) => surface.kind === 'wall' && surface.wall === wallSide)
   if (!wall) return null
-  const [x, y, z] = surfacePosition(room, wall)
+  const [x, y, z] = physicalSurfacePosition(room, wall, pack.id)
   const yaw = ({ north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 } as Record<WallSide, number>)[wallSide] + wall.rotation
   return {
     x: pack.x + x, z: pack.z + z,

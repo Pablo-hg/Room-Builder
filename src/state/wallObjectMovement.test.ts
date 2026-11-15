@@ -150,7 +150,7 @@ test('v10 conserva elementos libres en JSON y ProjectV2 y sigue leyendo v9', () 
   store.getState().detachWallObject(id)
   store.getState().moveWallObject(id, 'z', 0)
   const data = persistedDesign(store.getState())
-  assert.equal(data.version, 10)
+  assert.equal(data.version, 12)
   const saved = { id: 'free', name: 'Libre', savedAt: '2026-11-08T12:00:00Z', data }
   assert.deepEqual(parseDesignFile(serializeDesignFile(saved)).design.data.room.windows, normalizeDesign(data).room.windows)
   assert.deepEqual(projectToPersistedDesignV1(migrateDesignToProject(saved)).room.windows[0].freePosition, data.room.windows[0].freePosition)

@@ -773,7 +773,7 @@ test('incluye puerta y ventana en el catálogo y abre sus propiedades a la izqui
   await page.goto('/')
   await expandAllCatalogCategories(page)
   await expect(page.locator('.catalog-card')).toHaveCount(36)
-  for (const name of ['Sofá', 'Silla', 'Cama doble', 'Estantería', 'Lámpara', 'Mesa de centro', 'Escritorio', 'Silla de escritorio', 'Mueble de TV', 'Televisor', 'Alfombra', 'Alfombra circular', 'Planta', 'Espejo rectangular', 'Espejo circular']) {
+  for (const name of ['Sofá', 'Silla', 'Cama doble', 'Estantería', 'Lámpara de pie', 'Mesa de centro', 'Escritorio', 'Silla de escritorio', 'Mueble de TV', 'Televisor', 'Alfombra', 'Alfombra circular', 'Planta', 'Espejo rectangular', 'Espejo circular']) {
     await expect(page.locator('.catalog-card').getByText(name, { exact: true })).toBeVisible()
   }
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })

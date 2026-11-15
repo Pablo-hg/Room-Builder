@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { DEFAULT_ROOM } from './constants'
+import { DEFAULT_ROOM, ROOM_WALL_THICKNESS } from './constants'
 import { formatPlanDimension, formatPlanDimensionValue, planDimensionLabelMode, planDimensionsForSegments, planDimensionsSummary, roomPerimeterDimensions, roomPerimeterSegments } from './planDimensions'
 import type { RoomConfig } from './types'
 
@@ -18,9 +18,12 @@ test('una habitación de 4,00 × 3,00 m acota 4,00 m en A/C y 3,00 m en B/D', ()
 test('las cotas se derivan de los segmentos físicos y apuntan hacia el exterior', () => {
   const segments = roomPerimeterSegments(room(4, 3))
   const north = segments.find((segment) => segment.wall === 'north')!
-  close(north.start.x, -2); close(north.end.x, 2); close(north.start.z, -1.5); close(north.end.z, -1.5)
+  // La pared va por fuera del suelo: su línea central queda medio grosor más allá del borde,
+  // pero la cota mide la habitación (4 × 3 m), no el sólido que cubre las esquinas.
+  const half = ROOM_WALL_THICKNESS / 2
+  close(north.start.x, -2); close(north.end.x, 2); close(north.start.z, -1.5 - half); close(north.end.z, -1.5 - half)
   const east = segments.find((segment) => segment.wall === 'east')!
-  close(east.start.x, 2); close(east.end.x, 2); close(Math.abs(east.end.z - east.start.z), 3)
+  close(east.start.x, 2 + half); close(east.end.x, 2 + half); close(Math.abs(east.end.z - east.start.z), 3)
   for (const dimension of roomPerimeterDimensions(room(4, 3))) {
     // Eje local Z del grupo girado `yaw`: (sin yaw, cos yaw).
     const outward = { x: Math.sin(dimension.yaw) * dimension.outwardSign, z: Math.cos(dimension.yaw) * dimension.outwardSign }

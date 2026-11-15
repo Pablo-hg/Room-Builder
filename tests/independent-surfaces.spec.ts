@@ -88,7 +88,8 @@ for (const kind of ['Suelo', 'Pared']) {
     await page.getByRole('button', { name: new RegExp(`${kind}.*Objeto independiente`) }).click()
     const width = page.getByRole('textbox', { name: 'Introducir Anchura en metros', exact: true })
     const thickness = page.getByRole('textbox', { name: 'Introducir Grosor en metros' })
-    await expect(thickness).toHaveValue('0.13')
+    // Suelos: 0,13 m; paredes: 0,12 m, como la habitación principal.
+    await expect(thickness).toHaveValue(kind === 'Suelo' ? '0.13' : '0.12')
     await thickness.fill('0,25')
     await thickness.press('Enter')
     await expect(thickness).toHaveValue('0.25')

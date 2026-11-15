@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { DEFAULT_ROOM } from './constants'
-import { DEFAULT_GRID_VISIBILITY, isPersistedDesign, persistedDesign, persistedDesignSignature, type PersistedDesign } from './designV1'
+import { DEFAULT_GRID_VISIBILITY, isPersistedDesign, persistedDesign, persistedDesignSignature, WALLS_OUTSIDE_VERSION, type PersistedDesign } from './designV1'
 import { arrangeFurniture } from './editingRules'
 import { validateOpenings } from './geometry'
 import { normalizeDesignPreferences, normalizeDesignRoom, normalizeStructurePacks } from './normalizeDesignV1'
@@ -28,7 +28,9 @@ test('v1 conserva fixtures completos, antiguos y de límite sin mutaciones ni ca
     const serialized = persistedDesign({ room, furniture, structurePacks, ...preferences })
     assert.deepEqual(serialized.furniture.map((item) => item.id), data.furniture.map((item) => item.id))
     assert.deepEqual(JSON.parse(JSON.stringify(serialized)), serialized)
-    assert.equal(persistedDesignSignature(data), persistedDesignSignature(serialized))
+    // Todo diseño se guarda como v12; el resto del contenido no cambia.
+    assert.equal(serialized.version, WALLS_OUTSIDE_VERSION)
+    assert.equal(persistedDesignSignature({ ...data, version: WALLS_OUTSIDE_VERSION }), persistedDesignSignature(serialized))
     assert.deepEqual(data, before)
   }
 })

@@ -1,6 +1,6 @@
-import { WALL_SIDES, ROOM_LIMITS } from './constants'
+import { WALL_SIDES, ROOM_LIMITS, ROOM_WALL_THICKNESS } from './constants'
 import { structureSurfaceElementId } from './elementIds'
-import { surfacePosition } from './roomEditing'
+import { isRoomPackId, physicalSurfacePosition, roomWallCornerExtension, roomWallOutset } from './roomEditing'
 import { findAvailableOpeningOffset, isWallMountedDecoration } from './geometry'
 import { convexHull, intersectPolygon, polygonArea, uncoveredPolygons, wallRectangle, type WallPolygon } from './connectedWallGeometry'
 import type { DoorConfig, RoomConfig, StructurePack, WallOpening, WallSide, WindowConfig } from './types'
@@ -32,16 +32,23 @@ export const wallYaw = (side: WallSide) => ({ north: 0, east: -Math.PI / 2, sout
 export function physicalWalls(world: WallWorld): ConnectedWall[] {
   const entry = cache(world)
   if (entry.walls) return entry.walls
-  return entry.walls = [...WALL_SIDES.map((side) => ({ id: `room-wall:${side}`, side,
-    x: side === 'east' ? world.room.width / 2 : side === 'west' ? -world.room.width / 2 : 0,
-    y: 0, z: side === 'north' ? -world.room.depth / 2 : side === 'south' ? world.room.depth / 2 : 0,
-    yaw: wallYaw(side), width: side === 'north' || side === 'south' ? world.room.width : world.room.depth,
-    height: world.room.height, depth: 0.12 })), ...world.structurePacks.flatMap((pack) => pack.surfaces.flatMap((surface) => {
+  // Las paredes de habitación van por fuera del suelo (cara interior en el borde) y las
+  // norte/sur cubren además las esquinas exteriores (ver `roomWallCornerExtension`).
+  return entry.walls = [...WALL_SIDES.map((side) => {
+    const [dx, dz] = roomWallOutset(wallYaw(side), ROOM_WALL_THICKNESS)
+    return { id: `room-wall:${side}`, side,
+      x: (side === 'east' ? world.room.width / 2 : side === 'west' ? -world.room.width / 2 : 0) + dx,
+      y: 0, z: (side === 'north' ? -world.room.depth / 2 : side === 'south' ? world.room.depth / 2 : 0) + dz,
+      yaw: wallYaw(side),
+      width: (side === 'north' || side === 'south' ? world.room.width : world.room.depth) + roomWallCornerExtension(side, ROOM_WALL_THICKNESS),
+      height: world.room.height, depth: ROOM_WALL_THICKNESS }
+  }), ...world.structurePacks.flatMap((pack) => pack.surfaces.flatMap((surface) => {
       if (surface.kind !== 'wall' || !surface.wall) return []
-      const [x, y, z] = surfacePosition(world.room, surface)
+      const [x, y, z] = physicalSurfacePosition(world.room, surface, pack.id)
+      const extension = isRoomPackId(pack.id) ? roomWallCornerExtension(surface.wall, surface.depth) : 0
       return [{ id: structureSurfaceElementId(pack.id, surface.id), packId: pack.id, side: surface.wall,
         x: pack.x + x, y: pack.y + y - surface.height / 2, z: pack.z + z,
-        yaw: wallYaw(surface.wall) + surface.rotation, width: surface.width, height: surface.height, depth: surface.depth }]
+        yaw: wallYaw(surface.wall) + surface.rotation, width: surface.width + extension, height: surface.height, depth: surface.depth }]
     }))]
 }
 

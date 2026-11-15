@@ -21,11 +21,11 @@ test('normaliza fixtures v1–v4 de forma determinista sin perder preferencias n
   }
 })
 
-test('aplana un v5 antiguo de variantes a su variante activa y lo guarda como v4', () => {
+test('aplana un v5 antiguo de variantes a su variante activa y lo migra hasta v12', () => {
   const legacy = JSON.parse(readFileSync(new URL('../../tests/fixtures/persisted-designs/valid-v5.json', import.meta.url), 'utf8'))
   const before = structuredClone(legacy)
   const normalized = normalizeDesign(legacy)
-  assert.equal(normalized.version, 4)
+  assert.equal(normalized.version, 12) // v5 → v4 (variantes) → v12 (paredes por fuera)
   assert.equal('layouts' in normalized, false)
   assert.equal('activeLayoutId' in normalized, false)
   assert.deepEqual(normalized.furniture.map((item) => item.id), legacy.furniture.map((item: FurnitureItem) => item.id))
