@@ -1,6 +1,6 @@
 import { WALL_LABELS } from './constants'
 import { snapMeasurement } from './measurements'
-import { surfacePosition } from './roomEditing'
+import { roomWallCornerExtension, surfacePosition } from './roomEditing'
 import type { RoomConfig, WallSide } from './types'
 import { physicalWalls, type ConnectedWall, type WallWorld } from './wallConnections'
 
@@ -72,8 +72,10 @@ export function roomPerimeterSegments(room: RoomConfig): PlanWallSegment[] {
 }
 
 function wallSegment(wall: ConnectedWall): PlanWallSegment {
-  const dx = Math.cos(wall.yaw) * wall.width / 2
-  const dz = -Math.sin(wall.yaw) * wall.width / 2
+  // La cota mide la habitación (cara interior), no el sólido alargado que cubre las esquinas.
+  const length = wall.width - (isRoomPack(wall.packId) ? roomWallCornerExtension(wall.side, wall.depth) : 0)
+  const dx = Math.cos(wall.yaw) * length / 2
+  const dz = -Math.sin(wall.yaw) * length / 2
   return {
     id: wall.id,
     roomId: wall.packId ?? null,

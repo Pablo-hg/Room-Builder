@@ -9,6 +9,7 @@ import { furnitureAxisLocks } from './axisLocks'
 import { furnitureWallAxes } from './furnitureWalls'
 import { wallObjectAvailableAxes, wallObjectBox, wallObjects } from './wallObjectPlacement'
 import { worldOpenings } from './wallConnections'
+import { physicalSurfacePosition } from './roomEditing'
 
 type Axis = 'x' | 'y' | 'z'
 export type MultiItem = { id: string; name: string; color: string; min: Record<Axis, number>; max: Record<Axis, number>; axes: Axis[]; type: 'furniture' | 'opening' | 'surface'; packId?: string; surfaceId?: string; wall?: WallSide }
@@ -54,9 +55,10 @@ export function multiSelectionItems(state: Pick<RoomState, 'room' | 'furniture' 
     const rotation = surface.kind === 'wall' ? ({ north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 }[wall] + surface.rotation) : 0
     const halfX = (Math.abs(Math.cos(rotation)) * surface.width + Math.abs(Math.sin(rotation)) * surface.depth) / 2
     const halfZ = (Math.abs(Math.sin(rotation)) * surface.width + Math.abs(Math.cos(rotation)) * surface.depth) / 2
-    const x = pack.x + surface.x + (surface.kind === 'wall' ? wall === 'east' ? state.room.width / 2 : wall === 'west' ? -state.room.width / 2 : 0 : 0)
-    const z = pack.z + surface.z + (surface.kind === 'wall' ? wall === 'north' ? -state.room.depth / 2 : wall === 'south' ? state.room.depth / 2 : 0 : 0)
-    const y = pack.y + surface.y + (surface.kind === 'wall' ? state.room.height / 2 : surface.kind === 'ceiling' ? state.room.height : 0)
+    const [localX, localY, localZ] = physicalSurfacePosition(state.room, surface, pack.id)
+    const x = pack.x + localX
+    const z = pack.z + localZ
+    const y = pack.y + localY
     items.push({ id, name: surface.name, color: surface.color, type: 'surface', packId: pack.id, surfaceId: surface.id, axes: ['x', 'y', 'z'], min: { x: x - halfX, y: y - surface.height / 2, z: z - halfZ }, max: { x: x + halfX, y: y + surface.height / 2, z: z + halfZ } })
   }
   for (const opening of worldOpenings(state).filter((item) => item.kind === 'door' && ids.has(item.id))) {

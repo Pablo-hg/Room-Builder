@@ -1,6 +1,6 @@
 import { WALL_SIDES } from './constants'
 import { validateAxisLocks } from './axisLocks'
-import { surfacePosition } from './roomEditing'
+import { physicalSurfacePosition } from './roomEditing'
 import type { DoorConfig, RoomConfig, StructurePack, StructureSurface, WallOpening } from './types'
 import { createStructureSurface } from './structureRules'
 import { structureWindowError } from './structureWindows'
@@ -14,7 +14,7 @@ export function structureDoorPosition(room: RoomConfig, pack: StructurePack, doo
   if (door.wallPosition) return door.wallPosition
   const surface = pack.surfaces.find((candidate) => candidate.kind === 'wall' && candidate.wall === door.wall)
   if (!surface) return null
-  const [x, y, z] = surfacePosition(room, surface)
+  const [x, y, z] = physicalSurfacePosition(room, surface, pack.id)
   const angle = { north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 }[door.wall] + surface.rotation
   return { x: pack.x + x + Math.cos(angle) * door.offset, y: pack.y + y - surface.height / 2, z: pack.z + z - Math.sin(angle) * door.offset }
 }

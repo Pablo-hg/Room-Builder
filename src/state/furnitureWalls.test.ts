@@ -11,7 +11,7 @@ function fixture() {
   store.getState().addFurniture('chair')
   const id = store.getState().selectedId!
   const state = store.getState(), chair = state.furniture.find((item) => item.id === id)!
-  store.getState().moveFurniture(id, 1, -state.room.depth / 2 + 0.06 + chair.depth / 2 + 0.03)
+  store.getState().moveFurniture(id, 1, -state.room.depth / 2 + chair.depth / 2 + 0.03)
   return { store, id, current: () => store.getState().furniture.find((item) => item.id === id)! }
 }
 const close = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-6, `${a} != ${b}`)
@@ -60,7 +60,7 @@ test('v11 hace round-trip local, JSON y ProjectV2 sin perder fijación ni bloque
   store.getState().setFurnitureWallLateralLock(id, true)
   store.getState().setElementAxisLock(id, 'y', true)
   const data = persistedDesign(store.getState()), before = structuredClone(data)
-  assert.equal(data.version, 11)
+  assert.equal(data.version, 12)
   const saved: SavedDesign = { id: 'saved', name: 'Fijación', savedAt: '2026-11-11T12:00:00.000Z', data }
   assert.deepEqual(normalizeDesign(data).furniture, data.furniture)
   assert.deepEqual(parseDesignFile(serializeDesignFile(saved)).design.data.furniture, data.furniture)

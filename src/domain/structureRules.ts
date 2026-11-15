@@ -1,4 +1,4 @@
-import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, ROOM_LIMITS, WALL_LABELS } from './constants'
+import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, ROOM_LIMITS, ROOM_WALL_THICKNESS, WALL_LABELS } from './constants'
 import type { RoomConfig, StructureSurface, StructureSurfaceKey, WallSide } from './types'
 
 const DEFAULT_SURFACE_THICKNESS = 0.13
@@ -26,7 +26,8 @@ export function createStructureSurface(room: RoomConfig, id: StructureSurfaceKey
     z: 0,
     width,
     height: room.height,
-    depth: DEFAULT_SURFACE_THICKNESS,
+    // Mismo grosor que la habitación principal (decisión del propietario, 14/11/2026).
+    depth: ROOM_WALL_THICKNESS,
     rotation: 0,
     color: room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR,
   }

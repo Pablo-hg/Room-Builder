@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import type { FurnitureItem, FurnitureKind } from '../domain/types'
 import { FURNITURE_PRESETS } from '../domain/objectCatalog'
 import { colorTone } from './colorTone'
+import { pictureModel } from './WallObjectModels'
 
 type ModelContext = {
   item: FurnitureItem
@@ -95,36 +96,46 @@ function renderDeskChair({ item, material, darkColor, deeperColor }: ModelContex
   )
 }
 
-function renderVase({ item, material, darkColor, lightColor }: ModelContext) {
+// Perfil del jarrón (radio, altura) en metros para la medida base de 0,5 m: base cerrada
+// apoyada en el suelo, cuerpo ancho, cuello estrecho y boca algo abierta.
+const VASE_PROFILE = [[0, 0], [0.13, 0], [0.17, 0.04], [0.2, 0.15], [0.19, 0.27], [0.13, 0.37], [0.085, 0.42], [0.09, 0.47], [0.11, 0.5]]
+
+function renderVase({ material, darkColor, lightColor }: ModelContext) {
   return (
     <group>
-      <mesh position={[0, item.height * 0.45, 0]} castShadow><latheGeometry args={[[[0.1, 0], [0.16, 0.04], [0.22, 0.14], [0.25, 0.28], [0.22, 0.38], [0.12, 0.44], [0.1, 0.5]].map(([radius, height]) => new THREE.Vector2(radius, height))]} />{material}</mesh>
-      <mesh position={[0, item.height * 0.95, 0]}><cylinderGeometry args={[0.1, 0.1, 0.035, 24]} /><meshStandardMaterial color={darkColor} roughness={0.8} side={THREE.DoubleSide} /></mesh>
-      <mesh position={[0, item.height * 0.55, item.depth * 0.22]}><torusGeometry args={[0.16, 0.012, 8, 32]} /><meshStandardMaterial color={lightColor} roughness={0.8} /></mesh>
+      <mesh castShadow><latheGeometry args={[VASE_PROFILE.map(([radius, height]) => new THREE.Vector2(radius, height)), 24]} />{material}</mesh>
+      {/* Franja decorativa a la altura del vientre, apenas más ancha que el cuerpo. */}
+      <mesh position={[0, 0.21, 0]}><cylinderGeometry args={[0.2, 0.2, 0.035, 24]} /><meshStandardMaterial color={lightColor} roughness={0.8} /></mesh>
+      {/* Interior de la boca, para que no se vea a través del jarrón. */}
+      <mesh position={[0, 0.485, 0]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.1, 24]} /><meshStandardMaterial color={darkColor} roughness={0.9} /></mesh>
     </group>
   )
 }
 
-function renderTableLamp({ material, darkColor, deeperColor, lightColor }: ModelContext) {
+// Las pantallas son superficies abiertas: se dibujan por las dos caras para que se vea
+// su parte trasera e interior. Las lámparas no emiten luz (decisión del propietario).
+function shadeMaterial(item: FurnitureItem) {
+  return <meshStandardMaterial color={item.color} roughness={0.78} side={THREE.DoubleSide} />
+}
+
+function renderTableLamp({ item, darkColor, deeperColor, lightColor }: ModelContext) {
   return (
     <group>
       <mesh position={[0, 0.035, 0]} castShadow><cylinderGeometry args={[0.19, 0.22, 0.07, 24]} /><meshStandardMaterial color={darkColor} metalness={0.2} roughness={0.55} /></mesh>
       <mesh position={[0, 0.22, 0]} castShadow><cylinderGeometry args={[0.025, 0.035, 0.32, 16]} /><meshStandardMaterial color={deeperColor} metalness={0.25} roughness={0.5} /></mesh>
-      <mesh position={[0, 0.44, 0]} castShadow><cylinderGeometry args={[0.11, 0.24, 0.3, 28, 1, true]} />{material}</mesh>
-      <mesh position={[0, 0.29, 0]} rotation={[Math.PI / 2, 0, 0]}><circleGeometry args={[0.11, 24]} /><meshStandardMaterial color={lightColor} emissive={lightColor} emissiveIntensity={0.12} side={THREE.DoubleSide} /></mesh>
-      <pointLight position={[0, 0.3, 0]} color="#ffe0a6" intensity={0.18} distance={1.5} />
+      <mesh position={[0, 0.44, 0]} castShadow><cylinderGeometry args={[0.11, 0.24, 0.3, 28, 1, true]} />{shadeMaterial(item)}</mesh>
+      <mesh position={[0, 0.29, 0]} rotation={[Math.PI / 2, 0, 0]}><circleGeometry args={[0.11, 24]} /><meshStandardMaterial color={lightColor} side={THREE.DoubleSide} /></mesh>
     </group>
   )
 }
 
-function renderCeilingLamp({ item, material, darkColor, deeperColor, lightColor }: ModelContext) {
+function renderCeilingLamp({ item, darkColor, deeperColor, lightColor }: ModelContext) {
   return (
     <group>
       <mesh position={[0, item.height - 0.025, 0]} castShadow><cylinderGeometry args={[0.18, 0.18, 0.05, 24]} /><meshStandardMaterial color={darkColor} metalness={0.2} roughness={0.55} /></mesh>
       <mesh position={[0, item.height * 0.58, 0]} castShadow><cylinderGeometry args={[0.025, 0.025, item.height * 0.78, 12]} /><meshStandardMaterial color={deeperColor} metalness={0.25} roughness={0.5} /></mesh>
-      <mesh position={[0, item.height * 0.2, 0]} castShadow><cylinderGeometry args={[0.13, 0.27, item.height * 0.38, 28, 1, true]} />{material}</mesh>
-      <mesh position={[0, item.height * 0.01, 0]} rotation={[Math.PI / 2, 0, 0]}><circleGeometry args={[0.13, 24]} /><meshStandardMaterial color={lightColor} emissive={lightColor} emissiveIntensity={0.2} side={THREE.DoubleSide} /></mesh>
-      <pointLight position={[0, 0, 0]} color="#ffe0a6" intensity={0.45} distance={3} />
+      <mesh position={[0, item.height * 0.2, 0]} castShadow><cylinderGeometry args={[0.13, 0.27, item.height * 0.38, 28, 1, true]} />{shadeMaterial(item)}</mesh>
+      <mesh position={[0, item.height * 0.01, 0]} rotation={[Math.PI / 2, 0, 0]}><circleGeometry args={[0.13, 24]} /><meshStandardMaterial color={lightColor} side={THREE.DoubleSide} /></mesh>
     </group>
   )
 }
@@ -253,13 +264,33 @@ function renderWardrobe({ item, material, darkColor, deeperColor, lightColor, pa
   )
 }
 
-function renderBookshelf({ item, material, deeperColor }: ModelContext) {
+// Libros por balda: [inicio como fracción del ancho interior, ancho m, alto m, tono].
+// Alturas por debajo del hueco libre entre baldas (0,35 m) para no atravesarlas.
+const BOOKSHELF_BOOKS: readonly (readonly [number, number, number, number])[][] = [
+  [[0.04, 0.06, 0.27, 0], [0.11, 0.05, 0.24, 1], [0.17, 0.07, 0.29, 2], [0.26, 0.05, 0.25, 0], [0.62, 0.06, 0.28, 1], [0.7, 0.07, 0.25, 2]],
+  [[0.06, 0.07, 0.26, 2], [0.15, 0.05, 0.29, 0], [0.22, 0.06, 0.23, 1], [0.55, 0.05, 0.27, 0], [0.62, 0.06, 0.24, 2], [0.7, 0.05, 0.28, 1], [0.77, 0.06, 0.26, 0]],
+  [[0.08, 0.06, 0.28, 1], [0.16, 0.06, 0.25, 0], [0.24, 0.05, 0.27, 2], [0.31, 0.07, 0.24, 1]],
+  [[0.45, 0.06, 0.26, 0], [0.53, 0.05, 0.29, 2], [0.6, 0.07, 0.25, 1], [0.69, 0.05, 0.27, 0], [0.76, 0.06, 0.24, 2]],
+]
+
+function renderBookshelf({ item, material, deeperColor, lightColor, paleColor }: ModelContext) {
   const board = 0.07
+  const back = 0.035
+  const innerWidth = item.width - board * 2
+  const shelfHeights = [0.05, 0.47, 0.89, 1.31, 1.73].map((height) => Math.min(height, item.height - board / 2))
+  const bookTones = [lightColor, paleColor, colorTone(item.color, -0.12)]
+  // Las piezas se encajan sin solaparse (fondo y baldas entre los laterales, baldas
+  // delante del fondo) para evitar caras coplanares que parpadean al mover la cámara.
   return (
     <group>
-      <mesh position={[0, item.height / 2, -item.depth / 2 + 0.035]} castShadow><boxGeometry args={[item.width, item.height, 0.07]} /><meshStandardMaterial color={deeperColor} roughness={0.88} /></mesh>
+      <mesh position={[0, item.height / 2, -item.depth / 2 + back / 2]} castShadow><boxGeometry args={[innerWidth, item.height, back]} /><meshStandardMaterial color={deeperColor} roughness={0.88} /></mesh>
       {[-1, 1].map((side) => <mesh key={side} position={[side * (item.width - board) / 2, item.height / 2, 0]} castShadow><boxGeometry args={[board, item.height, item.depth]} />{material}</mesh>)}
-      {[0.05, 0.47, 0.89, 1.31, 1.73].map((height) => <mesh key={height} position={[0, Math.min(height, item.height - board / 2), 0]} castShadow><boxGeometry args={[item.width, board, item.depth]} />{material}</mesh>)}
+      {shelfHeights.map((height) => <mesh key={height} position={[0, height, back / 2]} castShadow><boxGeometry args={[innerWidth, board, item.depth - back]} />{material}</mesh>)}
+      {BOOKSHELF_BOOKS.map((row, level) => row.map(([start, width, height, tone]) => (
+        <mesh key={`${level}-${start}`} position={[-innerWidth / 2 + start * innerWidth + width / 2, shelfHeights[level] + board / 2 + height / 2, back / 2]} castShadow>
+          <boxGeometry args={[width, height, (item.depth - back) * 0.72]} /><meshStandardMaterial color={bookTones[tone]} roughness={0.85} />
+        </mesh>
+      )))}
     </group>
   )
 }
@@ -276,27 +307,18 @@ function renderWastebasket({ item, darkColor, deeperColor }: ModelContext) {
   )
 }
 
-function renderPictureSmall({ item, darkColor, deeperColor, lightColor, paleColor }: ModelContext) {
-  const centerY = 1.4
-  const frame = 0.065
-  return (
-    <group position={[0, centerY, 0]}>
-      <mesh castShadow><boxGeometry args={[item.width, item.height, 0.07]} /><meshStandardMaterial color={darkColor} roughness={0.85} /></mesh>
-      <mesh position={[0, 0, 0.045]}><boxGeometry args={[item.width - frame * 2, item.height - frame * 2, 0.035]} /><meshStandardMaterial color={lightColor} roughness={0.72} /></mesh>
-      <mesh position={[-item.width * 0.2, item.height * 0.13, 0.068]} rotation={[0, 0, -0.28]}><circleGeometry args={[Math.min(item.width, item.height) * 0.16, 24]} /><meshStandardMaterial color={paleColor} /></mesh>
-      <mesh position={[item.width * 0.14, -item.height * 0.11, 0.069]} rotation={[0, 0, 0.24]}><planeGeometry args={[item.width * 0.46, item.height * 0.23]} /><meshStandardMaterial color={item.color} /></mesh>
-      <mesh position={[-item.width * 0.14, -item.height * 0.2, 0.07]} rotation={[0, 0, -0.18]}><planeGeometry args={[item.width * 0.34, item.height * 0.16]} /><meshStandardMaterial color={deeperColor} /></mesh>
-    </group>
-  )
+// Los cuadros se dibujan en la escena como objetos de pared (Openings.tsx). Si alguno llega
+// como mueble (diseños antiguos antes de migrar), se usa el mismo modelo: una sola fuente.
+function renderPicture({ item }: ModelContext) {
+  return <group position={[0, 1.4, 0]}>{pictureModel({ width: item.width, height: item.height, color: item.color })}</group>
 }
 
-function renderLamp({ item, material, darkColor, deeperColor }: ModelContext) {
+function renderLamp({ item, darkColor, deeperColor }: ModelContext) {
   return (
     <group>
       <mesh position={[0, 0.055, 0]} castShadow><cylinderGeometry args={[0.22, 0.25, 0.11, 28]} /><meshStandardMaterial color={darkColor} metalness={0.25} roughness={0.55} /></mesh>
       <mesh position={[0, item.height * 0.48, 0]} castShadow><cylinderGeometry args={[0.025, 0.025, item.height * 0.88, 16]} /><meshStandardMaterial color={deeperColor} metalness={0.35} roughness={0.45} /></mesh>
-      <mesh position={[0, item.height * 0.88, 0]} castShadow><coneGeometry args={[0.28, 0.42, 28, 1, true]} />{material}</mesh>
-      <pointLight position={[0, item.height * 0.82, 0]} intensity={0.35} distance={2.2} color="#ffd891" />
+      <mesh position={[0, item.height * 0.88, 0]} castShadow><coneGeometry args={[0.28, 0.42, 28, 1, true]} />{shadeMaterial(item)}</mesh>
     </group>
   )
 }
@@ -324,9 +346,9 @@ export const FURNITURE_MODELS: Record<FurnitureKind, ModelRenderer> = {
   bookshelf: renderBookshelf,
   wardrobe: renderWardrobe,
   wastebasket: renderWastebasket,
-  pictureSmall: renderPictureSmall,
-  pictureMedium: renderPictureSmall,
-  pictureLarge: renderPictureSmall,
+  pictureSmall: renderPicture,
+  pictureMedium: renderPicture,
+  pictureLarge: renderPicture,
   lamp: renderLamp,
   coffeeTable: renderCoffeeTable,
   desk: renderDesk,

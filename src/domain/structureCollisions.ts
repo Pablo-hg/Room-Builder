@@ -3,6 +3,7 @@ import { structureSurfaceElementId } from './elementIds'
 import { furnitureVisualYOffset } from './objectCatalog'
 import { boxOutsideBuilding } from './buildingVolume'
 import { wallIntersectionIsCut } from './wallConnections'
+import { physicalSurfacePosition } from './roomEditing'
 
 type Box = { id: string; x: number; y: number; z: number; width: number; height: number; depth: number; rotation: number }
 type World = { room: RoomConfig; furniture: FurnitureItem[]; structurePacks: StructurePack[] }
@@ -14,11 +15,12 @@ function furnitureBox(item: FurnitureItem, world: World): Box {
 
 function surfaceBox(room: RoomConfig, pack: StructurePack, surface: StructureSurface): Box {
   const wall = surface.wall ?? 'north'
+  const [x, y, z] = physicalSurfacePosition(room, surface, pack.id)
   return {
     id: structureSurfaceElementId(pack.id, surface.id),
-    x: pack.x + surface.x + (surface.kind === 'wall' ? wall === 'east' ? room.width / 2 : wall === 'west' ? -room.width / 2 : 0 : 0),
-    y: pack.y + surface.y + (surface.kind === 'wall' ? room.height / 2 : surface.kind === 'ceiling' ? room.height : 0),
-    z: pack.z + surface.z + (surface.kind === 'wall' ? wall === 'north' ? -room.depth / 2 : wall === 'south' ? room.depth / 2 : 0 : 0),
+    x: pack.x + x,
+    y: pack.y + y,
+    z: pack.z + z,
     width: surface.width, height: surface.height, depth: surface.depth,
     rotation: surface.kind === 'wall' ? ({ north: 0, east: -Math.PI / 2, south: Math.PI, west: Math.PI / 2 }[wall] + surface.rotation) : 0,
   }

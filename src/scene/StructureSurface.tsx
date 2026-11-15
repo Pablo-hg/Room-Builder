@@ -18,6 +18,7 @@ import { releasePointer, usePointerCancellation } from './usePointerCancellation
 import { usePlanPan } from './usePlanPan'
 import { cameraAwareShiftDrag } from './cameraAwareShiftDrag'
 import { moveFromOrigin } from '../domain/measurements'
+import { physicalSurfacePosition } from '../domain/roomEditing'
 import type { WallFace } from '../domain/wallSolidGeometry'
 
 export function StructureSurfaceObject({
@@ -51,7 +52,7 @@ export function StructureSurfaceObject({
   skinFaces?: readonly WallFace[]
 }) {
   const wall = surface.wall ?? 'north'
-  const position = structureSurfacePosition(room, surface)
+  const position = physicalSurfacePosition(room, surface, packId)
   const baseRotation = wall === 'north' ? 0 : wall === 'east' ? -Math.PI / 2 : wall === 'south' ? Math.PI : Math.PI / 2
   const moveStructureSurface = useRoomStore((state) => state.moveStructureSurface)
   const setStructureSurfaceRotation = useRoomStore((state) => state.setStructureSurfaceRotation)
@@ -190,7 +191,7 @@ export function StructureSurfaceObject({
         />
       </mesh>}
       {(outlined || collision) && <group position={position} rotation={surface.kind === 'wall' ? [0, baseRotation + surface.rotation, 0] : [0, 0, 0]}>
-        <SelectionBounds width={surface.width} height={surface.height} depth={surface.depth} collision={collision} />
+        <SelectionBounds width={surface.width} height={surface.height} depth={surface.depth} collision={collision} focused={outlined} />
       </group>}
       {showGrid && !gridHidden && (surface.kind === 'floor' ? (
         <group position={[position[0], position[1] + surface.height / 2 - 0.04, position[2]]}>
@@ -215,15 +216,4 @@ export function StructureSurfaceObject({
       )}
     </group>
   )
-}
-
-function structureSurfacePosition(room: RoomConfig, surface: StructureSurface): [number, number, number] {
-  if (surface.kind !== 'wall') {
-    return [surface.x, (surface.kind === 'ceiling' ? room.height : 0) + surface.y, surface.z]
-  }
-  const wall = surface.wall ?? 'north'
-  if (wall === 'north') return [surface.x, room.height / 2 + surface.y, -room.depth / 2 + surface.z]
-  if (wall === 'south') return [surface.x, room.height / 2 + surface.y, room.depth / 2 + surface.z]
-  if (wall === 'east') return [room.width / 2 + surface.x, room.height / 2 + surface.y, surface.z]
-  return [-room.width / 2 + surface.x, room.height / 2 + surface.y, surface.z]
 }

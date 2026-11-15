@@ -269,3 +269,41 @@ Decisión del propietario tras la PR #77 (dev → main), donde fallaron los 4 fr
 - AGENTS.md actualizado con la política y la regla de ≈10 gestos por test.
 - **Local en Windows:** abrir el terminal con `C:\` en mayúscula; con `c:\` Vite sirve los módulos como `/@fs/` y los tests que importan el store obtienen otra instancia.
 - **Sin ejecutar en CI** estos cambios de workflow: se comprobará al subirlos.
+
+## 14/11/2026 — Paredes de habitación por fuera del suelo (paso A de 4)
+
+Decisión del propietario: la cara interior de cada pared de habitación coincide con el borde del suelo y el inicio de la cuadrícula (antes la pared estaba centrada en el borde y tapaba ~6 cm del primer cuadrado). La medida de la habitación pasa a ser el espacio libre interior. Habitaciones contiguas: una única pared compartida. Grosor de las paredes nuevas unificado a 0,12 m. Rama `feature/F1-06-auditar-catalogo`, a petición del propietario.
+
+**Paso A (geometría), hecho:**
+
+- `roomEditing.ts`: `roomWallOutset`, `physicalSurfacePosition`, `isRoomPackId` y `roomWallCornerExtension`. Los datos guardados no cambian: siguen referidos al borde del suelo; solo el centro físico de la pared se desplaza medio grosor hacia fuera.
+- Las paredes norte y sur se alargan un grosor por cada extremo para cubrir las esquinas exteriores (sin ello quedaba un hueco de 12 × 12 cm, visible en Plano). Las cotas del Plano siguen midiendo la habitación.
+- Aplicado en `physicalWalls`, render de paredes (`Walls.tsx`, `StructureSurface.tsx`), puertas y ventanas por defecto (`structureDoors`, `structureWindows`, `wallObjectPlacement`, plano de arrastre y símbolo de Plano en `Openings.tsx`), colisiones de superficies, selección múltiple y volumen del edificio.
+- `ROOM_WALL_THICKNESS = 0,12`; las paredes nuevas (habitaciones y paredes independientes) usan ese grosor. Los suelos conservan 0,13 m.
+- Tests actualizados a la nueva geometría (cara interior en el borde del suelo, grosor 0,12): `furnitureWalls`, `planDimensions`, `buildingVolume`, `independentSurfaces`. `npm test`: **540/540**. `tsc -p tsconfig.app.json`: sin errores (el `tsc --noEmit` raíz no comprueba nada porque `tsconfig.json` solo tiene referencias).
+- Capturas en local (Isométrica, Frontal, Plano) coherentes con la imagen de referencia del propietario. **Sin validación humana.**
+
+**Pendiente y riesgo conocido:** los diseños guardados antes del cambio con muebles fijados a una pared (v11) o con puertas/ventanas ancladas (`wallPosition`, v10) quedan desplazados medio grosor; los muebles fijados pueden impedir la carga («El mueble no está apoyado en su pared de fijación»). Necesita migración (paso C) antes de integrar. Pasos B (crear habitaciones contiguas separadas un grosor) y C (migración, incluida la separación de habitaciones contiguas guardadas) sin hacer. E2E sin ejecutar.
+
+### 15/11/2026 — Pasos B y C: habitaciones contiguas y migración v12
+
+- **Paso B:** `planRoomCreation` separa una habitación contigua (este/oeste/norte/sur) su anchura o fondo **más un grosor de pared**, para que ambas compartan una única pared en la frontera. Arriba/abajo no cambia.
+- **Paso C (formato):** nueva versión de diseño **v12** (`WALLS_OUTSIDE_VERSION`). Hasta v11 la versión era la mínima según funciones; desde v12 todo diseño se guarda como v12, porque es el único modo de distinguir la geometría antigua. `isPersistedDesign` y el validador de archivos JSON aceptan v12.
+- **Migración** `src/persistence/wallLayoutMigration.ts`, aplicada en `normalizeDesign` (única entrada de carga: diseños locales, importación JSON y firmas de guardado):
+  1. Habitaciones contiguas antiguas: cada habitación se desplaza un grosor por cada frontera de contacto entre ella y la principal, con sus muebles, puertas y ventanas ancladas, objetos murales libres y suelos/paredes independientes que contiene.
+  2. Puertas y ventanas ancladas (`wallPosition`) y muebles fijados a paredes de habitación se desplazan medio grosor hacia fuera para seguir en su pared.
+  - No muta la entrada y no se repite sobre un v12. Limitación: las fronteras se calculan como planos de contacto; en distribuciones no alineadas en cuadrícula una frontera puede desplazar habitaciones que no la tocan.
+- `ProjectV2` (`projectMigration.ts`) solo se usa en tests; se amplía su tipo a v12 sin más cambios.
+- Tests: nuevo `wallLayoutMigration.test.ts` (6) y actualizados los que esperaban v10/v11 tras guardar o la separación antigua entre habitaciones. `npm test`: **546/546**; `tsc -p tsconfig.app.json` correcto; `npm run build` correcto. Capturas locales de dos habitaciones contiguas (Isométrica y Plano) con una única pared compartida. **E2E sin ejecutar; validación humana pendiente.**
+
+### 15/11/2026 — Iconos generados: orden de pintado correcto
+
+El icono del mueble de TV no coincidía con su 3D (faltaba una puerta y asomaba una franja de la caja interior). Causa: el generador ordenaba los triángulos por la profundidad de su centro, que falla con caras grandes junto a piezas pequeñas delante. `modelIcon.ts` ordena ahora por la profundidad real de cada par de triángulos en su zona de solape (orden topológico; el centro solo desempata). Mejora también sofá, escritorio y otros. Generación: ≤ 22 ms por icono.
+
+### 15/11/2026 — Cierre de #30 (catálogo, modelos y estilo diorama)
+
+- Objetos de pared con modelo puro en `WallObjectModels.tsx` e icono generado desde él (solo los cuadros mantienen icono 2D). Estándares de modelos comprobados por `modelStandards.test.ts` para todo el catálogo, presente o futuro; reglas y alta de objetos en `VISUAL_STYLE_GUIDE.md`. Lámpara de techo antigua ya no aparece «fuera de la vivienda». Script de capturas `r2-catalog.spec.ts` reparado y ampliado a los objetos de pared. Detalle en [F1_CATALOG_AUDIT.md](F1_CATALOG_AUDIT.md).
+- Última comprobación automática: `npm test` 553/553, `tsc -p tsconfig.app.json` y `npm run build` correctos (antes de la indicación de no ejecutar más pruebas). Capturas del catálogo: 32 objetos × 3 vistas sin errores.
+- **Validación visual del propietario: superada** («visualmente todo ok»). Inventario: los 33 objetos marcados como validados (lista `VALIDATED` en `scripts/catalog-inventory.ts`).
+- **Pendiente:** E2E (humo en la CI de la PR hacia `main`; suite completa antes de #54) y commit, a la espera de autorización del propietario. Sin PR.
+- **E2E relacionados (15/11/2026, local, a petición del propietario):** 16 specs; 141 correctos y 6 fallos por cambios intencionados (versión 12, «Lámpara de pie», grosor 0,12 m). Expectativas actualizadas en 4 specs (`connected-openings`, `furniture-attachments`, `independent-surfaces`, `rename-element`) y repetidos: todos correctos con un worker (con dos workers en Windows hubo tiempos agotados sin fallos funcionales).

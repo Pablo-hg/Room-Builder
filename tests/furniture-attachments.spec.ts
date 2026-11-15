@@ -48,7 +48,7 @@ test('las lámparas libres permiten mover Y un centímetro y conservarlo al guar
   await page.goto('/')
   await expandAllCatalogCategories(page)
   const inspector = page.getByRole('complementary', { name: 'Inspector y configuración detallada' })
-  for (const name of ['Lámpara', 'Lámpara de mesa']) {
+  for (const name of ['Lámpara de pie', 'Lámpara de mesa']) {
     await page.getByRole('button', { name: `${name} ＋ Añadir`, exact: true }).click()
     await expect(inspector.getByRole('heading', { name, exact: true })).toBeVisible()
     const y = inspector.getByRole('slider', { name: 'Posición Y', exact: true })

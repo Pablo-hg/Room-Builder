@@ -1,7 +1,7 @@
 import type { ThreeEvent } from '@react-three/fiber'
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { DEFAULT_WALL_COLOR } from '../domain/constants'
+import { DEFAULT_WALL_COLOR, ROOM_WALL_THICKNESS } from '../domain/constants'
 import { isWallMountedDecoration, wallLength } from '../domain/geometry'
 import type { RoomConfig, WallOpening, WallSide } from '../domain/types'
 import { openingPolygon } from './wallGeometry'
@@ -16,14 +16,17 @@ import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
 import { baseWallId } from '../domain/elementFolders'
 import { SelectionBounds } from './SelectionBounds'
 
+// Centro físico de cada pared de la habitación principal: medio grosor por fuera del
+// borde del suelo, igual que `physicalWalls`.
+const half = ROOM_WALL_THICKNESS / 2
 export const wallPlacement: Record<WallSide, (room: RoomConfig) => { position: [number, number, number]; rotation: [number, number, number] }> = {
-  north: (room) => ({ position: [0, 0, -room.depth / 2], rotation: [0, 0, 0] }),
-  south: (room) => ({ position: [0, 0, room.depth / 2], rotation: [0, Math.PI, 0] }),
-  east: (room) => ({ position: [room.width / 2, 0, 0], rotation: [0, -Math.PI / 2, 0] }),
-  west: (room) => ({ position: [-room.width / 2, 0, 0], rotation: [0, Math.PI / 2, 0] }),
+  north: (room) => ({ position: [0, 0, -room.depth / 2 - half], rotation: [0, 0, 0] }),
+  south: (room) => ({ position: [0, 0, room.depth / 2 + half], rotation: [0, Math.PI, 0] }),
+  east: (room) => ({ position: [room.width / 2 + half, 0, 0], rotation: [0, -Math.PI / 2, 0] }),
+  west: (room) => ({ position: [-room.width / 2 - half, 0, 0], rotation: [0, Math.PI / 2, 0] }),
 }
 
-export function WallBody({ length, height, openings, color, onPointerDown, depth = 0.12, wallId = '', skinFaces, frame }: { length: number; height: number; openings: WallOpening[]; color: string; onPointerDown: (event: ThreeEvent<PointerEvent>) => void; depth?: number; wallId?: string; skinFaces?: readonly WallFace[]; frame?: ConnectedWall }) {
+export function WallBody({ length, height, openings, color, onPointerDown, depth = ROOM_WALL_THICKNESS, wallId = '', skinFaces, frame }: { length: number; height: number; openings: WallOpening[]; color: string; onPointerDown: (event: ThreeEvent<PointerEvent>) => void; depth?: number; wallId?: string; skinFaces?: readonly WallFace[]; frame?: ConnectedWall }) {
   const geometry = useMemo(() => {
     if (skinFaces && frame) return wallMeshGeometry(skinFaces, frame)
     const pieces = uncoveredPolygons(wallRectangle(-length / 2, length / 2, 0, height),
@@ -71,7 +74,7 @@ export function SoftWall({ room, wall, hidden, showGrid, exportMode, skinFaces }
           selectSceneObject(baseWallId(wall), event.nativeEvent)
         }} /></group>
         {showGrid && <WallGrid length={length} height={room.height} openings={openings} />}
-        {!exportMode && selectedIds.includes(baseWallId(wall)) && <group position={[0, room.height / 2, 0]}><SelectionBounds width={length} height={room.height} depth={0.12} /></group>}
+        {!exportMode && selectedIds.includes(baseWallId(wall)) && <group position={[0, room.height / 2, 0]}><SelectionBounds width={length} height={room.height} depth={ROOM_WALL_THICKNESS} /></group>}
       </group>}
     </group>
   )

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { WALL_LABELS } from '../../domain/constants'
-import { FURNITURE_CATALOG, FURNITURE_FAMILIES, FURNITURE_PRESETS, isWallPictureKind, OPENING_CATALOG } from '../../domain/objectCatalog'
+import { FURNITURE_CATALOG, FURNITURE_FAMILIES, FURNITURE_PRESETS, isWallPictureKind, OPENING_CATALOG, openingShapeForKind, STANDALONE_OPENING_MENU } from '../../domain/objectCatalog'
 import type { FurnitureKind } from '../../domain/types'
 import { FurnitureIcon, StructurePackIcon, StructureSurfaceIcon } from '../iconCatalog'
 import { useRoomStore } from '../../state/useRoomStore'
@@ -31,6 +31,15 @@ export function ObjectCatalogSection() {
   const toggleCategory = (category: string) => {
     setCollapsedCategories((current) => ({ ...current, [category]: !current[category] }))
   }
+
+  const openingCards = (group: (typeof STANDALONE_OPENING_MENU)[number]['group']) => STANDALONE_OPENING_MENU
+    .filter((entry) => entry.group === group)
+    .map(({ kind }) => (
+      <button key={kind} type="button" className="catalog-card" onClick={() => (kind === 'door' ? addStructureDoor() : addWindow(openingShapeForKind(kind)))}>
+        <OpeningSwatch kind={kind} />
+        <span>{OPENING_CATALOG[kind].name}</span><small>＋ Añadir</small>
+      </button>
+    ))
 
   return (
         <section className="panel-section" data-tour="catalog">
@@ -101,17 +110,7 @@ export function ObjectCatalogSection() {
               </button>
             </h3>
             {!collapsedCategories.openings && <div className="catalog-grid" id="catalog-grid-openings">
-              <button type="button" className="catalog-card" onClick={addStructureDoor}>
-                <OpeningSwatch kind="door" /><span>Puerta</span><small>＋ Añadir</small>
-              </button>
-              <button type="button" className="catalog-card" onClick={() => addWindow('rectangular')}>
-                <OpeningSwatch kind="window" />
-                <span>{OPENING_CATALOG.window.name}</span><small>＋ Añadir</small>
-              </button>
-              <button type="button" className="catalog-card" onClick={() => addWindow('circular')}>
-                <OpeningSwatch kind="circularWindow" />
-                <span>{OPENING_CATALOG.circularWindow.name}</span><small>＋ Añadir</small>
-              </button>
+              {openingCards('openings')}
             </div>}
           </section>
           {FURNITURE_FAMILIES.map((family) => {
@@ -146,28 +145,7 @@ export function ObjectCatalogSection() {
                       <span>{FURNITURE_PRESETS[kind].name}</span><small>＋ Añadir</small>
                     </button>
                   ))}
-                  {family.id === 'wallDecor' && (
-                    <>
-                      <button type="button" className="catalog-card" onClick={() => addWindow('wallSconce')}>
-                        <OpeningSwatch kind="wallSconce" />
-                        <span>{OPENING_CATALOG.wallSconce.name}</span><small>＋ Añadir</small>
-                      </button>
-                      <button type="button" className="catalog-card" onClick={() => addWindow('mirrorRectangular')}>
-                        <OpeningSwatch kind="mirrorRectangular" />
-                        <span>{OPENING_CATALOG.mirrorRectangular.name}</span><small>＋ Añadir</small>
-                      </button>
-                      <button type="button" className="catalog-card" onClick={() => addWindow('mirrorCircular')}>
-                        <OpeningSwatch kind="mirrorCircular" />
-                        <span>{OPENING_CATALOG.mirrorCircular.name}</span><small>＋ Añadir</small>
-                      </button>
-                    </>
-                  )}
-                  {family.id === 'storage' && (
-                    <button type="button" className="catalog-card" onClick={() => addWindow('wallShelf')}>
-                      <OpeningSwatch kind="wallShelf" />
-                      <span>{OPENING_CATALOG.wallShelf.name}</span><small>＋ Añadir</small>
-                    </button>
-                  )}
+                  {openingCards(family.id)}
                 </div>}
               </section>
             )

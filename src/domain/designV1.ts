@@ -5,9 +5,13 @@ import type { ElementFolder, FurnitureItem, GridSurface, RoomConfig, StructurePa
  *
  * La versión 5 solo aparece en datos locales de la etapa de variantes (R5.1):
  * al leer se aplana a su variante activa y se guarda de nuevo como v4.
+ *
+ * La versión 12 (15/11/2026) marca la geometría con las paredes de habitación por fuera
+ * del suelo. Todo diseño nuevo se guarda como v12; los anteriores (1–11) se migran al
+ * cargarlos (ver persistence/wallLayoutMigration.ts).
  */
 export interface PersistedDesign {
-  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
   room: RoomConfig
   furniture: FurnitureItem[]
   structurePacks?: StructurePack[]
@@ -37,18 +41,14 @@ export const DEFAULT_GRID_VISIBILITY: Record<GridSurface, boolean> = {
 
 export type DesignState = Required<Omit<PersistedDesign, 'version'>>
 
+/** Versión con las paredes de habitación por fuera del suelo. */
+export const WALLS_OUTSIDE_VERSION = 12
+
 export function persistedDesign(state: DesignState): PersistedDesign {
-  const hasAxisLocks = state.furniture.some((item) => item.axisLocks)
-    || !!state.room.door.axisLocks || state.room.windows.some((item) => item.axisLocks)
-    || state.structurePacks.some((pack) => pack.axisLocks || pack.surfaces.some((surface) => surface.axisLocks))
-  const hasFreeWallObjects = [...state.room.windows, ...state.structurePacks.flatMap((pack) => pack.windows ?? [])].some((window) => window.freePosition)
-  const hasWallAnchors = !!state.room.door.wallPosition || [...(state.room.extraDoors ?? []), ...state.room.windows,
-    ...state.structurePacks.flatMap((pack) => [...(pack.doors ?? []), ...(pack.windows ?? [])])].some((item) => item.wallPosition)
-  const version: PersistedDesign['version'] = state.furniture.some((item) => item.wallAttachment) ? 11 : hasWallAnchors ? 10 : hasFreeWallObjects ? 9 : state.room.extraDoors?.length || state.structurePacks.some((pack) => pack.windows?.length) ? 8 : state.structurePacks.some((pack) => pack.doors?.length) ? 7 : hasAxisLocks ? 6 : state.sceneElementOrder.length
-    ? 4
-    : state.elementFolders.some((folder) => folder.parentId) ? 3 : state.room.door.name || state.room.windows.some((window) => window.name) ? 2 : 1
+  // Hasta v11 la versión era la mínima según las funciones usadas. Desde v12 todo diseño
+  // se guarda como v12: su geometría de paredes no es la de las versiones anteriores.
   return {
-    version,
+    version: WALLS_OUTSIDE_VERSION,
     room: state.room,
     furniture: state.furniture,
     structurePacks: state.structurePacks,
@@ -86,7 +86,7 @@ export function persistedDesignSignature(design: PersistedDesign) {
 export function isPersistedDesign(value: unknown): value is PersistedDesign {
   if (!value || typeof value !== 'object') return false
   const design = value as Partial<PersistedDesign>
-  return (design.version === 1 || design.version === 2 || design.version === 3 || design.version === 4 || design.version === 5 || design.version === 6 || design.version === 7 || design.version === 8 || design.version === 9 || design.version === 10 || design.version === 11)
+  return (design.version === 1 || design.version === 2 || design.version === 3 || design.version === 4 || design.version === 5 || design.version === 6 || design.version === 7 || design.version === 8 || design.version === 9 || design.version === 10 || design.version === 11 || design.version === 12)
     && !!design.room
     && typeof design.room === 'object'
     && Array.isArray(design.furniture)

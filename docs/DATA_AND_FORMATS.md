@@ -1,5 +1,17 @@
 # Datos, unidades, guardado e interoperabilidad
 
+## Paredes de habitación por fuera del suelo — v12 (15/11/2026)
+
+**Implementación local, sin certificar** (rama `feature/F1-06-auditar-catalogo`, decisión del propietario).
+
+- **Convención geométrica:** la medida de una habitación (`RoomConfig.width/depth` o el suelo de un paquete `floor-pack-*`) es su **espacio libre interior**. Cada pared de habitación va entera por fuera: su cara interior coincide con el borde del suelo y con el inicio de la cuadrícula. Su centro físico queda medio grosor más allá del borde (`roomWallOutset`, `physicalSurfacePosition`). Las paredes norte y sur se alargan un grosor por cada extremo para cubrir las esquinas exteriores (`roomWallCornerExtension`); las cotas siguen midiendo la habitación. Las paredes y suelos independientes no cambian.
+- **Datos guardados de paredes:** sin cambios de campos; las superficies siguen referidas al borde del suelo.
+- **Grosor:** las paredes nuevas (habitaciones y paredes independientes) usan `ROOM_WALL_THICKNESS = 0,12 m`, igual que la habitación principal. Las existentes conservan su grosor. Los suelos siguen en 0,13 m.
+- **Habitaciones contiguas:** se separan su anchura/fondo **más un grosor** y comparten una única pared en la frontera.
+- **Versión:** hasta v11 la versión era la mínima según las funciones usadas. **Desde v12 todo diseño se guarda como v12**, porque es la única forma de distinguir la geometría antigua. `isPersistedDesign` y el contenedor de importación (`schemaVersion: 5`) aceptan v1–v12.
+- **Migración v1–v11 → v12** (`src/persistence/wallLayoutMigration.ts`, aplicada en `normalizeDesign`): (1) cada habitación contigua se desplaza un grosor por cada frontera de contacto entre ella y la principal, con sus muebles, puertas y ventanas ancladas, objetos murales libres y superficies independientes; (2) puertas/ventanas ancladas (`wallPosition`) y muebles fijados (`wallAttachment`) a paredes de habitación se desplazan medio grosor hacia fuera. No muta la entrada ni se repite sobre un v12. Limitación conocida: las fronteras se calculan como planos de contacto; en distribuciones no alineadas en cuadrícula pueden desplazar habitaciones que no las tocan.
+- Las aplicaciones que admiten como máximo v11 no pueden abrir diseños v12. `ProjectV2` solo se usa en tests y admite v12 en `migratedFromVersion`.
+
 ## Fijación manual de mobiliario — v11 (11/11/2026)
 
 **Corrección posterior del propietario:** el imán automático es temporal y no introduce datos persistidos ni actualiza la versión del diseño. `wallAttachment` sigue siendo la fijación elegida explícitamente mediante el check, pero se retira al empujar el objeto en dirección normal a la pared. La memoria de captura/liberación del imán pertenece a cada sesión del editor y se limpia al cargar o deshacer/rehacer; no forma parte del JSON. La geometría y los bloqueos de eje siguen usando las mismas coordenadas mundiales en todas las vistas.
@@ -18,7 +30,7 @@ Se validan estructura del campo, versión, referencia de pared, cara, dimensione
 - Fallos de cuota, acceso denegado y conflictos de escritura no sustituyen el guardado anterior ni marcan como guardados los cambios pendientes.
 - Abrir otro diseño o crear uno en blanco mientras hay modificaciones pendientes exige confirmar el descarte. El borrado del diseño activo advierte también de esas modificaciones. La página solicita confirmación nativa del navegador al recargar o cerrar con cambios sin guardar, cuando el navegador lo permite.
 - Exportación JSON: incluye el estado del editor aunque no se haya guardado y no modifica el diseño activo ni su indicador de cambios pendientes. Las referencias obsoletas se omiten únicamente en la copia exportada, con aviso. La descarga usa URL de objeto, con alternativa data URL solo para archivos pequeños (≤128 KiB) si no está disponible; los fallos se notifican y la interfaz indica «descarga solicitada», no éxito comprobado.
-- El contenedor de importación usa `format: "room-builder-design"`, `schemaVersion: 5` y un límite de **2 MiB**. La versión interna del diseño puede ser v1–v10; v5 histórica se aplana a la variante activa y se informa de las alternativas descartadas.
+- El contenedor de importación usa `format: "room-builder-design"`, `schemaVersion: 5` y un límite de **2 MiB**. La versión interna del diseño puede ser v1–v12 (las anteriores a v12 se migran al cargar); v5 histórica se aplana a la variante activa y se informa de las alternativas descartadas.
 - Importar requiere previsualización y confirmación. Si coincide el ID exterior del diseño, se asigna un nuevo ID de biblioteca. No se sustituye el diseño abierto, ni se sobrescriben diseños existentes, ni se supera el límite de cinco. Entradas malformadas, peligrosas, demasiado profundas o con referencias inválidas se rechazan antes de escribir.
 - Un editor ya abierto funciona con sus operaciones locales si pierde la conexión. **Arrancar sin conexión desde cero no está garantizado** y no se incorpora un service worker nuevo en esta tarea.
 

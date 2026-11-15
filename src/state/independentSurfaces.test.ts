@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { structureGridElementId, structureSurfaceElementId } from '../domain/elementIds'
 import { persistedDesign } from '../domain/designV1'
 import { roomVerticalBounds } from '../domain/roomEditing'
+import { ROOM_WALL_THICKNESS } from '../domain/constants'
 import { normalizeDesignPreferences, normalizeStructurePacks } from '../domain/normalizeDesignV1'
 import { createRoomStore } from './useRoomStore'
 import { multiSelectionItems, multiSelectionBounds } from '../domain/multiSelection'
@@ -21,8 +22,9 @@ test('las habitaciones se crean en las seis direcciones y agrupan todas sus supe
       const expected = sign > 0 ? rootBounds.top - createdBounds.bottom : rootBounds.bottom - createdBounds.top
       assert.ok(Math.abs(pack.y - expected) < 1e-9)
     } else {
-      const distance = axis === 'x' ? state.room.width : state.room.depth
-      assert.equal(pack[axis], sign * distance)
+      // Separadas un grosor de pared: comparten una única pared en la frontera.
+      const distance = (axis === 'x' ? state.room.width : state.room.depth) + ROOM_WALL_THICKNESS
+      assert.ok(Math.abs(pack[axis] - sign * distance) < 1e-9)
     }
     const folderId = state.elementFolderAssignments[pack.id]
     assert.ok(state.elementFolders.some((folder) => folder.id === folderId))
@@ -178,7 +180,8 @@ test('permite modificar el grosor de cada superficie en centímetros enteros', (
     const pack = store.getState().structurePacks[0]
     const surface = pack.surfaces[0]
     const dimension = kind === 'floor' ? 'height' : 'depth'
-    assert.equal(surface[dimension], 0.13)
+    // Suelos: 0,13 m; paredes: 0,12 m, el mismo grosor que la habitación principal.
+    assert.equal(surface[dimension], kind === 'floor' ? 0.13 : 0.12)
     store.getState().resizeStructureSurface(pack.id, surface.id, dimension, 0.25)
     assert.equal(store.getState().structurePacks[0].surfaces[0][dimension], 0.25)
     store.getState().resizeStructureSurface(pack.id, surface.id, dimension, 0.06)
