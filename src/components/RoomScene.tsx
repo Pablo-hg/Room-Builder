@@ -29,6 +29,7 @@ import { wallUnionFaces } from '../domain/wallSolidGeometry'
 import { planWallStrips } from '../scene/planWallGeometry'
 import { PlanWallLines } from '../scene/PlanWallLines'
 import { PlanDimensions } from '../scene/PlanDimensions'
+import { DragGuidesOverlay } from '../scene/DragGuidesOverlay'
 import { PlanFloorSheet } from '../scene/PlanFloorSheet'
 import { planFloorGroups, planSheetPlacements } from '../scene/planSheet'
 import { roundFloorLevel } from '../domain/floorLevels'
@@ -188,6 +189,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
       {props.view === 'top' && !props.exportMode && <PlanPanSurface y={level - 1} />}
       {/* Plano: las demás plantas se dibujan a izquierda y derecha, como en una lámina de arquitectura. */}
       {planSheet && <PlanFloorSheet groups={planSheet.groups} placements={planSheet.placements} focusedKey={planSheet.focusedKey} room={props.room} structurePacks={props.structurePacks} furniture={props.furniture} orientation={props.orientation} />}
+      {!props.exportMode && <DragGuidesOverlay y={level + 0.04} />}
       {showPlanDimensions && <PlanDimensions dimensions={planDimensions} y={level + levelHeight + 0.05} wallLabels={planDimensionWallLabels} />}
     </>
   )

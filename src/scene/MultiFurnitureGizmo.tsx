@@ -1,6 +1,7 @@
 import { type ThreeEvent, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { snapMeasurement, snapMovement } from '../domain/measurements'
 import { multiSelectionBounds, type MultiItem } from '../domain/multiSelection'
 import type { WallSide } from '../domain/types'
 import { useHistoryGesture } from '../state/useHistoryGesture'
@@ -54,12 +55,23 @@ export function MultiFurnitureGizmo({ items, locked, view, wall }: { items: Mult
         if (!draggingBody || !gesture.isActive()) return
         event.stopPropagation()
         if (!event.ray.intersectPlane(plane, point)) return
-        const snap = useRoomStore.getState().gridSnap
         const desired = { x: 0, y: 0, z: 0 }
         for (const value of ['x', 'y', 'z'] as const) {
           if (!items.every((item) => item.axes.includes(value))) continue
-          const displacement = point[value] - bodyStart.current[value]
-          desired[value] = snap ? Math.round(displacement / 0.05) * 0.05 : displacement
+          desired[value] = snapMovement(point[value] - bodyStart.current[value])
+        }
+        // Guías y magnetismo (#37): la caja de partida se reconstruye restando lo ya aplicado,
+        // de modo que el destino siempre sale del puntero y nunca del ajuste anterior.
+        const applied = bodyApplied.current
+        const guideAxes = (['x', 'z'] as const).filter((value) => items.every((item) => item.axes.includes(value)))
+        if (guideAxes.length) {
+          const adjust = useRoomStore.getState().guideGroupMove({
+            minX: bounds.min.x - applied.x, maxX: bounds.max.x - applied.x, minZ: bounds.min.z - applied.z, maxZ: bounds.max.z - applied.z,
+            minY: bounds.min.y - applied.y, maxY: bounds.max.y - applied.y,
+          }, { x: desired.x, z: desired.z }, items.map((item) => item.id), guideAxes)
+          // Centímetros enteros: la posición guardada y lo «aplicado» deben coincidir para no acumular deriva.
+          desired.x = snapMeasurement(desired.x + adjust.dx)
+          desired.z = snapMeasurement(desired.z + adjust.dz)
         }
         const delta = { x: desired.x - bodyApplied.current.x, y: desired.y - bodyApplied.current.y, z: desired.z - bodyApplied.current.z }
         const before = useRoomStore.getState()
@@ -87,7 +99,7 @@ export function MultiFurnitureGizmo({ items, locked, view, wall }: { items: Mult
       const color = axis === value || hoveredAxis === value ? AXIS_COLORS[value].active : AXIS_COLORS[value].normal
       return <group key={value}
         onPointerDown={(event: ThreeEvent<PointerEvent>) => { if (modified(event.nativeEvent)) return; event.stopPropagation(); start.current = { x: event.clientX, y: event.clientY, applied: 0 }; gesture.begin(); setAxis(value); document.body.classList.add('can-grab'); capture(event) }}
-        onPointerMove={(event: ThreeEvent<PointerEvent>) => { if (axis !== value || !gesture.isActive()) return; event.stopPropagation(); const delta = ((event.clientX - start.current.x) * axisX + (event.clientY - start.current.y) * axisY) * scale; const snapped = Math.round(delta / 0.05) * 0.05; if (snapped !== start.current.applied) { const before = useRoomStore.getState(); move(value, snapped - start.current.applied); if (before.room !== useRoomStore.getState().room || before.furniture !== useRoomStore.getState().furniture || before.structurePacks !== useRoomStore.getState().structurePacks) start.current.applied = snapped } }}
+        onPointerMove={(event: ThreeEvent<PointerEvent>) => { if (axis !== value || !gesture.isActive()) return; event.stopPropagation(); const delta = ((event.clientX - start.current.x) * axisX + (event.clientY - start.current.y) * axisY) * scale; const snapped = snapMovement(delta); if (snapped !== start.current.applied) { const before = useRoomStore.getState(); move(value, snapped - start.current.applied); if (before.room !== useRoomStore.getState().room || before.furniture !== useRoomStore.getState().furniture || before.structurePacks !== useRoomStore.getState().structurePacks) start.current.applied = snapped } }}
         onPointerUp={(event: ThreeEvent<PointerEvent>) => { if (axis !== value) return; event.stopPropagation(); gesture.commit(); setAxis(null); document.body.classList.remove('can-grab'); releasePointer(event) }}
         onPointerCancel={() => { gesture.cancel(); setAxis(null); document.body.classList.remove('can-grab') }}
         onPointerOver={(event: ThreeEvent<PointerEvent>) => { event.stopPropagation(); setHoveredAxis(value); document.body.classList.add('can-grab') }}
