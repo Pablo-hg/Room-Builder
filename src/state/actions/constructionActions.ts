@@ -19,7 +19,7 @@ import { openingCreationPack, windowPlacementWalls } from '../../domain/windowPl
 import { wallObjectLocksAllow } from '../../domain/wallObjectPlacement'
 import { BASE_ROOM_SURFACE_IDS } from '../../domain/elementFolders'
 import { structureDoorError, structureDoorPosition } from '../../domain/structureDoors'
-import { anchorWallOpenings, connectedOpeningError, openingOverlapsExisting, openingRunBounds } from '../../domain/wallConnections'
+import { anchorWallOpenings, connectedOpeningError, openingOverlapsExisting, openingRunBounds, worldOpenings } from '../../domain/wallConnections'
 import type { StructurePack, StructureSurfaceKey, WallSide, WindowConfig } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
 import type { RoomActionContext, RoomState } from '../types'
@@ -410,31 +410,69 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       const focusedPack = openingCreationPack(state)
       const walls = windowPlacementWalls(state)
       const windowId = makeId('window')
-      for (const { wall, visible } of walls) {
+      // Exhaust visible free positions before accepting an overlap. Only use
+      // camera-hidden walls when no visible wall can support the object.
+      const candidates = [true, false].flatMap((visible) =>
+        [true, false].flatMap((avoidOverlap) => {
+          const selected = walls.filter((wall) => wall.visible === visible)
+          if (!avoidOverlap && selected.length > 1 && Math.random() < 0.5) selected.reverse()
+          return selected.map((wall) => ({ ...wall, avoidOverlap }))
+        }))
+      for (const { wall, visible, avoidOverlap } of candidates) {
         const wallSurface = focusedPack?.surfaces.find((surface) => surface.kind === 'wall' && surface.wall === wall)
         if (focusedPack && !wallSurface) continue
-        const buildWindow = (offset: number): WindowConfig => ({
+        const buildWindow = (offset: number, sill = definition.defaultBottom): WindowConfig => ({
           id: windowId, shape, wall, offset,
-          width: definition.width, height: definition.height, sill: definition.defaultBottom, rotation: 0,
+          width: definition.width, height: definition.height, sill, rotation: 0,
           color: isWallPictureShape(shape) ? FURNITURE_PRESETS[shape].color
             : isWallMirrorShape(shape) ? '#9a8067' : shape === 'wallSconce' ? '#d3a755' : '#c88f58',
         })
-        const validOffset = (offset: number, avoidOverlap: boolean) => {
-          const world = focusedPack ? { room: state.room, structurePacks: state.structurePacks.map((pack) => pack.id === focusedPack.id ? { ...pack, windows: [...(pack.windows ?? []), buildWindow(offset)] } : pack) }
-            : { room: { ...state.room, windows: [...state.room.windows, buildWindow(offset)] }, structurePacks: state.structurePacks }
+        const validPosition = (offset: number, sill: number) => {
+          const world = focusedPack ? { room: state.room, structurePacks: state.structurePacks.map((pack) => pack.id === focusedPack.id ? { ...pack, windows: [...(pack.windows ?? []), buildWindow(offset, sill)] } : pack) }
+            : { room: { ...state.room, windows: [...state.room.windows, buildWindow(offset, sill)] }, structurePacks: state.structurePacks }
           const anchored = anchorWallOpenings(world)
           return !connectedOpeningError(anchored, new Set([windowId]))
             && (!avoidOverlap || !openingOverlapsExisting(anchored, windowId))
         }
         const initialWorld = focusedPack ? { room: state.room, structurePacks: state.structurePacks.map((pack) => pack.id === focusedPack.id ? { ...pack, windows: [...(pack.windows ?? []), buildWindow(0)] } : pack) }
           : { room: { ...state.room, windows: [...state.room.windows, buildWindow(0)] }, structurePacks: state.structurePacks }
-        const bounds = openingRunBounds(initialWorld, windowId)
-        const searchLength = bounds ? 2 * (Math.max(Math.abs(bounds.min), Math.abs(bounds.max)) + definition.width / 2 + 0.25)
-          : wallSurface?.width ?? wallLength(state.room, wall)
-        const offset = findAvailableOpeningOffset(searchLength, definition.width, 0, (value) => validOffset(value, true))
-          ?? findAvailableOpeningOffset(searchLength, definition.width, 0, (value) => validOffset(value, false))
-        if (offset === null) continue
-        const window = buildWindow(offset)
+        const anchoredInitial = anchorWallOpenings(initialWorld)
+        const bounds = openingRunBounds(anchoredInitial, windowId)
+        const height = wallSurface?.height ?? state.room.height
+        const maxSill = height - definition.height - 0.08
+        if (!bounds || bounds.max < bounds.min || maxSill < 0) continue
+        const initial = worldOpenings(anchoredInitial).find((item) => item.id === windowId)!
+        const xs = [Math.ceil(bounds.min * 100) / 100, Math.floor(bounds.max * 100) / 100]
+        const ys = [0, Math.floor(maxSill * 100) / 100]
+        // Object edges supply candidate slots even when a random sample misses a narrow gap.
+        for (const other of worldOpenings(anchoredInitial)) {
+          if (other.id === windowId || other.object.freePosition) continue
+          const dx = other.position.x - initial.position.x, dz = other.position.z - initial.position.z
+          const x = dx * Math.cos(initial.position.yaw) - dz * Math.sin(initial.position.yaw)
+          const half = (Math.abs(Math.cos(other.rotation)) * other.width + Math.abs(Math.sin(other.rotation)) * other.height + definition.width) / 2
+          const otherBottom = other.position.y - (initial.position.y - definition.defaultBottom)
+          const extraY = (Math.abs(Math.sin(other.rotation)) * other.width + Math.abs(Math.cos(other.rotation)) * other.height - other.height) / 2
+          xs.push(Math.floor((x - half) * 100) / 100, Math.ceil((x + half) * 100) / 100)
+          ys.push(Math.floor((otherBottom - extraY - definition.height) * 100) / 100, Math.ceil((otherBottom + other.height + extraY) * 100) / 100)
+        }
+        const randomBetween = (min: number, max: number) => Math.round((min + Math.random() * (max - min)) * 100) / 100
+        let position: { offset: number; sill: number } | undefined
+        for (let attempt = 0; attempt < 24 && !position; attempt++) {
+          const offset = randomBetween(bounds.min, bounds.max), sill = randomBetween(0, maxSill)
+          if (validPosition(offset, sill)) position = { offset, sill }
+        }
+        if (!position) {
+          const shuffle = (values: number[]) => values.sort(() => Math.random() - 0.5)
+          const offsets = shuffle(xs.map((x) => Math.round(x * 100) / 100).filter((x) => x >= bounds.min && x <= bounds.max))
+          const sills = shuffle(ys.map((y) => Math.round(y * 100) / 100).filter((y) => y >= 0 && y <= maxSill))
+          for (const offset of offsets) {
+            for (const sill of sills) if (validPosition(offset, sill)) { position = { offset, sill }; break }
+            if (position) break
+          }
+        }
+        if (!position) continue
+        const { offset, sill } = position
+        const window = buildWindow(offset, sill)
         recordInteraction('state.window.added', { view: state.view, selectedId: state.selectedId,
           details: { id: window.id, name: definition.name, wall, offset, packId: focusedPack?.id, selectedAfter: window.id } })
         const { folderId } = focusedCreationTarget(state)

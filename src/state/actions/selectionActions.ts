@@ -11,6 +11,10 @@ import { BASE_ROOM_SURFACE_IDS } from '../../domain/elementFolders'
 import type { FurnitureItem } from '../../domain/types'
 import { recordInteraction } from '../../debug/interactionLog'
 import { packWindowById, structureWindowError } from '../../domain/structureWindows'
+import { spatialRoomFolder } from '../../domain/spatialFolderPlacement'
+import { folderRoomPack } from '../../domain/elementFolders'
+import { packRoomBox, selectedEditableRoom } from '../../domain/roomEditing'
+import { pasteIntoSelectedRoom } from '../../domain/pasteIntoSelectedRoom'
 import type { RoomActionContext, RoomState } from '../types'
 
 type SelectionActions = Pick<
@@ -33,6 +37,20 @@ type SelectionActions = Pick<
 export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 'get' | 'runtime'>): SelectionActions {
   const { set, get, runtime } = context
   const folderSnapshot = (state: RoomState, ids: string[]) => Object.fromEntries(ids.flatMap((id) => state.elementFolderAssignments[id] ? [[id, state.elementFolderAssignments[id]]] : []))
+  const rememberOrigins = (state: RoomState, ids: string[]) => Object.fromEntries(ids.map((id) => {
+    const furniture = state.furniture.find((item) => item.id === id)
+    const spatialFolder = furniture && spatialRoomFolder(state, { x: furniture.x, y: furniture.y + furniture.height / 2, z: furniture.z })
+    let folder: string | undefined = spatialFolder || state.elementFolderAssignments[id]
+    let pack = packWindowById(state.structurePacks, id)?.pack
+    const visited = new Set<string>()
+    while (!pack && folder && !visited.has(folder)) {
+      visited.add(folder)
+      pack = folderRoomPack(state.elementFolders, state.elementFolderAssignments, state.structurePacks, folder)
+      folder = state.elementFolders.find((item) => item.id === folder)?.parentId
+    }
+    const box = pack && packRoomBox(pack, state.room)
+    return [id, { x: (pack?.x ?? 0) + (box?.x ?? 0), y: (pack?.y ?? 0) + (box?.y ?? 0), z: (pack?.z ?? 0) + (box?.z ?? 0) }]
+  }))
   // Con una carpeta seleccionada, el pegado entra en ella; si no, conserva la carpeta de origen.
   const pasteFolder = (state: RoomState, sourceId: string) => {
     const target = folderIdFromSelection(state.selectedId)
@@ -175,6 +193,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
         runtime.copiedElement = null
         runtime.copiedCut = false
         runtime.copiedFolders = folderSnapshot(state, copies.map((item) => item!.id))
+        runtime.copiedRoomOrigins = rememberOrigins(state, copies.map((item) => item!.id))
         set({ notice: `${copies.length} elementos copiados.` })
         return true
       }
@@ -184,6 +203,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
         runtime.copiedElement = { ...furniture }
         runtime.copiedCut = false
         runtime.copiedFolders = folderSnapshot(state, [furniture.id])
+        runtime.copiedRoomOrigins = rememberOrigins(state, [furniture.id])
         set({ notice: `${furniture.name} copiado.` })
         return true
       }
@@ -194,6 +214,7 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
         runtime.copiedElement = { ...window }
         runtime.copiedCut = false
         runtime.copiedFolders = folderSnapshot(state, [window.id])
+        runtime.copiedRoomOrigins = rememberOrigins(state, [window.id])
         set({ notice: `${elementName(state, window.id)} copiado.` })
         return true
       }
@@ -212,6 +233,19 @@ export function createSelectionActions(context: Pick<RoomActionContext, 'set' | 
     },
     pasteSelected: () => {
       const cut = runtime.copiedCut
+      const target = selectedEditableRoom(get())
+      const copies = runtime.copiedElements ?? (runtime.copiedElement ? [runtime.copiedElement] : [])
+      if (target && copies.length) {
+        let success = false
+        set((state) => {
+          const result = pasteIntoSelectedRoom(state, target, copies, runtime.copiedRoomOrigins, cut)
+          if ('error' in result) return { notice: result.error }
+          success = true
+          return result.update
+        })
+        if (success) runtime.copiedCut = false
+        return success
+      }
       const nudge = cut ? 0 : 0.5
       try { return pasteClipboard() } finally { runtime.copiedCut = false }
       function pasteClipboard() {
