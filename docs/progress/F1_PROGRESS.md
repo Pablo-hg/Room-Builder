@@ -307,3 +307,12 @@ El icono del mueble de TV no coincidía con su 3D (faltaba una puerta y asomaba 
 - **Validación visual del propietario: superada** («visualmente todo ok»). Inventario: los 33 objetos marcados como validados (lista `VALIDATED` en `scripts/catalog-inventory.ts`).
 - **Pendiente:** E2E (humo en la CI de la PR hacia `main`; suite completa antes de #54) y commit, a la espera de autorización del propietario. Sin PR.
 - **E2E relacionados (15/11/2026, local, a petición del propietario):** 16 specs; 141 correctos y 6 fallos por cambios intencionados (versión 12, «Lámpara de pie», grosor 0,12 m). Expectativas actualizadas en 4 specs (`connected-openings`, `furniture-attachments`, `independent-surfaces`, `rename-element`) y repetidos: todos correctos con un worker (con dos workers en Windows hubo tiempos agotados sin fallos funcionales).
+
+## 15/11/2026 — #31 Accesibilidad, responsive y uso táctil (en curso)
+
+Rama `feature/f1-07-completar-accesibilidad` (sobre `dev`, con #30 integrada). Detalle en [F1_A11Y_AUDIT.md](F1_A11Y_AUDIT.md).
+
+- Auditoría automática a 320/375/667h/768/1024/1440 px, recorrido con teclado y flujo P0 solo con teclado: sin desbordamiento horizontal, controles cortados ni trampas de foco; el flujo P0 se completa con teclado.
+- Corregido: Escape del menú contextual deseleccionaba; foco perdido al cerrar guía/aviso; anillo de foco al 25 % (1,48:1) → `--focus-ring` sólido (7–8:1) y en la caja completa de las filas de la escena; alternativas de la brújula enfocables pero invisibles; menú de diseños abierto con el foco fuera; error de medida sin enlazar; zonas táctiles de 24 px (32 px en táctil); cabecera móvil compacta en dos filas.
+- Tests: nuevo `tests/a11y-keyboard.spec.ts` (8/8, uno `@smoke`). E2E existentes de las zonas tocadas (10 specs): 88/88 con un worker. `tsc -p tsconfig.app.json` correcto. Unitarias no ejecutadas (sin cambios de lógica de dominio).
+- Pendiente: validación humana con la checklist del informe.
