@@ -83,7 +83,7 @@ export function clampRoomDimension(key: 'width' | 'depth' | 'height', value: num
   return Math.max(min, Math.min(max, value))
 }
 
-export function roomForDoorUpdate(room: RoomConfig, partial: { wall?: RoomConfig['door']['wall']; offset?: number; color?: string }) {
+export function roomForDoorUpdate(room: RoomConfig, partial: { wall?: RoomConfig['door']['wall']; offset?: number; color?: string; swing?: RoomConfig['door']['swing'] }) {
   const adjusted = partial.offset === undefined ? partial : { ...partial, offset: room.door.wallPosition ? partial.offset : snapMeasurement(partial.offset) }
   const candidate = withDoor(room, { ...adjusted, rotation: 0 })
   if (partial.wall === undefined || partial.wall === room.door.wall || partial.offset !== undefined || !validateOpenings(candidate)) return candidate

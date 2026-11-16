@@ -112,6 +112,25 @@ test('borrar el referente deja la cota fija, con advertencia y aviso; aceptarla 
   assert.equal(store.getState().measurements[0].stale, undefined)
 })
 
+test('cambiar solo el nombre o un extremo conserva el anclaje del otro extremo', () => {
+  const { store, id } = withChair()
+  const chair = store.getState().furniture[0]
+  const anchor = { kind: 'furniture', id, point: 'center' } as const
+  const measureId = store.getState().addMeasure({ x: chair.x, z: chair.z, anchor }, { x: chair.x + 2, z: chair.z, anchor: { kind: 'furniture', id, point: 'c1' } })!
+  const [start, end] = [store.getState().measurements[0].start, store.getState().measurements[0].end]
+  // El formulario reenvía los dos extremos tal cual: nada cambia salvo el nombre.
+  store.getState().updateMeasure(measureId, { name: 'Ancho', start: { x: start.x, z: start.z }, end: { x: end.x, z: end.z } })
+  assert.equal(store.getState().measurements[0].start.anchor?.kind, 'furniture')
+  assert.equal(store.getState().measurements[0].end.anchor?.kind, 'furniture')
+  assert.equal(store.getState().measurements[0].name, 'Ancho')
+  // Cambiar solo el punto B lo deja fijo; el A sigue a su mueble.
+  store.getState().updateMeasure(measureId, { start: { x: start.x, z: start.z }, end: { x: 9, z: 9 } })
+  assert.equal(store.getState().measurements[0].end.anchor, undefined)
+  assert.ok(store.getState().measurements[0].start.anchor)
+  store.getState().moveFurniture(id, chair.x + 1, chair.z)
+  assert.equal(store.getState().measurements[0].start.x, store.getState().furniture[0].x, 'A sigue al mueble')
+})
+
 test('editar un extremo a mano lo deja fijo y resuelve la advertencia', () => {
   const { store, id } = withChair()
   const chair = store.getState().furniture[0]
@@ -173,4 +192,38 @@ test('cargar otro diseño sustituye las cotas y descarta la medida en curso', ()
   store.getState().createDesign('blank', 'Vacío')
   assert.deepEqual(store.getState().measurements, [])
   assert.equal(store.getState().measureDraft, null)
+})
+
+test('mover un punto sobre un mueble lo ancla y la cota lo sigue; moverlo a un punto libre lo fija', () => {
+  const { store, id } = withChair()
+  const chair = store.getState().furniture[0]
+  const measureId = store.getState().addMeasure(free(chair.x + 3, chair.z + 3), free(chair.x + 3, chair.z + 5))!
+  const corner = { x: chair.x + chair.width / 2, z: chair.z + chair.depth / 2 }
+  store.getState().updateMeasure(measureId, { start: { ...corner, anchor: { kind: 'furniture', id, point: 'c2' } } })
+  assert.equal(store.getState().measurements[0].start.anchor?.kind, 'furniture')
+  store.getState().moveFurniture(id, chair.x + 1, chair.z)
+  assert.equal(store.getState().measurements[0].start.x, store.getState().furniture[0].x + chair.width / 2)
+  store.getState().updateMeasure(measureId, { start: { x: 0, z: 0 } })
+  assert.equal(store.getState().measurements[0].start.anchor, undefined)
+})
+
+test('editar los puntos y medir son modos excluyentes y la edición no deja restos en sesión', () => {
+  const store = createRoomStore()
+  const id = store.getState().addMeasure(free(0, 0), free(4, 3))!
+  store.getState().setMeasureEditId('no-existe')
+  assert.equal(store.getState().measureEditId, null)
+  store.getState().setMeasureToolActive(true)
+  store.getState().setMeasureEditId(id)
+  assert.equal(store.getState().measureEditId, id)
+  assert.equal(store.getState().measureToolActive, false, 'editar desactiva la herramienta')
+  store.getState().setMeasureToolActive(true)
+  assert.equal(store.getState().measureEditId, null, 'medir termina la edición')
+  store.getState().setMeasureEditId(id)
+  assert.equal(store.getState().undoCount, 1, 'editar no crea pasos de historial por sí mismo')
+  store.getState().removeMeasure(id)
+  assert.equal(store.getState().measureEditId, null)
+  const second = store.getState().addMeasure(free(0, 0), free(1, 0))!
+  store.getState().setMeasureEditId(second)
+  store.getState().undo()
+  assert.equal(store.getState().measureEditId, null, 'deshacer termina la edición')
 })

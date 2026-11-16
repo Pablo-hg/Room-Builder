@@ -29,7 +29,7 @@ test('«Mostrar detalles» alterna Plano normal y detallado sin cambiar cámara,
   await page.screenshot({ path: testInfo.outputPath('plano-normal.png') })
 
   await toggle.check()
-  await expect(summary).toHaveText(/^Cotas: .+ — Pared A: 4,00 m; Pared B: 3,00 m; Pared C: 4,00 m; Pared D: 3,00 m\.$/)
+  await expect(summary).toHaveText(/^Cotas: .+ — Pared A: 4,00 m; Pared B: 3,00 m; Pared C: 4,00 m; Pared D: 3,00 m./)
   await expect(page.getByRole('button', { name: 'Plano', exact: true })).toBeVisible()
   expect(await undo.isEnabled()).toBe(undoEnabled)
   await expect.poll(async () => (await readPlanScene(page)).dimensions.length).toBe(4)

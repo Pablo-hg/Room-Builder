@@ -3,7 +3,7 @@ import { MAX_MEASURES, MEASURE_NAME_LIMIT, roundCoordinate, type MeasureEnd, typ
 import type { RoomActionContext, RoomState } from '../types'
 
 type MeasureActions = Pick<RoomState,
-  | 'setMeasureToolActive' | 'setMeasureAxis' | 'setMeasureSnap' | 'setMeasureDraft'
+  | 'setMeasureToolActive' | 'setMeasureAxis' | 'setMeasureSnap' | 'setMeasureDraft' | 'setMeasureEditId'
   | 'addMeasure' | 'saveMeasureDraft' | 'updateMeasure' | 'acknowledgeMeasure' | 'removeMeasure'>
 
 const cleanName = (name: string | undefined) => {
@@ -11,7 +11,8 @@ const cleanName = (name: string | undefined) => {
   return trimmed ? trimmed : undefined
 }
 const validEnd = (end: MeasureEnd) => Number.isFinite(end.x) && Number.isFinite(end.z) && Math.abs(end.x) <= 10_000 && Math.abs(end.z) <= 10_000
-const fixedEnd = (point: PlanPoint): MeasureEnd => ({ x: roundCoordinate(point.x), z: roundCoordinate(point.z) })
+/** Extremo con coordenadas a milímetro; conserva el anclaje solo si el punto lo trae. */
+const endOf = (point: PlanPoint | MeasureEnd): MeasureEnd => ({ x: roundCoordinate(point.x), z: roundCoordinate(point.z), ...('anchor' in point && point.anchor ? { anchor: point.anchor } : {}) })
 
 /**
  * Cotas del Plano (#38). La herramienta (activa, ayuda de eje, imán y medida en curso) es estado de sesión:
@@ -21,7 +22,11 @@ const fixedEnd = (point: PlanPoint): MeasureEnd => ({ x: roundCoordinate(point.x
 export function createMeasureActions({ set, get }: Pick<RoomActionContext, 'set' | 'get'>): MeasureActions {
   const full = () => get().measurements.length >= MAX_MEASURES
   return {
-    setMeasureToolActive: (measureToolActive) => set({ measureToolActive, measureDraft: null }),
+    // Medir y mover los puntos de una cota son modos excluyentes: ambos usan el mismo puntero.
+    setMeasureToolActive: (measureToolActive) => set({ measureToolActive, measureDraft: null, ...(measureToolActive ? { measureEditId: null } : {}) }),
+    setMeasureEditId: (measureEditId) => set((state) => measureEditId && !state.measurements.some((measure) => measure.id === measureEditId)
+      ? {}
+      : { measureEditId, ...(measureEditId ? { measureToolActive: false, measureDraft: null } : {}) }),
     setMeasureAxis: (measureAxis) => set({ measureAxis }),
     setMeasureSnap: (measureSnap) => set({ measureSnap }),
     setMeasureDraft: (measureDraft) => set({ measureDraft }),
@@ -53,12 +58,16 @@ export function createMeasureActions({ set, get }: Pick<RoomActionContext, 'set'
         if (name) next.name = name; else delete next.name
       }
       if (patch.hidden !== undefined) { if (patch.hidden) next.hidden = true; else delete next.hidden }
-      // Editar un extremo a mano lo deja fijo (sin anclaje) y resuelve la advertencia: el usuario lo ha revisado.
+      // Un extremo movido a un punto libre queda fijo; movido sobre un punto de mueble o pared, se ancla a él.
+      // Un extremo que se reenvía igual (mismas coordenadas y sin anclaje nuevo) conserva el suyo. Mover un
+      // extremo resuelve la advertencia de referente eliminado: el usuario ya lo ha revisado.
       for (const side of ['start', 'end'] as const) {
         const point = patch[side]
         if (!point) continue
-        const end = fixedEnd(point)
+        const end = endOf(point)
         if (!validEnd(end)) return { notice: 'Las coordenadas de la cota no son válidas.' }
+        const sameSpot = Math.abs(end.x - current[side].x) < 5e-4 && Math.abs(end.z - current[side].z) < 5e-4
+        if (sameSpot && (!end.anchor || JSON.stringify(end.anchor) === JSON.stringify(current[side].anchor))) continue
         next = { ...next, [side]: end }
         delete next.stale
       }
@@ -75,7 +84,7 @@ export function createMeasureActions({ set, get }: Pick<RoomActionContext, 'set'
       }) }
     }),
     removeMeasure: (id) => set((state) => state.measurements.some((measure) => measure.id === id)
-      ? { measurements: state.measurements.filter((measure) => measure.id !== id), notice: 'Cota eliminada.' }
+      ? { measurements: state.measurements.filter((measure) => measure.id !== id), notice: 'Cota eliminada.', ...(state.measureEditId === id ? { measureEditId: null } : {}) }
       : {}),
   }
 }

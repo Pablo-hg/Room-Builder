@@ -47,6 +47,7 @@ const sceneFromDesign = (data: PersistedDesign) => ({
   measurements: data.measurements ?? [],
   // La herramienta y su medida en curso no viajan entre diseños.
   measureDraft: null,
+  measureEditId: null,
   selectedId: null,
 })
 
@@ -153,6 +154,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
           sceneElementOrder: data.sceneElementOrder ?? [],
           measurements: data.measurements ?? [],
           measureDraft: null,
+          measureEditId: null,
           selectedId: null,
           hasUnsavedChanges: false,
           notice: mode === 'blank' ? 'Diseño nuevo creado en blanco.' : 'Copia del diseño creada.',

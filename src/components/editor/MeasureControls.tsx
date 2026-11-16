@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { MEASUREMENT_INVALID_NOTICE, parseMeasurement } from '../../domain/measurements'
-import { describeMeasure, MEASURE_NAME_LIMIT, type PlanMeasure } from '../../domain/planMeasures'
+import { describeMeasure, MEASURE_NAME_LIMIT, type MeasureAnchor, type PlanMeasure } from '../../domain/planMeasures'
 import { useRoomStore } from '../../state/useRoomStore'
 
 /** Botón «Medir» de la barra del Plano. Activar la herramienta no cambia de vista, cámara ni selección. */
@@ -58,8 +58,6 @@ export function MeasureToolPanel() {
 }
 
 type Fields = { name: string; x1: string; z1: string; x2: string; z2: string }
-const metres = (value: number) => String(Number(value.toFixed(3))).replace('.', ',')
-const fieldsOf = (measure: PlanMeasure): Fields => ({ name: measure.name ?? '', x1: metres(measure.start.x), z1: metres(measure.start.z), x2: metres(measure.end.x), z2: metres(measure.end.z) })
 const EMPTY: Fields = { name: '', x1: '', z1: '', x2: '', z2: '' }
 
 /** Formulario de coordenadas: alta por teclado y edición de una cota guardada (los extremos quedan fijos). */
@@ -91,15 +89,54 @@ function MeasureForm({ initial, submitLabel, onSubmit, idPrefix }: { initial: Fi
   </form>
 }
 
+const POINT_NAMES: Record<string, string> = { center: 'el centro', c0: 'una esquina', c1: 'una esquina', c2: 'una esquina', c3: 'una esquina', m0: 'el punto medio de un lado', m1: 'el punto medio de un lado', m2: 'el punto medio de un lado', m3: 'el punto medio de un lado' }
+/** «la esquina de Silla»: qué sigue un extremo anclado (o `undefined` si es libre). */
+function anchorText(anchor: MeasureAnchor | undefined, furniture: readonly { id: string; name: string }[]) {
+  if (!anchor) return undefined
+  if (anchor.kind === 'wall') return 'una esquina de pared'
+  return `${POINT_NAMES[anchor.point]} de «${furniture.find((item) => item.id === anchor.id)?.name ?? 'un mueble'}»`
+}
+
+/** Desplazamientos finos de un punto: la vía de teclado para mover los puntos sin arrastrar (1 cm; Mayús, 10 cm). */
+const NUDGES = [['←', -1, 0, '−X'], ['→', 1, 0, '+X'], ['↑', 0, -1, '−Z'], ['↓', 0, 1, '+Z']] as const
+
+function PointControls({ measure, side, furniture }: { measure: PlanMeasure; side: 'start' | 'end'; furniture: readonly { id: string; name: string }[] }) {
+  const update = useRoomStore((state) => state.updateMeasure)
+  const point = measure[side]
+  const letter = side === 'start' ? 'A' : 'B'
+  const follows = anchorText(point.anchor, furniture)
+  return <div className="measure-edit__point">
+    <span>Punto {letter} · {follows ? `sigue a ${follows}` : 'fijo'}</span>
+    <span className="measure-edit__nudges" role="group" aria-label={`Mover el punto ${letter}`}>
+      {NUDGES.map(([arrow, dx, dz, axis]) => <button key={axis} type="button" aria-label={`Mover el punto ${letter} 1 cm hacia ${axis} (Mayús, 10 cm)`}
+        onClick={(event) => { const step = event.shiftKey ? 0.1 : 0.01; update(measure.id, { [side]: { x: point.x + dx * step, z: point.z + dz * step } }) }}>{arrow}</button>)}
+    </span>
+  </div>
+}
+
 function MeasureRow({ measure, index }: { measure: PlanMeasure; index: number }) {
   const update = useRoomStore((state) => state.updateMeasure)
   const remove = useRoomStore((state) => state.removeMeasure)
   const acknowledge = useRoomStore((state) => state.acknowledgeMeasure)
-  const [editing, setEditing] = useState(false)
+  const editing = useRoomStore((state) => state.measureEditId === measure.id)
+  const setEditId = useRoomStore((state) => state.setMeasureEditId)
+  const setView = useRoomStore((state) => state.setView)
+  const snap = useRoomStore((state) => state.measureSnap)
+  const setSnap = useRoomStore((state) => state.setMeasureSnap)
+  const furniture = useRoomStore((state) => state.furniture)
+  const [name, setName] = useState(measure.name ?? '')
+  useEffect(() => { if (editing) setName(measure.name ?? '') }, [editing, measure.name])
   const { label, detail } = describeMeasure(measure.start, measure.end)
   const title = measure.name ?? `Cota ${index + 1}`
   const anchored = !!measure.start.anchor || !!measure.end.anchor
-  return <li className={`measure-row${measure.hidden ? ' is-hidden' : ''}${measure.stale ? ' is-stale' : ''}`} data-testid="measure-row">
+  const toggleEdit = () => {
+    if (editing) { setEditId(null); return }
+    // Los puntos se mueven en el Plano: se pasa a esa vista y se deja la herramienta Medir.
+    if (useRoomStore.getState().view !== 'top') setView('top')
+    setEditId(measure.id)
+  }
+  const saveName = () => { if ((measure.name ?? '') !== name.trim()) update(measure.id, { name }) }
+  return <li className={`measure-row${measure.hidden ? ' is-hidden' : ''}${measure.stale ? ' is-stale' : ''}${editing ? ' is-editing' : ''}`} data-testid="measure-row">
     <div className="measure-row__main">
       <span className="measure-row__title"><strong>{title}</strong> · {label}{detail ? ` (${detail})` : ''}</span>
       <small>{measure.hidden ? 'Oculta' : 'Visible con «Mostrar detalles»'}{anchored ? ' · sigue a su referente' : ' · fija'}</small>
@@ -108,15 +145,18 @@ function MeasureRow({ measure, index }: { measure: PlanMeasure; index: number })
     </div>
     <div className="measure-row__actions">
       <button type="button" aria-pressed={!measure.hidden} aria-label={`${measure.hidden ? 'Mostrar' : 'Ocultar'} ${title}`} onClick={() => update(measure.id, { hidden: !measure.hidden })}>{measure.hidden ? 'Mostrar' : 'Ocultar'}</button>
-      <button type="button" aria-expanded={editing} aria-label={`Editar ${title}`} onClick={() => setEditing(!editing)}>Editar</button>
+      <button type="button" aria-pressed={editing} aria-label={`${editing ? 'Terminar de editar' : 'Editar'} ${title}`} onClick={toggleEdit}>{editing ? 'Listo' : 'Editar'}</button>
       <button type="button" aria-label={`Eliminar ${title}`} onClick={() => remove(measure.id)}>Eliminar</button>
     </div>
-    {editing && <MeasureForm idPrefix={`edit-${measure.id}`} initial={fieldsOf(measure)} submitLabel="Aplicar cambios"
-      onSubmit={(values) => {
-        update(measure.id, { name: values.name, start: values.start, end: values.end })
-        setEditing(false)
-        return true
-      }} />}
+    {editing && <div className="measure-edit">
+      <p className="measure-edit__hint">Arrastra los puntos <b>A</b> y <b>B</b> en el plano. Mayús fija horizontal · Esc termina.</p>
+      <label className="measure-form__field"><span>Nombre (opcional)</span>
+        <input maxLength={MEASURE_NAME_LIMIT} value={name} autoComplete="off" onChange={(event) => { const value = event.currentTarget.value; setName(value) }}
+          onBlur={saveName} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); saveName() } }} /></label>
+      <label className="measure-panel__snap"><input type="checkbox" checked={snap} onChange={(event) => setSnap(event.target.checked)} /><span>Imán a esquinas y bordes</span></label>
+      <PointControls measure={measure} side="start" furniture={furniture} />
+      <PointControls measure={measure} side="end" furniture={furniture} />
+    </div>}
   </li>
 }
 

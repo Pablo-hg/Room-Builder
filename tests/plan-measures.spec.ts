@@ -91,9 +91,10 @@ test('guardar dos cotas por coordenadas: diagonal 4 × 3 = 5 m; editar, ocultar 
   await expect(rows.nth(0)).toContainText('Diagonal · 5,00 m (4,00 m × 3,00 m)')
   await expect(rows.nth(1)).toContainText('Pasillo · 2,50 m')
   await rows.nth(1).getByRole('button', { name: 'Editar Pasillo' }).click()
-  await rows.nth(1).locator('input[id$="-z2"]').fill('4')
-  await rows.nth(1).getByRole('button', { name: 'Aplicar cambios' }).click()
-  await expect(rows.nth(1)).toContainText('3,00 m')
+  // Ajuste fino con teclado: Mayús + clic mueve el punto B 10 cm hacia +Z (2,50 → 2,60 m).
+  await rows.nth(1).getByRole('button', { name: /Mover el punto B 1 cm hacia \+Z/ }).click({ modifiers: ['Shift'] })
+  await expect(rows.nth(1)).toContainText('2,60 m')
+  await rows.nth(1).getByRole('button', { name: 'Terminar de editar Pasillo' }).click()
   await rows.nth(1).getByRole('button', { name: 'Ocultar Pasillo' }).click()
   await expect(rows.nth(1)).toContainText('Oculta')
   expect((await stateOf(page)).measurements[1].hidden).toBe(true)
@@ -150,6 +151,15 @@ test('al mover o borrar el referente la cota se actualiza o avisa, nunca miente'
   const row = page.getByTestId('measure-row').first()
   await expect(row).toContainText('3,00 m')
   await expect(row).toContainText('sigue a su referente')
+  // Editar solo el nombre no desancla la cota: el panel de edición avisa de qué sigue cada punto.
+  await row.getByRole('button', { name: /^Editar/ }).click()
+  await expect(row).toContainText('Punto A · sigue a el centro de «Sillón»')
+  await expect(row).toContainText('Punto B · fijo')
+  await row.getByLabel('Nombre (opcional)').fill('Al borde')
+  await row.getByLabel('Nombre (opcional)').press('Enter')
+  await row.getByRole('button', { name: /^Terminar de editar/ }).click()
+  await expect(row).toContainText('Al borde')
+  await expect(row).toContainText('sigue a su referente')
   await call(page, 'moveFurniture', chair.id, chair.x + 1, chair.z)
   await expect(row).toContainText('2,00 m')
   await call(page, 'selectElement', chair.id)
@@ -158,4 +168,88 @@ test('al mover o borrar el referente la cota se actualiza o avisa, nunca miente'
   await expect(row).toContainText('2,00 m')
   await row.getByRole('button', { name: 'Aceptar' }).click()
   await expect(row.getByRole('alert')).toHaveCount(0)
+})
+
+// ── Mover los puntos de una cota guardada directamente en el plano ─────────────────────────────
+
+/** Calibra la correspondencia pantalla ↔ mundo con la propia herramienta Medir (sin imán). */
+async function calibrate(page: Page) {
+  await call(page, 'setMeasureSnap', false)
+  await call(page, 'setMeasureToolActive', true)
+  const bounds = await page.locator('.scene-panel canvas').first().boundingBox()
+  if (!bounds) throw new Error('No se pudo localizar el canvas')
+  const c = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
+  await page.mouse.click(c.x, c.y)
+  await page.mouse.click(c.x + 100, c.y + 60)
+  const { draft } = await stateOf(page)
+  await call(page, 'setMeasureToolActive', false)
+  const w0 = draft!.start, w1 = draft!.end!
+  const kx = 100 / (w1.x - w0.x), kz = 60 / (w1.z - w0.z)
+  return { screenOf: (x: number, z: number) => ({ x: c.x + (x - w0.x) * kx, y: c.y + (z - w0.z) * kz }), worldOf: (sx: number, sy: number) => ({ x: w0.x + (sx - c.x) / kx, z: w0.z + (sy - c.y) / kz }) }
+}
+
+test('arrastrar un punto de una cota guardada la mueve en un solo paso de historial; Esc cancela', { tag: '@smoke' }, async ({ page }) => {
+  await openPlan(page)
+  const map = await calibrate(page)
+  await call(page, 'addMeasure', { x: -1, z: 1 }, { x: 1, z: 1 }, 'Pasillo')
+  const added = await stateOf(page)
+  const row = page.getByTestId('measure-row').first()
+  await row.getByRole('button', { name: 'Editar Pasillo' }).click()
+  await expect(row).toContainText('Arrastra los puntos')
+  const a = map.screenOf(-1, 1)
+  const target = { x: a.x - 40, y: a.y + 50 }
+  // Esc a mitad de arrastre descarta el cambio.
+  await page.mouse.move(a.x, a.y)
+  await page.mouse.down()
+  await page.mouse.move(target.x, target.y, { steps: 5 })
+  await page.keyboard.press('Escape')
+  await page.mouse.up()
+  expect((await stateOf(page)).measurements[0].start).toEqual({ x: -1, z: 1 })
+  expect((await stateOf(page)).undoCount).toBe(added.undoCount)
+  // Arrastre completo: A se mueve; B no.
+  await page.mouse.move(a.x, a.y)
+  await page.mouse.down()
+  await page.mouse.move(target.x, target.y, { steps: 5 })
+  await page.mouse.up()
+  const moved = await stateOf(page)
+  const expected = map.worldOf(target.x, target.y)
+  expect(moved.measurements[0].start.x).toBeCloseTo(expected.x, 1)
+  expect(moved.measurements[0].start.z).toBeCloseTo(expected.z, 1)
+  expect(moved.measurements[0].end).toEqual({ x: 1, z: 1 })
+  expect(moved.undoCount).toBe(added.undoCount + 1)
+  await page.keyboard.press('Control+z')
+  expect((await stateOf(page)).measurements[0].start).toEqual({ x: -1, z: 1 })
+})
+
+test('un punto arrastrado sobre una esquina de mueble se ancla y sigue al mueble', async ({ page }) => {
+  await openPlan(page)
+  await expandAllCatalogCategories(page)
+  await page.getByRole('button', { name: /Sillón.*Añadir/ }).click()
+  const chair = await page.evaluate(async () => {
+    const path = '/src/state/useRoomStore.ts'
+    const { useRoomStore } = await import(/* @vite-ignore */ path)
+    const state = useRoomStore.getState()
+    const item = state.furniture.find((candidate: { id: string }) => candidate.id === state.selectedId)
+    state.selectElement(null)
+    return { id: item.id, x: item.x, z: item.z, width: item.width, depth: item.depth }
+  })
+  const map = await calibrate(page)
+  await call(page, 'setMeasureSnap', true)
+  const corner = { x: chair.x + chair.width / 2, z: chair.z + chair.depth / 2 }
+  // Lejos del mueble y dentro de la habitación, a la vista y sin controles encima.
+  const far = { x: corner.x - 2.2, z: corner.z - 1.8 }
+  await call(page, 'addMeasure', far, { x: far.x, z: far.z + 1 })
+  const row = page.getByTestId('measure-row').first()
+  await row.getByRole('button', { name: 'Editar Cota 1' }).click()
+  const from = map.screenOf(far.x, far.z), near = map.screenOf(corner.x, corner.z)
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.mouse.move(near.x + 4, near.y + 3, { steps: 6 })
+  await page.mouse.up()
+  const anchored = (await stateOf(page)).measurements[0]
+  expect(anchored.start.anchor).toMatchObject({ kind: 'furniture', id: chair.id })
+  await expect(row).toContainText('Punto A · sigue a')
+  await call(page, 'moveFurniture', chair.id, chair.x + 1, chair.z)
+  const followed = (await stateOf(page)).measurements[0]
+  expect(followed.start.x).toBeCloseTo(corner.x + 1, 2)
 })

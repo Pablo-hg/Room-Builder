@@ -38,6 +38,9 @@ export interface ElementFolder {
   parentId?: string
 }
 
+/** Giro de una puerta en el Plano: bisagra a la izquierda/derecha (mirando la pared desde dentro) y lado hacia el que se abre. */
+export interface DoorSwing { hinge: 'left' | 'right'; side: 'inside' | 'outside' }
+
 export interface DoorConfig {
   /** v10: one logical opening, independently of its original physical wall. */
   wallPosition?: { x: number; y: number; z: number; yaw: number; supportId?: string; depth?: number }
@@ -49,6 +52,8 @@ export interface DoorConfig {
   height: number
   rotation: number
   color?: string
+  /** v14: giro dibujado en el Plano. Ausente = bisagra izquierda, hacia dentro. */
+  swing?: DoorSwing
 }
 
 export interface WindowConfig {
