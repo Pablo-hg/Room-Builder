@@ -25,7 +25,7 @@ test('recorrido completo de una habitación: crear, amueblar, editar, vistas, gu
   expect(await savedDesigns(page)).toEqual([])
   await setMeasure(page, 'Introducir anchura en metros', '4,2')
   await setMeasure(page, 'Introducir profundidad en metros', '3,6')
-  await expect(page.getByText('4.2 × 3.6 m')).toBeVisible()
+  await expect(page.getByTestId('room-size')).toHaveText(/4.2 x 3.6 = 15.12 m²/)
 
   // 2 · Puerta, ventana, mobiliario y decoración; se redimensiona una ventana.
   await expandAllCatalogCategories(page)

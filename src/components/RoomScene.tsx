@@ -30,6 +30,7 @@ import { planWallStrips } from '../scene/planWallGeometry'
 import { PlanWallLines } from '../scene/PlanWallLines'
 import { PlanDimensions } from '../scene/PlanDimensions'
 import { MeasureEditor, MeasureTool, PlanMeasures } from '../scene/PlanMeasures'
+import { DragGuidesOverlay } from '../scene/DragGuidesOverlay'
 import { PlanFloorSheet } from '../scene/PlanFloorSheet'
 import { planFloorGroups, planSheetPlacements } from '../scene/planSheet'
 import { roundFloorLevel } from '../domain/floorLevels'
@@ -205,6 +206,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
       {props.view === 'top' && !props.exportMode && <MeasureTool y={level + levelHeight + 0.06} planeY={level + levelHeight + 3} />}
       {showOpeningChains && <PlanDimensions dimensions={openingChains} y={level + levelHeight + 0.05} wallLabels={noWallLabels} />}
       {planDetailsOn && planDetailCategories.furniture && <PlanFurnitureDistances y={level + levelHeight + 0.07} />}
+      {!props.exportMode && <DragGuidesOverlay y={level + 0.04} />}
       {showPlanDimensions && <PlanDimensions dimensions={planDimensions} y={level + levelHeight + 0.05} wallLabels={planDimensionWallLabels} />}
     </>
   )

@@ -1,6 +1,7 @@
 import type { DoorSwing, ElementFolder, FurnitureItem, FurnitureKind, GridSurface, PersistedDesign, RoomConfig, StructurePack, StructureSurfaceKey, ViewMode, WallSide, WindowConfig, WindowShape } from '../domain/types'
 import type { SavedDesign } from '../domain/designV1'
 import type { MeasureEnd, PlanMeasure, PlanPoint } from '../domain/planMeasures'
+import type { DragGuide } from '../domain/dragGuides'
 import type { DesignRepository } from '../persistence/localDesignRepository'
 
 /** Qué cotas se superponen en «Mostrar detalles»: paredes, huecos, muebles (del seleccionado) y cotas guardadas. */
@@ -57,6 +58,11 @@ export interface RoomState {
   frontCameraHeight: number
   povYaw: number
   gridSnap: boolean
+  /** Preferencias de edición locales: no se guardan en el diseño ni entran en el historial (#37). */
+  magnetismEnabled: boolean
+  guidesEnabled: boolean
+  /** Guías del arrastre en curso; solo existen mientras dura el gesto. */
+  activeGuides: DragGuide[]
   gridVisibility: Record<GridSurface, boolean>
   /** Cotas manuales guardadas en el diseño (#38). */
   measurements: PlanMeasure[]
@@ -135,7 +141,12 @@ export interface RoomState {
   renameElement: (id: string, name: string) => void
   beginFurnitureMove: () => void
   endFurnitureMove: () => void
-  moveFurniture: (id: string, x: number, z: number, source?: 'pointer') => void
+  moveFurniture: (id: string, x: number, z: number, source?: 'pointer', axis?: 'x' | 'z') => void
+  setMagnetism: (enabled: boolean) => void
+  setGuides: (enabled: boolean) => void
+  setGridSnap: (enabled: boolean) => void
+  clearDragGuides: () => void
+  guideGroupMove: (box: { minX: number; maxX: number; minZ: number; maxZ: number; minY: number; maxY: number }, delta: { x: number; z: number }, ids: string[], axes?: Array<'x' | 'z'>) => { dx: number; dz: number }
   setFurnitureWallAttachment: (id: string, attached: boolean) => void
   setFurnitureWallLateralLock: (id: string, locked: boolean) => void
   setElementAxisLock: (id: string, axis: 'x' | 'y' | 'z', locked: boolean) => void

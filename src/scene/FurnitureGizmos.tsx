@@ -311,14 +311,14 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
         ? event.nativeEvent.clientX - fallback.clientX
         : fallback.clientY - event.nativeEvent.clientY
       const delta = snapMovement(pixels * worldPerPixel)
-      if (fallback.axis === 'x') moveFurniture(item.id, fallback.x + delta, fallback.z, 'pointer')
+      if (fallback.axis === 'x') moveFurniture(item.id, fallback.x + delta, fallback.z, 'pointer', 'x')
       else if (fallback.axis === 'y') moveFurnitureVertically(item.id, fallback.y + delta)
-      else moveFurniture(item.id, fallback.x, fallback.z + delta, 'pointer')
+      else moveFurniture(item.id, fallback.x, fallback.z + delta, 'pointer', 'z')
       return
     }
     if (!event.ray.intersectPlane(floorPlane, point)) return
-    if (draggingAxis === 'x') moveFurniture(item.id, moveFromOrigin(point.x - dragOffset.current, dragOrigin.current.x), item.z, 'pointer')
-    else if (draggingAxis === 'z') moveFurniture(item.id, item.x, moveFromOrigin(point.z - dragOffset.current, dragOrigin.current.z), 'pointer')
+    if (draggingAxis === 'x') moveFurniture(item.id, moveFromOrigin(point.x - dragOffset.current, dragOrigin.current.x), item.z, 'pointer', 'x')
+    else if (draggingAxis === 'z') moveFurniture(item.id, item.x, moveFromOrigin(point.z - dragOffset.current, dragOrigin.current.z), 'pointer', 'z')
   }
 
   const stopDrag = (event: ThreeEvent<PointerEvent>) => {

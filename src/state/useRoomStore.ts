@@ -4,6 +4,7 @@ import { rejectDiagnosticAction } from '../diagnostics/actionScope'
 import { DEFAULT_ROOM } from '../domain/constants'
 import { DEFAULT_GRID_VISIBILITY, persistedDesign, persistedDesignSignature } from '../domain/designV1'
 import { syncMeasures, type PlanMeasure } from '../domain/planMeasures'
+import type { PersistedDesign } from '../domain/types'
 import { createLocalDesignRepository, type DesignRepository } from '../persistence/localDesignRepository'
 import { cloneRoom, ISO_BASE_ANGLE } from './defaults'
 import { finishHistoryTransaction, recordHistoryChange } from './historyTransactions'
@@ -12,6 +13,10 @@ import { createCameraActions } from './actions/cameraActions'
 import { createConstructionActions } from './actions/constructionActions'
 import { createFurnitureActions } from './actions/furnitureActions'
 import { createMeasureActions } from './actions/measureActions'
+import { createGuideActions } from './actions/guideActions'
+import { setMovementSnap } from '../domain/measurements'
+import { isMagnetSuspended } from './dragModifiers'
+import { loadEditorPreferences } from './editorPreferences'
 import { createSelectionActions } from './actions/selectionActions'
 import { createHistoryActions } from './actions/historyActions'
 import { createDesignActions } from './actions/designActions'
@@ -39,12 +44,17 @@ function editorNotice(notice: string): string {
 // Los datos de un diseño guardado son inmutables en el store: su firma se
 // calcula una vez y no en cada paso de un arrastre. Una entrada inválida da
 // firma vacía y no impide editar el diseño actual.
+/**
+ * Firma para detectar cambios del diseño. «Ajuste a 5 cm» es una ayuda de edición: activarla o no
+ * no cuenta como cambio nuevo (ni crea paso de historial ni marca «Cambios sin guardar»).
+ */
+const changeSignature = (design: PersistedDesign) => persistedDesignSignature({ ...design, gridSnap: true })
 const savedSignatures = new WeakMap<object, string>()
 function savedDesignSignature(data: unknown) {
   if (!data || typeof data !== 'object') return ''
   let signature = savedSignatures.get(data)
   if (signature === undefined) {
-    try { signature = persistedDesignSignature(normalizeDesign(data)) }
+    try { signature = changeSignature(normalizeDesign(data)) }
     catch { signature = '' }
     savedSignatures.set(data, signature)
   }
@@ -55,6 +65,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
   // Camera navigation is session state, never part of a saved design or undo entry.
   let roomFocusHistory: Array<string | null> = [null]
   const furnitureWallMagnets: FurnitureWallMagnets = new Map()
+  const initialPreferences = loadEditorPreferences()
   const runtime: RoomRuntime = {
     undoHistory: [],
     redoHistory: [],
@@ -87,7 +98,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
       const restore = finishHistoryTransaction(runtime, undefined, persistedDesign(current))
       if (restore) {
         runtime.isUndoing = true
-        storeSet({ ...restore, structurePacks: restore.structurePacks ?? [], measurements: restore.measurements ?? [], measureDraft: null })
+        storeSet({ ...restore, gridSnap: current.gridSnap, structurePacks: restore.structurePacks ?? [], measurements: restore.measurements ?? [], measureDraft: null })
         runtime.isUndoing = false
         current = get()
       }
@@ -169,7 +180,9 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     const replacingDesign = Object.hasOwn(rawUpdate, 'room') && Object.hasOwn(rawUpdate, 'selectedSavedDesignId')
     if (runtime.isUndoing || replacingDesign) furnitureWallMagnets.clear()
     if (!runtime.isUndoing && !replacingDesign && (nextUpdate.furniture || nextUpdate.room || nextUpdate.structurePacks)) {
-      const constrained = constrainFurnitureWalls(current, { ...current, ...nextUpdate }, furnitureWallMagnets, furnitureMoveSource)
+      // El imán de paredes obedece al mismo interruptor y a Alt que el resto del magnetismo (#37).
+      const wallMagnet = current.magnetismEnabled && !(furnitureMoveSource === 'pointer' && isMagnetSuspended())
+      const constrained = constrainFurnitureWalls(current, { ...current, ...nextUpdate }, furnitureWallMagnets, furnitureMoveSource, wallMagnet)
       if (!constrained) {
         rejectDiagnosticAction('furniture-wall-constraint')
         storeSet({ notice: 'La pared o un eje bloqueado impide el cambio. Despega el objeto para girarlo.' })
@@ -251,8 +264,8 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     // referencias coinciden, la firma también, y se evita serializar el diseño
     // completo en cada paso de un gesto (#32).
     const persistedFieldsTouched = (Object.keys(nextDesign) as (keyof typeof nextDesign)[]).some((key) => previousDesign[key] !== nextDesign[key])
-    const nextSignature = persistedFieldsTouched ? persistedDesignSignature(nextDesign) : ''
-    const designChanged = persistedFieldsTouched && persistedDesignSignature(previousDesign) !== nextSignature
+    const nextSignature = persistedFieldsTouched ? changeSignature(nextDesign) : ''
+    const designChanged = persistedFieldsTouched && changeSignature(previousDesign) !== nextSignature
     if (designChanged) {
       recordHistoryChange(runtime, previousDesign)
       const activeDesign = nextState.savedDesigns.find((design) => design.id === nextState.selectedSavedDesignId)
@@ -303,6 +316,9 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     frontCameraHeight: DEFAULT_ROOM.height / 2,
     povYaw: 0,
     gridSnap: true,
+    magnetismEnabled: initialPreferences.magnetism,
+    guidesEnabled: initialPreferences.guides,
+    activeGuides: [],
     gridVisibility: { ...DEFAULT_GRID_VISIBILITY },
     measurements: [],
     measureToolActive: false,
@@ -326,6 +342,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     ...createWallObjectActions(context),
     ...createFurnitureActions(context),
     ...createMeasureActions(context),
+    ...createGuideActions(context),
     ...createSelectionActions(context),
     ...createFolderActions(context),
     ...createHistoryActions(context),
@@ -335,3 +352,6 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
 })
 
 export const useRoomStore = createRoomStore()
+// El paso de los arrastres sigue al ajuste de cuadrícula del diseño abierto (#37).
+setMovementSnap(useRoomStore.getState().gridSnap)
+useRoomStore.subscribe((state, previous) => { if (state.gridSnap !== previous.gridSnap) setMovementSnap(state.gridSnap) })

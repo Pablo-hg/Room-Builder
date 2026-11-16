@@ -18,12 +18,14 @@ export function createHistoryActions(context: Pick<RoomActionContext, 'set' | 'g
   const { set, get, runtime } = context
   const restoreDesign = (design: ReturnType<typeof persistedDesign>) => {
     runtime.isUndoing = true
-    set({ ...design, structurePacks: design.structurePacks ?? [], measurements: design.measurements ?? [], measureDraft: null, measureEditId: null })
+    set({ ...design, gridSnap: get().gridSnap, structurePacks: design.structurePacks ?? [], measurements: design.measurements ?? [], measureDraft: null, measureEditId: null })
     runtime.isUndoing = false
   }
   const endGesture = (token?: HistoryGestureToken) => {
     const restore = finishHistoryTransaction(runtime, token, persistedDesign(get()))
     if (restore) restoreDesign(restore)
+    // Las guías pertenecen al gesto: al soltar o cancelar desaparecen.
+    if (get().activeGuides.length) set({ activeGuides: [] })
   }
   return {
     beginHistoryGesture: (targetId = get().selectedId) => {
@@ -42,6 +44,7 @@ export function createHistoryActions(context: Pick<RoomActionContext, 'set' | 'g
       runtime.isUndoing = true
       set({
         ...previous,
+        gridSnap: current.gridSnap,
         structurePacks: previous.structurePacks ?? [],
         measurements: previous.measurements ?? [],
         measureDraft: null,
@@ -64,6 +67,7 @@ export function createHistoryActions(context: Pick<RoomActionContext, 'set' | 'g
       runtime.isUndoing = true
       set({
         ...next,
+        gridSnap: current.gridSnap,
         structurePacks: next.structurePacks ?? [],
         measurements: next.measurements ?? [],
         measureDraft: null,
