@@ -11,6 +11,7 @@ import { EyeIcon, FolderIcon, LockIcon, RoomPackIcon } from './ElementIcons'
 import { SceneContextMenu } from './SceneContextMenu'
 import { ObjectCatalogSection } from './ObjectCatalogSection'
 import { GridVisibilitySection } from './GridVisibilitySection'
+import { MeasureListSection } from './MeasureControls'
 
 export function ObjectsPanel() {
   const [draggedElement, setDraggedElement] = useState<string | null>(null)
@@ -412,6 +413,7 @@ export function ObjectsPanel() {
           </div>}
         </section>
         <GridVisibilitySection />
+        <MeasureListSection />
       </div>
       {contextMenu && <SceneContextMenu key={contextMenu.id} {...contextMenu} siblings={siblingsFor(sceneEntryParent(contextMenu.id, elementFolders, elementFolderAssignments))} onClose={closeContextMenu}
         onRename={() => {

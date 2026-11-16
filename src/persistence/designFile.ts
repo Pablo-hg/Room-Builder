@@ -6,6 +6,8 @@ import type { PersistedDesign, SavedDesign } from '../domain/designV1'
 import { normalizeDesign } from './designMigrations'
 import { validateAxisLocks } from '../domain/axisLocks'
 import { validateFurnitureWallAttachment } from '../domain/furnitureWalls'
+import { parseMeasures } from '../domain/planMeasures'
+import { validateDesignDoorSwings } from '../domain/doorSwing'
 
 export const DESIGN_FILE_MAX_BYTES = 2 * 1024 * 1024
 const FORMAT = 'room-builder-design'
@@ -98,7 +100,7 @@ function validateFurniture(value: unknown, room: RecordValue, occupied: Set<stri
 }
 
 function validateData(value: unknown): { data: PersistedDesign; sourceVersion: number; removedVariants: number } {
-  if (!object(value) || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(Number(value.version)) || typeof value.version !== 'number') invalid('La versión del diseño no es compatible.')
+  if (!object(value) || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(Number(value.version)) || typeof value.version !== 'number') invalid('La versión del diseño no es compatible.')
   const source = value as RecordValue
   if (!object(source.room)) invalid('Falta la habitación.')
   const room = source.room as RecordValue
@@ -208,6 +210,8 @@ function validateData(value: unknown): { data: PersistedDesign; sourceVersion: n
     const list = source[field]
     if (list !== undefined && (!Array.isArray(list) || list.some((id) => typeof id !== 'string' || !occupied.has(id)) || new Set(list).size !== list.length)) invalid('Hay referencias de elementos no válidas.')
   }
+  try { if (source.measurements !== undefined && (source.version as number) < 13 && !(Array.isArray(source.measurements) && source.measurements.length === 0)) invalid('Las cotas guardadas requieren un diseño v13.'); parseMeasures(source.measurements) } catch (error) { invalid(error instanceof Error ? error.message : 'Las cotas guardadas no son válidas.') }
+  try { validateDesignDoorSwings(source as unknown as PersistedDesign) } catch (error) { invalid(error instanceof Error ? error.message : 'El giro de una puerta no es válido.') }
   let data: PersistedDesign
   try { data = normalizeDesign(source) } catch { return invalid('El diseño contiene geometría o datos no válidos.') }
   if (validateOpenings(data.room)) invalid('Las aperturas no son válidas.')

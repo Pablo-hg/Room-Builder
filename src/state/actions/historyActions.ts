@@ -18,7 +18,7 @@ export function createHistoryActions(context: Pick<RoomActionContext, 'set' | 'g
   const { set, get, runtime } = context
   const restoreDesign = (design: ReturnType<typeof persistedDesign>) => {
     runtime.isUndoing = true
-    set({ ...design, gridSnap: get().gridSnap, structurePacks: design.structurePacks ?? [] })
+    set({ ...design, gridSnap: get().gridSnap, structurePacks: design.structurePacks ?? [], measurements: design.measurements ?? [], measureDraft: null, measureEditId: null })
     runtime.isUndoing = false
   }
   const endGesture = (token?: HistoryGestureToken) => {
@@ -46,6 +46,9 @@ export function createHistoryActions(context: Pick<RoomActionContext, 'set' | 'g
         ...previous,
         gridSnap: current.gridSnap,
         structurePacks: previous.structurePacks ?? [],
+        measurements: previous.measurements ?? [],
+        measureDraft: null,
+        measureEditId: null,
         selectedId: null,
         undoCount: runtime.undoHistory.length,
         redoCount: runtime.redoHistory.length,
@@ -66,6 +69,9 @@ export function createHistoryActions(context: Pick<RoomActionContext, 'set' | 'g
         ...next,
         gridSnap: current.gridSnap,
         structurePacks: next.structurePacks ?? [],
+        measurements: next.measurements ?? [],
+        measureDraft: null,
+        measureEditId: null,
         selectedId: null,
         undoCount: runtime.undoHistory.length,
         redoCount: runtime.redoHistory.length,

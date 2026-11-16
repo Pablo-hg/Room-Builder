@@ -29,12 +29,16 @@ import { wallUnionFaces } from '../domain/wallSolidGeometry'
 import { planWallStrips } from '../scene/planWallGeometry'
 import { PlanWallLines } from '../scene/PlanWallLines'
 import { PlanDimensions } from '../scene/PlanDimensions'
+import { MeasureEditor, MeasureTool, PlanMeasures } from '../scene/PlanMeasures'
 import { DragGuidesOverlay } from '../scene/DragGuidesOverlay'
 import { PlanFloorSheet } from '../scene/PlanFloorSheet'
 import { planFloorGroups, planSheetPlacements } from '../scene/planSheet'
 import { roundFloorLevel } from '../domain/floorLevels'
 import { PlanPanSurface } from '../scene/PlanPanSurface'
+import { PlanWheelPan } from '../scene/PlanWheelPan'
 import { planRoomDimensions } from '../domain/planDimensions'
+import { planOpeningDimensions } from '../domain/planDimensionDetails'
+import { PlanFurnitureDistances } from '../scene/PlanMeasures'
 
 function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null>; collisionIds: ReadonlySet<string> }) {
   const selectedId = useRoomStore((state) => state.selectedId)
@@ -94,7 +98,14 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
   // ni fuera de Plano. Acota las paredes visibles en el Plano de todas las
   // habitaciones (raíz y adicionales); las paredes independientes no.
   const planDetailsVisible = useRoomStore((state) => state.planDetailsVisible)
-  const showPlanDimensions = planDetailsVisible && props.view === 'top' && !props.exportMode
+  const planDetailCategories = useRoomStore((state) => state.planDetailCategories)
+  const planDetailsOn = planDetailsVisible && props.view === 'top' && !props.exportMode
+  // Cada categoría se filtra por separado; con «Paredes» apagado, vuelven las etiquetas normales de pared.
+  const showPlanDimensions = planDetailsOn && planDetailCategories.walls
+  const showOpeningChains = planDetailsOn && planDetailCategories.openings
+  const openingChains = useMemo(() => showOpeningChains
+    ? planOpeningDimensions({ room: props.room, structurePacks: props.structurePacks }, (wall) => planVisibleWallIds.has(wall.id))
+    : [], [showOpeningChains, props.room, props.structurePacks, planSignature])
   const planDimensions = useMemo(() => showPlanDimensions
     ? planRoomDimensions({ room: props.room, structurePacks: props.structurePacks }, (wall) => planVisibleWallIds.has(wall.id))
     : [], [showPlanDimensions, props.room, props.structurePacks, planSignature])
@@ -187,13 +198,21 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
       })}
       {/* Plano: el fondo vacío también permite desplazar la vista. */}
       {props.view === 'top' && !props.exportMode && <PlanPanSurface y={level - 1} />}
+      {props.view === 'top' && !props.exportMode && <PlanWheelPan />}
       {/* Plano: las demás plantas se dibujan a izquierda y derecha, como en una lámina de arquitectura. */}
       {planSheet && <PlanFloorSheet groups={planSheet.groups} placements={planSheet.placements} focusedKey={planSheet.focusedKey} room={props.room} structurePacks={props.structurePacks} furniture={props.furniture} orientation={props.orientation} />}
+      {props.view === 'top' && !props.exportMode && <PlanMeasures y={level + levelHeight + 0.06} />}
+      {props.view === 'top' && !props.exportMode && <MeasureEditor y={level + levelHeight + 0.06} planeY={level + levelHeight + 3} />}
+      {props.view === 'top' && !props.exportMode && <MeasureTool y={level + levelHeight + 0.06} planeY={level + levelHeight + 3} />}
+      {showOpeningChains && <PlanDimensions dimensions={openingChains} y={level + levelHeight + 0.05} wallLabels={noWallLabels} />}
+      {planDetailsOn && planDetailCategories.furniture && <PlanFurnitureDistances y={level + levelHeight + 0.07} />}
       {!props.exportMode && <DragGuidesOverlay y={level + 0.04} />}
       {showPlanDimensions && <PlanDimensions dimensions={planDimensions} y={level + levelHeight + 0.05} wallLabels={planDimensionWallLabels} />}
     </>
   )
 }
+
+const noWallLabels: ReadonlySet<string> = new Set()
 
 export default function RoomScene(props: SceneProps & { collisionIds: ReadonlySet<string>; onRightAreaHeld: (held: boolean) => void }) {
   const perspective = props.view === 'pov' || props.view === 'free'

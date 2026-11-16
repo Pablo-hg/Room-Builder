@@ -391,7 +391,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
     },
     setDoor: (partial) => set((state) => {
       if (!openingMovementAllowed(state.room.door, partial)) { rejectDiagnosticAction('opening-axis-locked'); return {} }
-      if (state.lockedElementIds.includes('door') && (partial.wall !== undefined || partial.offset !== undefined)) return {}
+      if (state.lockedElementIds.includes('door') && (partial.wall !== undefined || partial.offset !== undefined || partial.swing !== undefined)) return {}
       const candidate = roomForDoorUpdate(state.room, partial)
       if (!openingMovementAllowed(state.room.door, candidate.door)) return {}
       const update = safeRoomUpdate(state, candidate, reportOpeningConflict)

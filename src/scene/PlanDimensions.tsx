@@ -99,7 +99,9 @@ function DimensionLine({ dimension, y, showWallLabel }: { dimension: PlanDimensi
     const labelDepthPx = mode === 'hidden' ? 0 : runsHorizontally ? LABEL_HEIGHT_PX : shown.widthPx
     // El trazo de pared y la cota permanecen separados.
     const traceFace = planWallTraceThickness(dimension.thickness) / 2 - planWallTraceInset(dimension.thickness)
-    const offset = traceFace + (labelDepthPx / 2 + WALL_TO_DIMENSION_GAP_PX) * unit
+    // Las cadenas de huecos (nivel 1) van por fuera de la cota total, una etiqueta más lejos de la pared.
+    const tierShift = (dimension.tier ?? 0) * (LABEL_HEIGHT_PX + WALL_TO_DIMENSION_GAP_PX)
+    const offset = traceFace + (tierShift + labelDepthPx / 2 + WALL_TO_DIMENSION_GAP_PX) * unit
     const side = dimension.outwardSign
     const lineWidth = LINE_WIDTH_PX * unit
     const wallFace = traceFace + EXTENSION_GAP_PX * unit
@@ -136,7 +138,7 @@ function DimensionLine({ dimension, y, showWallLabel }: { dimension: PlanDimensi
   const centre: [number, number, number] = [(dimension.start.x + dimension.end.x) / 2, y, (dimension.start.z + dimension.end.z) / 2]
   const lineMaterial = <meshBasicMaterial color={LINE_COLOR} transparent opacity={0.9} depthTest={false} depthWrite={false} toneMapped={false} />
   return (
-    <group position={centre} rotation={[0, dimension.yaw, 0]} name={dimension.id} userData={{ planDimension: dimension.wall, length: dimension.length }}>
+    <group position={centre} rotation={[0, dimension.yaw, 0]} name={dimension.id} userData={dimension.tier ? { planChain: dimension.wall, length: dimension.length } : { planDimension: dimension.wall, length: dimension.length }}>
       <mesh ref={line} renderOrder={1} raycast={noRaycast}><boxGeometry args={[1, 0.002, 1]} />{lineMaterial}</mesh>
       <mesh ref={startExtension} renderOrder={1} raycast={noRaycast}><boxGeometry args={[1, 0.002, 1]} />{lineMaterial}</mesh>
       <mesh ref={endExtension} renderOrder={1} raycast={noRaycast}><boxGeometry args={[1, 0.002, 1]} />{lineMaterial}</mesh>

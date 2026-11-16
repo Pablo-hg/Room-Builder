@@ -25,7 +25,7 @@ test('v1 conserva fixtures completos, antiguos y de límite sin mutaciones ni ca
     const furniture = arrangeFurniture(data.furniture, room, true)
     assert.ok(furniture)
     assert.equal(validateOpenings(room), null)
-    const serialized = persistedDesign({ room, furniture, structurePacks, ...preferences })
+    const serialized = persistedDesign({ room, furniture, structurePacks, ...preferences, measurements: [] })
     assert.deepEqual(serialized.furniture.map((item) => item.id), data.furniture.map((item) => item.id))
     assert.deepEqual(JSON.parse(JSON.stringify(serialized)), serialized)
     // Todo diseño se guarda como v12; el resto del contenido no cambia.

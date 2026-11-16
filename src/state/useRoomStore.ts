@@ -3,6 +3,7 @@ import { instrumentActions } from '../diagnostics/instrumentActions'
 import { rejectDiagnosticAction } from '../diagnostics/actionScope'
 import { DEFAULT_ROOM } from '../domain/constants'
 import { DEFAULT_GRID_VISIBILITY, persistedDesign, persistedDesignSignature } from '../domain/designV1'
+import { syncMeasures, type PlanMeasure } from '../domain/planMeasures'
 import type { PersistedDesign } from '../domain/types'
 import { createLocalDesignRepository, type DesignRepository } from '../persistence/localDesignRepository'
 import { cloneRoom, ISO_BASE_ANGLE } from './defaults'
@@ -11,6 +12,7 @@ import type { RoomActionContext, RoomRuntime, RoomState, RoomUpdate } from './ty
 import { createCameraActions } from './actions/cameraActions'
 import { createConstructionActions } from './actions/constructionActions'
 import { createFurnitureActions } from './actions/furnitureActions'
+import { createMeasureActions } from './actions/measureActions'
 import { createGuideActions } from './actions/guideActions'
 import { setMovementSnap } from '../domain/measurements'
 import { isMagnetSuspended } from './dragModifiers'
@@ -96,7 +98,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
       const restore = finishHistoryTransaction(runtime, undefined, persistedDesign(current))
       if (restore) {
         runtime.isUndoing = true
-        storeSet({ ...restore, gridSnap: current.gridSnap, structurePacks: restore.structurePacks ?? [] })
+        storeSet({ ...restore, gridSnap: current.gridSnap, structurePacks: restore.structurePacks ?? [], measurements: restore.measurements ?? [], measureDraft: null })
         runtime.isUndoing = false
         current = get()
       }
@@ -187,6 +189,15 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
         return
       }
       nextUpdate = { ...nextUpdate, ...constrained }
+    }
+    if (!runtime.isUndoing && !replacingDesign && (nextUpdate.furniture || nextUpdate.room || nextUpdate.structurePacks) && current.measurements.length + (nextUpdate.measurements?.length ?? 0) > 0) {
+      const measures = nextUpdate.measurements ?? current.measurements
+      const synced = syncMeasures({ room: nextUpdate.room ?? current.room, structurePacks: nextUpdate.structurePacks ?? current.structurePacks, furniture: nextUpdate.furniture ?? current.furniture }, measures)
+      if (synced !== measures) {
+        const newlyStale = synced.some((measure) => measure.stale && !measures.find((old) => old.id === measure.id)?.stale)
+        nextUpdate = { ...nextUpdate, measurements: synced as PlanMeasure[],
+          ...(newlyStale ? { notice: `${nextUpdate.notice ? `${nextUpdate.notice} ` : ''}Una cota guardada perdió su referente: queda fija con una advertencia.` } : {}) }
+      }
     }
     let nextFocusHistory = replacingDesign ? [null] : roomFocusHistory.filter(validFocus)
     const requestedFocus = replacingDesign ? null : nextUpdate.activeRoomId === undefined ? current.activeRoomId : nextUpdate.activeRoomId
@@ -284,6 +295,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     topCameraX: 0,
     topCameraZ: 0,
     planDetailsVisible: false,
+    planDetailCategories: { walls: true, openings: true, furniture: false, annotations: true },
     areaSelect: false,
     activeRoomId: null,
     setActiveRoomId: (activeRoomId) => set({ activeRoomId }),
@@ -308,6 +320,12 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     guidesEnabled: initialPreferences.guides,
     activeGuides: [],
     gridVisibility: { ...DEFAULT_GRID_VISIBILITY },
+    measurements: [],
+    measureToolActive: false,
+    measureAxis: 'free',
+    measureSnap: true,
+    measureDraft: null,
+    measureEditId: null,
     hiddenElementIds: [],
     lockedElementIds: [],
     ...initialRoomFolder(DEFAULT_ROOM),
@@ -323,6 +341,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     ...createStructureDoorActions(context),
     ...createWallObjectActions(context),
     ...createFurnitureActions(context),
+    ...createMeasureActions(context),
     ...createGuideActions(context),
     ...createSelectionActions(context),
     ...createFolderActions(context),

@@ -3,7 +3,7 @@ import { useThree, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { wallObjectAvailableAxes, wallObjectBox, wallObjectSelectionFrame } from '../domain/wallObjectPlacement'
 import { boxOutsideBuilding } from '../domain/buildingVolume'
-import type { RoomConfig, StructurePack, WindowConfig } from '../domain/types'
+import type { DoorSwing, RoomConfig, StructurePack, WindowConfig } from '../domain/types'
 import { moveFromOrigin } from '../domain/measurements'
 import { useRoomStore } from '../state/useRoomStore'
 import { OpeningDetail } from './Openings'
@@ -82,7 +82,7 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode, kin
   return <>
     <group position={[position.x, position.y, position.z]} rotation={[0, position.yaw, 0]} userData={{ elementId: window.id }} onPointerDown={start} onPointerMove={moving} onPointerUp={end} onPointerCancel={(event) => { gesture.cancel(); end(event) }}>
       {view === 'top' && !exportMode
-        ? <PlanWallSymbol kind={kind} width={window.width} height={window.height} shape={window.shape} color={window.color ?? '#c88f58'} />
+        ? <PlanWallSymbol kind={kind} width={window.width} height={window.height} shape={window.shape} color={window.color ?? '#c88f58'} swing={kind === 'door' ? (window as { swing?: DoorSwing }).swing : undefined} />
         : <OpeningDetail room={room} opening={{ ...window, kind, offset: 0, bottom: 0, color: window.color ?? '#c88f58' }} wall={window.wall} selected={false} locked interactive={false} />}
       {!exportMode && <mesh position={[0, window.height / 2, 0]}><boxGeometry args={[window.width, window.height, 0.16]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>}
       {!exportMode && (selected || collision || outside) && <group position={selectionFrame.localCenter} rotation={[0, 0, window.rotation]}><SelectionBounds width={window.width} height={window.height} depth={selectionFrame.depth} collision={collision || outside} focused={selected} /></group>}
