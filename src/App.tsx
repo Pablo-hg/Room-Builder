@@ -14,12 +14,15 @@ import { SettingsPanel } from './components/editor/SettingsPanel'
 import { ObjectsPanel } from './components/editor/ObjectsPanel'
 import { ViewControls } from './components/editor/ViewControls'
 import { RoomViewSelector } from './components/editor/RoomViewSelector'
+import { MeasureToolPanel } from './components/editor/MeasureControls'
 import { ZoomControl } from './components/editor/ZoomControl'
 import { packRoomBox } from './domain/roomEditing'
 import { visibleWallsForView } from './components/editor/viewHelpers'
 import { EditorHeader } from './components/editor/EditorHeader'
 import { VIEW_OPTIONS } from './components/editor/viewOptions'
 import { useEditorShortcuts } from './components/editor/useEditorShortcuts'
+import { MovementStatus } from './components/editor/MovementStatus'
+import { trackDragModifiers } from './state/dragModifiers'
 import { FirstUseGuide, FirstUseInvitation, rememberFirstUseGuide, shouldOfferFirstUseGuide } from './components/editor/FirstUseGuide'
 import './styles.css'
 
@@ -79,6 +82,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
   const activeRoomId = useRoomStore((current) => current.activeRoomId)
   const focusedPack = state.structurePacks.find((pack) => pack.id === activeRoomId && pack.id.startsWith('floor-pack-'))
   const roomSize = focusedPack && packRoomBox(focusedPack, state.room) || state.room
+  const roomArea = Number((roomSize.width * roomSize.depth).toFixed(2))
   const sceneOrbitDrag = useRef<{
     pointerId: number
     mode: 'isometric' | 'free'
@@ -224,12 +228,13 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
               {hasUnsavedChanges && <span className="statusbar__save statusbar__save--pending" role="status" aria-live="polite"><i className="status-dot" aria-hidden="true" />Cambios sin guardar</span>}
               <span className="visible-walls-badge"><b aria-hidden="true">◫</b> {visibleWallsText}</span>
               <button type="button" className={`area-select-toggle${areaSelect || rightAreaHeld ? ' is-active' : ''}`} aria-pressed={areaSelect || rightAreaHeld} onClick={() => setAreaSelect(!areaSelect)} title="Arrastra para seleccionar varios objetos; también puedes mantener el botón derecho o usar Mayús + arrastrar sobre el fondo">▢ Selección por área</button>
-              <span className="grid-scale"><b aria-hidden="true">▦</b> Cuadrado: 25 cm · movimiento: 5 cm</span>
+              <span className="room-size" data-testid="room-size" aria-label={`Superficie de la habitación: ${roomSize.width.toFixed(1)} por ${roomSize.depth.toFixed(1)} metros, ${roomArea} metros cuadrados`}><b aria-hidden="true">⌂</b> {roomSize.width.toFixed(1)} x {roomSize.depth.toFixed(1)} = {roomArea} m²</span>
+              <MovementStatus />
               {!exportMode && <SceneCollisionPanel collisions={collisions} outside={outside} unsupported={unsupported} />}
             </div>
-            <span className="room-size">{roomSize.width.toFixed(1)} × {roomSize.depth.toFixed(1)} m</span>
           </div>
           <RoomViewSelector />
+          <MeasureToolPanel />
           </div>
           <div className="scene-stage">
           <SceneErrorBoundary onRetry={() => setSceneAttempt((attempt) => attempt + 1)} exporting={exportMode} onExportUnavailable={() => onExportComplete(new Error('No se puede exportar el modelo 3D mientras la escena no está disponible.'))}><RoomScene
@@ -338,6 +343,7 @@ function App() {
   }, [])
   const closeGuide = useCallback(() => { rememberFirstUseGuide(); setGuideInvitation(false); setGuideOpen(false) }, [])
   useEditorShortcuts()
+  useEffect(() => trackDragModifiers(), [])
   useEffect(() => { initializeSavedDesigns() }, [initializeSavedDesigns])
   useEffect(() => {
     if (!exportNotice) return

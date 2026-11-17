@@ -4,11 +4,40 @@ import { FurnitureIcon } from '../iconCatalog'
 import { wallLength } from '../../domain/geometry'
 import { isWallMirrorShape, isWallPictureShape, openingKindForShape, OPENING_CATALOG } from '../../domain/objectCatalog'
 import { useRoomStore } from '../../state/useRoomStore'
-import type { WallSide } from '../../domain/types'
+import type { DoorSwing, WallSide } from '../../domain/types'
+import { doorSwingGeometry, doorSwingOf, HINGE_LABELS, SWING_SIDE_LABELS } from '../../domain/doorSwing'
 import { AxisPositionControl, ColorControl, OpeningSwatch, PositionControl, RotationControl, WallPicker } from './Controls'
 import { ResizeControls } from './ResizeControls'
 import { packWindowById } from '../../domain/structureWindows'
 import { openingPosition, openingRunBounds, worldOpenings } from '../../domain/wallConnections'
+
+/** Vista previa del símbolo de plano de la puerta con el giro elegido (la pared va arriba; el interior, abajo). */
+function SwingPreview({ swing }: { swing: DoorSwing }) {
+  // Cabe el arco hacia los dos lados: la pared va en el centro, el exterior arriba y el interior abajo.
+  const scale = 30, geometry = doorSwingGeometry(1, swing)
+  const point = (p: { x: number; z: number }) => `${(p.x * scale + 60).toFixed(1)},${(p.z * scale + 40).toFixed(1)}`
+  return <svg className="door-swing__preview" viewBox="0 0 120 80" role="img" aria-label={`Puerta con bisagra a la ${swing.hinge === 'left' ? 'izquierda' : 'derecha'}, abre ${swing.side === 'inside' ? 'hacia dentro' : 'hacia fuera'}`}>
+    <path d="M8 40H45M75 40H112" className="door-swing__wall" />
+    <path d={`M${point(geometry.arc[0])} ${geometry.arc.slice(1).map((p) => `L${point(p)}`).join(' ')}`} className="door-swing__arc" />
+    <path d={`M${point(geometry.hinge)}L${point(geometry.leafEnd)}`} className="door-swing__leaf" />
+    <text x="6" y="9" className="door-swing__label">Exterior</text>
+    <text x="6" y="77" className="door-swing__label">Interior</text>
+  </svg>
+}
+
+/** Bisagra y lado hacia el que se abre la puerta; solo cambia cómo se dibuja en el Plano (el modelo 3D sigue cerrado). */
+function DoorSwingControl({ swing, disabled, onChange }: { swing: DoorSwing; disabled: boolean; onChange: (swing: DoorSwing) => void }) {
+  const group = <T extends string>(label: string, current: T, options: Record<T, string>, set: (value: T) => void) => <div className="door-swing__group" role="group" aria-label={label}>
+    <span>{label}</span>
+    <div>{(Object.keys(options) as T[]).map((value) => <button key={value} type="button" disabled={disabled} aria-pressed={current === value} className={current === value ? 'is-active' : ''} onClick={() => set(value)}>{options[value]}</button>)}</div>
+  </div>
+  return <fieldset className="door-swing">
+    <legend>Giro de la puerta en el Plano</legend>
+    <SwingPreview swing={swing} />
+    {group('Bisagra (mirando desde dentro)', swing.hinge, HINGE_LABELS, (hinge) => onChange({ ...swing, hinge }))}
+    {group('Se abre', swing.side, SWING_SIDE_LABELS, (side) => onChange({ ...swing, side }))}
+  </fieldset>
+}
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
 type SelectedOpening = (RoomState['room']['door'] & { id: string; kind: 'door'; sill: number }) | (RoomState['room']['windows'][number] & { kind: 'window' })
@@ -65,6 +94,10 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
   const openingStep = 0.01
   const maxOffset = Math.floor(rawMaxOffset / openingStep) * openingStep
   const position = worldPosition
+  const setSwing = (swing: DoorSwing) => {
+    if (selectedOpening.id === 'door') setDoor({ swing })
+    else setStructureDoor(selectedOpening.id, { swing })
+  }
   const update = (partial: { wall?: WallSide; offset?: number; rotation?: number; color?: string }) => {
     if (selectedOpening.kind === 'door') {
       if (selectedOpening.id === 'door') setDoor(partial)
@@ -94,6 +127,7 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
           disabled={locked}
         />
       )}
+      {selectedOpening.kind === 'door' && <DoorSwingControl swing={doorSwingOf(selectedOpening)} disabled={locked} onChange={setSwing} />}
       {capabilities.canChangeWall && <WallPicker label="Pared" value={selectedOpening.wall} onChange={(wall) => update({ wall })} disabled={locked} />}
       {selectedOpening.kind === 'window' && selectedOpening.freePosition && <button type="button" className="text-button" disabled={locked} onClick={() => update({ wall: selectedOpening.wall })}>Volver a colocar en la pared {WALL_LABELS[selectedOpening.wall]}</button>}
       {selectedOpening.kind === 'window' && !selectedOpening.freePosition && <button type="button" className="text-button" disabled={locked} onClick={() => detachWallObject(selectedOpening.id)}>Despegar de la pared</button>}

@@ -1,6 +1,11 @@
-import type { ElementFolder, FurnitureItem, FurnitureKind, GridSurface, PersistedDesign, RoomConfig, StructurePack, StructureSurfaceKey, ViewMode, WallSide, WindowConfig, WindowShape } from '../domain/types'
+import type { DoorSwing, ElementFolder, FurnitureItem, FurnitureKind, GridSurface, PersistedDesign, RoomConfig, StructurePack, StructureSurfaceKey, ViewMode, WallSide, WindowConfig, WindowShape } from '../domain/types'
 import type { SavedDesign } from '../domain/designV1'
+import type { MeasureEnd, PlanMeasure, PlanPoint } from '../domain/planMeasures'
+import type { DragGuide } from '../domain/dragGuides'
 import type { DesignRepository } from '../persistence/localDesignRepository'
+
+/** Qué cotas se superponen en «Mostrar detalles»: paredes, huecos, muebles (del seleccionado) y cotas guardadas. */
+export interface PlanDetailCategories { walls: boolean; openings: boolean; furniture: boolean; annotations: boolean }
 
 export interface RoomState {
   room: RoomConfig
@@ -17,6 +22,21 @@ export interface RoomState {
   /** Plano detallado: estado visual de sesión; no se guarda ni entra en el historial. */
   planDetailsVisible: boolean
   setPlanDetailsVisible: (visible: boolean) => void
+  /** Categorías de cotas del Plano detallado (sesión): ni se guardan ni modifican el diseño. */
+  planDetailCategories: PlanDetailCategories
+  setPlanDetailCategory: (category: keyof PlanDetailCategories, visible: boolean) => void
+  setMeasureToolActive: (active: boolean) => void
+  setMeasureAxis: (axis: 'free' | 'horizontal' | 'vertical') => void
+  setMeasureSnap: (snap: boolean) => void
+  setMeasureDraft: (draft: { start: MeasureEnd; end: MeasureEnd | null } | null) => void
+  setMeasureEditId: (id: string | null) => void
+  /** Devuelve el id de la cota creada, o `null` si no era válida. */
+  addMeasure: (start: MeasureEnd, end: MeasureEnd, name?: string) => string | null
+  saveMeasureDraft: (name?: string) => string | null
+  updateMeasure: (id: string, patch: { name?: string; hidden?: boolean; start?: PlanPoint | MeasureEnd; end?: PlanPoint | MeasureEnd }) => void
+  /** Da por revisada la advertencia de una cota cuyo referente desapareció. */
+  acknowledgeMeasure: (id: string) => void
+  removeMeasure: (id: string) => void
   areaSelect: boolean
   setAreaSelect: (active: boolean) => void
   activeRoomId: string | null
@@ -38,7 +58,21 @@ export interface RoomState {
   frontCameraHeight: number
   povYaw: number
   gridSnap: boolean
+  /** Preferencias de edición locales: no se guardan en el diseño ni entran en el historial (#37). */
+  magnetismEnabled: boolean
+  guidesEnabled: boolean
+  /** Guías del arrastre en curso; solo existen mientras dura el gesto. */
+  activeGuides: DragGuide[]
   gridVisibility: Record<GridSurface, boolean>
+  /** Cotas manuales guardadas en el diseño (#38). */
+  measurements: PlanMeasure[]
+  /** Herramienta Medir: estado de sesión, ni se guarda ni entra en el historial. */
+  measureToolActive: boolean
+  measureAxis: 'free' | 'horizontal' | 'vertical'
+  measureSnap: boolean
+  measureDraft: { start: MeasureEnd; end: MeasureEnd | null } | null
+  /** Cota cuyos puntos se están moviendo en el plano (sesión; excluye a la herramienta Medir). */
+  measureEditId: string | null
   hiddenElementIds: string[]
   lockedElementIds: string[]
   elementFolders: ElementFolder[]
@@ -65,6 +99,8 @@ export interface RoomState {
   setCameraZoom: (zoom: number) => void
   rotateFront: (direction: -1 | 1) => void
   rotateIso: (direction: -1 | 1) => void
+  /** Gira el Plano un cuarto de vuelta (+1 = a la izquierda, −1 = a la derecha); solo cámara de sesión. */
+  rotateTop: (direction: -1 | 1) => void
   rotatePov: (direction: -1 | 1) => void
   centerPov: () => void
   setDimension: (key: 'width' | 'depth' | 'height', value: number) => void
@@ -76,7 +112,7 @@ export interface RoomState {
   addStructurePack: (direction?: 'up' | 'down' | 'north' | 'south' | 'east' | 'west') => void
   addStructureObject: (kind: 'floor' | 'wall') => void
   addStructureDoor: () => void
-  setStructureDoor: (id: string, partial: { wall?: WallSide; offset?: number; color?: string }) => void
+  setStructureDoor: (id: string, partial: { wall?: WallSide; offset?: number; color?: string; swing?: DoorSwing }) => void
   removeStructureDoor: (id: string) => void
   moveStructurePack: (id: string, axis: 'x' | 'y' | 'z', value: number) => void
   moveStructureSurface: (packId: string, surfaceId: StructureSurfaceKey, axis: 'x' | 'y' | 'z', value: number) => void
@@ -92,7 +128,7 @@ export interface RoomState {
   commitHistoryGesture: (token: HistoryGestureToken) => void
   cancelHistoryGesture: (token: HistoryGestureToken) => void
   isHistoryGestureActive: (token: HistoryGestureToken) => boolean
-  setDoor: (partial: { wall?: WallSide; offset?: number; color?: string }) => void
+  setDoor: (partial: { wall?: WallSide; offset?: number; color?: string; swing?: DoorSwing }) => void
   addWindow: (shape?: WindowShape) => void
   updateWindow: (id: string, partial: Partial<Pick<WindowConfig, 'wall' | 'offset' | 'width' | 'sill' | 'rotation' | 'color'>>) => void
   moveWallObject: (id: string, axis: 'x' | 'y' | 'z', value: number) => void
@@ -105,7 +141,12 @@ export interface RoomState {
   renameElement: (id: string, name: string) => void
   beginFurnitureMove: () => void
   endFurnitureMove: () => void
-  moveFurniture: (id: string, x: number, z: number, source?: 'pointer') => void
+  moveFurniture: (id: string, x: number, z: number, source?: 'pointer', axis?: 'x' | 'z') => void
+  setMagnetism: (enabled: boolean) => void
+  setGuides: (enabled: boolean) => void
+  setGridSnap: (enabled: boolean) => void
+  clearDragGuides: () => void
+  guideGroupMove: (box: { minX: number; maxX: number; minZ: number; maxZ: number; minY: number; maxY: number }, delta: { x: number; z: number }, ids: string[], axes?: Array<'x' | 'z'>) => { dx: number; dz: number }
   setFurnitureWallAttachment: (id: string, attached: boolean) => void
   setFurnitureWallLateralLock: (id: string, locked: boolean) => void
   setElementAxisLock: (id: string, axis: 'x' | 'y' | 'z', locked: boolean) => void

@@ -1,3 +1,5 @@
+import { sameGuides } from '../../domain/dragGuides'
+import { pointerMoveGuides } from './guideActions'
 import { rejectDiagnosticAction } from '../../diagnostics/actionScope'
 import { finishHistoryTransaction } from '../historyTransactions'
 import { applyFurnitureRotation, elevatedFurniture, movedFurniture } from '../../domain/editingRules'
@@ -211,12 +213,14 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
       if (token) get().commitHistoryGesture(token)
       else finishHistoryTransaction(runtime)
     },
-    moveFurniture: (id, x, z, source) => set((state) => {
+    moveFurniture: (id, x, z, source, axis) => set((state) => {
       runtime.furnitureMoveSource = source
       if (state.lockedElementIds.includes(id)) { rejectDiagnosticAction('element-locked'); return {} }
       const item = state.furniture.find((candidate) => candidate.id === id)
       if (!item) return {}
-      const moved = movedFurniture(state, item, x, z)
+      // Guías y magnetismo (#37): solo en arrastres con puntero; teclado e inspector no se atraen.
+      const guided = source === 'pointer' ? pointerMoveGuides(state, id, x, z, axis) : null
+      const moved = movedFurniture(state, item, guided?.x ?? x, guided?.z ?? z)
       if (!moved) { rejectDiagnosticAction('position-not-applicable'); return {} }
       if (moved.x === item.x && moved.z === item.z && (x !== item.x || z !== item.z) && (item.axisLocks?.x || item.axisLocks?.z)) rejectDiagnosticAction('furniture-axis-locked')
       recordInteraction('state.furniture.moved', {
@@ -225,7 +229,10 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
         coalesceKey: `furniture-move-${id}`,
         details: { id, name: item.name, x: moved.x, z: moved.z },
       })
-      return { furniture: state.furniture.map((candidate) => candidate.id === id ? moved : candidate) }
+      return {
+        furniture: state.furniture.map((candidate) => candidate.id === id ? moved : candidate),
+        ...(guided && !sameGuides(state.activeGuides, guided.guides) ? { activeGuides: guided.guides } : {}),
+      }
     }),
     moveFurnitureVertically: (id, y) => set((state) => {
       if (state.lockedElementIds.includes(id)) { rejectDiagnosticAction('element-locked'); return {} }

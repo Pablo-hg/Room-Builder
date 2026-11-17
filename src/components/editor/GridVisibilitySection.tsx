@@ -5,6 +5,27 @@ import { ROOT_ROOM_FOLDER } from '../../domain/elementFolders'
 import { gridGroupStatus } from '../../domain/gridGroups'
 import { useRoomStore } from '../../state/useRoomStore'
 
+/** Ajuste a 5 cm, magnetismo y guías: tres opciones independientes entre sí y de la cuadrícula visible (#37). */
+function MovementAssistSection() {
+  const gridSnap = useRoomStore((state) => state.gridSnap)
+  const magnetism = useRoomStore((state) => state.magnetismEnabled)
+  const guides = useRoomStore((state) => state.guidesEnabled)
+  const setGridSnap = useRoomStore((state) => state.setGridSnap)
+  const setMagnetism = useRoomStore((state) => state.setMagnetism)
+  const setGuides = useRoomStore((state) => state.setGuides)
+  const rows = [
+    { id: 'snap', label: 'Ajuste a 5 cm', on: gridSnap, toggle: () => setGridSnap(!gridSnap), hint: 'Mueve de 5 en 5 cm. Apagado, de 1 en 1 cm.' },
+    { id: 'magnet', label: 'Magnetismo', on: magnetism, toggle: () => setMagnetism(!magnetism), hint: 'Atrae a bordes, centros y paredes. Alt lo suspende al arrastrar.' },
+    { id: 'guides', label: 'Guías de alineación', on: guides, toggle: () => setGuides(!guides), hint: 'Muestra líneas y cotas al arrastrar, sin mover nada.' },
+  ]
+  return <div className="movement-assist" role="group" aria-label="Ayudas de movimiento">
+    {rows.map((row) => <div className="grid-visibility-row" key={row.id}>
+      <span className="movement-assist__text"><strong>{row.label}</strong><small id={`movement-assist-${row.id}`}>{row.hint}</small></span>
+      <button type="button" className={`switch ${row.on ? 'on' : ''}`} role="switch" aria-checked={row.on} aria-label={row.label} aria-describedby={`movement-assist-${row.id}`} onClick={row.toggle}><span /></button>
+    </div>)}
+  </div>
+}
+
 // Visibilidad de las cuadrículas: conserva IDs y estado del store original.
 export function GridVisibilitySection() {
   const activeRoomId = useRoomStore((state) => state.activeRoomId)
@@ -76,7 +97,7 @@ export function GridVisibilitySection() {
             </div>
           }))}
         </div>
-        <small className="grid-snap-note">El ajuste de movimiento a 5 cm se mantiene activo.</small>
+        <MovementAssistSection />
         </section>
   )
 }

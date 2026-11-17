@@ -45,6 +45,11 @@ export interface PlanDimension {
   thickness: number
   label: string
   compactLabel: string
+  /** 0 (por defecto) = cota del perímetro; 1 = cadena de huecos, por fuera de la anterior. */
+  tier?: number
+  kind?: 'wall' | 'opening' | 'gap'
+  /** Hueco al que corresponde el tramo (solo `kind: 'opening'`). */
+  openingId?: string
 }
 
 const NUMBER_FORMAT = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })
@@ -71,7 +76,7 @@ export function roomPerimeterSegments(room: RoomConfig): PlanWallSegment[] {
     .map(wallSegment)
 }
 
-function wallSegment(wall: ConnectedWall): PlanWallSegment {
+export function wallSegment(wall: ConnectedWall): PlanWallSegment {
   // La cota mide la habitación (cara interior), no el sólido alargado que cubre las esquinas.
   const length = wall.width - (isRoomPack(wall.packId) ? roomWallCornerExtension(wall.side, wall.depth) : 0)
   const dx = Math.cos(wall.yaw) * length / 2
@@ -86,7 +91,17 @@ function wallSegment(wall: ConnectedWall): PlanWallSegment {
   }
 }
 
-const isRoomPack = (packId?: string) => !packId || packId.startsWith('floor-pack-')
+export const isRoomPack = (packId?: string) => !packId || packId.startsWith('floor-pack-')
+
+/** Un punto dentro de la habitación (centro del suelo): decide qué lado de cada pared es el exterior. */
+export function roomInteriorPoint(world: WallWorld, roomId: string | null): PlanPoint | undefined {
+  if (!roomId) return { x: 0, z: 0 }
+  const pack = world.structurePacks.find((candidate) => candidate.id === roomId)
+  const floor = pack?.surfaces.find((surface) => surface.kind === 'floor')
+  if (!pack || !floor) return undefined
+  const [x, , z] = surfacePosition(world.room, floor)
+  return { x: pack.x + x, z: pack.z + z }
+}
 
 /**
  * Cotas de todas las habitaciones (raíz y habitaciones adicionales). Las

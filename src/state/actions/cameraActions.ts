@@ -41,6 +41,7 @@ type CameraActions = Pick<
   | 'setTopCameraPosition'
   | 'resetTopCamera'
   | 'setPlanDetailsVisible'
+  | 'setPlanDetailCategory'
   | 'setAreaSelect'
   | 'lookAtWall'
   | 'setFrontCameraHeight'
@@ -54,6 +55,7 @@ type CameraActions = Pick<
   | 'setCameraZoom'
   | 'rotateFront'
   | 'rotateIso'
+  | 'rotateTop'
   | 'rotatePov'
   | 'centerPov'
 >
@@ -65,6 +67,8 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
     resetTopCamera: () => set({ topCameraX: 0, topCameraZ: 0, cameraZoom: 1 }),
     // Solo alterna la capa de cotas: no cambia cámara, selección ni diseño.
     setPlanDetailsVisible: (planDetailsVisible) => set({ planDetailsVisible }),
+    // Filtros de la capa de cotas: solo visuales, como el propio «Mostrar detalles».
+    setPlanDetailCategory: (category, visible) => set((state) => state.planDetailCategories[category] === visible ? {} : { planDetailCategories: { ...state.planDetailCategories, [category]: visible } }),
     setAreaSelect: (areaSelect) => set({ areaSelect }),
     setView: (view) => set((state) => {
       recordInteraction('state.view.changed', {
@@ -209,6 +213,17 @@ export function createCameraActions(context: Pick<RoomActionContext, 'set'>): Ca
         wallView,
         notice: '',
       }
+    }),
+    // El Plano mira siempre desde arriba; girar elige qué pared queda arriba en la pantalla. Es estado de sesión.
+    rotateTop: (direction) => set((state) => {
+      if (state.view !== 'top') return {}
+      const topOrientation = (((state.topOrientation + direction) % 4) + 4) % 4
+      recordInteraction('state.camera.orientation', {
+        view: state.view,
+        selectedId: state.selectedId,
+        details: { orientation: topOrientation, mode: 'top-step' },
+      })
+      return { topOrientation, wallView: frontWallForOrientation(topOrientation), notice: '' }
     }),
     rotateIso: (direction) => set((state) => {
       const isoAngle = normalizeIsoAngle(state.isoAngle + direction * ISO_QUARTER_TURN)

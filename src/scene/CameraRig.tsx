@@ -110,7 +110,9 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
       targetCamera.lookAt(freeCameraOffset.x, freeCameraOffset.y + 0.45, freeCameraOffset.z)
       if (targetCamera instanceof THREE.PerspectiveCamera) targetCamera.aspect = size.width / Math.max(size.height, 1)
     } else if (view === 'top') {
-      const zoom = Math.min(size.width / (room.width + 2.2), size.height / (room.depth + 2.2))
+      // Con el Plano girado un cuarto de vuelta, el ancho de la habitación pasa a ser el alto de la pantalla.
+      const sideways = topViewWallForOrientation(orientation) === 'east' || topViewWallForOrientation(orientation) === 'west'
+      const zoom = Math.min(size.width / ((sideways ? room.depth : room.width) + 2.2), size.height / ((sideways ? room.width : room.depth) + 2.2))
       const topViewUp: Record<WallSide, [number, number, number]> = {
         north: [0, 0, -1],
         east: [1, 0, 0],

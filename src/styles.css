@@ -232,6 +232,8 @@ body.plan-panning .scene-panel canvas { cursor: grabbing; }
 .view-badge, .room-size, .grid-scale, .visible-walls-badge { padding: 8px 11px; border: 1px solid rgba(83,80,72,.1); border-radius: 15px; background: rgba(255,253,249,.78); color: #687069; font-size: 12px; font-weight: 700; backdrop-filter: blur(8px); }
 .view-badge i { display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: #6d9274; box-shadow: 0 0 0 3px rgba(109,146,116,.13); }
 .grid-scale { color: #7a7f79; font-weight: 600; }
+.room-size { color: #3f5547; }
+.room-size b { margin-right: 5px; color: var(--forest); font-size: 13px; }
 .grid-scale b { margin-right: 5px; color: var(--forest); font-size: 13px; }
 .visible-walls-badge { color: #3f5547; background: rgba(242,248,241,.88); }
 .visible-walls-badge b { margin-right: 5px; color: #6d9274; font-size: 14px; }
@@ -247,7 +249,7 @@ body.plan-panning .scene-panel canvas { cursor: grabbing; }
 .room-position-choices button:disabled { opacity: .55; cursor: not-allowed; }
 .iso-height-control { position: absolute; z-index: 3; left: 18px; bottom: 20px; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 9px 11px; border-radius: 11px; color: #55675c; background: rgba(255,253,249,.94); font-size: 13px; font-weight: 700; }
 .iso-height-control input { grid-column: 1 / -1; width: 150px; }
-.room-view-selector { position: absolute; z-index: 3; right: 18px; top: 78px; display: grid; gap: 4px; padding: 8px 10px; border-radius: 9px; background: rgba(255,253,249,.95); color: #405748; font-size: 13px; font-weight: 700; }
+.room-view-selector { position: absolute; z-index: 3; right: 16px; top: 14px; display: grid; gap: 4px; padding: 8px 10px; border-radius: 9px; background: rgba(255,253,249,.95); color: #405748; font-size: 13px; font-weight: 700; }
 .room-view-selector select { max-width: 180px; padding: 5px; border: 1px solid #d8ded6; border-radius: 6px; background: white; color: inherit; }
 .camera-controls--plan { gap: 6px; padding: 5px 6px 5px 10px; }
 .camera-controls--plan .plan-camera-hint { display: flex; align-items: center; gap: 7px; min-width: 0; text-align: left; }
@@ -472,6 +474,12 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .grid-visibility-row--global input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--forest); cursor: pointer; }
 .grid-visibility-row--global > span { padding-right: 8px; }
 .grid-snap-note { line-height: 1.4; }
+.movement-assist { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.movement-assist .grid-visibility-row { align-items: center; gap: 12px; padding: 8px 11px; }
+.movement-assist__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.movement-assist__text strong { font-size: 13px; color: #3a423d; }
+.movement-assist__text small { font-size: 11.5px; font-weight: 500; line-height: 1.35; color: #6f766f; }
+.movement-assist .switch { flex: none; }
 .switch { position: relative; width: 34px; height: 19px; padding: 0; border: 0; border-radius: 11px; background: #cacdc8; cursor: pointer; transition: background .18s; }
 .switch span { position: absolute; width: 13px; height: 13px; left: 3px; top: 3px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,.22); transition: transform .18s; }
 .switch.on { background: var(--forest); }
@@ -737,3 +745,112 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 @media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
   .topbar { position: static; }
 }
+
+/* #38 · Herramienta Medir y cotas guardadas */
+.camera-controls--plan .measure-toggle { display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 11px; border: 0; border-right: 1px solid rgba(76,91,80,.12); background: transparent; color: #405748; font: inherit; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.camera-controls--plan .measure-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.camera-controls--plan .measure-toggle.is-active { background: #b4541c; color: #fff; border-radius: 8px; }
+.camera-controls--plan .measure-toggle:focus-visible { outline: 2px solid #b4541c; outline-offset: 2px; }
+.measure-panel { position: absolute; z-index: 3; right: 16px; top: 78px; width: min(300px, calc(100% - 32px)); display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(255,253,249,.97); box-shadow: 0 6px 22px rgba(60,50,30,.16); color: #405748; font-size: 13px; }
+.measure-panel__head { display: flex; align-items: center; justify-content: space-between; }
+.measure-panel__close { min-width: 32px; min-height: 32px; border: 0; background: transparent; color: inherit; font-size: 20px; cursor: pointer; }
+.measure-panel__axes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.measure-panel button, .measure-section button, .measure-form button { min-height: 32px; padding: 0 9px; border: 1px solid #cdd6cc; border-radius: 7px; background: #fff; color: #405748; font: inherit; font-weight: 700; cursor: pointer; }
+.measure-panel button.is-active, .measure-panel button[aria-pressed="true"].is-active { background: #b4541c; border-color: #b4541c; color: #fff; }
+.measure-panel button:disabled { opacity: .5; cursor: not-allowed; }
+.measure-panel__snap { display: flex; align-items: center; gap: 7px; min-height: 32px; cursor: pointer; }
+.measure-panel__snap input { width: 17px; height: 17px; margin: 0; accent-color: #b4541c; }
+.measure-panel__reading { margin: 0; padding: 7px 9px; border-radius: 7px; background: #f6efe8; color: #7d3b11; font-weight: 800; }
+.measure-panel__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.measure-panel__save:not(:disabled) { background: #2f6f5e; border-color: #2f6f5e; color: #fff; }
+.measure-panel small { color: #6f766f; line-height: 1.35; }
+.measure-section { display: grid; gap: 8px; }
+.measure-section__heading { margin: 0; font-size: 14px; color: #405748; }
+.measure-section__heading span { color: #7a7f79; font-weight: 600; }
+.measure-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.measure-row { display: grid; gap: 7px; padding: 9px 10px; border: 1px solid #e3dfd7; border-radius: 8px; background: #faf8f4; }
+.measure-row.is-hidden { opacity: .72; }
+.measure-row.is-stale { border-color: #e2b4b0; background: #fdf1f0; }
+.measure-row__main { display: grid; gap: 2px; min-width: 0; }
+.measure-row__title { overflow-wrap: anywhere; color: #2a5d9f; }
+.measure-row__main small { color: #6f766f; }
+.measure-row__warning { margin: 4px 0 0; color: #b3261e; font-size: 12.5px; font-weight: 700; }
+.measure-row__warning button { margin-left: 8px; }
+.measure-row__actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.measure-form { display: grid; gap: 7px; margin-top: 6px; }
+.measure-form fieldset { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; padding: 6px 8px; border: 1px solid #e3dfd7; border-radius: 7px; }
+.measure-form legend { padding: 0 4px; font-size: 12px; font-weight: 700; color: #6f766f; }
+.measure-form__field { display: grid; gap: 2px; font-size: 12px; font-weight: 700; color: #6f766f; }
+.measure-form__field--wide { grid-column: 1 / -1; }
+.measure-form input { min-height: 32px; padding: 0 7px; border: 1px solid #cdd6cc; border-radius: 6px; font: inherit; }
+.measure-form__error { margin: 0; color: #b3261e; font-size: 12.5px; }
+.measure-add summary { cursor: pointer; font-weight: 700; color: #405748; min-height: 32px; display: flex; align-items: center; }
+@media (max-width: 760px) {
+  .measure-panel { position: static; width: auto; }
+  .camera-controls--plan .measure-toggle { min-height: 44px; }
+  .measure-panel button, .measure-section button, .measure-form button { min-height: 44px; }
+}
+/* El botón Medir hereda `.camera-controls button` (34 px) y `.camera-controls span` (82 px mínimo): se recuperan sus medidas. */
+.camera-controls--plan .measure-toggle { width: auto; height: 36px; flex: none; border-radius: 8px; font-size: 13px; }
+.camera-controls--plan .measure-toggle:hover { background: #eff0eb; }
+.camera-controls--plan .measure-toggle.is-active:hover { background: #9c4716; }
+.camera-controls--plan .measure-toggle span { min-width: 0; color: inherit; text-align: left; white-space: nowrap; }
+/* Con el botón Medir la barra es más ancha que la mitad de la escena: el consejo no debe partirse en líneas. */
+.camera-controls--plan .plan-camera-hint { white-space: nowrap; }
+.camera-controls--plan .plan-camera-hint span { min-width: 0; }
+/* El panel izquierdo es estrecho: los formularios de cotas deben encajar sin desbordar. */
+.measure-section, .measure-list, .measure-row, .measure-row__main, .measure-add, .measure-form { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.measure-form fieldset { min-width: 0; box-sizing: border-box; }
+.measure-form__field { min-width: 0; }
+.measure-form input { width: 100%; min-width: 0; box-sizing: border-box; }
+.measure-form button[type="submit"] { width: 100%; box-sizing: border-box; }
+.measure-row__actions button { flex: 1 1 auto; min-width: 0; }
+
+.measure-form__anchor { grid-column: 1 / -1; color: #2a5d9f; font-size: 11.5px; line-height: 1.35; font-weight: 600; }
+
+.measure-row.is-editing { border-color: #1d6fd1; box-shadow: 0 0 0 2px rgba(29,111,209,.15); }
+.measure-edit { display: grid; gap: 8px; padding-top: 4px; }
+.measure-edit__hint { margin: 0; color: #1d4f94; font-size: 12.5px; font-weight: 600; line-height: 1.4; }
+.measure-edit__point { display: grid; gap: 4px; font-size: 12.5px; font-weight: 700; color: #405748; }
+.measure-edit__nudges { display: flex; gap: 6px; }
+.measure-edit__nudges button { flex: 1 1 0; min-width: 0; font-size: 16px; }
+
+/* Filtros de «Mostrar detalles» (#38): cuatro casillas compactas dentro de la barra del Plano. */
+.camera-controls--plan .plan-categories { display: flex; align-items: center; gap: 2px; padding: 0 6px; border-right: 1px solid rgba(76,91,80,.12); }
+.camera-controls--plan .plan-categories__chip { display: flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 6px; border-radius: 7px; color: #405748; font-size: 12.5px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.camera-controls--plan .plan-categories__chip:hover { background: #eff0eb; }
+.camera-controls--plan .plan-categories__chip input { width: 15px; height: 15px; margin: 0; accent-color: #52705d; cursor: pointer; }
+.camera-controls--plan .plan-categories__chip span { min-width: 0; color: inherit; text-align: left; }
+/* Con los filtros visibles el consejo se reduce al icono (su texto sigue siendo accesible). */
+.camera-controls--plan .plan-camera-hint--compact { font-size: 0; gap: 0; }
+.camera-controls--plan .plan-camera-hint--compact svg { width: 21px; height: 21px; }
+@media (max-width: 760px) {
+  .camera-controls--plan .plan-categories { flex-wrap: wrap; border-right: 0; }
+  .camera-controls--plan .plan-categories__chip { min-height: 44px; }
+}
+
+/* Girar el Plano en cuatro lados (#38 · cámara del Plano). */
+.camera-controls--plan .plan-rotate { display: flex; align-items: center; gap: 2px; padding: 0 6px; border-right: 1px solid rgba(76,91,80,.12); }
+.camera-controls--plan .plan-rotate output { min-width: 0; padding: 0 4px; color: #405748; font-size: 12.5px; font-weight: 700; white-space: nowrap; text-align: center; }
+.camera-controls--plan .plan-rotate button { color: #405748; }
+@media (max-width: 760px) {
+  .camera-controls--plan .plan-rotate button { min-width: 44px; min-height: 44px; }
+}
+/* La barra del Plano reúne muchas opciones: si no caben en una fila, pasan a una segunda en vez de salirse de la escena. */
+.camera-controls--plan { flex-wrap: wrap; justify-content: center; width: max-content; max-width: calc(100% - 24px); row-gap: 2px; }
+.camera-controls--plan .plan-camera-hint--compact { display: none; }
+
+/* Giro de la puerta en el Plano (#38) */
+.door-swing { display: grid; gap: 8px; margin: 10px 0; padding: 8px 10px 10px; border: 1px solid #e3dfd7; border-radius: 8px; min-width: 0; }
+.door-swing legend { padding: 0 4px; font-size: 12px; font-weight: 700; color: #6f766f; }
+.door-swing__preview { width: 100%; max-width: 132px; height: auto; justify-self: center; }
+.door-swing__wall { stroke: #69402c; stroke-width: 5; stroke-linecap: butt; fill: none; }
+.door-swing__arc { stroke: #69402c; stroke-width: 1.4; fill: none; }
+.door-swing__leaf { stroke: #69402c; stroke-width: 3; fill: none; stroke-linecap: square; }
+.door-swing__label { font-size: 7px; fill: #8a918b; font-weight: 600; }
+.door-swing__group { display: grid; gap: 4px; font-size: 12.5px; font-weight: 700; color: #405748; }
+.door-swing__group > div { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.door-swing__group button { min-height: 34px; padding: 0 8px; border: 1px solid #cdd6cc; border-radius: 7px; background: #fff; color: #405748; font: inherit; font-weight: 700; cursor: pointer; }
+.door-swing__group button.is-active { background: #52705d; border-color: #52705d; color: #fff; }
+.door-swing__group button:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 760px) { .door-swing__group button { min-height: 44px; } }

@@ -10,6 +10,8 @@ import { structureDoorsWorldError } from '../domain/structureDoors'
 import { structureGridElementId, structureSurfaceElementId } from '../domain/elementIds'
 import { BASE_ROOM_SURFACE_IDS, folderSelectionId } from '../domain/elementFolders'
 import { migrateWallLayout } from './wallLayoutMigration'
+import { normalizeMeasures } from '../domain/planMeasures'
+import { validateDesignDoorSwings } from '../domain/doorSwing'
 
 /**
  * Aplana un v5 local de la etapa de variantes a su variante activa.
@@ -69,7 +71,11 @@ export function normalizeDesign(value: unknown): PersistedDesign {
   const laidOut = migrateWallLayout({ ...source, room: migrated.room, structurePacks, furniture })
   validateFurniture(laidOut.furniture, laidOut.room)
   validateFurnitureWallAttachments({ room: laidOut.room, structurePacks: laidOut.structurePacks ?? [], furniture: laidOut.furniture }, source.version)
-  return { ...laidOut, ...normalizeDesignPreferences(source) }
+  // v13 → v14: el giro de las puertas es opcional; un diseño anterior no puede traerlo.
+  validateDesignDoorSwings({ version: source.version, room: laidOut.room, structurePacks: laidOut.structurePacks ?? [] })
+  // v12 → v13: las cotas guardadas son opcionales; un diseño anterior no puede traerlas.
+  const measurements = normalizeMeasures(source.measurements, source.version, { room: laidOut.room, structurePacks: laidOut.structurePacks ?? [], furniture: laidOut.furniture })
+  return { ...laidOut, ...normalizeDesignPreferences(source), measurements }
 }
 
 /** Un objeto marcado por tipo no puede guardarse con una altura incompatible con su anclaje. */

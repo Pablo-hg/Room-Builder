@@ -188,6 +188,8 @@ test('permite minimizar la sección Tu habitación del inspector', async ({ page
 })
 
 test('ocultación y bloqueo respetan escena, lista e inspector', { tag: '@smoke' }, async ({ page }) => {
+  // Unos 20 gestos y proyecciones de escena: dura ~25 s incluso en local, así que el límite de 30 s del CI es justo.
+  test.slow()
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   await expandCatalogCategory(page, 'Asientos')
