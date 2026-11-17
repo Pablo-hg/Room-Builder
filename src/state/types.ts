@@ -128,12 +128,16 @@ export interface RoomState {
   beginHistoryGesture: (targetId?: string | null) => HistoryGestureToken
   commitHistoryGesture: (token: HistoryGestureToken) => void
   cancelHistoryGesture: (token: HistoryGestureToken) => void
+  /** Deshace lo hecho durante el gesto sin dejar paso en el historial. */
+  revertHistoryGesture: (token: HistoryGestureToken) => void
   isHistoryGestureActive: (token: HistoryGestureToken) => boolean
   setDoor: (partial: { wall?: WallSide; offset?: number; color?: string; swing?: DoorSwing }) => void
   addWindow: (shape?: WindowShape) => void
   updateWindow: (id: string, partial: Partial<Pick<WindowConfig, 'wall' | 'offset' | 'width' | 'sill' | 'rotation' | 'color'>>) => void
   moveWallObject: (id: string, axis: 'x' | 'y' | 'z', value: number) => void
   detachWallObject: (id: string) => void
+  /** Deja el objeto de pared libre en esa posición (base) y orientación, en su misma habitación. */
+  setWallObjectFreePosition: (id: string, position: { x: number; y: number; z: number; yaw: number }) => void
   removeWindow: (id: string) => void
   addFurniture: (kind: FurnitureKind) => void
   selectElement: (id: string | null) => void

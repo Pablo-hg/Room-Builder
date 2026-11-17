@@ -11,6 +11,7 @@ type HistoryActions = Pick<
   | 'beginHistoryGesture'
   | 'commitHistoryGesture'
   | 'cancelHistoryGesture'
+  | 'revertHistoryGesture'
   | 'isHistoryGestureActive'
 >
 
@@ -34,6 +35,19 @@ export function createHistoryActions(context: Pick<RoomActionContext, 'set' | 'g
     },
     commitHistoryGesture: (token) => endGesture(token),
     cancelHistoryGesture: (token) => endGesture(token),
+    // Deshace todo lo hecho durante el gesto y no deja rastro en el historial (p. ej. arrastre del
+    // catálogo soltado fuera de la vista o cancelado con Esc). `cancelHistoryGesture` solo lo cierra.
+    revertHistoryGesture: (token) => {
+      const gesture = runtime.activeGesture
+      if (!gesture || gesture.token !== token) return
+      runtime.activeGesture = null
+      if (gesture.hasChanges) {
+        runtime.undoHistory.pop()
+        restoreDesign(gesture.before)
+        set({ selectedId: null, undoCount: runtime.undoHistory.length, redoCount: runtime.redoHistory.length })
+      }
+      if (get().activeGuides.length) set({ activeGuides: [] })
+    },
     isHistoryGestureActive: (token) => runtime.activeGesture?.token === token,
     undo: () => {
       finishHistoryTransaction(runtime)

@@ -8,8 +8,14 @@ export function MovementStatus() {
   const guides = useRoomStore((state) => state.guidesEnabled)
   const active = useRoomStore((state) => state.activeGuides)
   return <>
-    <span className="grid-scale" data-testid="movement-status">
-      <b aria-hidden="true">▦</b> Cuadrado: 25 cm · movimiento: {gridSnap ? '5 cm' : '1 cm'} · magnetismo: {magnetism ? 'sí' : 'no'} · guías: {guides ? 'sí' : 'no'}
+    {/* Dos cajitas: medidas (cuadrado y paso) y ayudas de colocación (magnetismo y guías). */}
+    <span className="movement-status" data-testid="movement-status">
+      <span className="grid-scale" data-testid="movement-status-grid">
+        <b aria-hidden="true">▦</b> Cuadrado: 25 cm · movimiento: {gridSnap ? '5 cm' : '1 cm'}
+      </span>
+      <span className="grid-scale" data-testid="movement-status-aids">
+        <b aria-hidden="true">⌖</b> Magnetismo: {magnetism ? 'sí' : 'no'} · guías: {guides ? 'sí' : 'no'}
+      </span>
     </span>
     <span className="visually-hidden" role="status" aria-live="polite">{describeGuides(active)}</span>
   </>

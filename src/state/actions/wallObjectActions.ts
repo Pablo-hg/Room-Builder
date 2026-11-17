@@ -21,8 +21,19 @@ function movementSource(state: RoomState, id: string) {
   return source
 }
 
-export function createWallObjectActions({ set, get }: RoomActionContext): Pick<RoomState, 'moveWallObject' | 'detachWallObject'> {
+export function createWallObjectActions({ set, get }: RoomActionContext): Pick<RoomState, 'moveWallObject' | 'detachWallObject' | 'setWallObjectFreePosition'> {
   return {
+    // Arrastre de un objeto de pared libre (catálogo): posición y orientación completas en un paso, sin
+    // cambiarlo de habitación mientras se arrastra (su pared de destino sigue siendo de la habitación enfocada).
+    setWallObjectFreePosition: (id, position) => set((state) => {
+      if (![position.x, position.y, position.z, position.yaw].every(Number.isFinite)) return {}
+      const source = movementSource(state, id)
+      if (!source || source.window.axisLocks?.x || source.window.axisLocks?.y || source.window.axisLocks?.z) return {}
+      const { wallPosition: _wallPosition, ...rest } = source.window
+      const changed = { ...rest, freePosition: { x: position.x, y: position.y, z: position.z, yaw: position.yaw } }
+      return { ...(source.pack ? { structurePacks: state.structurePacks.map((pack) => pack.id === source.pack!.id ? { ...pack, windows: pack.windows!.map((window) => window.id === id ? changed : window) } : pack) }
+        : { room: { ...state.room, windows: state.room.windows.map((window) => window.id === id ? changed : window) } }), notice: '' }
+    }),
     detachWallObject: (id) => set((state) => {
       const source = movementSource(state, id)
       if (!source || source.window.freePosition) return {}

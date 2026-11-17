@@ -134,6 +134,7 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
   const hoverEvents = {
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
+      if (event.nativeEvent.buttons !== 0) return
       if (!locked) document.body.classList.add('can-grab')
     },
     onPointerOut: (event: ThreeEvent<PointerEvent>) => {
@@ -347,6 +348,7 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
       onPointerCancel={(event) => { gesture.cancel(); stopRotation(event) }}
       onPointerOver={(event) => {
         event.stopPropagation()
+        if (event.nativeEvent.buttons !== 0) return
         setHovered(true)
         document.body.classList.add('can-grab')
       }}

@@ -1,7 +1,8 @@
 import { useRef } from 'react'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { wallObjectAvailableAxes, wallObjectBox, wallObjectSelectionFrame } from '../domain/wallObjectPlacement'
+import { wallObjectAvailableAxes, wallObjectBox, wallObjectSelectionFrame, wallObjects } from '../domain/wallObjectPlacement'
+import { nearestWallSnap, openingRoomFrame, wallBelongsTo } from '../domain/catalogDrag'
 import { boxOutsideBuilding } from '../domain/buildingVolume'
 import type { DoorSwing, RoomConfig, StructurePack, WindowConfig } from '../domain/types'
 import { moveFromOrigin } from '../domain/measurements'
@@ -13,7 +14,7 @@ import { WallObjectGizmo } from './WallObjectGizmo'
 import { useHistoryGesture } from '../state/useHistoryGesture'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
 import { selectSceneObject } from './sceneInteraction'
-import { openingHasSupport, openingWallRun, worldOpenings } from '../domain/wallConnections'
+import { openingHasSupport, openingWallRun, physicalWalls, worldOpenings } from '../domain/wallConnections'
 
 function WorldWallObject({ room, packs, window, pack, collision, exportMode, kind = 'window' }: { room: RoomConfig; packs: StructurePack[]; window: WindowConfig; pack?: StructurePack; collision: boolean; exportMode: boolean; kind?: 'window' | 'door' }) {
   const selected = useRoomStore((state) => state.selectedIds.includes(window.id))
@@ -27,7 +28,23 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode, kin
   const position = selectionFrame.position
   const availableAxes = { ...wallObjectAvailableAxes(room, window, pack), y: kind !== 'door' }
   const movementLocks = { x: !availableAxes.x || !!window.axisLocks?.x, y: !availableAxes.y || !!window.axisLocks?.y, z: !availableAxes.z || !!window.axisLocks?.z }
-  const drag = useRef<{ point: THREE.Vector3; plane: THREE.Plane; origin: typeof position; offset: number; sill: number; vertical: boolean } | null>(null)
+  const drag = useRef<{ point: THREE.Vector3; plane: THREE.Plane; origin: typeof position; offset: number; sill: number; vertical: boolean; inWallPlane: boolean } | null>(null)
+  // Plano de la propia pared a la altura del centro del objeto: arrastrar el cuerpo de un objeto fijado lo mueve
+  // libre en sus dos ejes (a lo largo y en altura), igual que un mueble se mueve libre por el suelo.
+  const wallPlaneAt = (frame: { x: number; y: number; z: number; yaw: number }) => new THREE.Plane().setFromNormalAndCoplanarPoint(
+    new THREE.Vector3(Math.sin(frame.yaw), 0, Math.cos(frame.yaw)), new THREE.Vector3(frame.x, frame.y + window.height / 2, frame.z))
+  // Pared junto a la que estaba el objeto al empezar el gesto: no se refija a ella hasta salir del alcance del imán
+  // (así se puede alejar un objeto recién despegado con la casilla).
+  const snapBlockedWall = useRef<string | null>(null)
+  const wallSnapFor = () => {
+    const state = useRoomStore.getState()
+    const entry = wallObjects(state).find((item) => item.window.id === window.id)
+    const free = entry?.window.freePosition
+    if (!entry || !free) return null
+    const frame = openingRoomFrame(state.room, entry.pack)
+    const walls = physicalWalls(state).filter((wall) => wallBelongsTo(wall, entry.pack?.id ?? null))
+    return nearestWallSnap(walls, frame.center, frame.floorY, { x: free.x, y: free.y + entry.window.height / 2, z: free.z }, entry.window.height)
+  }
   const end = (event: ThreeEvent<PointerEvent>) => {
     if (!drag.current) return
     drag.current = null
@@ -44,11 +61,14 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode, kin
     if (multiple) { useRoomStore.getState().selectElement(window.id); return }
     if (locked || view === 'pov' || event.button !== 0) return
     const vertical = event.nativeEvent.shiftKey
+    // En Plano la pared se ve de canto: ahí se sigue moviendo solo a lo largo de ella.
+    const inWallPlane = !window.freePosition && !vertical && view !== 'front' && view !== 'top'
     const normal = vertical || view === 'front' ? camera.getWorldDirection(new THREE.Vector3()) : new THREE.Vector3(0, 1, 0)
-    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, new THREE.Vector3(position.x, position.y + window.height / 2, position.z))
+    const plane = inWallPlane ? wallPlaneAt(position) : new THREE.Plane().setFromNormalAndCoplanarPoint(normal, new THREE.Vector3(position.x, position.y + window.height / 2, position.z))
     const point = event.ray.intersectPlane(plane, new THREE.Vector3())
     if (!point) return
-    drag.current = { point, plane, origin: position, offset: window.offset, sill: window.sill, vertical }
+    drag.current = { point, plane, origin: position, offset: window.offset, sill: window.sill, vertical, inWallPlane }
+    snapBlockedWall.current = wallSnapFor()?.wall.id ?? null
     gesture.begin()
     capture(event)
     document.body.classList.add('can-grab')
@@ -63,7 +83,7 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode, kin
     if (!window.freePosition) {
       const update = {
         ...(!current.vertical ? { offset: moveFromOrigin(current.offset + delta.x * Math.cos(current.origin.yaw) - delta.z * Math.sin(current.origin.yaw), current.offset) } : {}),
-        ...(kind !== 'door' && (current.vertical || view === 'front') ? { sill: moveFromOrigin(current.sill + delta.y, current.sill) } : {}),
+        ...(kind !== 'door' && (current.vertical || current.inWallPlane || view === 'front') ? { sill: moveFromOrigin(current.sill + delta.y, current.sill) } : {}),
       }
       if (kind === 'door') {
         if (window.id === 'door') useRoomStore.getState().setDoor(update)
@@ -71,12 +91,28 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode, kin
       } else useRoomStore.getState().updateWindow(window.id, update)
       return
     }
+    const pointer = point.clone().add(current.point)
     for (const axis of ['x', 'y', 'z'] as const) {
       if (!availableAxes[axis]) continue
       if (current.vertical && axis !== 'y') continue
       if (!current.vertical && view !== 'front' && axis === 'y') continue
       move(window.id, axis, moveFromOrigin(current.origin[axis] + delta[axis], current.origin[axis]))
     }
+    // Un objeto de pared libre se fija solo al acercarlo a una pared de su habitación (Alt lo evita, como el imán).
+    // Desde ese momento se desliza por la pared; solo la casilla «Fijar a pared» lo despega.
+    if (kind === 'door' || event.nativeEvent.altKey) return
+    const snap = wallSnapFor()
+    if (!snap) { snapBlockedWall.current = null; return }
+    if (snap.wall.id === snapBlockedWall.current) return
+    const state = useRoomStore.getState()
+    state.updateWindow(window.id, { wall: snap.wall.side, offset: snap.offset, sill: snap.sill })
+    const attached = wallObjects(useRoomStore.getState()).find((entry) => entry.window.id === window.id)
+    if (!attached || attached.window.freePosition) return
+    // El arrastre continúa ya como objeto fijado: nuevo origen en la pared, sin saltos.
+    const origin = wallObjectSelectionFrame(room, attached.window, attached.pack).position
+    const inWallPlane = !current.vertical && view !== 'front' && view !== 'top'
+    const plane = inWallPlane ? wallPlaneAt(origin) : current.plane
+    drag.current = { ...current, plane, inWallPlane, point: event.ray.intersectPlane(plane, new THREE.Vector3()) ?? pointer, origin, offset: attached.window.offset, sill: attached.window.sill }
   }
   const outside = !!window.freePosition && boxOutsideBuilding({ room, structurePacks: packs }, wallObjectBox(room, window, pack))
   return <>

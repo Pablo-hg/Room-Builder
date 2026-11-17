@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { WALL_LABELS } from '../../domain/constants'
 import { FURNITURE_CATALOG, FURNITURE_FAMILIES, FURNITURE_PRESETS, isWallPictureKind, OPENING_CATALOG, openingShapeForKind, STANDALONE_OPENING_MENU } from '../../domain/objectCatalog'
 import type { FurnitureKind } from '../../domain/types'
@@ -6,6 +6,17 @@ import { FurnitureIcon, StructurePackIcon, StructureSurfaceIcon } from '../iconC
 import { useRoomStore } from '../../state/useRoomStore'
 import { OpeningSwatch } from './Controls'
 import { planRoomCreation } from '../../domain/roomCreation'
+import type { CatalogDragItem } from '../../domain/catalogDrag'
+import { beginCatalogPointer, consumeCatalogClickSuppression } from './catalogDragSession'
+
+const DRAG_HINT = 'Pulsa para añadir o arrástralo a la vista'
+
+/** Pulsar añade como siempre; mantener y arrastrar (ratón o lápiz) lo coloca en la vista. */
+const catalogCardEvents = (item: CatalogDragItem, add: () => void) => ({
+  title: DRAG_HINT,
+  onPointerDown: (event: ReactPointerEvent<HTMLElement>) => beginCatalogPointer(item, event),
+  onClick: () => { if (!consumeCatalogClickSuppression()) add() },
+})
 
 // Catálogo: estado de las familias y acciones de alta, independiente del árbol
 // de escena para que la jerarquía/selección no controle el estado de expansión.
@@ -35,7 +46,7 @@ export function ObjectCatalogSection() {
   const openingCards = (group: (typeof STANDALONE_OPENING_MENU)[number]['group']) => STANDALONE_OPENING_MENU
     .filter((entry) => entry.group === group)
     .map(({ kind }) => (
-      <button key={kind} type="button" className="catalog-card" onClick={() => (kind === 'door' ? addStructureDoor() : addWindow(openingShapeForKind(kind)))}>
+      <button key={kind} type="button" className="catalog-card" {...catalogCardEvents(kind === 'door' ? { type: 'door' } : { type: 'wall-object', shape: openingShapeForKind(kind) }, () => (kind === 'door' ? addStructureDoor() : addWindow(openingShapeForKind(kind))))}>
         <OpeningSwatch kind={kind} />
         <span>{OPENING_CATALOG[kind].name}</span><small>＋ Añadir</small>
       </button>
@@ -86,11 +97,11 @@ export function ObjectCatalogSection() {
                   return <button type="button" key={direction} disabled={occupied} title={occupied ? 'Otra habitación ya ocupa ese espacio.' : undefined} onClick={() => { addStructurePack(direction); setChoosingRoomPosition(false) }}>{label}{occupied && <small> · Ocupado</small>}</button>
                 })}
               </div>}
-              <button type="button" className="catalog-card" onClick={() => addStructureObject('floor')}>
+              <button type="button" className="catalog-card" {...catalogCardEvents({ type: 'structure', kind: 'floor' }, () => addStructureObject('floor'))}>
                 <StructureSurfaceIcon kind="floor" />
                 <span>Suelo</span><small>＋ Objeto independiente</small>
               </button>
-              <button type="button" className="catalog-card" onClick={() => addStructureObject('wall')}>
+              <button type="button" className="catalog-card" {...catalogCardEvents({ type: 'structure', kind: 'wall' }, () => addStructureObject('wall'))}>
                 <StructureSurfaceIcon kind="wall" />
                 <span>Pared</span><small>＋ Objeto independiente</small>
               </button>
@@ -136,10 +147,10 @@ export function ObjectCatalogSection() {
                       key={kind}
                       type="button"
                       className="catalog-card"
-                      onClick={() => {
+                      {...catalogCardEvents(isWallPictureKind(kind) ? { type: 'wall-object', shape: kind } : { type: 'furniture', kind }, () => {
                         if (isWallPictureKind(kind)) addWindow(kind)
                         else addFurniture(kind)
-                      }}
+                      })}
                     >
                       <FurnitureIcon kind={kind} />
                       <span>{FURNITURE_PRESETS[kind].name}</span><small>＋ Añadir</small>

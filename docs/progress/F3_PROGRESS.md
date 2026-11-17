@@ -67,3 +67,16 @@ Se ha preparado además una validación pura para un formato candidato v15: comp
 
 - Se retiraron las recomendaciones. **Familia** muestra las familias y **Color original**. Los patrones se eligen en su propio nivel. Los 17 acabados y sus identificadores se conservan.
 - La siguiente tanda de acabados quedó anotada en [#75, ampliación del catálogo de objetos](https://github.com/Pablo-hg/Room-Builder/issues/75), para desarrollarla con la ampliación de mobiliario.
+
+## Cambios ajenos a #39 en esta rama (pedidos por el propietario, 17–18/11/2026)
+
+Hechos sobre la base de materiales de este informe. No forman parte de #39: irán en commits separados.
+
+- **Arrastrar desde el catálogo** (ratón y lápiz; táctil sigue pulsando): crear y mover es un paso de deshacer; soltar fuera o Esc lo revierte sin rastro (`revertHistoryGesture`, `continueHistoryGesture`). Muebles y construcción, sobre el suelo de la habitación enfocada; puertas, de pared en pared (`src/domain/catalogDrag.ts`, `catalogDragSession.ts`, `CatalogDropController.tsx`).
+- **Objetos de pared:** al arrastrarlos van por el plano de la pared visible más cercana; sobre la pared real se fijan; soltados fuera quedan libres. Uno libre se fija solo al acercarlo a una pared de su habitación (Alt lo evita). Casilla «Fijar a pared» en lugar de los botones Despegar / Volver a colocar; solo la casilla despega. El cuerpo de un objeto fijado se mueve libre en los dos ejes de su pared (`setWallObjectFreePosition`).
+- **Gizmo de objetos de pared:** flechas resaltadas al pasar el ratón y tamaño constante en pantalla al hacer zoom. En todos los gizmos, una flecha ya no se ilumina si el cursor pasa por ella durante otro arrastre.
+- **Etiqueta de habitación apilada:** si otra habitación está justo encima, el nombre se ancla en su propio suelo (`src/domain/roomLabelAnchor.ts`).
+- **Guía de inicio, paso 4:** la tarjeta va a la izquierda del inspector.
+- **Indicador de movimiento** dividido en dos cajitas (cuadrícula y paso / magnetismo y guías).
+- **Recargar vuelve al último diseño abierto** (`src/state/lastOpenedDesign.ts`), no siempre al primero de la lista.
+- Los E2E `free-wall-objects` y `movement-guides` se adaptaron a la nueva interfaz; no se han ejecutado.

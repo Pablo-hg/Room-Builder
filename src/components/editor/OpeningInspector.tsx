@@ -134,8 +134,16 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
       )}
       {selectedOpening.kind === 'door' && <DoorSwingControl swing={doorSwingOf(selectedOpening)} disabled={locked} onChange={setSwing} />}
       {capabilities.canChangeWall && <WallPicker label="Pared" value={selectedOpening.wall} onChange={(wall) => update({ wall })} disabled={locked} />}
-      {selectedOpening.kind === 'window' && selectedOpening.freePosition && <button type="button" className="text-button" disabled={locked} onClick={() => update({ wall: selectedOpening.wall })}>Volver a colocar en la pared {WALL_LABELS[selectedOpening.wall]}</button>}
-      {selectedOpening.kind === 'window' && !selectedOpening.freePosition && <button type="button" className="text-button" disabled={locked} onClick={() => detachWallObject(selectedOpening.id)}>Despegar de la pared</button>}
+      {/* Objetos de pared: fijados por defecto; al arrastrarlos libres se fijan solos al tocar una pared. Solo la casilla los despega. */}
+      {selectedOpening.kind === 'window' && <div className="wall-attachment-controls">
+        <label><input type="checkbox" checked={!selectedOpening.freePosition} disabled={locked} onChange={(event) => {
+          if (event.target.checked) update({ wall: selectedOpening.wall })
+          else detachWallObject(selectedOpening.id)
+        }} /> Fijar a pared</label>
+        <p className="rotation-hint">{selectedOpening.freePosition
+          ? `Libre: muévelo en XYZ. Marca la casilla para colocarlo en la pared ${WALL_LABELS[selectedOpening.wall]}, o acércalo a una pared y se fijará solo.`
+          : 'Fijado a la pared: se desliza por ella. Desmarca la casilla para despegarlo.'}</p>
+      </div>}
       {(['x', 'y', 'z'] as const).map((axis) => {
         const component = axis === 'x' ? Math.cos(position.yaw) : axis === 'z' ? -Math.sin(position.yaw) : 0
         const limits = runBounds && axis !== 'y' ? [position[axis] + component * runBounds.min, position[axis] + component * runBounds.max] : [-20, 20]

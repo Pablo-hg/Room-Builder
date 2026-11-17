@@ -83,6 +83,7 @@ export function RotationHandle({ item }: { item: FurnitureItem }) {
     onPointerCancel: (event: ThreeEvent<PointerEvent>) => { gesture.cancel(); stopRotation(event) },
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
+      if (event.nativeEvent.buttons !== 0) return
       setHovered(true)
       document.body.classList.add('can-grab')
     },
@@ -206,6 +207,7 @@ export function FrontRotationHandle({ item, wall }: { item: FurnitureItem; wall:
     onPointerCancel: (event: ThreeEvent<PointerEvent>) => { gesture.cancel(); stopRotation(event) },
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
+      if (event.nativeEvent.buttons !== 0) return
       setHovered(true)
       document.body.classList.add('can-grab')
     },
@@ -351,6 +353,7 @@ export function AxisMoveGizmo({ item, groundLevel = false, hideAxis = null, canM
     onPointerCancel: (event: ThreeEvent<PointerEvent>) => { gesture.cancel(); stopDrag(event) },
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
+      if (event.nativeEvent.buttons !== 0) return
       setHoveredAxis(axis)
       document.body.classList.add('can-grab')
     },
@@ -526,6 +529,7 @@ export function FrontAxisMoveGizmo({ item, wall }: { item: FurnitureItem; wall: 
     onPointerCancel: (event: ThreeEvent<PointerEvent>) => { gesture.cancel(); stopDrag(event) },
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
+      if (event.nativeEvent.buttons !== 0) return
       setHoveredAxis(axis)
       document.body.classList.add('can-grab')
     },

@@ -6,7 +6,7 @@ import { useRoomStore } from '../state/useRoomStore'
 import { selectSceneObject } from './sceneInteraction'
 
 /** A real button projected over its room, so it remains readable and keyboard accessible. */
-export function RoomNameLabel({ folderId, name, position, extent }: { folderId: string; name: string; position: [number, number, number]; extent: { width: number; height: number; depth: number } }) {
+export function RoomNameLabel({ folderId, name, position, extent, anchor = 'top' }: { folderId: string; name: string; position: [number, number, number]; extent: { width: number; height: number; depth: number }; anchor?: 'top' | 'floor' }) {
   const { camera, gl, size } = useThree()
   const selected = useRoomStore((state) => state.selectedIds.includes(folderSelectionId(folderId)))
   const button = useRef<HTMLButtonElement | null>(null)
@@ -52,7 +52,8 @@ export function RoomNameLabel({ folderId, name, position, extent }: { folderId: 
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
     corners.forEach((corner, index) => {
       corner.set(position[0] + (index & 1 ? 1 : -1) * extent.width / 2,
-        position[1] - 0.35 - (index & 2 ? 0 : extent.height),
+        // `position` está 0,35 m sobre el techo (anchor «top») o sobre el suelo («floor»): la caja se calcula igual.
+        position[1] - 0.35 + (anchor === 'floor' ? extent.height : 0) - (index & 2 ? 0 : extent.height),
         position[2] + (index & 4 ? 1 : -1) * extent.depth / 2).project(camera)
       if (corner.z < -1 || corner.z > 1) return
       minX = Math.min(minX, corner.x); maxX = Math.max(maxX, corner.x)
