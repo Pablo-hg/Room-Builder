@@ -51,13 +51,25 @@ for (const touch of [false, true]) {
       return touch ? target.tap() : target.click()
     }
 
-    test('cambiar de vista y orientar la cámara no altera el mobiliario ni el historial', { tag: '@smoke' }, async ({ page }) => {
+    test('cambiar de vista no altera el mobiliario ni el historial', { tag: '@smoke' }, async ({ page }) => {
       await openWithChair(page)
       const before = await snapshot(page)
       for (const name of VIEW_NAMES) {
         await press(page, name)
         await expect(page.getByRole('button', { name, exact: true })).toHaveAttribute('aria-pressed', 'true')
       }
+      const after = await snapshot(page)
+      expect(after.furniture).toBe(before.furniture)
+      expect(after.room).toBe(before.room)
+      expect(after.undoCount).toBe(before.undoCount)
+    })
+
+    // Cada control de orientación se pulsa una vez; separado del cambio de vistas para no superar ~10 gestos por prueba.
+    test('orientar la cámara con sus controles no altera el mobiliario ni el historial', { tag: '@smoke' }, async ({ page }) => {
+      // Cruza Frontal, POV e Isométrica (tres escenas 3D): en el CI, más lento, el margen de 30 s es justo.
+      test.slow()
+      await openWithChair(page)
+      const before = await snapshot(page)
       await press(page, 'Frontal')
       await press(page, 'Ver la pared siguiente')
       await press(page, 'POV')

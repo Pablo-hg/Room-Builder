@@ -82,10 +82,17 @@ test('Escape descarta la medida en curso, sale de la herramienta y salir de Plan
   expect((await stateOf(page)).measureToolActive).toBe(false)
 })
 
-test('guardar dos cotas por coordenadas: diagonal 4 × 3 = 5 m; editar, ocultar y eliminar', { tag: '@smoke' }, async ({ page }) => {
+test('alta por coordenadas: la diagonal 4 × 3 mide 5 m', async ({ page }) => {
   await openPlan(page)
   await addByCoordinates(page, 'Diagonal', ['0', '0'], ['4', '3'])
-  await addByCoordinates(page, 'Pasillo', ['1', '1'], ['1', '3,5'])
+  await expect(page.getByTestId('measure-row')).toHaveCount(1)
+  await expect(page.getByTestId('measure-row').first()).toContainText('Diagonal · 5,00 m (4,00 m × 3,00 m)')
+})
+
+test('dos cotas guardadas: editar, ocultar, eliminar y deshacer', { tag: '@smoke' }, async ({ page }) => {
+  await openPlan(page)
+  await call(page, 'addMeasure', { x: 0, z: 0 }, { x: 4, z: 3 }, 'Diagonal')
+  await call(page, 'addMeasure', { x: 1, z: 1 }, { x: 1, z: 3.5 }, 'Pasillo')
   const rows = page.getByTestId('measure-row')
   await expect(rows).toHaveCount(2)
   await expect(rows.nth(0)).toContainText('Diagonal · 5,00 m (4,00 m × 3,00 m)')
