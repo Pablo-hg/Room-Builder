@@ -36,6 +36,7 @@ import { planFloorGroups, planSheetPlacements } from '../scene/planSheet'
 import { roundFloorLevel } from '../domain/floorLevels'
 import { PlanPanSurface } from '../scene/PlanPanSurface'
 import { PlanWheelPan } from '../scene/PlanWheelPan'
+import { automatedBrowser } from '../scene/renderQuality'
 import { planRoomDimensions } from '../domain/planDimensions'
 import { planOpeningDimensions } from '../domain/planDimensionDetails'
 import { PlanFurnitureDistances } from '../scene/PlanMeasures'
@@ -226,10 +227,10 @@ export default function RoomScene(props: SceneProps & { collisionIds: ReadonlySe
       className={props.view === 'isometric' || props.view === 'free' ? 'room-scene-canvas--orbit' : 'room-scene-canvas'}
       orthographic={!perspective}
       camera={perspective ? { fov: 62, near: 0.05, far: 80 } : { near: 0.1, far: 80, zoom: 55 }}
-      shadows
+      shadows={!automatedBrowser}
       events={(store) => ({ ...events(store), filter: prioritizeTransformControls })}
       dpr={[1, 1.7]}
-      gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
+      gl={{ antialias: !automatedBrowser, toneMapping: THREE.ACESFilmicToneMapping }}
       onPointerMissed={(event) => {
         recordSceneInteraction('pointer-missed', {
           target: event.target instanceof Element ? event.target.tagName.toLowerCase() : 'canvas',

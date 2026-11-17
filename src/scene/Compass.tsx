@@ -272,6 +272,8 @@ export function FreeCameraCompass3D({
   return (
     <Canvas
       className="compass-3d-scene"
+      // La brújula es estática: solo se redibuja cuando cambia su estado (hover, orientación), no a 60 fps.
+      frameloop="demand"
       orthographic
       camera={{ position: [0, 0, 5], zoom: 45, near: 0.1, far: 20 }}
       dpr={[1, 1.5]}
@@ -340,6 +342,8 @@ export function RoomCompass3D({ visibleWalls, highlightTop, activeOrientation, o
   return (
     <Canvas
       className="compass-3d-scene"
+      // La brújula es estática: solo se redibuja cuando cambia su estado (hover, orientación), no a 60 fps.
+      frameloop="demand"
       orthographic
       camera={{ position: [0, 0, 5], zoom: 45, near: 0.1, far: 20 }}
       dpr={[1, 1.5]}
