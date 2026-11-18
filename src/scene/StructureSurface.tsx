@@ -13,6 +13,7 @@ import { SelectionBounds } from './SelectionBounds'
 import { independentSurfaceHasSpatialWarning } from '../domain/structureCollisions'
 import { physicalWalls, wallDerivedOpenings } from '../domain/wallConnections'
 import { WallBody } from './Walls'
+import { applyWorldUv } from './worldUv'
 import { useHistoryGesture } from '../state/useHistoryGesture'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
 import { usePlanPan } from './usePlanPan'
@@ -184,7 +185,7 @@ export function StructureSurfaceObject({
         onPointerDown={selectSurface}
         {...(isRoomFloor ? { onPointerMove: planPan.movePan, onPointerUp: planPan.endPan, onPointerCancel: planPan.endPan, onLostPointerCapture: planPan.lostPan } : {})}
       >
-        <boxGeometry args={[surface.width, surface.height, surface.depth]} />
+        <boxGeometry args={[surface.width, surface.height, surface.depth]} onUpdate={(geometry) => { applyWorldUv(geometry) }} />
         <meshStandardMaterial key={texture ? 'textured' : undefined}
           color={surface.material?.color ?? surface.color}
           map={texture}

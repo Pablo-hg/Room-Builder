@@ -10,6 +10,7 @@ import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
 import { usePlanPan } from './usePlanPan'
 import { BASE_FLOOR_ID, folderSelectionId, ROOT_ROOM_FOLDER } from '../domain/elementFolders'
 import { SelectionBounds } from './SelectionBounds'
+import { applyWorldUv } from './worldUv'
 import { useMaterialTexture } from './materialTexture'
 
 export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, showSelection = true, children }: {
@@ -37,7 +38,7 @@ export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, 
         selectSceneObject(BASE_FLOOR_ID, event.nativeEvent)
         startPan(event)
       }} {...panHandlers}>
-        <boxGeometry args={[room.width, ROOT_FLOOR_THICKNESS, room.depth]} />
+        <boxGeometry args={[room.width, ROOT_FLOOR_THICKNESS, room.depth]} onUpdate={(geometry) => { applyWorldUv(geometry) }} />
         <meshStandardMaterial key={floorTexture ? 'textured' : undefined} color={room.floorMaterial?.color ?? room.floorColor ?? DEFAULT_FLOOR_COLOR} map={floorTexture} roughness={0.94} />
       </mesh>}
       {showBase && !floorHidden && showSelection && floorSelected && <SelectionBounds width={room.width} height={ROOT_FLOOR_THICKNESS} depth={room.depth} />}
