@@ -1,3 +1,4 @@
+import { MaterialControl } from './MaterialControl'
 import { useInspectorGesture } from './useInspectorGesture'
 import { ROOM_LIMITS, WALL_LABELS } from '../../domain/constants'
 import { FurnitureIcon } from '../iconCatalog'
@@ -65,7 +66,8 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
   const updateWindow = useRoomStore((state) => state.updateWindow)
   const removeWindow = useRoomStore((state) => state.removeWindow)
   const resizeWallObject = useRoomStore((state) => state.resizeWallObject)
-  const locked = useRoomStore((state) => state.lockedElementIds.includes(selectedOpening.id))
+  const locked = useRoomStore((state) => state.lockedElementIds.includes(selectedOpening.id)
+    || !!sourcePack && state.lockedElementIds.includes(sourcePack.id))
   const pictureShape = selectedOpening.kind === 'window' && isWallPictureShape(selectedOpening.shape)
     ? selectedOpening.shape
     : null
@@ -73,6 +75,7 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
   const wallShelf = selectedOpening.kind === 'window' && selectedOpening.shape === 'wallShelf'
   const wallMirror = selectedOpening.kind === 'window' && isWallMirrorShape(selectedOpening.shape)
   const wallSconce = selectedOpening.kind === 'window' && selectedOpening.shape === 'wallSconce'
+  const originalColor = selectedOpening.color ?? (selectedOpening.kind === 'door' ? '#ac704b' : '#c88f58')
   const catalogKind = selectedOpening.kind === 'door' ? 'door' : openingKindForShape(selectedOpening.shape)
   const openingSwatchKind = selectedOpening.kind === 'door'
     ? 'door'
@@ -115,11 +118,13 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
         <span><small>{free || wallShelf || wallPicture || wallMirror || wallSconce ? 'Altura base' : selectedOpening.kind === 'window' ? 'Antepecho' : 'Desde suelo'}</small><strong>{(free ? position.y : selectedOpening.sill).toFixed(2)} m</strong></span>
       </div>
       {selectedOpening.kind === 'window' && <ResizeControls capability={capabilities.resize} value={selectedOpening} disabled={locked} onChange={(dimension, value) => { if (dimension !== 'depth') resizeWallObject(selectedOpening.id, dimension, value) }} />}
-      <ColorControl
+      {!selectedOpening.material && <ColorControl
         label="Color del objeto"
-        value={selectedOpening.color ?? (selectedOpening.kind === 'door' ? '#ac704b' : '#c88f58')}
+        value={originalColor}
+        disabled={locked}
         onChange={(color) => update({ color })}
-      />
+      />}
+      <MaterialControl elementId={selectedOpening.id} color={originalColor} finish={selectedOpening.material} disabled={locked} />
       {capabilities.rotation.enabled && (
         <RotationControl
           rotation={selectedOpening.rotation}

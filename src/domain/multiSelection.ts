@@ -35,7 +35,7 @@ export function multiSelectionItems(state: Pick<RoomState, 'room' | 'furniture' 
     const locks = furnitureAxisLocks(item)
     const available = furnitureWallAxes(state, item)
     const axes: Axis[] = (['x', 'y', 'z'] as const).filter((axis) => !locks[axis] && available[axis] && (axis !== 'y' || canElevateFurniture(item)))
-    items.push({ id: item.id, name: item.name, color: item.color, type: 'furniture', axes, min: { x: item.x - ext.halfWidth, y, z: item.z - ext.halfDepth }, max: { x: item.x + ext.halfWidth, y: y + item.height, z: item.z + ext.halfDepth } })
+    items.push({ id: item.id, name: item.name, color: item.material?.color ?? item.color, type: 'furniture', axes, min: { x: item.x - ext.halfWidth, y, z: item.z - ext.halfDepth }, max: { x: item.x + ext.halfWidth, y: y + item.height, z: item.z + ext.halfDepth } })
   }
   for (const { window, pack } of wallObjects(state)) {
     if (!ids.has(window.id)) continue
@@ -59,7 +59,7 @@ export function multiSelectionItems(state: Pick<RoomState, 'room' | 'furniture' 
     const x = pack.x + localX
     const z = pack.z + localZ
     const y = pack.y + localY
-    items.push({ id, name: surface.name, color: surface.color, type: 'surface', packId: pack.id, surfaceId: surface.id, axes: ['x', 'y', 'z'], min: { x: x - halfX, y: y - surface.height / 2, z: z - halfZ }, max: { x: x + halfX, y: y + surface.height / 2, z: z + halfZ } })
+    items.push({ id, name: surface.name, color: surface.material?.color ?? surface.color, type: 'surface', packId: pack.id, surfaceId: surface.id, axes: ['x', 'y', 'z'], min: { x: x - halfX, y: y - surface.height / 2, z: z - halfZ }, max: { x: x + halfX, y: y + surface.height / 2, z: z + halfZ } })
   }
   for (const opening of worldOpenings(state).filter((item) => item.kind === 'door' && ids.has(item.id))) {
     const pack = state.structurePacks.find((item) => item.id === opening.packId)

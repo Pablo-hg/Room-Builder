@@ -7,6 +7,7 @@ import { furnitureWallAxes } from '../../domain/furnitureWalls'
 import { ResizeControls } from './ResizeControls'
 import { useRoomStore } from '../../state/useRoomStore'
 import { AxisPositionControl, ColorControl, PositionControl, RotationControl } from './Controls'
+import { MaterialControl } from './MaterialControl'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
 
@@ -31,7 +32,7 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
   return (
     <section className="panel-section selection-section selection-section--inspector" {...gesture.events}>
       <span className="eyebrow">Inspector del elemento</span>
-      <div className="selected-heading"><FurnitureIcon kind={selectedFurniture.kind} color={selectedFurniture.color} /><div><h2>{selectedFurniture.name}</h2><p>{selectedFurniture.x.toFixed(2)}, {selectedFurniture.z.toFixed(2)} m</p></div></div>
+      <div className="selected-heading"><FurnitureIcon kind={selectedFurniture.kind} color={selectedFurniture.material?.color ?? selectedFurniture.color} /><div><h2>{selectedFurniture.name}</h2><p>{selectedFurniture.x.toFixed(2)}, {selectedFurniture.z.toFixed(2)} m</p></div></div>
       <div className="property-grid" aria-label="Características del mueble">
         <span><small>Anchura</small><strong>{selectedFurniture.width.toFixed(2)} m</strong></span>
         <span><small>Fondo</small><strong>{selectedFurniture.depth.toFixed(2)} m</strong></span>
@@ -65,9 +66,10 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
       />}
       <ColorControl
         label="Color del objeto"
-        value={selectedFurniture.color}
+        value={selectedFurniture.material?.color ?? selectedFurniture.color}
         onChange={(color) => setFurnitureColor(selectedFurniture.id, color)}
       />
+      <MaterialControl elementId={selectedFurniture.id} finish={selectedFurniture.material} color={selectedFurniture.color} disabled={locked} />
       <div className="object-actions">
         {canRotate && <button type="button" onClick={rotateFurniture} disabled={locked || !!attachment}><span>↻</span> Girar 90°</button>}
         <button type="button" className="danger" disabled={locked} title={locked ? "Desbloquea el elemento para eliminarlo" : undefined} onClick={removeFurniture}><span>×</span> Eliminar</button>

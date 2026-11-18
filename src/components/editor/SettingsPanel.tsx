@@ -54,7 +54,7 @@ export function SettingsPanel({ onStartGuide }: { onStartGuide: () => void }) {
           <div id="room-appearance-content" hidden={roomSectionCollapsed}>
             <ColorControl
               label="Suelo"
-              value={pack?.surfaces.find((surface) => surface.kind === 'floor')?.color ?? room.floorColor ?? DEFAULT_FLOOR_COLOR}
+              value={pack ? (pack.surfaces.find((surface) => surface.kind === 'floor')?.material?.color ?? pack.surfaces.find((surface) => surface.kind === 'floor')?.color ?? DEFAULT_FLOOR_COLOR) : (room.floorMaterial?.color ?? room.floorColor ?? DEFAULT_FLOOR_COLOR)}
               onChange={(color) => setSelectedColor('floor', color)}
             />
             <ColorControl
@@ -80,7 +80,7 @@ export function SettingsPanel({ onStartGuide }: { onStartGuide: () => void }) {
                 <ColorControl
                   key={wall}
                   label={`Pared ${WALL_LABELS[wall]}`}
-                  value={pack?.surfaces.find((surface) => surface.wall === wall)?.color ?? room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR}
+                  value={pack ? (pack.surfaces.find((surface) => surface.wall === wall)?.material?.color ?? pack.surfaces.find((surface) => surface.wall === wall)?.color ?? DEFAULT_WALL_COLOR) : (room.wallMaterials?.[wall]?.color ?? room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR)}
                   onChange={(color) => setSelectedColor('wall', color, wall)}
                 />
               ))}

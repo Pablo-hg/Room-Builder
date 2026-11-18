@@ -12,6 +12,7 @@ import { isCeilingMountedFurniture } from '../../domain/objectCatalog'
 import { ColorControl, PositionControl } from './Controls'
 import { useInspectorGesture } from './useInspectorGesture'
 import type { StructureSurfaceKey } from '../../domain/types'
+import { MaterialControl } from './MaterialControl'
 
 function MultiFurnitureInspector({ items }: { items: MultiItem[] }) {
   const bounds = multiSelectionBounds(items)!
@@ -63,6 +64,7 @@ export function SelectionInspector() {
   const elementFolders = useRoomStore((state) => state.elementFolders)
   const assignments = useRoomStore((state) => state.elementFolderAssignments)
   const selectedId = useRoomStore((state) => state.selectedId)
+  const rootSurfaceGesture = useInspectorGesture(selectedId ?? '')
   const selectedIds = useRoomStore((state) => state.selectedIds)
   const setFloorColor = useRoomStore((state) => state.setFloorColor)
   const setWallSideColor = useRoomStore((state) => state.setWallSideColor)
@@ -84,7 +86,9 @@ export function SelectionInspector() {
   if (selectedIds.length === 1 && selectedId && BASE_ROOM_SURFACE_IDS.includes(selectedId)) {
     const wall = selectedId === BASE_FLOOR_ID ? null : selectedId.slice('room-wall:'.length) as WallSide
     const label = wall ? `Pared ${WALL_LABELS[wall]}` : 'Suelo'
-    return <section className="panel-section selection-section selection-section--inspector"><span className="eyebrow">Habitación principal</span><h2>{label}</h2><p className="section-copy">Superficie de la habitación principal.</p><ColorControl label={`Color de ${label.toLowerCase()}`} value={wall ? room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR : room.floorColor ?? DEFAULT_FLOOR_COLOR} onChange={(color) => { if (wall) setWallSideColor(wall, color); else setFloorColor(color) }} disabled={locked} /></section>
+    const color = wall ? room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR : room.floorColor ?? DEFAULT_FLOOR_COLOR
+    const finish = wall ? room.wallMaterials?.[wall] : room.floorMaterial
+    return <section className="panel-section selection-section selection-section--inspector" {...rootSurfaceGesture.events}><span className="eyebrow">Habitación principal</span><h2>{label}</h2><p className="section-copy">Superficie de la habitación principal.</p><ColorControl label={`Color de ${label.toLowerCase()}`} value={finish?.color ?? color} onChange={(nextColor) => { if (wall) setWallSideColor(wall, nextColor); else setFloorColor(nextColor) }} disabled={locked} /><MaterialControl elementId={selectedId} finish={finish} color={color} disabled={locked} /></section>
   }
   if (multiItems.length > 1 && (selectedIds.length > 1 || selectedFolder)) return <>{selectedFolder && <FolderInspector folder={selectedFolder} />}<MultiFurnitureInspector items={multiItems} /></>
   if (selectedIds.length > 1) return <section className="panel-section selection-section selection-section--inspector">

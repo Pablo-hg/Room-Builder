@@ -252,7 +252,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
     }),
     setFurnitureColor: (id, color) => set((state) => {
       const item = state.furniture.find((candidate) => candidate.id === id)
-      if (!item || item.color === color) return {}
+      if (!item || (item.color === color && (!item.material || item.material.color === color))) return {}
       recordInteraction('state.furniture.color', {
         view: state.view,
         selectedId: state.selectedId,
@@ -260,7 +260,7 @@ export function createFurnitureActions(context: Pick<RoomActionContext, 'set' | 
         details: { id, name: item.name, color },
       })
       return {
-        furniture: state.furniture.map((candidate) => candidate.id === id ? { ...candidate, color } : candidate),
+        furniture: state.furniture.map((candidate) => candidate.id === id ? { ...candidate, color, ...(candidate.material && /^#[0-9a-f]{6}$/i.test(color) ? { material: { ...candidate.material, color } } : {}) } : candidate),
         notice: '',
       }
     }),

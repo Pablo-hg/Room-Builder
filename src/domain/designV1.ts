@@ -1,4 +1,5 @@
 import { designHasDoorSwing } from './doorSwing'
+import { designHasMaterials } from './materials'
 import type { PlanMeasure } from './planMeasures'
 import type { ElementFolder, FurnitureItem, GridSurface, RoomConfig, StructurePack } from './types'
 
@@ -19,7 +20,7 @@ import type { ElementFolder, FurnitureItem, GridSurface, RoomConfig, StructurePa
  * puerta tiene un giro elegido; la migración 13→14 es la identidad.
  */
 export interface PersistedDesign {
-  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15
   room: RoomConfig
   furniture: FurnitureItem[]
   structurePacks?: StructurePack[]
@@ -56,12 +57,14 @@ export const WALLS_OUTSIDE_VERSION = 12
 export const MEASUREMENTS_VERSION = 13
 /** Versión con giro de puertas en el Plano (#38). */
 export const DOOR_SWING_VERSION = 14
+/** Versión con acabados de materiales (#39). */
+export const MATERIALS_VERSION = 15
 
 export function persistedDesign(state: DesignState): PersistedDesign {
   // Hasta v11 la versión era la mínima según las funciones usadas. Desde v12 todo diseño
   // se guarda como v12: su geometría de paredes no es la de las versiones anteriores.
   return {
-    version: designHasDoorSwing(state) ? DOOR_SWING_VERSION : state.measurements.length ? MEASUREMENTS_VERSION : WALLS_OUTSIDE_VERSION,
+    version: designHasMaterials(state) ? MATERIALS_VERSION : designHasDoorSwing(state) ? DOOR_SWING_VERSION : state.measurements.length ? MEASUREMENTS_VERSION : WALLS_OUTSIDE_VERSION,
     room: state.room,
     furniture: state.furniture,
     structurePacks: state.structurePacks,
@@ -101,7 +104,7 @@ export function persistedDesignSignature(design: PersistedDesign) {
 export function isPersistedDesign(value: unknown): value is PersistedDesign {
   if (!value || typeof value !== 'object') return false
   const design = value as Partial<PersistedDesign>
-  return (design.version === 1 || design.version === 2 || design.version === 3 || design.version === 4 || design.version === 5 || design.version === 6 || design.version === 7 || design.version === 8 || design.version === 9 || design.version === 10 || design.version === 11 || design.version === 12 || design.version === 13 || design.version === 14)
+  return (design.version === 1 || design.version === 2 || design.version === 3 || design.version === 4 || design.version === 5 || design.version === 6 || design.version === 7 || design.version === 8 || design.version === 9 || design.version === 10 || design.version === 11 || design.version === 12 || design.version === 13 || design.version === 14 || design.version === 15)
     && !!design.room
     && typeof design.room === 'object'
     && Array.isArray(design.furniture)

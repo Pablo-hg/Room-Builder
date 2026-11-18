@@ -18,6 +18,22 @@ test('exportar e importar conserva el diseño editable sin modificar el original
   assert.deepEqual(design, original)
 })
 
+test('v15 conserva materiales y colores anteriores en JSON y rechaza datos incompatibles', () => {
+  const design = makeDesign()
+  const wood = { id: 'wood' as const, color: '#aabbcc', scale: 1.5, rotation: 90 }
+  design.data.version = 15
+  design.data.room.floorColor = 'old-custom-color'
+  design.data.room.floorMaterial = wood
+  design.data.room.wallMaterials = { north: { id: 'wallpaper', color: '#ffffff', scale: 1, rotation: 0 } }
+  const restored = parseDesignFile(serializeDesignFile(design)).design.data
+  assert.equal(restored.version, 15)
+  assert.equal(restored.room.floorColor, 'old-custom-color')
+  assert.deepEqual(restored.room.floorMaterial, wood)
+  assert.deepEqual(restored.room.wallMaterials, design.data.room.wallMaterials)
+  assert.throws(() => parseDesignFile(file({ ...design.data, version: 14 })), /no válidos|v15/)
+  assert.throws(() => parseDesignFile(file({ ...design.data, room: { ...design.data.room, floorMaterial: { ...wood, scale: -1 } } })), /no válidos|material/)
+})
+
 test('un diseño con ventana de pack conserva las referencias y se puede importar', () => {
   const store = createRoomStore()
   store.getState().addStructurePack('up')

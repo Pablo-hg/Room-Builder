@@ -11,6 +11,7 @@ import { finishHistoryTransaction, recordHistoryChange } from './historyTransact
 import type { RoomActionContext, RoomRuntime, RoomState, RoomUpdate } from './types'
 import { createCameraActions } from './actions/cameraActions'
 import { createConstructionActions } from './actions/constructionActions'
+import { createMaterialActions } from './actions/materialActions'
 import { createFurnitureActions } from './actions/furnitureActions'
 import { createMeasureActions } from './actions/measureActions'
 import { createGuideActions } from './actions/guideActions'
@@ -338,6 +339,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     hasUnsavedChanges: false,
     ...createCameraActions(context),
     ...createConstructionActions(context),
+    ...createMaterialActions(context),
     ...createStructureDoorActions(context),
     ...createWallObjectActions(context),
     ...createFurnitureActions(context),

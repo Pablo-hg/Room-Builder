@@ -108,6 +108,7 @@ export interface RoomState {
   setFocusedRoomDimension: (key: 'width' | 'depth' | 'height', value: number) => void
   setWallColor: (color: string) => void
   setWallSideColor: (wall: WallSide, color: string) => void
+  setMaterialFinish: (elementId: string, finish: import('../domain/materials').MaterialFinish | null) => void
   setFloorColor: (color: string) => void
   addStructurePack: (direction?: 'up' | 'down' | 'north' | 'south' | 'east' | 'west') => void
   addStructureObject: (kind: 'floor' | 'wall') => void

@@ -16,8 +16,10 @@ import { furnitureSpatialWarningIds } from '../domain/structureCollisions'
 import { cameraAwareShiftDrag } from './cameraAwareShiftDrag'
 import { physicalWalls } from '../domain/wallConnections'
 import { beginWallSurfaceDrag, moveWallSurfaceDrag, type WallSurfaceDrag } from './wallSurfaceDrag'
+import { useMaterialTexture } from './materialTexture'
 
 function FurnitureObjectView({ item, selected, outlined, canDrag, planView, frontWall, showCollision = true, colliding = false }: { item: FurnitureItem; selected: boolean; outlined: boolean; canDrag: boolean; planView: boolean; frontWall: WallSide | null; showCollision?: boolean; colliding?: boolean }) {
+  const texture = useMaterialTexture(item.material)
   const gesture = useHistoryGesture(item.id)
   const moveFurniture = useRoomStore((state) => state.moveFurniture)
   const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
@@ -200,7 +202,7 @@ function FurnitureObjectView({ item, selected, outlined, canDrag, planView, fron
           <boxGeometry args={[item.width, item.height, item.depth]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
         </mesh>
-        <FurnitureModel item={item} />
+        <FurnitureModel item={item} texture={texture} />
         {(outlined || collision) && <group position={[0, item.height / 2, 0]}><SelectionBounds width={item.width} height={item.height} depth={item.depth} collision={collision} focused={outlined} /></group>}
       </group>
       {selected && canDrag && !isWallPictureKind(item.kind) && (

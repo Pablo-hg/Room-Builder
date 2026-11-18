@@ -854,3 +854,14 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .door-swing__group button.is-active { background: #52705d; border-color: #52705d; color: #fff; }
 .door-swing__group button:disabled { opacity: .55; cursor: not-allowed; }
 @media (max-width: 760px) { .door-swing__group button { min-height: 44px; } }
+
+.material-control { display: grid; min-inline-size: 0; gap: 10px; margin: 16px 0; padding: 12px; border: 1px solid var(--line); border-radius: 9px; color: #59645c; }
+.material-control legend { padding: 0 4px; font-size: 13px; font-weight: 750; }
+.material-control label { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; font-size: 13px; }
+.material-control select { width: 144px; max-width: 100%; min-height: 36px; padding: 4px; border: 1px solid var(--line); border-radius: 6px; background: white; color: inherit; }
+.material-control .material-control__family { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.material-control__family select { width: 100%; min-width: 0; }
+.material-control input[type='range'] { grid-column: 1 / -1; }
+@media (pointer: coarse) {
+  .material-control select, .material-control input[type='color'] { min-height: 44px; }
+}

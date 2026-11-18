@@ -15,6 +15,8 @@ import { WallGrid } from './WallGrid'
 import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
 import { baseWallId } from '../domain/elementFolders'
 import { SelectionBounds } from './SelectionBounds'
+import type { MaterialFinish } from '../domain/materials'
+import { useMaterialTexture } from './materialTexture'
 
 // Centro físico de cada pared de la habitación principal: medio grosor por fuera del
 // borde del suelo, igual que `physicalWalls`.
@@ -26,7 +28,8 @@ export const wallPlacement: Record<WallSide, (room: RoomConfig) => { position: [
   west: (room) => ({ position: [-room.width / 2 - half, 0, 0], rotation: [0, Math.PI / 2, 0] }),
 }
 
-export function WallBody({ length, height, openings, color, onPointerDown, depth = ROOM_WALL_THICKNESS, wallId = '', skinFaces, frame }: { length: number; height: number; openings: WallOpening[]; color: string; onPointerDown: (event: ThreeEvent<PointerEvent>) => void; depth?: number; wallId?: string; skinFaces?: readonly WallFace[]; frame?: ConnectedWall }) {
+export function WallBody({ length, height, openings, color, onPointerDown, depth = ROOM_WALL_THICKNESS, wallId = '', skinFaces, frame, finish }: { length: number; height: number; openings: WallOpening[]; color: string; onPointerDown: (event: ThreeEvent<PointerEvent>) => void; depth?: number; wallId?: string; skinFaces?: readonly WallFace[]; frame?: ConnectedWall; finish?: MaterialFinish }) {
+  const texture = useMaterialTexture(finish)
   const geometry = useMemo(() => {
     if (skinFaces && frame) return wallMeshGeometry(skinFaces, frame)
     const pieces = uncoveredPolygons(wallRectangle(-length / 2, length / 2, 0, height),
@@ -44,7 +47,7 @@ export function WallBody({ length, height, openings, color, onPointerDown, depth
 
   return (
     <mesh geometry={geometry} position={[0, 0, skinFaces && frame ? 0 : -depth / 2]} castShadow receiveShadow userData={{ wallId }} onPointerDown={onPointerDown}>
-      <meshStandardMaterial color={color} roughness={0.92} />
+      <meshStandardMaterial key={texture ? 'textured' : undefined} color={finish?.color ?? color} map={texture} roughness={0.92} />
     </mesh>
   )
 }
@@ -63,7 +66,7 @@ export function SoftWall({ room, wall, hidden, showGrid, exportMode, skinFaces }
   return (
     <group position={placement.position} rotation={placement.rotation}>
       {!hidden && <group>
-        <WallBody wallId={baseWallId(wall)} skinFaces={skinFaces} frame={frame} length={length} height={room.height} openings={openings} color={room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR} onPointerDown={(event) => {
+        <WallBody wallId={baseWallId(wall)} skinFaces={skinFaces} frame={frame} finish={room.wallMaterials?.[wall]} length={length} height={room.height} openings={openings} color={room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR} onPointerDown={(event) => {
           event.stopPropagation()
           recordSceneInteraction('background.pointer-down', { target: 'wall', wall })
           selectSceneObject(baseWallId(wall), event.nativeEvent)

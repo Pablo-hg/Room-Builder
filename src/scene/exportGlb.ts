@@ -24,15 +24,58 @@ export function createGlbExportRoot(root: THREE.Group) {
   return exportRoot
 }
 
+/** Escribe la transformación en los UV de la copia para que funcione también
+ * en visores sin KHR_texture_transform. */
+function bakeFinishUvs(root: THREE.Group, resources: Array<{ dispose(): void }>) {
+  const materials = new Map<THREE.MeshStandardMaterial, THREE.MeshStandardMaterial>()
+  const point = new THREE.Vector2()
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || !(object.material instanceof THREE.MeshStandardMaterial)) return
+    const source = object.material
+    const map = source.map
+    if (!map?.userData.roomFinish || !object.geometry.getAttribute('uv')) return
+    let material = materials.get(source)
+    if (!material) {
+      material = source.clone()
+      const texture = map.clone()
+      texture.offset.set(0, 0)
+      texture.repeat.set(1, 1)
+      texture.center.set(0, 0)
+      texture.rotation = 0
+      texture.updateMatrix()
+      material.map = texture
+      materials.set(source, material)
+      resources.push(material, texture)
+    }
+    const geometry = object.geometry.clone()
+    const uv = geometry.getAttribute('uv')
+    map.updateMatrix()
+    for (let index = 0; index < uv.count; index++) {
+      point.set(uv.getX(index), uv.getY(index)).applyMatrix3(map.matrix)
+      uv.setXY(index, point.x, point.y)
+    }
+    object.geometry = geometry
+    object.material = material
+    resources.push(geometry)
+  })
+}
+
 export function exportGlb(root: THREE.Group, exportDesignName: string, onExportComplete: (error?: Error) => void) {
   const operationId = diagnostics.nextOperation()
   diagnostics.emit({ action: 'model.export-glb', operationId, phase: 'started' })
   const failed = (reason: string) => diagnostics.emit({ action: 'model.export-glb', operationId, category: 'errors', level: 'error', result: 'failed', data: { reason } })
+  const resources: Array<{ dispose(): void }> = []
+  const disposeExportResources = () => {
+    for (const resource of resources) resource.dispose()
+    resources.length = 0
+  }
   try {
     const exportRoot = createGlbExportRoot(root)
+    bakeFinishUvs(exportRoot, resources)
     new GLTFExporter().parse(
       exportRoot,
       (result) => {
+        disposeExportResources()
         if (!(result instanceof ArrayBuffer)) {
           failed('invalid-export-result')
           onExportComplete(new Error('No se pudo crear el archivo GLB.'))
@@ -48,12 +91,14 @@ export function exportGlb(root: THREE.Group, exportDesignName: string, onExportC
         onExportComplete()
       },
       (error) => {
+        disposeExportResources()
         failed('export-failed')
         onExportComplete(error instanceof Error ? error : new Error('Error al exportar el modelo 3D.'))
       },
       { binary: true, onlyVisible: true },
     )
   } catch (error) {
+    disposeExportResources()
     const exportError = error instanceof Error ? error : new Error('Error al exportar el modelo 3D.')
     failed('export-failed')
     onExportComplete(exportError)

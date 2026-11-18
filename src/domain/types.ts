@@ -42,6 +42,7 @@ export interface ElementFolder {
 export interface DoorSwing { hinge: 'left' | 'right'; side: 'inside' | 'outside' }
 
 export interface DoorConfig {
+  material?: import('./materials').MaterialFinish
   /** v10: one logical opening, independently of its original physical wall. */
   wallPosition?: { x: number; y: number; z: number; yaw: number; supportId?: string; depth?: number }
   axisLocks?: AxisLocks
@@ -57,6 +58,7 @@ export interface DoorConfig {
 }
 
 export interface WindowConfig {
+  material?: import('./materials').MaterialFinish
   /** v10: attached world-space base centre. freePosition remains detached. */
   wallPosition?: { x: number; y: number; z: number; yaw: number; supportId?: string; depth?: number }
   /** v9: detached world-space base centre and wall yaw; absent preserves legacy support. */
@@ -75,6 +77,8 @@ export interface WindowConfig {
 }
 
 export interface RoomConfig {
+  floorMaterial?: import('./materials').MaterialFinish
+  wallMaterials?: Partial<Record<WallSide, import('./materials').MaterialFinish>>
   extraDoors?: Array<DoorConfig & { id: string }>
   width: number
   depth: number
@@ -87,6 +91,7 @@ export interface RoomConfig {
 }
 
 export interface FurnitureItem {
+  material?: import('./materials').MaterialFinish
   wallAttachment?: import('./furnitureWalls').FurnitureWallAttachment
   axisLocks?: AxisLocks
   /** Ausente en objetos antiguos: conserva su libertad de movimiento previa. */
@@ -108,6 +113,7 @@ export type StructureSurfaceKind = 'wall' | 'floor' | 'ceiling'
 export type StructureSurfaceKey = 'floor' | 'ceiling' | `wall-${WallSide}`
 
 export interface StructureSurface {
+  material?: import('./materials').MaterialFinish
   axisLocks?: AxisLocks
   id: StructureSurfaceKey
   kind: StructureSurfaceKind
@@ -139,6 +145,7 @@ export interface StructurePack {
 export type { PersistedDesign } from './designV1'
 
 export interface WallOpening {
+  material?: import('./materials').MaterialFinish
   id: string
   kind: 'door' | 'window'
   shape?: WindowShape
