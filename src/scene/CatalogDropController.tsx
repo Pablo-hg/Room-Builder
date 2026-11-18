@@ -14,7 +14,7 @@ import type { HistoryGestureToken } from '../state/types'
 import { useRoomStore } from '../state/useRoomStore'
 import { registerCatalogDropTarget } from '../components/editor/catalogDragSession'
 
-type Session = { item: CatalogDragItem; token: HistoryGestureToken; id: string | null }
+type Session = { item: CatalogDragItem; token: HistoryGestureToken | null; id: string | null }
 
 function createFromCatalog(item: CatalogDragItem) {
   const state = useRoomStore.getState()
@@ -141,10 +141,11 @@ export function CatalogDropController() {
         pointer.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1)
         raycaster.setFromCamera(pointer, camera)
         if (!session) {
+          // Se crea primero y el gesto se abre después: crear selecciona el objeto nuevo y eso cerraría un gesto ya abierto.
           const before = persistedDesign(useRoomStore.getState())
-          const token = useRoomStore.getState().beginHistoryGesture(null)
           createFromCatalog(item)
-          session = { item, token, id: createdCatalogElement(before, persistedDesign(useRoomStore.getState())) }
+          const id = createdCatalogElement(before, persistedDesign(useRoomStore.getState()))
+          session = { item, id, token: id ? useRoomStore.getState().continueHistoryGesture(before, null) : null }
         }
         // Si la creación se rechazó (sin hueco), el aviso del editor ya lo explica; no se reintenta en cada movimiento.
         if (!session.id) return true
@@ -159,13 +160,13 @@ export function CatalogDropController() {
         if (!current) return
         const state = useRoomStore.getState()
         if (commit && current.id) {
-          state.commitHistoryGesture(current.token)
+          if (current.token) state.commitHistoryGesture(current.token)
           state.selectElement(current.item.type === 'structure' ? structureObjectSurfaceId(current.id, current.item.kind) : current.id)
-        } else state.revertHistoryGesture(current.token)
+        } else if (current.token) state.revertHistoryGesture(current.token)
       },
     })
     return () => {
-      if (session) useRoomStore.getState().revertHistoryGesture(session.token)
+      if (session?.token) useRoomStore.getState().revertHistoryGesture(session.token)
       session = null
       unregister()
     }

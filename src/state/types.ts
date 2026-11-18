@@ -128,6 +128,8 @@ export interface RoomState {
   beginHistoryGesture: (targetId?: string | null) => HistoryGestureToken
   commitHistoryGesture: (token: HistoryGestureToken) => void
   cancelHistoryGesture: (token: HistoryGestureToken) => void
+  /** Abre un gesto que continúa el último paso del historial (creado justo antes a partir de `before`). */
+  continueHistoryGesture: (before: PersistedDesign, targetId?: string | null) => HistoryGestureToken
   /** Deshace lo hecho durante el gesto sin dejar paso en el historial. */
   revertHistoryGesture: (token: HistoryGestureToken) => void
   isHistoryGestureActive: (token: HistoryGestureToken) => boolean

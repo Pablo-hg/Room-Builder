@@ -56,8 +56,10 @@ test('crear y mover en un gesto es un único paso de deshacer; revertir no deja 
   const store = createRoomStore()
   const before = store.getState().furniture.length
   const undoBefore = store.getState().undoCount
-  const kept = store.getState().beginHistoryGesture(null)
+  // Igual que el arrastre del catálogo: se crea y el gesto se abre después (crear selecciona y cerraría uno ya abierto).
+  const first = persistedDesign(store.getState())
   store.getState().addFurniture('chair')
+  const kept = store.getState().continueHistoryGesture(first, null)
   const id = store.getState().selectedId!
   store.getState().moveFurniture(id, 0.5, 0.5, 'pointer')
   store.getState().moveFurniture(id, 0.8, 0.4, 'pointer')
@@ -67,8 +69,9 @@ test('crear y mover en un gesto es un único paso de deshacer; revertir no deja 
   assert.equal(store.getState().furniture.length, before, 'un solo deshacer elimina crear + mover')
   store.getState().redo()
   const afterCommit = store.getState().undoCount
-  const reverted = store.getState().beginHistoryGesture(null)
+  const second = persistedDesign(store.getState())
   store.getState().addFurniture('chair')
+  const reverted = store.getState().continueHistoryGesture(second, null)
   store.getState().moveFurniture(store.getState().selectedId!, 1, 1, 'pointer')
   store.getState().revertHistoryGesture(reverted)
   assert.equal(store.getState().furniture.length, before + 1, 'la segunda silla desaparece')
