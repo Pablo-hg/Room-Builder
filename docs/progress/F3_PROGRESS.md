@@ -80,3 +80,37 @@ Hechos sobre la base de materiales de este informe. No forman parte de #39: irá
 - **Indicador de movimiento** dividido en dos cajitas (cuadrícula y paso / magnetismo y guías).
 - **Recargar vuelve al último diseño abierto** (`src/state/lastOpenedDesign.ts`), no siempre al primero de la lista.
 - Los E2E `free-wall-objects` y `movement-guides` se adaptaron a la nueva interfaz; no se han ejecutado.
+
+### Ajustes visuales del propietario sobre los acabados (18/11/2026)
+
+- **El patrón se mide en metros reales** también en suelos, techos y muebles (`src/scene/worldUv.ts`), como ya hacían las paredes. Antes usaban las UV por defecto de cada cara: el patrón se estiraba al redimensionar un mueble y medía distinto según el tamaño de la pieza. En muebles la medida incluye el redimensionado, así que al agrandarlos el patrón se repite en vez de estirarse. **Cambia la escala aparente de los patrones en suelos y muebles ya guardados** (la escala guardada ahora significa metros por repetición).
+- **Tejido «Trama fina»:** líneas más tenues y a doble distancia; con 8 px (6 cm) se leía como cuadraditos.
+- Pendiente: madera de un solo tono si no convence la actual; mantener el diseño por cara de pared (interior/exterior) para #51/#52, que esta base no tiene (un material por pared).
+
+### Medición de rendimiento con la casa muestrario (18/11/2026)
+
+Diseño `casa-muestrario-materiales.json` (23 muebles y 30 superficies con acabado, 6 habitaciones, 16 acabados) frente al **mismo diseño sin acabados**. Build de producción (`npm run build` + `vite preview`), Chromium automatizado a 1280 × 720, tres repeticiones por variante intercaladas. Script: `scripts/playwright-profile/materials-perf.spec.ts` con `playwright.perf.config.ts`; resultado en `test-results/materials-perf.json` (no versionado).
+
+**Limitación principal:** el navegador usó **render por software** (ANGLE / SwiftShader), no una GPU. Las cifras absolutas (20–25 fps) no representan un equipo real; solo la comparación entre variantes es útil.
+
+| Métrica (mediana) | Con acabados | Sin acabados |
+| --- | --- | --- |
+| Carga hasta editor usable | 1331 ms | 1050 ms |
+| Heap JS tras cargar | 75 MB | 30,5 MB (rango 30,5–61,2) |
+| Fotogramas en reposo | 20,7 fps | 24,5 fps |
+| Órbita: fps / mediana por fotograma | 22,4 fps / 50 ms | 24,8 fps / 33,4 ms |
+| Órbita: fotogramas > 50 ms | 45 | 27 |
+| Llamadas de dibujo por render | 74,3 | 74,3 |
+| Cambio de vista (mediana) | 606 ms | 520 ms |
+
+- **Las llamadas de dibujo no aumentan** con los acabados (74,3 en ambos).
+- Con software de render los acabados cuestan entre un 10 y un 30 % de fluidez; es coste de muestreo de texturas por CPU y no es extrapolable a una GPU.
+- **Memoria:** el heap sube unos 45 MB. La base crea una textura por componente (cada mueble y superficie), sin compartir las de un mismo acabado. Candidato a optimizar con una caché por acabado; por confirmar con una medición de memoria más fina (el heap es sensible al recolector).
+- En reposo la escena se renderiza a cada fotograma aunque no cambie nada (también sin acabados): comportamiento previo, fuera del alcance de #39.
+- Pendiente: repetir en un equipo con GPU y con el navegador del propietario.
+
+### Caché de texturas por acabado (18/11/2026)
+
+`src/scene/materialTexture.ts`: todas las piezas con el mismo acabado, escala y giro comparten una textura (antes cada mueble y cada superficie creaba la suya). Caché de 64 entradas; liberar una textura aún en uso es seguro porque three.js la vuelve a subir. La exportación GLB ya clonaba las texturas, así que no se ve afectada. `materialTexture.test.ts` (4 pruebas); `tsc` y 13 pruebas unitarias de textura, UV, GLB y materiales pasan.
+
+Misma medición de la casa muestrario (SwiftShader, 3 repeticiones): **heap con acabados 75 MB → 48 MB** (rango 47,9–48; sin acabados 30,6 MB). Los tiempos y fps no son comparables entre ejecuciones (la variante sin acabados también empeoró, de 24,5 a 21,2 fps: ruido del equipo con render por software); en la misma ejecución, con acabados queda un 17 % por debajo en reposo y un 11 % en órbita, como antes. La caché no cambia las llamadas de dibujo (74,3) ni el coste de muestreo; solo la memoria.

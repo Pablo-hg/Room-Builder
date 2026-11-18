@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import * as THREE from 'three'
 import { materialDefinition, type MaterialFinish, type MaterialId } from '../domain/materials'
 
@@ -263,34 +263,72 @@ export function drawMaterialPattern(context: CanvasRenderingContext2D, id: Mater
       context.beginPath(); context.arc(x, y, 3, 0, Math.PI * 2); context.fill()
     }
   } else if (id === 'fabric') {
-    context.strokeStyle = '#eeeeee'
-    for (let p = 0; p < size; p += 8) {
+    // Trama muy suave: líneas tenues cada 12,5 cm; con 8 px (6 cm) se leía como cuadraditos (revisión del propietario).
+    context.strokeStyle = '#f4f4f4'
+    for (let p = 0; p < size; p += 16) {
       context.beginPath(); context.moveTo(p, 0); context.lineTo(p, size); context.moveTo(0, p); context.lineTo(size, p); context.stroke()
     }
   }
 }
 
-/** Textura por acabado, liberada al dejar de usarla. Pintura y colores legacy no necesitan mapa. */
+const MAX_SHARED_TEXTURES = 64
+/** Texturas compartidas por acabado + escala + giro; la más antigua se libera al superar el límite. */
+const sharedTextures = new Map<string, THREE.CanvasTexture>()
+
+function createTexture(id: string, scale: number, rotation: number): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') return null
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = SIZE
+  const context = canvas.getContext('2d')
+  if (!context) return null
+  drawMaterialPattern(context, id as MaterialId)
+  const result = new THREE.CanvasTexture(canvas)
+  result.userData.roomFinish = true
+  result.colorSpace = THREE.SRGBColorSpace
+  result.wrapS = result.wrapT = THREE.RepeatWrapping
+  result.repeat.set(1 / scale, 1 / scale)
+  result.center.set(0.5, 0.5)
+  result.rotation = rotation * Math.PI / 180
+  return result
+}
+
+/**
+ * Todas las piezas con el mismo acabado, escala y giro comparten una textura: antes cada mueble y cada superficie
+ * creaba la suya (decenas de lienzos iguales). Liberar una textura aún en uso es seguro: three.js la vuelve a subir.
+ */
+export function sharedMaterialTexture(id: string, scale: number, rotation: number): THREE.CanvasTexture | null {
+  const key = `${id}|${scale}|${rotation}`
+  const cached = sharedTextures.get(key)
+  if (cached) {
+    sharedTextures.delete(key)
+    sharedTextures.set(key, cached) // más reciente
+    return cached
+  }
+  const texture = createTexture(id, scale, rotation)
+  if (!texture) return null
+  sharedTextures.set(key, texture)
+  while (sharedTextures.size > MAX_SHARED_TEXTURES) {
+    const oldest = sharedTextures.keys().next().value as string
+    sharedTextures.get(oldest)?.dispose()
+    sharedTextures.delete(oldest)
+  }
+  return texture
+}
+
+export const sharedMaterialTextureCount = () => sharedTextures.size
+
+export function clearSharedMaterialTextures() {
+  sharedTextures.forEach((texture) => texture.dispose())
+  sharedTextures.clear()
+}
+
+/** Textura compartida por acabado. Pintura y colores legacy no necesitan mapa. */
 export function useMaterialTexture(finish?: MaterialFinish): THREE.CanvasTexture | null {
   const id = finish?.id
   const scale = finish?.scale ?? 1
   const rotation = finish?.rotation ?? 0
-  const texture = useMemo(() => {
+  return useMemo(() => {
     if (!id || !materialDefinition(id)?.textured) return null
-    const canvas = document.createElement('canvas')
-    canvas.width = canvas.height = SIZE
-    const context = canvas.getContext('2d')
-    if (!context) return null
-    drawMaterialPattern(context, id)
-    const result = new THREE.CanvasTexture(canvas)
-    result.userData.roomFinish = true
-    result.colorSpace = THREE.SRGBColorSpace
-    result.wrapS = result.wrapT = THREE.RepeatWrapping
-    result.repeat.set(1 / scale, 1 / scale)
-    result.center.set(0.5, 0.5)
-    result.rotation = rotation * Math.PI / 180
-    return result
+    return sharedMaterialTexture(id, scale, rotation)
   }, [id, scale, rotation])
-  useEffect(() => () => texture?.dispose(), [texture])
-  return texture
 }

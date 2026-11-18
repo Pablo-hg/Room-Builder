@@ -1,0 +1,22 @@
+import { defineConfig, devices } from '@playwright/test'
+import base from './playwright.perf.config'
+
+/**
+ * COPIA LOCAL TEMPORAL (medición de rendimiento con GPU real). No forma parte del proyecto.
+ * PERF_GPU_MODE: 'args' (headless + ANGLE D3D11), 'headed' (ventana visible + ANGLE D3D11), 'chrome' (Chrome instalado).
+ */
+const mode = process.env.PERF_GPU_MODE ?? 'args'
+const args = ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--enable-gpu']
+
+export default defineConfig({
+  ...base,
+  projects: [{
+    name: `chromium-gpu-${mode}`,
+    use: {
+      ...devices['Desktop Chrome'],
+      ...(mode === 'chrome' ? { channel: 'chrome' } : {}),
+      headless: mode !== 'headed',
+      launchOptions: { args },
+    },
+  }],
+})

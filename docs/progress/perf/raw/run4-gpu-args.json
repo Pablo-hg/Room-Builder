@@ -1,0 +1,221 @@
+{
+  "renderer": "ANGLE (NVIDIA, NVIDIA GeForce GTX 1060 6GB (0x00001C03) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "viewport": "1280x720",
+  "repeticiones": 3,
+  "con": {
+    "loadMs": {
+      "mediana": 840,
+      "min": 822,
+      "max": 1820
+    },
+    "heapMB": {
+      "mediana": 39.5,
+      "min": 38.8,
+      "max": 45.9
+    },
+    "idleFps": {
+      "mediana": 60,
+      "min": 60,
+      "max": 60
+    },
+    "idleRendersPerSec": {
+      "mediana": 181.5,
+      "min": 181.5,
+      "max": 181.5
+    },
+    "orbitFps": {
+      "mediana": 59.8,
+      "min": 59.6,
+      "max": 59.8
+    },
+    "orbitMedianMs": {
+      "mediana": 16.7,
+      "min": 16.7,
+      "max": 16.7
+    },
+    "orbitP95Ms": {
+      "mediana": 16.7,
+      "min": 16.7,
+      "max": 16.8
+    },
+    "orbitMaxMs": {
+      "mediana": 33.3,
+      "min": 33.3,
+      "max": 50
+    },
+    "orbitFramesOver50ms": {
+      "mediana": 0,
+      "min": 0,
+      "max": 0
+    },
+    "drawCallsPerRender": {
+      "mediana": 74.3,
+      "min": 74.3,
+      "max": 74.3
+    },
+    "viewSwitchMedianMs": {
+      "mediana": 145.7,
+      "min": 139.3,
+      "max": 156
+    },
+    "viewSwitchMaxMs": {
+      "mediana": 157.8,
+      "min": 143,
+      "max": 188.4
+    }
+  },
+  "sin": {
+    "loadMs": {
+      "mediana": 778,
+      "min": 766,
+      "max": 787
+    },
+    "heapMB": {
+      "mediana": 44.6,
+      "min": 27,
+      "max": 45.4
+    },
+    "idleFps": {
+      "mediana": 60,
+      "min": 60,
+      "max": 60
+    },
+    "idleRendersPerSec": {
+      "mediana": 181.5,
+      "min": 180,
+      "max": 181.5
+    },
+    "orbitFps": {
+      "mediana": 59.8,
+      "min": 59.8,
+      "max": 60
+    },
+    "orbitMedianMs": {
+      "mediana": 16.7,
+      "min": 16.7,
+      "max": 16.7
+    },
+    "orbitP95Ms": {
+      "mediana": 16.7,
+      "min": 16.7,
+      "max": 16.8
+    },
+    "orbitMaxMs": {
+      "mediana": 33.3,
+      "min": 16.8,
+      "max": 33.4
+    },
+    "orbitFramesOver50ms": {
+      "mediana": 0,
+      "min": 0,
+      "max": 0
+    },
+    "drawCallsPerRender": {
+      "mediana": 74.4,
+      "min": 74.3,
+      "max": 74.4
+    },
+    "viewSwitchMedianMs": {
+      "mediana": 124.8,
+      "min": 116.2,
+      "max": 131.6
+    },
+    "viewSwitchMaxMs": {
+      "mediana": 143.6,
+      "min": 137.9,
+      "max": 147.4
+    }
+  },
+  "runs": [
+    {
+      "variant": "con",
+      "loadMs": 1820,
+      "heapMB": 38.8,
+      "idleFps": 60,
+      "idleRendersPerSec": 181.5,
+      "orbitFps": 59.8,
+      "orbitMedianMs": 16.7,
+      "orbitP95Ms": 16.7,
+      "orbitMaxMs": 33.3,
+      "orbitFramesOver50ms": 0,
+      "drawCallsPerRender": 74.3,
+      "viewSwitchMedianMs": 156,
+      "viewSwitchMaxMs": 188.4
+    },
+    {
+      "variant": "sin",
+      "loadMs": 787,
+      "heapMB": 27,
+      "idleFps": 60,
+      "idleRendersPerSec": 181.5,
+      "orbitFps": 59.8,
+      "orbitMedianMs": 16.7,
+      "orbitP95Ms": 16.8,
+      "orbitMaxMs": 33.4,
+      "orbitFramesOver50ms": 0,
+      "drawCallsPerRender": 74.4,
+      "viewSwitchMedianMs": 131.6,
+      "viewSwitchMaxMs": 137.9
+    },
+    {
+      "variant": "con",
+      "loadMs": 822,
+      "heapMB": 39.5,
+      "idleFps": 60,
+      "idleRendersPerSec": 181.5,
+      "orbitFps": 59.6,
+      "orbitMedianMs": 16.7,
+      "orbitP95Ms": 16.7,
+      "orbitMaxMs": 50,
+      "orbitFramesOver50ms": 0,
+      "drawCallsPerRender": 74.3,
+      "viewSwitchMedianMs": 145.7,
+      "viewSwitchMaxMs": 157.8
+    },
+    {
+      "variant": "sin",
+      "loadMs": 766,
+      "heapMB": 45.4,
+      "idleFps": 60,
+      "idleRendersPerSec": 181.5,
+      "orbitFps": 60,
+      "orbitMedianMs": 16.7,
+      "orbitP95Ms": 16.7,
+      "orbitMaxMs": 16.8,
+      "orbitFramesOver50ms": 0,
+      "drawCallsPerRender": 74.4,
+      "viewSwitchMedianMs": 116.2,
+      "viewSwitchMaxMs": 143.6
+    },
+    {
+      "variant": "con",
+      "loadMs": 840,
+      "heapMB": 45.9,
+      "idleFps": 60,
+      "idleRendersPerSec": 181.5,
+      "orbitFps": 59.8,
+      "orbitMedianMs": 16.7,
+      "orbitP95Ms": 16.8,
+      "orbitMaxMs": 33.3,
+      "orbitFramesOver50ms": 0,
+      "drawCallsPerRender": 74.3,
+      "viewSwitchMedianMs": 139.3,
+      "viewSwitchMaxMs": 143
+    },
+    {
+      "variant": "sin",
+      "loadMs": 778,
+      "heapMB": 44.6,
+      "idleFps": 60,
+      "idleRendersPerSec": 180,
+      "orbitFps": 59.8,
+      "orbitMedianMs": 16.7,
+      "orbitP95Ms": 16.7,
+      "orbitMaxMs": 33.3,
+      "orbitFramesOver50ms": 0,
+      "drawCallsPerRender": 74.3,
+      "viewSwitchMedianMs": 124.8,
+      "viewSwitchMaxMs": 147.4
+    }
+  ]
+}
