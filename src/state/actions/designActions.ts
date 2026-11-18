@@ -1,3 +1,4 @@
+import { designToOpenOnStart, loadLastOpenedDesignId } from '../lastOpenedDesign'
 import { DesignStorageConflictError, MAX_SAVED_DESIGNS } from '../../persistence/localDesignRepository'
 import { normalizeDesign } from '../../persistence/designMigrations'
 import { initialRoomFolder } from '../../domain/elementFolders'
@@ -58,7 +59,9 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
       try {
         const savedDesigns = repository.read()
         set({ savedDesigns, selectedSavedDesignId: '' })
-        if (savedDesigns.length > 0) get().loadDesign(savedDesigns[0].id)
+        // Al recargar se vuelve al diseño en el que se estaba, no siempre al primero de la lista.
+        const toOpen = designToOpenOnStart(savedDesigns, loadLastOpenedDesignId())
+        if (toOpen) get().loadDesign(toOpen.id)
       } catch (error) {
         failDiagnosticAction('storage.read-failed')
         const detail = error instanceof Error && error.message.includes('no coincide') ? ` ${error.message}` : ''

@@ -1,3 +1,4 @@
+import { saveLastOpenedDesignId } from './state/lastOpenedDesign'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { DEFAULT_ROOM, WALL_LABELS } from './domain/constants'
 import { sideWallsForFrontView, visibleWallsForOrientation } from './domain/geometry'
@@ -325,6 +326,7 @@ function EditorNotice({ exportNotice }: { exportNotice: string }) {
 
 function App() {
   const initializeSavedDesigns = useRoomStore((state) => state.initializeSavedDesigns)
+  const selectedSavedDesignId = useRoomStore((state) => state.selectedSavedDesignId)
   const [settingsCollapsed, setSettingsCollapsed] = useState(false)
   const [objectsCollapsed, setObjectsCollapsed] = useState(false)
   const [objectsWidth, setObjectsWidth] = useState(264)
@@ -345,6 +347,8 @@ function App() {
   useEditorShortcuts()
   useEffect(() => trackDragModifiers(), [])
   useEffect(() => { initializeSavedDesigns() }, [initializeSavedDesigns])
+  // Se recuerda el último diseño abierto para volver a él al recargar (al arrancar está vacío y no se guarda).
+  useEffect(() => { saveLastOpenedDesignId(selectedSavedDesignId) }, [selectedSavedDesignId])
   useEffect(() => {
     if (!exportNotice) return
     const timer = window.setTimeout(() => setExportNotice(''), 3200)
