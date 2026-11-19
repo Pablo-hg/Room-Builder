@@ -15,6 +15,7 @@ import { SoftWall } from '../scene/Walls'
 import { RoomShell, StudioLight, WallIdentityLabel } from '../scene/RoomShell'
 import { RoomNameLabel } from '../scene/RoomNameLabel'
 import { CatalogDropController } from '../scene/CatalogDropController'
+import { PaintTool } from '../scene/PaintTool'
 import { recordSceneInteraction } from '../scene/sceneInteraction'
 import { FurnitureObject } from '../scene/FurnitureObject'
 import { StructureSurfaceObject } from '../scene/StructureSurface'
@@ -210,6 +211,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
       {props.view === 'top' && !props.exportMode && <PlanWheelPan />}
       {/* Arrastrar desde el catálogo hasta la vista. */}
       {!props.exportMode && <CatalogDropController />}
+      {!props.exportMode && <PaintTool />}
       {/* Plano: las demás plantas se dibujan a izquierda y derecha, como en una lámina de arquitectura. */}
       {planSheet && <PlanFloorSheet groups={planSheet.groups} placements={planSheet.placements} focusedKey={planSheet.focusedKey} room={props.room} structurePacks={props.structurePacks} furniture={props.furniture} orientation={props.orientation} />}
       {props.view === 'top' && !props.exportMode && <PlanMeasures y={level + levelHeight + 0.06} />}

@@ -49,11 +49,12 @@ export function SurfaceInspector({ selectedSurface }: { selectedSurface: { pack:
           />
         </label>
       )}
-      <ColorControl
+      {/* Un solo control de color: con acabado manda «Color del acabado»; sin él, el color de siempre. */}
+      {!surface.material && <ColorControl
         label="Color de la superficie"
-        value={surface.material?.color ?? surface.color}
+        value={surface.color}
         onChange={(color) => setStructureSurfaceColor(pack.id, surface.id, color)}
-      />
+      />}
       <MaterialControl elementId={structureSurfaceElementId(pack.id, surface.id)} finish={surface.material} color={surface.color} disabled={locked} />
       <button type="button" className="text-button" onClick={() => selectElement(pack.id)}>Seleccionar pack completo</button>
       {locked && <p className="lock-hint">Superficie bloqueada: desbloquea el candado de la lista para moverla, girarla o redimensionarla.</p>}

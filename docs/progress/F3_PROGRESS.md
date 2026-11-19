@@ -114,3 +114,28 @@ Diseño `casa-muestrario-materiales.json` (23 muebles y 30 superficies con acaba
 `src/scene/materialTexture.ts`: todas las piezas con el mismo acabado, escala y giro comparten una textura (antes cada mueble y cada superficie creaba la suya). Caché de 64 entradas; liberar una textura aún en uso es seguro porque three.js la vuelve a subir. La exportación GLB ya clonaba las texturas, así que no se ve afectada. `materialTexture.test.ts` (4 pruebas); `tsc` y 13 pruebas unitarias de textura, UV, GLB y materiales pasan.
 
 Misma medición de la casa muestrario (SwiftShader, 3 repeticiones): **heap con acabados 75 MB → 48 MB** (rango 47,9–48; sin acabados 30,6 MB). Los tiempos y fps no son comparables entre ejecuciones (la variante sin acabados también empeoró, de 24,5 a 21,2 fps: ruido del equipo con render por software); en la misma ejecución, con acabados queda un 17 % por debajo en reposo y un 11 % en órbita, como antes. La caché no cambia las llamadas de dibujo (74,3) ni el coste de muestreo; solo la memoria.
+
+### Pintar, Cuentagotas y miniaturas (18/11/2026) — sin verificar con pruebas
+
+- **Pintar** (`🖌 Pintar` en la cabecera de la escena): con la herramienta activa, pulsar o tocar un elemento lo pinta con el pincel (o copia su acabado, en modo Cuentagotas) en vez de seleccionarlo; el fondo sigue orbitando. Cada pincelada es un paso de historial (reutiliza `setMaterialFinish`: respeta bloqueos y validación). Resalta con una caja el elemento bajo el cursor y nombra su habitación. Esc o × terminan; Deshacer revierte pincelada a pincelada. Estado de sesión: no se guarda ni entra en el historial. Archivos: `src/domain/paintTool.ts`, `src/state/actions/paintActions.ts`, `src/scene/PaintTool.tsx`, `src/components/editor/PaintToolControls.tsx`, prueba `src/state/paintTool.test.ts` (11, no ejecutada).
+- **Cuentagotas:** copia solo el acabado (id, color, escala, giro); nunca posición ni medidas. Avisa si el elemento no tiene un color legible. Tras copiar vuelve al pincel.
+- **Un solo control de color por elemento:** con acabado se oculta «Color del objeto / pared / superficie» y manda «Color del acabado» (como ya hacían puertas y ventanas).
+- **Constructor de material (revisión del propietario):** el panel de Pintar usa los mismos campos que el inspector (familia, acabado, patrón, color, escala, orientación; componente compartido `MaterialFields`) y muestra abajo una **muestra grande en vivo** (`MaterialPreview`, 2,5 m de ancho, mismo patrón que la escena). «Pintar la selección (N)» aplica el material a varios elementos en un solo paso de deshacer (`applyPaintToMany`). El selector de miniaturas se retiró; el inspector conserva una miniatura del acabado actual (`MaterialSwatch`).
+
+**Revisión de accesibilidad (por lectura de código; no probada con personas ni con lector de pantalla):**
+
+- Teclado: el botón Pintar tiene `aria-pressed`; los campos del pincel tienen nombres propios («Familia del pincel»…) para no confundirse con los del inspector; hay vía sin puntero (pintar la selección y copiar del seleccionado); Esc termina; el texto del elemento bajo el cursor está en una región `aria-live`; la muestra grande tiene descripción textual.
+- Táctil: pulsar sobre el lienzo usa eventos de puntero (vale para el dedo). Sin comprobar: gestos de cámara con dos dedos mientras Pintar está activo.
+- Pendiente: E2E `tests/paint-tool.spec.ts` (3 pruebas, **no ejecutadas**), contraste de los bordes de las miniaturas y prueba con lector de pantalla.
+
+- **Etiquetas de habitación:** ya no tapan los indicadores de la escena ni los paneles flotantes (Medir, Pintar, selector de habitación): se desplazan en vertical y, si no hay hueco, se ocultan hasta que la cámara les deja sitio.
+
+### Pruebas ejecutadas (19/11/2026)
+
+- Unitarias completas (`npm test`, por el propietario): **698/698**.
+- E2E tocados o nuevos: `paint-tool` (3), `plan-measures`, `plan-details-categories`, `movement-guides`, `checkpoint-v02`, `materials` (3), `free-wall-objects`: **todos pasan** tras dos correcciones de prueba:
+  - `paint-tool` (táctil): el selector `.scene-panel canvas` cogía la muestra grande del panel de Pintar en vez de la vista 3D; ahora elige el lienzo mayor.
+  - `materials` (GLB): reconstruía las UV del suelo con un `BoxGeometry` unitario; desde que los patrones se miden en metros (`applyWorldUv`) usa la caja con las medidas de la habitación y UV en metros.
+- Humo (`npm run test:e2e:smoke`, 5 procesos): 25/32 a la primera; los 7 restantes **pasan al repetirlos uno a uno** (agotamiento de 30 s por saturación del equipo, no regresión): `area-selection`, `camera-views` (×2), `furniture-gestures`, `history-transactions`, `persistence-integrity`, `selection` (Alt+clic).
+- Corrección visual: el panel de Pintar (y el de Medir) queda por encima de la brújula (`z-index` 7).
+- No ejecutado: suite E2E completa (`npm run test:e2e`).

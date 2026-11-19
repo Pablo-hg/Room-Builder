@@ -5,6 +5,8 @@ import { expect, test, type Page } from '@playwright/test'
 import { BoxGeometry, Color, Matrix3, Vector2 } from 'three'
 import type { PersistedDesign, SavedDesign } from '../src/domain/designV1'
 import { MATERIAL_CATALOG, MATERIAL_FAMILIES, materialDefinition } from '../src/domain/materials'
+import { ROOT_FLOOR_THICKNESS } from '../src/domain/constants'
+import { applyWorldUv } from '../src/scene/worldUv'
 
 const file = fileURLToPath(new URL('./fixtures/materials/muestrario-acabados.json', import.meta.url))
 const fixture: { design: SavedDesign } = JSON.parse(await readFile(file, 'utf8'))
@@ -111,15 +113,15 @@ test('el GLB del muestrario incluye los acabados y conserva el patrón girado de
     patterns.set(finish.id, checksum)
     expect(map.extensions?.KHR_texture_transform).toBeUndefined()
     if (finish !== original.room.floorMaterial) continue
-    // El BoxGeometry del suelo tiene UV conocidas. Compara cada par escrito en
-    // el binario con la escala y la rotación alrededor del centro de la escena.
+    // El suelo es una caja con las medidas de la habitación y UV en metros (applyWorldUv, como en la escena).
+    // Compara cada par escrito en el binario con la escala y la rotación alrededor del centro de la escena.
     const primitive = gltf.meshes.flatMap((mesh: { primitives: unknown[] }) => mesh.primitives)
       .find((entry: { material: number }) => entry.material === materialIndex)
     const accessor = gltf.accessors[primitive.attributes.TEXCOORD_0]
     const bufferView = gltf.bufferViews[accessor.bufferView]
     const start = binaryStart + (bufferView.byteOffset ?? 0) + (accessor.byteOffset ?? 0)
     const expected = new Matrix3().setUvTransform(0, 0, 1 / finish.scale, 1 / finish.scale, finish.rotation * Math.PI / 180, 0.5, 0.5)
-    const box = new BoxGeometry()
+    const box = applyWorldUv(new BoxGeometry(original.room.width, ROOT_FLOOR_THICKNESS, original.room.depth))
     const uv = box.getAttribute('uv')
     expect(accessor.count).toBe(uv.count)
     expect(accessor.componentType).toBe(5126)
@@ -135,13 +137,12 @@ test('el GLB del muestrario incluye los acabados y conserva el patrón girado de
   expect(new Set(patterns.values()).size).toBe(patterns.size)
 })
 
-test('el inspector muestra solo las familias en el primer selector y navega en tres niveles', async ({ page }) => {
+test('el inspector muestra solo las familias en el primer selector y navega en dos niveles', async ({ page }) => {
   test.setTimeout(60_000)
   await importSample(page)
   const initial = await currentDesign(page)
   await page.locator('.element-row').getByText(sofa.name, { exact: true }).click()
   const family = page.getByLabel('Familia', { exact: true })
-  const finish = page.getByLabel('Acabado', { exact: true })
   const pattern = page.getByLabel('Patrón', { exact: true })
   await expect(family.locator('option')).toHaveText(['Color original', ...Object.values(MATERIAL_FAMILIES)])
   await page.getByRole('slider', { name: 'Orientación del acabado' }).press('ArrowRight')
@@ -151,9 +152,10 @@ test('el inspector muestra solo las familias en el primer selector y navega en t
     material: { ...sofa.material, rotation: 16, color: '#765c96' },
   })
   await family.selectOption('wood')
-  await expect(finish).toHaveValue('planks')
-  await expect(pattern.locator('option')).toHaveText(['Veta sencilla', 'Veta de pino', 'Veta de roble'])
-  await finish.selectOption('parquet')
+  // Familia y Patrón: los patrones de la familia, agrupados por acabado (Tablones, Parqué).
+  await expect(pattern).toHaveValue('wood')
+  await expect(pattern.locator('option')).toHaveText(['Veta sencilla', 'Veta de pino', 'Veta de roble', 'Espiga'])
+  await pattern.selectOption('herringbone')
   await expect(pattern).toHaveValue('herringbone')
   await family.selectOption('wallpaper')
   await pattern.selectOption('botanical')

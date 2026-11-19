@@ -12,6 +12,7 @@ import type { RoomActionContext, RoomRuntime, RoomState, RoomUpdate } from './ty
 import { createCameraActions } from './actions/cameraActions'
 import { createConstructionActions } from './actions/constructionActions'
 import { createMaterialActions } from './actions/materialActions'
+import { createPaintActions } from './actions/paintActions'
 import { createFurnitureActions } from './actions/furnitureActions'
 import { createMeasureActions } from './actions/measureActions'
 import { createGuideActions } from './actions/guideActions'
@@ -323,6 +324,8 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     gridVisibility: { ...DEFAULT_GRID_VISIBILITY },
     measurements: [],
     measureToolActive: false,
+    paintTool: null,
+    paintHoverId: null,
     measureAxis: 'free',
     measureSnap: true,
     measureDraft: null,
@@ -340,6 +343,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     ...createCameraActions(context),
     ...createConstructionActions(context),
     ...createMaterialActions(context),
+    ...createPaintActions(context),
     ...createStructureDoorActions(context),
     ...createWallObjectActions(context),
     ...createFurnitureActions(context),

@@ -64,11 +64,12 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
         onChange={(rotation) => setFurnitureRotation(selectedFurniture.id, rotation)}
         disabled={locked || !!attachment}
       />}
-      <ColorControl
+      {/* Un solo control de color: con acabado manda «Color del acabado»; sin él, el color de siempre. */}
+      {!selectedFurniture.material && <ColorControl
         label="Color del objeto"
-        value={selectedFurniture.material?.color ?? selectedFurniture.color}
+        value={selectedFurniture.color}
         onChange={(color) => setFurnitureColor(selectedFurniture.id, color)}
-      />
+      />}
       <MaterialControl elementId={selectedFurniture.id} finish={selectedFurniture.material} color={selectedFurniture.color} disabled={locked} />
       <div className="object-actions">
         {canRotate && <button type="button" onClick={rotateFurniture} disabled={locked || !!attachment}><span>↻</span> Girar 90°</button>}

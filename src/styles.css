@@ -755,7 +755,8 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .camera-controls--plan .measure-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .camera-controls--plan .measure-toggle.is-active { background: #b4541c; color: #fff; border-radius: 8px; }
 .camera-controls--plan .measure-toggle:focus-visible { outline: 2px solid #b4541c; outline-offset: 2px; }
-.measure-panel { position: absolute; z-index: 3; right: 16px; top: 78px; width: min(300px, calc(100% - 32px)); display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(255,253,249,.97); box-shadow: 0 6px 22px rgba(60,50,30,.16); color: #405748; font-size: 13px; }
+/* Por debajo del selector de habitación (arriba a la derecha, ~84 px de alto) y por encima de la brújula (z 3–6). */
+.measure-panel { position: absolute; z-index: 7; right: 16px; top: 98px; width: min(300px, calc(100% - 32px)); display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(255,253,249,.97); box-shadow: 0 6px 22px rgba(60,50,30,.16); color: #405748; font-size: 13px; }
 .measure-panel__head { display: flex; align-items: center; justify-content: space-between; }
 .measure-panel__close { min-width: 32px; min-height: 32px; border: 0; background: transparent; color: inherit; font-size: 20px; cursor: pointer; }
 .measure-panel__axes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
@@ -869,3 +870,22 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 @media (pointer: coarse) {
   .material-control select, .material-control input[type='color'] { min-height: 44px; }
 }
+
+/* Herramienta Pintar (#39): reutiliza el panel de Medir y añade los modos y los campos del pincel. */
+.paint-panel__modes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+.paint-panel__modes button.is-active { background: #3f7d5a; border-color: #3f7d5a; color: #fff; }
+.paint-panel__field { display: grid; gap: 4px; font-size: 13px; }
+.paint-panel select { min-height: 32px; border: 1px solid #cdd6cc; border-radius: 7px; background: #fff; }
+body.paint-tool canvas { cursor: crosshair; }
+
+/* Miniaturas de acabados (#39): mismo patrón que la escena, teñido. */
+.material-swatch { display: inline-block; flex: none; width: 40px; height: 40px; border: 1px solid rgba(60, 50, 30, .25); border-radius: 8px; background-size: cover; background-position: center; }
+.material-control__preview { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; }
+
+.paint-panel { max-height: calc(100% - 112px); overflow-y: auto; }
+.paint-panel__material { margin: 0; }
+.material-preview { display: grid; gap: 4px; margin: 0; }
+.material-preview canvas { display: block; width: 100%; height: 140px; border: 1px solid rgba(60, 50, 30, .25); border-radius: 8px; background: #fff; }
+.material-preview figcaption { color: #6f766f; font-size: 12px; }
+
+.material-control__static { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; }
