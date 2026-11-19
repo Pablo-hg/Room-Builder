@@ -1,3 +1,4 @@
+import { formatPanelLength } from '../../domain/lengthUnit'
 import { useEffect, useMemo, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { FRONT_CAMERA_MAX_HEIGHT, FRONT_CAMERA_MIN_HEIGHT, WALL_LABELS } from '../../domain/constants'
 import { planRoomDimensions, planRoomDimensionsSummary } from '../../domain/planDimensions'
@@ -14,7 +15,7 @@ const CATEGORY_LABELS: ReadonlyArray<readonly [keyof PlanDetailCategories, strin
   ['walls', 'Paredes', 'Cota total de cada pared'],
   ['openings', 'Huecos', 'Cadena de puertas y ventanas en cada pared'],
   ['furniture', 'Muebles', 'Distancias a las paredes del mueble seleccionado'],
-  ['annotations', 'Notas', 'Cotas guardadas con la herramienta Medir'],
+  ['annotations', 'Cotas a mano', 'Cotas guardadas con la herramienta Medir'],
 ]
 
 /** Filtros secundarios de «Mostrar detalles»: solo cambian qué cotas se superponen, no el diseño ni el modo. */
@@ -39,6 +40,7 @@ function PlanDetailsToggle() {
   const rootName = useRoomStore((state) => state.elementFolders.find((folder) => folder.id === ROOT_ROOM_FOLDER)?.name ?? 'Habitación principal')
   const categories = useRoomStore((state) => state.planDetailCategories)
   const selectedFurniture = useRoomStore((state) => state.selectedIds.length === 1 ? state.furniture.find((item) => item.id === state.selectedIds[0]) : undefined)
+  const lengthUnit = useRoomStore((state) => state.lengthUnit)
   const summary = useMemo(() => {
     if (!planDetailsVisible) return ''
     const visibleWall = (wall: { id: string; packId?: string }) => !hiddenElementIds.includes(wall.id) && !(wall.packId && hiddenElementIds.includes(wall.packId))
@@ -47,7 +49,7 @@ function PlanDetailsToggle() {
     if (categories.openings) { const chain = planOpeningDimensionsSummary(planOpeningDimensions({ room, structurePacks }, visibleWall)); if (chain) parts.push(`Huecos — ${chain}`) }
     if (categories.furniture && selectedFurniture) { const distances = planFurnitureDistancesSummary(planFurnitureDistances({ room, structurePacks }, selectedFurniture)); if (distances) parts.push(`${selectedFurniture.name}, distancia a la pared: ${distances}`) }
     return parts.join('. ')
-  }, [planDetailsVisible, room, structurePacks, hiddenElementIds, rootName, categories, selectedFurniture])
+  }, [planDetailsVisible, room, structurePacks, hiddenElementIds, rootName, categories, selectedFurniture, lengthUnit])
   return <>
     <label className="plan-details-toggle" title={planDetailsVisible ? 'Plano detallado: cotas de las paredes de cada habitación' : 'Plano normal: sin cotas'}>
       <input type="checkbox" checked={planDetailsVisible} onChange={(event) => setPlanDetailsVisible(event.target.checked)} aria-describedby="plan-details-summary" />
@@ -82,6 +84,7 @@ export function ViewControls() {
   const setFreeOrbit = useRoomStore((state) => state.setFreeOrbit)
   const setFreeOrbitDragging = useRoomStore((state) => state.setFreeOrbitDragging)
   const resetTopCamera = useRoomStore((state) => state.resetTopCamera)
+  useRoomStore((state) => state.lengthUnit) // las medidas se redibujan al cambiar de unidad
   const isoCameraHeight = useRoomStore((state) => state.isoCameraHeight)
   const setIsoCameraHeight = useRoomStore((state) => state.setIsoCameraHeight)
   const packs = useRoomStore((state) => state.structurePacks)
@@ -246,7 +249,7 @@ export function ViewControls() {
         </button>
       ) : <><span>{`${povYaw > 0 ? '+' : ''}${povYaw}°`}</span>{povYaw !== 0 && <button type="button" className="camera-center" onClick={() => centerPov()} aria-label="Mirar al frente" title="Mirar al frente">⊙</button>}</>}
       <button type="button" onClick={() => { selectElement(null); rotate(-1) }} aria-label="Girar a la derecha">↷</button>
-    </div>{view === 'isometric' && <label className="iso-height-control">Centro de cámara <output>{isoCameraHeight.toFixed(1)} m</output><input type="range" aria-label="Altura del centro de cámara isométrica" min={Math.min(0, ...packs.map((pack) => pack.y))} max={Math.max(roomHeight, ...packs.map((pack) => pack.y + roomHeight))} step="0.125" value={isoCameraHeight} onChange={(event) => setIsoCameraHeight(Number(event.target.value))} /></label>}</>
+    </div>{view === 'isometric' && <label className="iso-height-control">Centro de cámara <output>{formatPanelLength(isoCameraHeight, 1)}</output><input type="range" aria-label="Altura del centro de cámara isométrica" min={Math.min(0, ...packs.map((pack) => pack.y))} max={Math.max(roomHeight, ...packs.map((pack) => pack.y + roomHeight))} step="0.125" value={isoCameraHeight} onChange={(event) => setIsoCameraHeight(Number(event.target.value))} /></label>}</>
   )
 }
 

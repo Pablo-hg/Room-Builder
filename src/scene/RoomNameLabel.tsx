@@ -5,6 +5,28 @@ import { folderSelectionId } from '../domain/elementFolders'
 import { useRoomStore } from '../state/useRoomStore'
 import { selectSceneObject } from './sceneInteraction'
 
+type ScreenRect = { x: number; y: number; width: number; height: number }
+
+/** Indicadores y paneles que flotan sobre el lienzo: una etiqueta de habitación no debe taparlos. */
+const CHROME_SELECTOR = '.scene-topline__labels > *, .room-view-selector, .measure-panel, .scene-controls'
+let chromeCache: { at: number; parent: HTMLElement; rects: ScreenRect[] } | null = null
+
+/**
+ * Rectángulos de esos elementos en el sistema de las etiquetas (centro horizontal y borde inferior, relativo al contenedor).
+ * Se miden como mucho cada 300 ms: leer posiciones en cada fotograma forzaría al navegador a recalcular el diseño.
+ */
+function chromeObstacles(parent: HTMLElement): ScreenRect[] {
+  const now = performance.now()
+  if (chromeCache && chromeCache.parent === parent && now - chromeCache.at < 300) return chromeCache.rects
+  const origin = parent.getBoundingClientRect()
+  const rects = [...document.querySelectorAll<HTMLElement>(CHROME_SELECTOR)]
+    .map((item) => item.getBoundingClientRect())
+    .filter((rect) => rect.width > 0 && rect.height > 0)
+    .map((rect) => ({ x: rect.left - origin.left + rect.width / 2, y: rect.bottom - origin.top, width: rect.width, height: rect.height }))
+  chromeCache = { at: now, parent, rects }
+  return rects
+}
+
 /** A real button projected over its room, so it remains readable and keyboard accessible. */
 export function RoomNameLabel({ folderId, name, position, extent, anchor = 'top' }: { folderId: string; name: string; position: [number, number, number]; extent: { width: number; height: number; depth: number }; anchor?: 'top' | 'floor' }) {
   const { camera, gl, size } = useThree()
@@ -79,9 +101,21 @@ export function RoomNameLabel({ folderId, name, position, extent, anchor = 'top'
         const [sx, sy, sw, sh] = (sibling.dataset.rect ?? '').split(',').map(Number)
         if ([sx, sy, sw, sh].every(Number.isFinite)) earlier.push({ x: sx, y: sy, width: sw, height: sh })
       }
+      // Además de las otras etiquetas, se esquivan los indicadores y paneles superpuestos al lienzo.
+      const blockers = element.parentElement ? chromeObstacles(element.parentElement) : []
+      const avoid = [...earlier, ...blockers]
       const clampY = (y: number) => Math.max(height + 4, Math.min(size.height - 4, y))
-      const candidates = [idealY, ...Array.from({ length: earlier.length }, (_, index) => idealY + (index + 1) * (height + 6)), ...Array.from({ length: earlier.length }, (_, index) => idealY - (index + 1) * (height + 6))].map(clampY)
-      const y = candidates.find((candidate) => earlier.every((other) => Math.abs(x - other.x) >= (width + other.width) / 2 + 4 || candidate <= other.y - other.height - 4 || candidate - height >= other.y + 4)) ?? idealY
+      const shifts = Math.max(avoid.length, 1)
+      const candidates = [idealY, ...Array.from({ length: shifts }, (_, index) => idealY + (index + 1) * (height + 6)), ...Array.from({ length: shifts }, (_, index) => idealY - (index + 1) * (height + 6))].map(clampY)
+      const free = (candidate: number) => avoid.every((other) => Math.abs(x - other.x) >= (width + other.width) / 2 + 4 || candidate <= other.y - other.height - 4 || candidate - height >= other.y + 4)
+      const found = candidates.find(free)
+      // Sin hueco libre: antes que tapar un panel, la etiqueta se oculta hasta que la cámara la deje sitio.
+      if (found === undefined && !blockers.every((other) => Math.abs(x - other.x) >= (width + other.width) / 2 + 4 || idealY <= other.y - other.height - 4 || idealY - height >= other.y + 4)) {
+        if (element.style.visibility !== 'hidden') element.style.visibility = 'hidden'
+        delete element.dataset.rect
+        return
+      }
+      const y = found ?? idealY
       const screenX = Math.round(x * 10) / 10, screenY = Math.round(y * 10) / 10
       const rect = [screenX, screenY, width, height].join(',')
       if (element.dataset.rect !== rect) element.dataset.rect = rect

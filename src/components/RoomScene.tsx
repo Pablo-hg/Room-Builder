@@ -106,12 +106,13 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
   // Cada categoría se filtra por separado; con «Paredes» apagado, vuelven las etiquetas normales de pared.
   const showPlanDimensions = planDetailsOn && planDetailCategories.walls
   const showOpeningChains = planDetailsOn && planDetailCategories.openings
+  const lengthUnit = useRoomStore((state) => state.lengthUnit)
   const openingChains = useMemo(() => showOpeningChains
     ? planOpeningDimensions({ room: props.room, structurePacks: props.structurePacks }, (wall) => planVisibleWallIds.has(wall.id))
-    : [], [showOpeningChains, props.room, props.structurePacks, planSignature])
+    : [], [showOpeningChains, props.room, props.structurePacks, planSignature, lengthUnit])
   const planDimensions = useMemo(() => showPlanDimensions
     ? planRoomDimensions({ room: props.room, structurePacks: props.structurePacks }, (wall) => planVisibleWallIds.has(wall.id))
-    : [], [showPlanDimensions, props.room, props.structurePacks, planSignature])
+    : [], [showPlanDimensions, props.room, props.structurePacks, planSignature, lengthUnit])
   // Con detalles, la letra «PARED X» se desplaza por detrás de su cota.
   const baseWallLabels = showBase && !activeRoom && !props.exportMode
     ? labeledWalls.filter((wall) => !hiddenElementIds.includes(baseWallId(wall)))

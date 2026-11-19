@@ -1,3 +1,4 @@
+import { setDisplayLengthUnit } from '../domain/lengthUnit'
 import { create } from 'zustand'
 import { instrumentActions } from '../diagnostics/instrumentActions'
 import { rejectDiagnosticAction } from '../diagnostics/actionScope'
@@ -68,6 +69,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
   let roomFocusHistory: Array<string | null> = [null]
   const furnitureWallMagnets: FurnitureWallMagnets = new Map()
   const initialPreferences = loadEditorPreferences()
+  setDisplayLengthUnit(initialPreferences.lengthUnit)
   const runtime: RoomRuntime = {
     undoHistory: [],
     redoHistory: [],
@@ -319,6 +321,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     povYaw: 0,
     gridSnap: true,
     magnetismEnabled: initialPreferences.magnetism,
+    lengthUnit: initialPreferences.lengthUnit,
     guidesEnabled: initialPreferences.guides,
     activeGuides: [],
     gridVisibility: { ...DEFAULT_GRID_VISIBILITY },

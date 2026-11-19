@@ -13,10 +13,13 @@ function MovementAssistSection() {
   const setGridSnap = useRoomStore((state) => state.setGridSnap)
   const setMagnetism = useRoomStore((state) => state.setMagnetism)
   const setGuides = useRoomStore((state) => state.setGuides)
+  const lengthUnit = useRoomStore((state) => state.lengthUnit)
+  const setLengthUnit = useRoomStore((state) => state.setLengthUnit)
   const rows = [
     { id: 'snap', label: 'Ajuste a 5 cm', on: gridSnap, toggle: () => setGridSnap(!gridSnap), hint: 'Mueve de 5 en 5 cm. Apagado, de 1 en 1 cm.' },
     { id: 'magnet', label: 'Magnetismo', on: magnetism, toggle: () => setMagnetism(!magnetism), hint: 'Atrae a bordes, centros y paredes. Alt lo suspende al arrastrar.' },
     { id: 'guides', label: 'Guías de alineación', on: guides, toggle: () => setGuides(!guides), hint: 'Muestra líneas y cotas al arrastrar, sin mover nada.' },
+    { id: 'unit', label: 'Medidas en centímetros', on: lengthUnit === 'cm', toggle: () => setLengthUnit(lengthUnit === 'cm' ? 'm' : 'cm'), hint: 'Muestra todas las medidas en centímetros en vez de metros.' },
   ]
   return <div className="movement-assist" role="group" aria-label="Ayudas de movimiento">
     {rows.map((row) => <div className="grid-visibility-row" key={row.id}>

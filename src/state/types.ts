@@ -60,6 +60,8 @@ export interface RoomState {
   gridSnap: boolean
   /** Preferencias de edición locales: no se guardan en el diseño ni entran en el historial (#37). */
   magnetismEnabled: boolean
+  /** Unidad con la que se muestran las medidas (preferencia del navegador). */
+  lengthUnit: import('../domain/lengthUnit').LengthUnit
   guidesEnabled: boolean
   /** Guías del arrastre en curso; solo existen mientras dura el gesto. */
   activeGuides: DragGuide[]
@@ -165,6 +167,7 @@ export interface RoomState {
   endFurnitureMove: () => void
   moveFurniture: (id: string, x: number, z: number, source?: 'pointer', axis?: 'x' | 'z') => void
   setMagnetism: (enabled: boolean) => void
+  setLengthUnit: (unit: import('../domain/lengthUnit').LengthUnit) => void
   setGuides: (enabled: boolean) => void
   setGridSnap: (enabled: boolean) => void
   clearDragGuides: () => void

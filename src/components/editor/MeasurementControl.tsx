@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { isMeasurementStep, MEASUREMENT_INVALID_NOTICE, MEASUREMENT_STEP, MEASUREMENT_STEP_NOTICE, measurementCentimetres, measurementMetres, parseMeasurement, snapMeasurement, stepMeasurement } from '../../domain/measurements'
+import { formatLengthOtherUnit, lengthInputText } from '../../domain/lengthUnit'
+import { isMeasurementStep, MEASUREMENT_INVALID_NOTICE, MEASUREMENT_STEP, MEASUREMENT_STEP_NOTICE, parseMeasurement, snapMeasurement, stepMeasurement } from '../../domain/measurements'
 import { beginMeasurementLog, finishMeasurementLog } from '../../debug/interactionLog'
 import { diagnostics } from '../../diagnostics/engine'
 import { useHistoryGesture } from '../../state/useHistoryGesture'
@@ -23,7 +24,10 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
   disabled?: boolean
   textColor?: string
 }) {
-  const [draft, setDraft] = useState(measurementMetres(value))
+  const unit = useRoomStore((state) => state.lengthUnit)
+  // Texto del campo en la unidad elegida (metros con punto, como siempre; o centímetros enteros).
+  const text = (metres: number) => lengthInputText(metres, unit)
+  const [draft, setDraft] = useState(text(value))
   const [error, setError] = useState('')
   const errorId = useId()
   const skipBlur = useRef(false)
@@ -52,7 +56,7 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
     gesture.begin()
     editRef.current = { before: valueRef.current, after: valueRef.current, log, selectedId }
   }
-  useEffect(() => { setDraft(measurementMetres(value)); setError('') }, [value])
+  useEffect(() => { setDraft(text(value)); setError('') }, [value, unit])
   const clearTimer = () => {
     if (timerRef.current !== null) {
       window.clearTimeout(timerRef.current)
@@ -75,12 +79,12 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
   useEffect(() => { if (disabled) { stopHold(); finishEdit() } }, [disabled])
   const clamp = (candidate: number) => snapMeasurement(Math.max(min, Math.min(max, candidate)))
   const baseValue = () => {
-    const parsed = parseMeasurement(draftRef.current)
+    const parsed = parseMeasurement(draftRef.current, unit)
     return isMeasurementStep(parsed) && parsed >= min - 1e-9 && parsed <= max + 1e-9 ? parsed : valueRef.current
   }
   const apply = (next: number) => {
     setError('')
-    draftRef.current = measurementMetres(next)
+    draftRef.current = text(next)
     setDraft(draftRef.current)
     ensureEdit()
     const before = useRoomStore.getState()
@@ -90,7 +94,7 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
       if (editRef.current) editRef.current.after = next
       valueRef.current = next
     } else {
-      draftRef.current = measurementMetres(valueRef.current)
+      draftRef.current = text(valueRef.current)
       setDraft(draftRef.current)
     }
   }
@@ -98,7 +102,7 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
   const stepOnce = (direction: -1 | 1) => {
     if (disabled) return
     const next = clamp(stepMeasurement(baseValue(), direction))
-    if (next === valueRef.current) { setDraft(measurementMetres(valueRef.current)); return }
+    if (next === valueRef.current) { setDraft(text(valueRef.current)); return }
     apply(next)
   }
   /** Paso de repetición; parte siempre del último valor aplicado para no desincronizarse. */
@@ -127,15 +131,15 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
     timerRef.current = window.setTimeout(tick, HOLD_DELAY_START)
   }
   const commit = () => {
-    const candidate = parseMeasurement(draftRef.current)
-    draftRef.current = measurementMetres(valueRef.current)
+    const candidate = parseMeasurement(draftRef.current, unit)
+    draftRef.current = text(valueRef.current)
     setDraft(draftRef.current)
     if (candidate === valueRef.current) { setError(''); return }
     if (!Number.isFinite(candidate)) { diagnostics.emit({ action: 'measurement.input', level: 'warn', result: 'rejected', data: { reason: 'invalid-number' } }); setError(MEASUREMENT_INVALID_NOTICE); return }
     if (!isMeasurementStep(candidate)) { diagnostics.emit({ action: 'measurement.input', level: 'warn', result: 'rejected', data: { reason: 'invalid-centimetre-step' } }); setError(MEASUREMENT_STEP_NOTICE); return }
     if (candidate < min - 1e-9 || candidate > max + 1e-9) {
       diagnostics.emit({ action: 'measurement.input', level: 'warn', result: 'rejected', data: { reason: 'measurement-out-of-range', min, max } })
-      setError(`Introduce una medida entre ${min.toLocaleString('es-ES')} y ${max.toLocaleString('es-ES')} m.`)
+      setError(unit === 'cm' ? `Introduce una medida entre ${Math.round(min * 100)} y ${Math.round(max * 100)} cm.` : `Introduce una medida entre ${min.toLocaleString('es-ES')} y ${max.toLocaleString('es-ES')} m.`)
       return
     }
     apply(candidate)
@@ -173,14 +177,14 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
     event.stopPropagation()
     stopHold()
     finishEdit()
-    draftRef.current = measurementMetres(valueRef.current)
+    draftRef.current = text(valueRef.current)
     setDraft(draftRef.current)
     const state = useRoomStore.getState()
     if (key === 'y' || event.shiftKey) state.redo()
     else state.undo()
   }}>
     <span><span style={{ color: textColor }}>{label}</span><span className="position-number" style={{ color: textColor }}>
-      <input type="text" inputMode="decimal" style={{ color: textColor }} aria-label={inputLabel ?? `Introducir ${label.toLowerCase()} en metros`} aria-invalid={!!error} aria-describedby={error ? errorId : undefined}
+      <input type="text" inputMode="decimal" style={{ color: textColor }} aria-label={(inputLabel ?? `Introducir ${label.toLowerCase()} en metros`).replace(' en metros', unit === 'cm' ? ' en centímetros' : ' en metros')} aria-invalid={!!error} aria-describedby={error ? errorId : undefined}
         value={draft} disabled={disabled} onChange={(event) => { draftRef.current = event.target.value; setDraft(event.target.value); setError('') }}
         onKeyDown={(event) => {
           if (event.key === 'Enter') { event.preventDefault(); stopHold(); commit(); finishEdit() }
@@ -189,11 +193,11 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
             const direction: -1 | 1 = event.key === 'ArrowUp' ? 1 : -1
             if (!event.repeat) beginHold(direction, true)
           }
-          else if (event.key === 'Escape') { event.preventDefault(); stopHold(); skipBlur.current = true; draftRef.current = measurementMetres(valueRef.current); setDraft(draftRef.current); setError(''); event.currentTarget.blur() }
+          else if (event.key === 'Escape') { event.preventDefault(); stopHold(); skipBlur.current = true; draftRef.current = text(valueRef.current); setDraft(draftRef.current); setError(''); event.currentTarget.blur() }
         }}
         onKeyUp={(event) => { if (event.key === 'ArrowUp' || event.key === 'ArrowDown') stopHold() }}
         onBlur={() => { stopHold(); if (skipBlur.current) skipBlur.current = false; else commit() }} />
-      <span aria-hidden="true">m</span>
+      <span aria-hidden="true">{unit}</span>
       <span className="measurement-stepper" role="group" aria-label={`Ajustar ${label.toLowerCase()} en pasos de 1 cm`}>
         {/* En fila: bajar ▼ y subir ▲, el mismo orden visual y de tabulación. */}
         {stepper(-1)}
@@ -213,7 +217,7 @@ export function MeasurementControl({ label, inputLabel, value, min, max, onChang
       onChange={(event) => {
         apply(clamp(Number(event.target.value)))
       }} />
-    <small className="measurement-equivalent" style={{ color: textColor }}>{!isMeasurementStep(value) ? '≈ ' : ''}{measurementCentimetres(value)} cm{!isMeasurementStep(value) ? ' · valor anterior conservado' : ''}</small>
+    <small className="measurement-equivalent" style={{ color: textColor }}>{!isMeasurementStep(value) ? '≈ ' : ''}{formatLengthOtherUnit(value, unit).replace('.', ',')}{!isMeasurementStep(value) ? ' · valor anterior conservado' : ''}</small>
     {error && <small id={errorId} className="measurement-error" role="alert">{error}</small>}
   </div>
 }

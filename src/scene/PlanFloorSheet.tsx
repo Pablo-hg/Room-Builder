@@ -46,6 +46,7 @@ function FloorCopy({ group, placement, room, structurePacks, furniture, hiddenEl
   showDetails: boolean
 }) {
   const hidden = useMemo(() => new Set(hiddenElementIds), [hiddenElementIds])
+  const lengthUnit = useRoomStore((state) => state.lengthUnit)
   const content = useMemo(() => {
     const world = { room, structurePacks }
     const isGround = group.key === 0
@@ -65,7 +66,7 @@ function FloorCopy({ group, placement, room, structurePacks, furniture, hiddenEl
       items: furniture.filter((item) => !hidden.has(item.id) && item.y >= group.level - 0.01 && item.y < group.level + group.height),
       showRootFloor: isGround && !hidden.has(BASE_FLOOR_ID),
     }
-  }, [group, room, structurePacks, furniture, hidden, showDetails])
+  }, [group, room, structurePacks, furniture, hidden, showDetails, lengthUnit])
   return <group position={[placement.offset.x, placement.lift, placement.offset.z]} name={`plan-floor-copy:${group.key}`}>
     <NonInteractive>
       {content.showRootFloor && <mesh raycast={noRaycast}>

@@ -1,3 +1,4 @@
+import { setDisplayLengthUnit } from '../../domain/lengthUnit'
 import { furnitureAxisLocks } from '../../domain/axisLocks'
 import { furnitureWallAxes } from '../../domain/furnitureWalls'
 import { furnitureVisualYOffset } from '../../domain/objectCatalog'
@@ -6,7 +7,7 @@ import { saveEditorPreferences } from '../editorPreferences'
 import { isMagnetSuspended } from '../dragModifiers'
 import type { RoomActionContext, RoomState } from '../types'
 
-type GuideActions = Pick<RoomState, 'setMagnetism' | 'setGuides' | 'setGridSnap' | 'clearDragGuides' | 'guideGroupMove'>
+type GuideActions = Pick<RoomState, 'setMagnetism' | 'setGuides' | 'setLengthUnit' | 'setGridSnap' | 'clearDragGuides' | 'guideGroupMove'>
 
 /** Guías y magnetismo solo existen donde se ve el suelo desde arriba: Plano, Isométrica y Libre. */
 export const guidesAvailableIn = (view: RoomState['view']) => view === 'top' || view === 'isometric' || view === 'free'
@@ -15,13 +16,20 @@ export function createGuideActions({ set, get }: Pick<RoomActionContext, 'set' |
   return {
     setMagnetism: (magnetism) => {
       if (get().magnetismEnabled === magnetism) return
-      saveEditorPreferences({ magnetism, guides: get().guidesEnabled })
+      saveEditorPreferences({ magnetism, guides: get().guidesEnabled, lengthUnit: get().lengthUnit })
       set({ magnetismEnabled: magnetism, activeGuides: [] })
     },
     setGuides: (guides) => {
       if (get().guidesEnabled === guides) return
-      saveEditorPreferences({ magnetism: get().magnetismEnabled, guides })
+      saveEditorPreferences({ magnetism: get().magnetismEnabled, guides, lengthUnit: get().lengthUnit })
       set({ guidesEnabled: guides, activeGuides: [] })
+    },
+    // Solo cambia cómo se muestran y se escriben las medidas; los datos siguen en metros.
+    setLengthUnit: (lengthUnit) => {
+      if (get().lengthUnit === lengthUnit) return
+      setDisplayLengthUnit(lengthUnit)
+      saveEditorPreferences({ magnetism: get().magnetismEnabled, guides: get().guidesEnabled, lengthUnit })
+      set({ lengthUnit })
     },
     setGridSnap: (gridSnap) => { if (get().gridSnap !== gridSnap) set({ gridSnap }) },
     clearDragGuides: () => { if (get().activeGuides.length) set({ activeGuides: [] }) },

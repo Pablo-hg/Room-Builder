@@ -1,3 +1,4 @@
+import { formatPanelLength } from '../../domain/lengthUnit'
 import { MaterialControl } from './MaterialControl'
 import { useInspectorGesture } from './useInspectorGesture'
 import { ROOM_LIMITS, WALL_LABELS } from '../../domain/constants'
@@ -46,6 +47,7 @@ type SelectedOpening = (RoomState['room']['door'] & { id: string; kind: 'door'; 
 export function OpeningInspector({ selectedOpening }: { selectedOpening: SelectedOpening }) {
   const gesture = useInspectorGesture(selectedOpening.id)
   const room = useRoomStore((state) => state.room)
+  useRoomStore((state) => state.lengthUnit) // las medidas se redibujan al cambiar de unidad
   const structurePacks = useRoomStore((state) => state.structurePacks)
   const moveWallObject = useRoomStore((state) => state.moveWallObject)
   const detachWallObject = useRoomStore((state) => state.detachWallObject)
@@ -112,10 +114,10 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
       <span className="eyebrow">Inspector del elemento</span>
       <div className="selected-heading">{pictureShape ? <FurnitureIcon kind={pictureShape} color={selectedOpening.color ?? '#d49a72'} /> : openingSwatchKind && <OpeningSwatch kind={openingSwatchKind} color={selectedOpening.color} />}<div><h2>{openingName}</h2><p>{wallShelf || wallPicture || wallMirror || wallSconce ? 'Elemento montado en pared' : 'Apertura seleccionada'}</p></div></div>
       <div className="property-grid" aria-label={`Características de ${openingName.toLowerCase()}`}>
-        <span><small>Anchura</small><strong>{selectedOpening.width.toFixed(2)} m</strong></span>
-        <span><small>Altura</small><strong>{selectedOpening.height.toFixed(2)} m</strong></span>
+        <span><small>Anchura</small><strong>{formatPanelLength(selectedOpening.width)}</strong></span>
+        <span><small>Altura</small><strong>{formatPanelLength(selectedOpening.height)}</strong></span>
         <span><small>{free ? 'Anclaje' : 'Pared'}</small><strong>{free ? 'Libre' : WALL_LABELS[selectedOpening.wall]}</strong></span>
-        <span><small>{free || wallShelf || wallPicture || wallMirror || wallSconce ? 'Altura base' : selectedOpening.kind === 'window' ? 'Antepecho' : 'Desde suelo'}</small><strong>{(free ? position.y : selectedOpening.sill).toFixed(2)} m</strong></span>
+        <span><small>{free || wallShelf || wallPicture || wallMirror || wallSconce ? 'Altura base' : selectedOpening.kind === 'window' ? 'Antepecho' : 'Desde suelo'}</small><strong>{formatPanelLength(free ? position.y : selectedOpening.sill)}</strong></span>
       </div>
       {selectedOpening.kind === 'window' && <ResizeControls capability={capabilities.resize} value={selectedOpening} disabled={locked} onChange={(dimension, value) => { if (dimension !== 'depth') resizeWallObject(selectedOpening.id, dimension, value) }} />}
       {!selectedOpening.material && <ColorControl

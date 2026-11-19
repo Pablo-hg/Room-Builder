@@ -132,5 +132,8 @@ test('el ajuste a 5 cm es independiente y no cuenta como cambio nuevo', async ({
 
 test('la medida de la habitación se muestra como anchura x fondo = superficie', async ({ page }) => {
   await page.goto('/')
+  // La superficie solo se muestra en Plano.
+  await expect(page.getByTestId('room-size')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await expect(page.getByTestId('room-size')).toHaveText(/5\.5 x 4\.5 = 24\.75 m²/)
 })

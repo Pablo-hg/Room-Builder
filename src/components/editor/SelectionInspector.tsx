@@ -1,3 +1,4 @@
+import { formatPanelLength } from '../../domain/lengthUnit'
 import { useRoomStore } from '../../state/useRoomStore'
 import { deriveSelection } from '../../domain/selection'
 import { BASE_FLOOR_ID, BASE_ROOM_SURFACE_IDS, folderIdFromSelection, folderRoomPack, ROOT_ROOM_FOLDER } from '../../domain/elementFolders'
@@ -13,10 +14,12 @@ import { ColorControl, PositionControl } from './Controls'
 import { useInspectorGesture } from './useInspectorGesture'
 import type { StructureSurfaceKey } from '../../domain/types'
 import { MaterialControl } from './MaterialControl'
+import { MeasureInspector } from './MeasureControls'
 
 function MultiFurnitureInspector({ items }: { items: MultiItem[] }) {
   const bounds = multiSelectionBounds(items)!
   const room = useRoomStore((state) => state.room)
+  useRoomStore((state) => state.lengthUnit) // las medidas se redibujan al cambiar de unidad
   const locked = useRoomStore((state) => [...state.selectedIds, ...items.flatMap((item) => item.packId ? [item.id, item.packId] : [item.id])].some((id) => state.lockedElementIds.includes(id)))
   const furniture = useRoomStore((state) => state.furniture)
   const selectionCount = useRoomStore((state) => state.selectedIds.length)
@@ -41,9 +44,9 @@ function MultiFurnitureInspector({ items }: { items: MultiItem[] }) {
     <span className="eyebrow">Selección múltiple</span>
     <h2>{selectionCount > 1 ? selectionCount : items.length} elementos seleccionados</h2>
     <div className="property-grid" aria-label="Dimensiones del conjunto">
-      <span><small>Anchura</small><strong>{(bounds.max.x - bounds.min.x).toFixed(2)} m</strong></span>
-      <span><small>Fondo</small><strong>{(bounds.max.z - bounds.min.z).toFixed(2)} m</strong></span>
-      <span><small>Altura</small><strong>{(bounds.max.y - bounds.min.y).toFixed(2)} m</strong></span>
+      <span><small>Anchura</small><strong>{formatPanelLength(bounds.max.x - bounds.min.x)}</strong></span>
+      <span><small>Fondo</small><strong>{formatPanelLength(bounds.max.z - bounds.min.z)}</strong></span>
+      <span><small>Altura</small><strong>{formatPanelLength(bounds.max.y - bounds.min.y)}</strong></span>
     </div>
     {(['x', 'y', 'z'] as const).map((axis) => {
       const min = Math.min(-10, bounds.center[axis])
@@ -69,6 +72,8 @@ export function SelectionInspector() {
   const setFloorColor = useRoomStore((state) => state.setFloorColor)
   const setWallSideColor = useRoomStore((state) => state.setWallSideColor)
   const locked = useRoomStore((state) => !!state.selectedId && state.lockedElementIds.includes(state.selectedId))
+  // Editar una cota guardada (solo en Plano) usa este mismo panel, como un mueble o una pared.
+  const editingMeasure = useRoomStore((state) => state.view === 'top' && state.measurements.some((measure) => measure.id === state.measureEditId))
   const selectedFolderId = folderIdFromSelection(selectedId)
   const selectedFolder = selectedFolderId
     ? elementFolders.find((folder) => folder.id === selectedFolderId)
@@ -81,6 +86,7 @@ export function SelectionInspector() {
   const folderPack = selectedFolder && folderRoomPack(elementFolders, assignments, structurePacks, selectedFolder.id)
   // Los controles del pack están siempre en «Espacio» de la habitación enfocada.
   // Seleccionarlo en el árbol no debe generar un segundo inspector independiente.
+  if (editingMeasure) return <MeasureInspector />
   if (folderPack && selectedIds.length === 1) return null
   if (selectedFolder?.id === ROOT_ROOM_FOLDER && selectedIds.length === 1) return <FolderInspector folder={selectedFolder} />
   if (selectedIds.length === 1 && selectedId && BASE_ROOM_SURFACE_IDS.includes(selectedId)) {

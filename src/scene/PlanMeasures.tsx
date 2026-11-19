@@ -1,3 +1,4 @@
+import { formatCoordinate } from '../domain/lengthUnit'
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
@@ -28,17 +29,19 @@ const SNAP_PX = 14
 const DRAG_PX = 6
 const noRaycast = () => undefined
 
-interface Label { texture: THREE.CanvasTexture; widthPx: number }
+interface Label { texture: THREE.CanvasTexture; widthPx: number; heightPx: number }
 
-function createLabel(text: string, color: string): Label {
+function createLabel(content: string | readonly string[], color: string): Label {
+  const lines = typeof content === 'string' ? [content] : content
   const canvas = document.createElement('canvas')
   const context = canvas.getContext('2d')
   const font = `700 ${LABEL_FONT_PX * SCALE}px Arial, sans-serif`
-  let width = text.length * LABEL_FONT_PX * 0.62 * SCALE
-  if (context) { context.font = font; width = context.measureText(text).width }
+  let width = Math.max(...lines.map((line) => line.length)) * LABEL_FONT_PX * 0.62 * SCALE
+  if (context) { context.font = font; width = Math.max(...lines.map((line) => context.measureText(line).width)) }
+  const heightPx = LABEL_HEIGHT_PX * lines.length
   const widthPx = Math.ceil(width / SCALE + LABEL_PAD_PX * 2)
   canvas.width = widthPx * SCALE
-  canvas.height = LABEL_HEIGHT_PX * SCALE
+  canvas.height = heightPx * SCALE
   if (context) {
     context.beginPath()
     context.roundRect(SCALE, SCALE, canvas.width - 2 * SCALE, canvas.height - 2 * SCALE, 6 * SCALE)
@@ -51,12 +54,12 @@ function createLabel(text: string, color: string): Label {
     context.textAlign = 'center'
     context.textBaseline = 'middle'
     context.fillStyle = color
-    context.fillText(text, canvas.width / 2, canvas.height / 2 + SCALE * 0.5)
+    lines.forEach((line, index) => context.fillText(line, canvas.width / 2, (index + 0.5) * LABEL_HEIGHT_PX * SCALE + SCALE * 0.5))
   }
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
   texture.minFilter = THREE.LinearFilter
-  return { texture, widthPx }
+  return { texture, widthPx, heightPx }
 }
 
 /** Metros del mundo por píxel de pantalla en el Plano (cámara ortográfica). */
@@ -112,6 +115,7 @@ function measureText(measure: Pick<PlanMeasure, 'name' | 'stale'>, start: PlanPo
 
 /** Cotas guardadas: solo en Plano detallado y mientras no estén ocultas una a una. */
 export function PlanMeasures({ y }: { y: number }) {
+  useRoomStore((state) => state.lengthUnit) // las etiquetas se redibujan al cambiar de unidad
   const measurements = useRoomStore((state) => state.measurements)
   const planDetailsVisible = useRoomStore((state) => state.planDetailsVisible && state.planDetailCategories.annotations)
   const view = useRoomStore((state) => state.view)
@@ -273,15 +277,19 @@ function Handle({ point, planeY, y, letter, active, onDown }: { point: PlanPoint
   const visible = useRef<THREE.Mesh>(null)
   const hit = useRef<THREE.Mesh>(null)
   const sprite = useRef<THREE.Sprite>(null)
-  const label = useMemo(() => createLabel(letter, EDIT_COLOR), [letter])
+  const unit = useRoomStore((state) => state.lengthUnit)
+  // Las coordenadas cambian a la vez que el punto se arrastra: cada cambio redibuja la etiqueta (pequeña).
+  const coordinates = `x (${formatCoordinate(point.x, unit)}) ; z (${formatCoordinate(point.z, unit)})`
+  const label = useMemo(() => createLabel([letter, coordinates], EDIT_COLOR), [letter, coordinates])
   useEffect(() => () => label.texture.dispose(), [label])
   useFrame(() => {
     const unit = worldPerPixel()
     visible.current?.scale.setScalar((active ? HANDLE_PX + 2 : HANDLE_PX) * unit)
     hit.current?.scale.setScalar(HANDLE_HIT_PX * unit)
     if (sprite.current) {
-      sprite.current.position.set(point.x + 16 * unit, y + 0.02, point.z - 16 * unit)
-      sprite.current.scale.set(Math.max(label.widthPx, LABEL_HEIGHT_PX) * unit, LABEL_HEIGHT_PX * unit, 1)
+      // La etiqueta crece hacia arriba y a la derecha del punto para no taparlo.
+      sprite.current.position.set(point.x + (label.widthPx / 2 + 8) * unit, y + 0.02, point.z - (label.heightPx / 2 + 8) * unit)
+      sprite.current.scale.set(Math.max(label.widthPx, LABEL_HEIGHT_PX) * unit, label.heightPx * unit, 1)
     }
   })
   return <group>
@@ -391,7 +399,8 @@ export function PlanFurnitureDistances({ y }: { y: number }) {
   const room = useRoomStore((state) => state.room)
   const structurePacks = useRoomStore((state) => state.structurePacks)
   const item = useRoomStore((state) => state.selectedIds.length === 1 && state.view === 'top' ? state.furniture.find((candidate) => candidate.id === state.selectedIds[0]) : undefined)
-  const distances = useMemo(() => item ? planFurnitureDistances({ room, structurePacks }, item) : [], [item, room, structurePacks])
+  const lengthUnit = useRoomStore((state) => state.lengthUnit)
+  const distances = useMemo(() => item ? planFurnitureDistances({ room, structurePacks }, item) : [], [item, room, structurePacks, lengthUnit])
   if (!distances.length) return null
   return <group name="plan-furniture-distances">
     {distances.map((distance) => <MeasureLine key={distance.id} id={distance.id} start={distance.start} end={distance.end} y={y} color={DISTANCE_COLOR} text={distance.label} />)}

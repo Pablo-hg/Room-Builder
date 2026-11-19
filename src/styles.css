@@ -760,7 +760,7 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .measure-panel__head { display: flex; align-items: center; justify-content: space-between; }
 .measure-panel__close { min-width: 32px; min-height: 32px; border: 0; background: transparent; color: inherit; font-size: 20px; cursor: pointer; }
 .measure-panel__axes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-.measure-panel button, .measure-section button, .measure-form button { min-height: 32px; padding: 0 9px; border: 1px solid #cdd6cc; border-radius: 7px; background: #fff; color: #405748; font: inherit; font-weight: 700; cursor: pointer; }
+.measure-panel button, .measure-section button, .measure-inspector button { min-height: 32px; padding: 0 9px; border: 1px solid #cdd6cc; border-radius: 7px; background: #fff; color: #405748; font: inherit; font-weight: 700; cursor: pointer; }
 .measure-panel button.is-active, .measure-panel button[aria-pressed="true"].is-active { background: #b4541c; border-color: #b4541c; color: #fff; }
 .measure-panel button:disabled { opacity: .5; cursor: not-allowed; }
 .measure-panel__snap { display: flex; align-items: center; gap: 7px; min-height: 32px; cursor: pointer; }
@@ -782,18 +782,13 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .measure-row__warning { margin: 4px 0 0; color: #b3261e; font-size: 12.5px; font-weight: 700; }
 .measure-row__warning button { margin-left: 8px; }
 .measure-row__actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.measure-form { display: grid; gap: 7px; margin-top: 6px; }
-.measure-form fieldset { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; padding: 6px 8px; border: 1px solid #e3dfd7; border-radius: 7px; }
-.measure-form legend { padding: 0 4px; font-size: 12px; font-weight: 700; color: #6f766f; }
 .measure-form__field { display: grid; gap: 2px; font-size: 12px; font-weight: 700; color: #6f766f; }
 .measure-form__field--wide { grid-column: 1 / -1; }
-.measure-form input { min-height: 32px; padding: 0 7px; border: 1px solid #cdd6cc; border-radius: 6px; font: inherit; }
-.measure-form__error { margin: 0; color: #b3261e; font-size: 12.5px; }
-.measure-add summary { cursor: pointer; font-weight: 700; color: #405748; min-height: 32px; display: flex; align-items: center; }
+.measure-form__field input { min-height: 32px; padding: 0 7px; border: 1px solid #cdd6cc; border-radius: 6px; font: inherit; }
 @media (max-width: 760px) {
   .measure-panel { position: static; width: auto; }
   .camera-controls--plan .measure-toggle { min-height: 44px; }
-  .measure-panel button, .measure-section button, .measure-form button { min-height: 44px; }
+  .measure-panel button, .measure-section button, .measure-inspector button { min-height: 44px; }
 }
 /* El botón Medir hereda `.camera-controls button` (34 px) y `.camera-controls span` (82 px mínimo): se recuperan sus medidas. */
 .camera-controls--plan .measure-toggle { width: auto; height: 36px; flex: none; border-radius: 8px; font-size: 13px; }
@@ -804,21 +799,16 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .camera-controls--plan .plan-camera-hint { white-space: nowrap; }
 .camera-controls--plan .plan-camera-hint span { min-width: 0; }
 /* El panel izquierdo es estrecho: los formularios de cotas deben encajar sin desbordar. */
-.measure-section, .measure-list, .measure-row, .measure-row__main, .measure-add, .measure-form { min-width: 0; max-width: 100%; box-sizing: border-box; }
-.measure-form fieldset { min-width: 0; box-sizing: border-box; }
+.measure-section, .measure-list, .measure-row, .measure-row__main, .measure-inspector { min-width: 0; max-width: 100%; box-sizing: border-box; }
 .measure-form__field { min-width: 0; }
-.measure-form input { width: 100%; min-width: 0; box-sizing: border-box; }
-.measure-form button[type="submit"] { width: 100%; box-sizing: border-box; }
+.measure-form__field input { width: 100%; min-width: 0; box-sizing: border-box; }
 .measure-row__actions button { flex: 1 1 auto; min-width: 0; }
 
-.measure-form__anchor { grid-column: 1 / -1; color: #2a5d9f; font-size: 11.5px; line-height: 1.35; font-weight: 600; }
 
 .measure-row.is-editing { border-color: #1d6fd1; box-shadow: 0 0 0 2px rgba(29,111,209,.15); }
 .measure-edit { display: grid; gap: 8px; padding-top: 4px; }
 .measure-edit__hint { margin: 0; color: #1d4f94; font-size: 12.5px; font-weight: 600; line-height: 1.4; }
 .measure-edit__point { display: grid; gap: 4px; font-size: 12.5px; font-weight: 700; color: #405748; }
-.measure-edit__nudges { display: flex; gap: 6px; }
-.measure-edit__nudges button { flex: 1 1 0; min-width: 0; font-size: 16px; }
 
 /* Filtros de «Mostrar detalles» (#38): cuatro casillas compactas dentro de la barra del Plano. */
 .camera-controls--plan .plan-categories { display: flex; align-items: center; gap: 2px; padding: 0 6px; border-right: 1px solid rgba(76,91,80,.12); }
@@ -877,6 +867,15 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .paint-panel__field { display: grid; gap: 4px; font-size: 13px; }
 .paint-panel select { min-height: 32px; border: 1px solid #cdd6cc; border-radius: 7px; background: #fff; }
 body.paint-tool canvas { cursor: crosshair; }
+
+.measure-inspector { display: grid; gap: 8px; }
+.measure-row__editing { margin: 0; color: #1d4f94; font-size: 12.5px; font-weight: 600; }
+/* Punto de una cota en edición: «X ← valor →» y «Z ← valor →». */
+.measure-coordinate { display: grid; grid-template-columns: 1.2em minmax(0, 1fr) minmax(0, 1.7fr) minmax(0, 1fr); gap: 6px; align-items: center; }
+.measure-coordinate__axis { font-size: 12px; font-weight: 800; color: #6f766f; text-align: center; }
+.measure-coordinate > button { width: 100%; min-width: 0; font-size: 16px; }
+.measure-coordinate input { width: 100%; min-width: 0; box-sizing: border-box; min-height: 32px; padding: 0 6px; border: 1px solid #cdd6cc; border-radius: 6px; font: inherit; font-weight: 700; color: #2a5d9f; text-align: center; }
+.measure-coordinate input[aria-invalid="true"] { border-color: #b3261e; background: #fdf1f0; }
 
 /* Miniaturas de acabados (#39): mismo patrón que la escena, teñido. */
 .material-swatch { display: inline-block; flex: none; width: 40px; height: 40px; border: 1px solid rgba(60, 50, 30, .25); border-radius: 8px; background-size: cover; background-position: center; }

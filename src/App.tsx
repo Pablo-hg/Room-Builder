@@ -74,6 +74,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
   const [rightAreaHeld, setRightAreaHeld] = useState(false)
   const state = useRoomStore(useShallow(selectEditorScene))
   const hiddenElementIds = useRoomStore((current) => current.hiddenElementIds)
+  const lengthUnit = useRoomStore((current) => current.lengthUnit)
   const areaSelect = useRoomStore((current) => current.areaSelect)
   const setAreaSelect = useRoomStore((current) => current.setAreaSelect)
   const collisions = useMemo(() => detectSceneCollisions({ room: state.room, furniture: state.furniture, structurePacks: state.structurePacks, hiddenElementIds }), [state.room, state.furniture, state.structurePacks, hiddenElementIds])
@@ -231,7 +232,7 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
               <span className="visible-walls-badge"><b aria-hidden="true">◫</b> {visibleWallsText}</span>
               <button type="button" className={`area-select-toggle${areaSelect || rightAreaHeld ? ' is-active' : ''}`} aria-pressed={areaSelect || rightAreaHeld} onClick={() => setAreaSelect(!areaSelect)} title="Arrastra para seleccionar varios objetos; también puedes mantener el botón derecho o usar Mayús + arrastrar sobre el fondo">▢ Selección por área</button>
               {!exportMode && <PaintToolToggle />}
-              <span className="room-size" data-testid="room-size" aria-label={`Superficie de la habitación: ${roomSize.width.toFixed(1)} por ${roomSize.depth.toFixed(1)} metros, ${roomArea} metros cuadrados`}><b aria-hidden="true">⌂</b> {roomSize.width.toFixed(1)} x {roomSize.depth.toFixed(1)} = {roomArea} m²</span>
+              {state.view === 'top' && <span className="room-size" data-testid="room-size" aria-label={`Superficie de la habitación: ${roomSize.width.toFixed(1)} por ${roomSize.depth.toFixed(1)} metros, ${roomArea} metros cuadrados`}><b aria-hidden="true">⌂</b> {lengthUnit === 'cm' ? `${Math.round(roomSize.width * 100)} x ${Math.round(roomSize.depth * 100)} cm` : `${roomSize.width.toFixed(1)} x ${roomSize.depth.toFixed(1)}`} = {roomArea} m²</span>}
               <MovementStatus />
               {!exportMode && <SceneCollisionPanel collisions={collisions} outside={outside} unsupported={unsupported} />}
             </div>

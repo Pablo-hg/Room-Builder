@@ -28,16 +28,14 @@ async function openPlan(page: Page) {
   await page.getByRole('button', { name: 'Plano', exact: true }).click()
 }
 
-async function addByCoordinates(page: Page, name: string, a: [string, string], b: [string, string]) {
-  const section = page.locator('.measure-section')
-  if (!(await section.locator('details.measure-add').evaluate((element) => (element as HTMLDetailsElement).open))) await section.getByText('Añadir por coordenadas').click()
-  await section.getByLabel('Nombre (opcional)').fill(name)
-  const fields = section.locator('.measure-add input[id^="add-measure-"]')
-  await section.locator('#add-measure-x1').fill(a[0]); await section.locator('#add-measure-z1').fill(a[1])
-  await section.locator('#add-measure-x2').fill(b[0]); await section.locator('#add-measure-z2').fill(b[1])
-  void fields
-  await section.getByRole('button', { name: 'Guardar cota', exact: true }).click()
+/** Las cotas se crean con «Medir»; para preparar el estado de una prueba se da de alta directamente. */
+async function addMeasure(page: Page, name: string, a: [string, string], b: [string, string]) {
+  const n = (value: string) => Number(value.replace(',', '.'))
+  await call(page, 'addMeasure', { x: n(a[0]), z: n(a[1]) }, { x: n(b[0]), z: n(b[1]) }, name)
 }
+
+/** Editor de la cota en edición: está en el panel de edición de la selección, no en la lista. */
+const measureEditor = (page: Page) => page.getByRole('region', { name: 'Cota en edición' })
 
 test('medir en Plano: dos clics dan la distancia real y la herramienta no cambia vista, cámara ni selección', { tag: '@smoke' }, async ({ page }) => {
   await openPlan(page)
@@ -84,7 +82,7 @@ test('Escape descarta la medida en curso, sale de la herramienta y salir de Plan
 
 test('alta por coordenadas: la diagonal 4 × 3 mide 5 m', async ({ page }) => {
   await openPlan(page)
-  await addByCoordinates(page, 'Diagonal', ['0', '0'], ['4', '3'])
+  await addMeasure(page, 'Diagonal', ['0', '0'], ['4', '3'])
   await expect(page.getByTestId('measure-row')).toHaveCount(1)
   await expect(page.getByTestId('measure-row').first()).toContainText('Diagonal · 5,00 m (4,00 m × 3,00 m)')
 })
@@ -99,9 +97,9 @@ test('dos cotas guardadas: editar, ocultar, eliminar y deshacer', { tag: '@smoke
   await expect(rows.nth(1)).toContainText('Pasillo · 2,50 m')
   await rows.nth(1).getByRole('button', { name: 'Editar Pasillo' }).click()
   // Ajuste fino con teclado: Mayús + clic mueve el punto B 10 cm hacia +Z (2,50 → 2,60 m).
-  await rows.nth(1).getByRole('button', { name: /Mover el punto B 1 cm hacia \+Z/ }).click({ modifiers: ['Shift'] })
+  await measureEditor(page).getByRole('button', { name: /Mover el punto B 1 cm hacia \+Z/ }).click({ modifiers: ['Shift'] })
   await expect(rows.nth(1)).toContainText('2,60 m')
-  await rows.nth(1).getByRole('button', { name: 'Terminar de editar Pasillo' }).click()
+  await measureEditor(page).getByRole('button', { name: 'Cerrar la edición de Pasillo' }).click()
   await rows.nth(1).getByRole('button', { name: 'Ocultar Pasillo' }).click()
   await expect(rows.nth(1)).toContainText('Oculta')
   expect((await stateOf(page)).measurements[1].hidden).toBe(true)
@@ -113,8 +111,8 @@ test('dos cotas guardadas: editar, ocultar, eliminar y deshacer', { tag: '@smoke
 
 test('las cotas sobreviven a guardar, recargar y al JSON; el formato se valida al importar', async ({ page }) => {
   await openPlan(page)
-  await addByCoordinates(page, 'Diagonal', ['0', '0'], ['4', '3'])
-  await addByCoordinates(page, 'Lado', ['0', '0'], ['0', '2'])
+  await addMeasure(page, 'Diagonal', ['0', '0'], ['4', '3'])
+  await addMeasure(page, 'Lado', ['0', '0'], ['0', '2'])
   await call(page, 'updateMeasure', (await stateOf(page)).measurements[1].id, { hidden: true })
   await call(page, 'saveDesign')
   const json = await page.evaluate(async () => {
@@ -160,11 +158,12 @@ test('al mover o borrar el referente la cota se actualiza o avisa, nunca miente'
   await expect(row).toContainText('sigue a su referente')
   // Editar solo el nombre no desancla la cota: el panel de edición avisa de qué sigue cada punto.
   await row.getByRole('button', { name: /^Editar/ }).click()
-  await expect(row).toContainText('Punto A · sigue a el centro de «Sillón»')
-  await expect(row).toContainText('Punto B · fijo')
-  await row.getByLabel('Nombre (opcional)').fill('Al borde')
-  await row.getByLabel('Nombre (opcional)').press('Enter')
-  await row.getByRole('button', { name: /^Terminar de editar/ }).click()
+  await expect(measureEditor(page)).toContainText('Punto A · sigue a el centro de «Sillón»')
+  await expect(measureEditor(page)).toContainText('Punto B')
+  await expect(measureEditor(page)).not.toContainText('Punto B · sigue a')
+  await measureEditor(page).getByLabel('Nombre (opcional)').fill('Al borde')
+  await measureEditor(page).getByLabel('Nombre (opcional)').press('Enter')
+  await measureEditor(page).getByRole('button', { name: /^Cerrar la edición/ }).click()
   await expect(row).toContainText('Al borde')
   await expect(row).toContainText('sigue a su referente')
   await call(page, 'moveFurniture', chair.id, chair.x + 1, chair.z)
@@ -202,7 +201,7 @@ test('arrastrar un punto de una cota guardada la mueve en un solo paso de histor
   const added = await stateOf(page)
   const row = page.getByTestId('measure-row').first()
   await row.getByRole('button', { name: 'Editar Pasillo' }).click()
-  await expect(row).toContainText('Arrastra los puntos')
+  await expect(measureEditor(page)).toContainText('Arrastra los puntos')
   const a = map.screenOf(-1, 1)
   const target = { x: a.x - 40, y: a.y + 50 }
   // Esc a mitad de arrastre descarta el cambio.
@@ -255,7 +254,7 @@ test('un punto arrastrado sobre una esquina de mueble se ancla y sigue al mueble
   await page.mouse.up()
   const anchored = (await stateOf(page)).measurements[0]
   expect(anchored.start.anchor).toMatchObject({ kind: 'furniture', id: chair.id })
-  await expect(row).toContainText('Punto A · sigue a')
+  await expect(measureEditor(page)).toContainText('Punto A · sigue a')
   await call(page, 'moveFurniture', chair.id, chair.x + 1, chair.z)
   const followed = (await stateOf(page)).measurements[0]
   expect(followed.start.x).toBeCloseTo(corner.x + 1, 2)

@@ -25,7 +25,10 @@ test('recorrido completo de una habitación: crear, amueblar, editar, vistas, gu
   expect(await savedDesigns(page)).toEqual([])
   await setMeasure(page, 'Introducir anchura en metros', '4,2')
   await setMeasure(page, 'Introducir profundidad en metros', '3,6')
+  // La superficie solo se muestra en Plano: se mira allí y se vuelve a la vista de partida.
+  await page.getByRole('button', { name: 'Plano', exact: true }).click()
   await expect(page.getByTestId('room-size')).toHaveText(/4.2 x 3.6 = 15.12 m²/)
+  await page.getByRole('button', { name: 'Isométrica', exact: true }).click()
 
   // 2 · Puerta, ventana, mobiliario y decoración; se redimensiona una ventana.
   await expandAllCatalogCategories(page)
