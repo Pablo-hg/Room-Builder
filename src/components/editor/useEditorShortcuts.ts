@@ -5,9 +5,10 @@ import { selectEditorShortcuts } from '../../state/selectors'
 import { selectableItems } from '../../domain/multiSelection'
 import { folderElementIds, folderIdFromSelection, orderedSceneIds, sceneEntryParent } from '../../domain/elementFolders'
 
-export function useEditorShortcuts() {
+export function useEditorShortcuts(enabled = true) {
   const state = useRoomStore(useShallow(selectEditorShortcuts))
   useEffect(() => {
+    if (!enabled) return
     const handleShortcut = (event: KeyboardEvent) => {
       const target = event.target
       const key = event.key.toLowerCase()
@@ -132,6 +133,6 @@ export function useEditorShortcuts() {
     }
     window.addEventListener('keydown', handleShortcut)
     return () => window.removeEventListener('keydown', handleShortcut)
-  }, [state.copySelected, state.cutSelected, state.pasteSelected, state.redo, state.removeSelected, state.rotateFurniture, state.undo])
+  }, [enabled, state.copySelected, state.cutSelected, state.pasteSelected, state.redo, state.removeSelected, state.rotateFurniture, state.undo])
 
 }

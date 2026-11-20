@@ -10,7 +10,7 @@
 ## Alcance funcional comprometido
 1. **Base editor (F0–F1):** dimensiones en metros/cm, cotas automáticas en Plano, ventanas/puerta, catálogo, redimensionado, selección/carpetas/gestos, color y bloqueo, advertencia roja ante solapes de muebles permitidos, vistas Plano/Isométrica/POV fijo (+ Frontal/Libre), undo/redo, persistencia local, JSON v1–v5 y GLB; UX, accesibilidad y CI en verde.
 2. **Precisión (F2):** guías visuales y ajuste magnético opcional en **Plano e Isométrica** (#37); medición libre con ayudas y **anotaciones guardables** (#38); plantillas vacías, amuebladas y propias (#41).
-3. **Aspecto/presentación (F3):** biblioteca de materiales estilizados con escala/rotación/tonalidades, herramienta Pintar y cuentagotas (#39); fotografía PNG avanzada y posiciones de cámara guardadas (#40).
+3. **Aspecto/presentación (F3):** biblioteca de materiales estilizados con escala/rotación/tonalidades, herramienta Pintar y cuentagotas (#39); fotografía PNG, cámaras guardadas y guía con referencias para una IA externa elegida por el usuario (#40).
 4. **Casa completa (F4):** modelo de proyecto versionado y migrador (#51), editor de vértices (#35), varias habitaciones conectadas con medianeras únicas y planta global (#52), varias plantas con selector (#53), plano de referencia con calibración y **trazado asistido bajo control del usuario** (#45), POV WASD desde puerta y recorrido continuo entre habitaciones (#36).
 5. **Creación manual (F5):** editor modular de muebles basado en primitivas, agrupación, duplicación y aplicación de materiales; catálogo propio reutilizable (#47).
 6. **Cierre (F6):** pruebas integrales con usuarios, seguridad de importaciones, rendimiento, migraciones, licencias, build y gate de publicación #54.

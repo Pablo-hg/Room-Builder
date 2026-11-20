@@ -61,7 +61,7 @@ Un control solo debe aparecer si aporta valor inmediato en el contexto de la tar
 ## Herramientas de precisión y presentación comprometidas
 - [#37](https://github.com/Pablo-hg/Room-Builder/issues/37): guías inteligentes **en Plano e Isométrica**, con magnetismo configurable independiente del snap de cuadrícula; `Alt` suspende la atracción. Guías no bloquean solapes intencionales.
 - [#38](https://github.com/Pablo-hg/Room-Builder/issues/38): regla entre dos puntos, cotas guardadas/editables y ajuste a geometría. Las **cotas del perímetro** las implementa #26; no duplicarlas.
-- [#40](https://github.com/Pablo-hg/Room-Builder/issues/40): modo foto con composición, resolución/proporción/fondo y **cámaras guardadas**; el proyecto persistirá su definición versionada.
+- [#40](https://github.com/Pablo-hg/Room-Builder/issues/40): modo foto con composición, resolución/proporción/fondo y **cámaras guardadas**; el proyecto persistirá su definición versionada. Se prepararán referencias descargables y una guía para que el usuario genere imágenes realistas en la herramienta externa que elija; el resultado no se importa a Room Builder.
 - [#41](https://github.com/Pablo-hg/Room-Builder/issues/41): plantillas editables vacías, amuebladas y propias; la inserción de una estancia dentro de casa se integra en #52.
 - [#45](https://github.com/Pablo-hg/Room-Builder/issues/45): imagen de plano con escala calibrada, líneas/esquinas sugeridas y trazado corregible; no interpretación automática.
 

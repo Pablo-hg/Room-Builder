@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@react-three/fiber": "^9.4.0",
+    "fflate": "^0.8.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "three": "^0.180.0",

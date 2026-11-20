@@ -114,7 +114,7 @@ function measureText(measure: Pick<PlanMeasure, 'name' | 'stale'>, start: PlanPo
 }
 
 /** Cotas guardadas: solo en Plano detallado y mientras no estén ocultas una a una. */
-export function PlanMeasures({ y }: { y: number }) {
+export function PlanMeasures({ y, photo = false }: { y: number; photo?: boolean }) {
   useRoomStore((state) => state.lengthUnit) // las etiquetas se redibujan al cambiar de unidad
   const measurements = useRoomStore((state) => state.measurements)
   const planDetailsVisible = useRoomStore((state) => state.planDetailsVisible && state.planDetailCategories.annotations)
@@ -122,14 +122,14 @@ export function PlanMeasures({ y }: { y: number }) {
   const draft = useRoomStore((state) => state.view === 'top' ? state.measureDraft : null)
   const editId = useRoomStore((state) => state.view === 'top' ? state.measureEditId : null)
   // La cota que se está editando la dibuja el editor (siempre visible, aunque esté oculta).
-  const shown = visiblePlanMeasures(measurements, { detailsVisible: planDetailsVisible, view }).filter((measure) => measure.id !== editId)
+  const shown = visiblePlanMeasures(measurements, { detailsVisible: photo || planDetailsVisible, view }).filter((measure) => photo || measure.id !== editId)
   if (!shown.length && !draft && !editId) return null
   return <group name="plan-measures">
     {shown.map((measure) => (
       <MeasureLine key={measure.id} id={measure.id} start={measure.start} end={measure.end} y={y}
         color={measure.stale ? STALE_COLOR : SAVED_COLOR} text={measureText(measure, measure.start, measure.end)} />
     ))}
-    {draft?.end && <MeasureLine id="measure-draft" start={draft.start} end={draft.end} y={y + 0.01} color={DRAFT_COLOR} text={measureText({}, draft.start, draft.end)} />}
+    {!photo && draft?.end && <MeasureLine id="measure-draft" start={draft.start} end={draft.end} y={y + 0.01} color={DRAFT_COLOR} text={measureText({}, draft.start, draft.end)} />}
   </group>
 }
 

@@ -11,7 +11,7 @@ import { cameraFarPlane } from './cameraClipping'
 
 const ISOMETRIC_CAMERA_TARGET_HEIGHT = 0.8
 
-export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDragging, freeAzimuth, freeElevation, isFreeOrbitDragging, cameraZoom, wallView, frontCameraHeight, povYaw }: Pick<SceneProps, 'room' | 'view' | 'orientation' | 'isoAngle' | 'isIsoOrbitDragging' | 'freeAzimuth' | 'freeElevation' | 'isFreeOrbitDragging' | 'cameraZoom' | 'wallView' | 'frontCameraHeight' | 'povYaw'>) {
+export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDragging, freeAzimuth, freeElevation, isFreeOrbitDragging, cameraZoom, wallView, frontCameraHeight, povYaw, instant = false, planPadding = 2.2 }: Pick<SceneProps, 'room' | 'view' | 'orientation' | 'isoAngle' | 'isIsoOrbitDragging' | 'freeAzimuth' | 'freeElevation' | 'isFreeOrbitDragging' | 'cameraZoom' | 'wallView' | 'frontCameraHeight' | 'povYaw'> & { instant?: boolean; planPadding?: number }) {
   const { camera, size } = useThree()
   const topCameraX = useRoomStore((state) => state.topCameraX)
   const topCameraZ = useRoomStore((state) => state.topCameraZ)
@@ -112,7 +112,7 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
     } else if (view === 'top') {
       // Con el Plano girado un cuarto de vuelta, el ancho de la habitación pasa a ser el alto de la pantalla.
       const sideways = topViewWallForOrientation(orientation) === 'east' || topViewWallForOrientation(orientation) === 'west'
-      const zoom = Math.min(size.width / ((sideways ? room.depth : room.width) + 2.2), size.height / ((sideways ? room.width : room.depth) + 2.2))
+      const zoom = Math.min(size.width / ((sideways ? room.depth : room.width) + planPadding), size.height / ((sideways ? room.width : room.depth) + planPadding))
       const topViewUp: Record<WallSide, [number, number, number]> = {
         north: [0, 0, -1],
         east: [1, 0, 0],
@@ -166,7 +166,7 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
     targetCamera.updateProjectionMatrix()
     const currentZoom = 'zoom' in camera ? camera.zoom : 1
 
-    if (!initialized.current || reduceMotion || (view === 'top' && previous.view === 'top') || (view === 'isometric' && isIsoOrbitDragging) || (view === 'free' && (isFreeOrbitDragging || freeMoved))) {
+    if (!initialized.current || reduceMotion || instant || (view === 'top' && previous.view === 'top') || (view === 'isometric' && isIsoOrbitDragging) || (view === 'free' && (isFreeOrbitDragging || freeMoved))) {
       camera.position.copy(targetCamera.position)
       camera.quaternion.copy(targetCamera.quaternion)
       if (camera instanceof THREE.OrthographicCamera || camera instanceof THREE.PerspectiveCamera) camera.zoom = targetZoom
@@ -236,7 +236,7 @@ export function CameraRig({ room, view, orientation, isoAngle, isIsoOrbitDraggin
       camera.aspect = targetCamera.aspect
       camera.updateProjectionMatrix()
     }
-  }, [camera, cameraZoom, freeAzimuth, freeElevation, frontCameraHeight, isoAngle, isFreeOrbitDragging, isIsoOrbitDragging, orientation, povYaw, reduceMotion, room, size, view, wallView, topCameraX, topCameraZ, isoCameraHeight, freeCameraOffset, activeRoom, hasFloors, roomX, roomY, roomZ, anchorRoom, structurePacks])
+  }, [camera, cameraZoom, freeAzimuth, freeElevation, frontCameraHeight, instant, isoAngle, isFreeOrbitDragging, isIsoOrbitDragging, orientation, planPadding, povYaw, reduceMotion, room, size, view, wallView, topCameraX, topCameraZ, isoCameraHeight, freeCameraOffset, activeRoom, hasFloors, roomX, roomY, roomZ, anchorRoom, structurePacks])
 
   useFrame((_, delta) => {
     const transition = animation.current
