@@ -2,6 +2,7 @@ import type { ElementFolder, FurnitureKind, GridSurface, StructurePack, WallSide
 import { validateAxisLocks } from './axisLocks'
 import { validateFurnitureWallAttachment } from './furnitureWalls'
 import { validateFreeWallPosition, validateWallPosition } from './freeWallPosition'
+import { parseMaterialFinish, validateDesignMaterials } from './materials'
 
 /**
  * Contrato candidato Project/Room/Layout (R4).
@@ -34,6 +35,8 @@ export interface FloorV2 {
 }
 
 export interface RoomV2 {
+  floorMaterial?: import('./materials').MaterialFinish
+  wallMaterials?: Partial<Record<WallSide, import('./materials').MaterialFinish>>
   id: string
   name: string
   floorId: string
@@ -57,6 +60,7 @@ export interface WallV2 {
 }
 
 export interface OpeningV2 {
+  material?: import('./materials').MaterialFinish
   wallPosition?: import('./types').WindowConfig['wallPosition']
   freePosition?: import('./types').WindowConfig['freePosition']
   axisLocks?: import('./types').AxisLocks
@@ -86,6 +90,7 @@ export interface FurnitureDefinitionV2 {
 }
 
 export interface FurnitureInstanceV2 {
+  material?: import('./materials').MaterialFinish
   wallAttachment?: import('./furnitureWalls').FurnitureWallAttachment
   axisLocks?: import('./types').AxisLocks
   attachmentPolicy?: 'by-type'
@@ -128,7 +133,7 @@ export interface ProjectMetadataV2 {
   createdAt: string
   updatedAt: string
   source: 'v1-design' | 'new'
-  migratedFromVersion?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14
+  migratedFromVersion?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15
 }
 
 export interface ProjectV2 {
@@ -275,6 +280,8 @@ function normalizedStructure(project: Pick<ProjectV2, 'floors' | 'rooms' | 'wall
         ? Object.fromEntries(WALL_SIDES.flatMap((side) => room.wallColors?.[side] ? [[side, room.wallColors[side]]] : []))
         : null,
       floorColor: room.floorColor ?? null,
+      ...(room.floorMaterial ? { floorMaterial: room.floorMaterial } : {}),
+      ...(room.wallMaterials ? { wallMaterials: room.wallMaterials } : {}),
     })),
     walls: byId(project.walls).map((wall) => ({
       id: wall.id,
@@ -297,6 +304,7 @@ function normalizedStructure(project: Pick<ProjectV2, 'floors' | 'rooms' | 'wall
       height: round(opening.height),
       bottom: round(opening.bottom),
       color: opening.color,
+      ...(opening.material ? { material: opening.material } : {}),
       rotation: round(opening.rotation ?? 0),
       ...(opening.freePosition ? { freePosition: { ...opening.freePosition } } : {}),
       ...(opening.wallPosition ? { wallPosition: { ...opening.wallPosition } } : {}),
@@ -376,6 +384,8 @@ export function validateProject(project: ProjectV2): ProjectValidationIssue[] {
     if (room.wallColors && Object.entries(room.wallColors).some(([side, color]) => !isWallSide(side) || typeof color !== 'string')) {
       add('invalid-room', `${path}.wallColors`, 'Colores de pared inválidos.')
     }
+    try { validateDesignMaterials({ version: 15, room, furniture: [] }) }
+    catch { add('invalid-room', path, 'Materiales de habitación inválidos.') }
   }
 
   for (const [index, floor] of project.floors.entries()) {
@@ -451,6 +461,7 @@ export function validateProject(project: ProjectV2): ProjectValidationIssue[] {
     }
     if (!isFiniteNumber(opening.offset)) add('invalid-opening', `${path}.offset`, 'Posición de abertura inválida.')
     if (typeof opening.color !== 'string') add('invalid-opening', `${path}.color`, 'Color de abertura inválido.')
+    if (opening.material !== undefined && !parseMaterialFinish(opening.material)) add('invalid-opening', `${path}.material`, 'Material de abertura inválido.')
     if (opening.rotation !== undefined && !isFiniteNumber(opening.rotation)) add('invalid-opening', `${path}.rotation`, 'Rotación de abertura inválida.')
     if (opening.wallPosition !== undefined) {
       try { validateWallPosition(opening.wallPosition) } catch { add('invalid-opening', `${path}.wallPosition`, 'Anclaje a paredes conectadas inválido.') }
@@ -542,6 +553,8 @@ export function validateProject(project: ProjectV2): ProjectValidationIssue[] {
       if (![item.x, item.y, item.z, item.rotation].every(isFiniteNumber)) add('invalid-furniture', itemPath, 'Posición o rotación inválida.')
       if (!isPositive(item.width) || !isPositive(item.depth) || !isPositive(item.height)) add('invalid-furniture', itemPath, 'Medidas de mueble inválidas.')
       if (typeof item.color !== 'string') add('invalid-furniture', `${itemPath}.color`, 'Color de mueble inválido.')
+      try { validateDesignMaterials({ version: 15, room: {}, furniture: [item] }) }
+      catch { add('invalid-furniture', `${itemPath}.material`, 'Material de mueble inválido.') }
       if (item.attachmentPolicy !== undefined && item.attachmentPolicy !== 'by-type') add('invalid-furniture', `${itemPath}.attachmentPolicy`, 'Política de anclaje inválida.')
     }
   }

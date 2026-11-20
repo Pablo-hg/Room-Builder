@@ -1,3 +1,4 @@
+import { formatPanelLength } from '../../domain/lengthUnit'
 import { useState } from 'react'
 import { DEFAULT_FLOOR_COLOR, DEFAULT_WALL_COLOR, WALL_LABELS, WALL_SIDES } from '../../domain/constants'
 import { useRoomStore } from '../../state/useRoomStore'
@@ -9,6 +10,7 @@ import { DiagnosticExportButton } from './DiagnosticExportButton'
 
 export function SettingsPanel({ onStartGuide }: { onStartGuide: () => void }) {
   const state = useRoomStore()
+  useRoomStore((state) => state.lengthUnit) // las medidas se redibujan al cambiar de unidad
   const cameraRoom = focusedRoom(state)
   const editableRoom = cameraRoom.editable
   const pack = state.structurePacks.find((candidate) => candidate.id === cameraRoom.packId)
@@ -44,7 +46,7 @@ export function SettingsPanel({ onStartGuide }: { onStartGuide: () => void }) {
             <div id="room-section-content" hidden={roomSectionCollapsed}>
               <p className="section-copy">{editableRoom ? 'Habitación enfocada en la cámara. Las dimensiones solo modifican esta habitación.' : 'La habitación enfocada necesita una carpeta con suelo y cuatro paredes alineadas para editar sus dimensiones.'}</p>
               <div className="dimension-visual" aria-hidden="true">
-                <span>{cameraRoom.size.depth.toFixed(1)} m</span><div><b>{cameraRoom.size.width.toFixed(1)} m</b><i>⌂</i></div>
+                <span>{formatPanelLength(cameraRoom.size.depth, 1)}</span><div><b>{formatPanelLength(cameraRoom.size.width, 1)}</b><i>⌂</i></div>
               </div>
               <DimensionControl field="width" label="Anchura" />
               <DimensionControl field="depth" label="Profundidad" />
@@ -54,7 +56,7 @@ export function SettingsPanel({ onStartGuide }: { onStartGuide: () => void }) {
           <div id="room-appearance-content" hidden={roomSectionCollapsed}>
             <ColorControl
               label="Suelo"
-              value={pack?.surfaces.find((surface) => surface.kind === 'floor')?.color ?? room.floorColor ?? DEFAULT_FLOOR_COLOR}
+              value={pack ? (pack.surfaces.find((surface) => surface.kind === 'floor')?.material?.color ?? pack.surfaces.find((surface) => surface.kind === 'floor')?.color ?? DEFAULT_FLOOR_COLOR) : (room.floorMaterial?.color ?? room.floorColor ?? DEFAULT_FLOOR_COLOR)}
               onChange={(color) => setSelectedColor('floor', color)}
             />
             <ColorControl
@@ -80,7 +82,7 @@ export function SettingsPanel({ onStartGuide }: { onStartGuide: () => void }) {
                 <ColorControl
                   key={wall}
                   label={`Pared ${WALL_LABELS[wall]}`}
-                  value={pack?.surfaces.find((surface) => surface.wall === wall)?.color ?? room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR}
+                  value={pack ? (pack.surfaces.find((surface) => surface.wall === wall)?.material?.color ?? pack.surfaces.find((surface) => surface.wall === wall)?.color ?? DEFAULT_WALL_COLOR) : (room.wallMaterials?.[wall]?.color ?? room.wallColors?.[wall] ?? room.wallColor ?? DEFAULT_WALL_COLOR)}
                   onChange={(color) => setSelectedColor('wall', color, wall)}
                 />
               ))}

@@ -98,6 +98,7 @@ export function StructureSurfaceTransformGizmo({
     onPointerCancel: (event: ThreeEvent<PointerEvent>) => { gesture.cancel(); stopDrag(event) },
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
+      if (event.nativeEvent.buttons !== 0) return
       setHoveredAxis(axis)
       document.body.classList.add('can-grab')
     },
@@ -155,6 +156,7 @@ export function StructureSurfaceTransformGizmo({
     },
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
+      if (event.nativeEvent.buttons !== 0) return
       setRingHovered(true)
       document.body.classList.add('can-grab')
     },

@@ -3,6 +3,7 @@ import { structureSurfaceName } from '../../domain/selection'
 import { useInspectorGesture } from './useInspectorGesture'
 import { useRoomStore } from '../../state/useRoomStore'
 import { ColorControl, StructurePositionControls, StructureSizeControls } from './Controls'
+import { MaterialControl } from './MaterialControl'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
 
@@ -15,7 +16,7 @@ export function SurfaceInspector({ selectedSurface }: { selectedSurface: { pack:
   const removeStructureSurface = useRoomStore((state) => state.removeStructureSurface)
   const selectElement = useRoomStore((state) => state.selectElement)
   const { pack, surface } = selectedSurface
-  const locked = useRoomStore((state) => state.lockedElementIds.includes(structureSurfaceElementId(pack.id, surface.id)))
+  const locked = useRoomStore((state) => state.lockedElementIds.includes(pack.id) || state.lockedElementIds.includes(structureSurfaceElementId(pack.id, surface.id)))
   return (
     <section className="panel-section selection-section selection-section--inspector" {...gesture.events}>
       <span className="eyebrow">Superficie de construcción</span>
@@ -48,11 +49,13 @@ export function SurfaceInspector({ selectedSurface }: { selectedSurface: { pack:
           />
         </label>
       )}
-      <ColorControl
+      {/* Un solo control de color: con acabado manda «Color del acabado»; sin él, el color de siempre. */}
+      {!surface.material && <ColorControl
         label="Color de la superficie"
         value={surface.color}
         onChange={(color) => setStructureSurfaceColor(pack.id, surface.id, color)}
-      />
+      />}
+      <MaterialControl elementId={structureSurfaceElementId(pack.id, surface.id)} finish={surface.material} color={surface.color} disabled={locked} />
       <button type="button" className="text-button" onClick={() => selectElement(pack.id)}>Seleccionar pack completo</button>
       {locked && <p className="lock-hint">Superficie bloqueada: desbloquea el candado de la lista para moverla, girarla o redimensionarla.</p>}
       <button type="button" className="text-button danger" disabled={locked} title={locked ? "Desbloquea el elemento para eliminarlo" : undefined} onClick={() => removeStructureSurface(pack.id, surface.id)}>Eliminar superficie</button>

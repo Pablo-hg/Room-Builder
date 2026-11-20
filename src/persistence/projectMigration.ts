@@ -21,6 +21,7 @@ import {
 } from '../domain/projectV2'
 import type { DoorConfig, FurnitureItem, RoomConfig, WallSide, WindowConfig } from '../domain/types'
 import { flattenLegacyV5 } from './designMigrations'
+import { validateDesignMaterials } from '../domain/materials'
 
 const DEFAULT_DOOR_COLOR = '#ac704b'
 const DEFAULT_WINDOW_COLOR = '#c88f58'
@@ -78,6 +79,7 @@ function assertMigratableDesign(data: PersistedDesign): void {
     ) throw new Error('invalid furniture')
   }
   const structurePacks = normalizeStructurePacks(data.structurePacks, room)
+  validateDesignMaterials({ version: data.version, room, furniture: data.furniture, structurePacks })
   validateFurnitureWallAttachments({ room, furniture: data.furniture, structurePacks }, data.version)
   if (data.version < 10 && [room.door, ...(room.extraDoors ?? []), ...room.windows,
     ...(data.structurePacks ?? []).flatMap((pack) => [...(pack.doors ?? []), ...(pack.windows ?? [])])].some((item) => item.wallPosition !== undefined)) throw new Error('Los anclajes compartidos requieren v10.')
@@ -106,6 +108,7 @@ function canonicalWalls(projectId: string, room: RoomConfig, roomId: string): Wa
 
 function doorOpening(projectId: string, roomId: string, door: DoorConfig, id = `${roomId}:door`): OpeningV2 {
   return {
+    ...(door.material ? { material: structuredClone(door.material) } : {}),
     ...(door.wallPosition ? { wallPosition: { ...door.wallPosition } } : {}),
     ...(door.axisLocks ? { axisLocks: { ...door.axisLocks } } : {}),
     id,
@@ -123,6 +126,7 @@ function doorOpening(projectId: string, roomId: string, door: DoorConfig, id = `
 
 function windowOpening(projectId: string, window: WindowConfig): OpeningV2 {
   return {
+    ...(window.material ? { material: structuredClone(window.material) } : {}),
     ...(window.wallPosition ? { wallPosition: { ...window.wallPosition } } : {}),
     ...(window.freePosition ? { freePosition: { ...window.freePosition } } : {}),
     ...(window.axisLocks ? { axisLocks: { ...window.axisLocks } } : {}),
@@ -210,6 +214,8 @@ export function migrateDesignToProject(saved: SavedDesign, options: ProjectMigra
     ...(data.room.wallColor ? { wallColor: data.room.wallColor } : {}),
     ...(data.room.wallColors ? { wallColors: { ...data.room.wallColors } } : {}),
     ...(data.room.floorColor ? { floorColor: data.room.floorColor } : {}),
+    ...(data.room.floorMaterial ? { floorMaterial: structuredClone(data.room.floorMaterial) } : {}),
+    ...(data.room.wallMaterials ? { wallMaterials: structuredClone(data.room.wallMaterials) } : {}),
   }
   const project: ProjectV2 = {
     schemaVersion: PROJECT_SCHEMA_VERSION,
@@ -279,6 +285,7 @@ export function projectToPersistedDesignV1(project: ProjectV2, layoutId = projec
   if (!door) throw new Error('one primary door is required to project back to v1')
   const preferences = remapPreferenceElementId(project.preferences, door.id, 'door')
   const doorConfig: DoorConfig = {
+    ...(door.material ? { material: structuredClone(door.material) } : {}),
     ...(door.wallPosition ? { wallPosition: { ...door.wallPosition } } : {}),
     ...(door.axisLocks ? { axisLocks: { ...door.axisLocks } } : {}),
     ...(door.name ? { name: door.name } : {}),
@@ -292,6 +299,7 @@ export function projectToPersistedDesignV1(project: ProjectV2, layoutId = projec
   const windows: WindowConfig[] = openings
     .filter((opening) => opening.kind === 'window')
     .map((opening) => ({
+      ...(opening.material ? { material: structuredClone(opening.material) } : {}),
       ...(opening.axisLocks ? { axisLocks: { ...opening.axisLocks } } : {}),
       ...(opening.name ? { name: opening.name } : {}),
       id: opening.id,
@@ -313,8 +321,11 @@ export function projectToPersistedDesignV1(project: ProjectV2, layoutId = projec
     ...(room.wallColor ? { wallColor: room.wallColor } : {}),
     ...(room.wallColors ? { wallColors: { ...room.wallColors } } : {}),
     ...(room.floorColor ? { floorColor: room.floorColor } : {}),
+    ...(room.floorMaterial ? { floorMaterial: structuredClone(room.floorMaterial) } : {}),
+    ...(room.wallMaterials ? { wallMaterials: structuredClone(room.wallMaterials) } : {}),
     door: doorConfig,
     ...(doorOpenings.length > 1 ? { extraDoors: doorOpenings.filter((opening) => opening.id !== door.id).map((opening) => ({
+        ...(opening.material ? { material: structuredClone(opening.material) } : {}),
         id: opening.id, ...(opening.name ? { name: opening.name } : {}), ...(opening.axisLocks ? { axisLocks: { ...opening.axisLocks } } : {}),
         ...(opening.wallPosition ? { wallPosition: { ...opening.wallPosition } } : {}),
       wall: wallSides.get(opening.wallId)!, offset: opening.offset, width: opening.width, height: opening.height, rotation: opening.rotation ?? 0, color: opening.color,
@@ -322,6 +333,7 @@ export function projectToPersistedDesignV1(project: ProjectV2, layoutId = projec
     windows,
   }
   const furniture: FurnitureItem[] = layout.furniture.map((item) => ({
+    ...(item.material ? { material: structuredClone(item.material) } : {}),
     ...(item.wallAttachment ? { wallAttachment: { ...item.wallAttachment } } : {}),
     ...(item.axisLocks ? { axisLocks: { ...item.axisLocks } } : {}),
     ...(item.attachmentPolicy ? { attachmentPolicy: item.attachmentPolicy } : {}),
@@ -337,7 +349,7 @@ export function projectToPersistedDesignV1(project: ProjectV2, layoutId = projec
     height: item.height,
     color: item.color,
   }))
-  return {
+  const result: PersistedDesign = {
     version: project.metadata.migratedFromVersion === 5 ? 4 : project.metadata.migratedFromVersion ?? 4,
     room: roomConfig,
     furniture,
@@ -350,6 +362,8 @@ export function projectToPersistedDesignV1(project: ProjectV2, layoutId = projec
     elementFolderAssignments: { ...preferences.elementFolderAssignments },
     sceneElementOrder: [...preferences.sceneElementOrder],
   }
+  validateDesignMaterials(result)
+  return result
 }
 
 /** Huella estructural del proyecto migrado; dos variantes deben compartirla. */

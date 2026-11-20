@@ -14,6 +14,8 @@ import { wallVisibility } from '../scene/wallVisibility'
 import { SoftWall } from '../scene/Walls'
 import { RoomShell, StudioLight, WallIdentityLabel } from '../scene/RoomShell'
 import { RoomNameLabel } from '../scene/RoomNameLabel'
+import { CatalogDropController } from '../scene/CatalogDropController'
+import { PaintTool } from '../scene/PaintTool'
 import { recordSceneInteraction } from '../scene/sceneInteraction'
 import { FurnitureObject } from '../scene/FurnitureObject'
 import { StructureSurfaceObject } from '../scene/StructureSurface'
@@ -22,7 +24,8 @@ import { multiSelectionItems } from '../domain/multiSelection'
 import { prioritizeTransformControls } from '../scene/interactionPriority'
 import { FreeCameraKeyboard } from '../scene/FreeCameraKeyboard'
 import { baseWallId, folderSelectionId, ROOT_ROOM_FOLDER } from '../domain/elementFolders'
-import { packRoomBox } from '../domain/roomEditing'
+import { packRoomBox, worldRoomBoxes } from '../domain/roomEditing'
+import { roomLabelAnchor, roomLabelHeight } from '../domain/roomLabelAnchor'
 import { WorldWallObjects } from '../scene/WorldWallObjects'
 import { physicalWalls } from '../domain/wallConnections'
 import { wallUnionFaces } from '../domain/wallSolidGeometry'
@@ -104,12 +107,13 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
   // Cada categoría se filtra por separado; con «Paredes» apagado, vuelven las etiquetas normales de pared.
   const showPlanDimensions = planDetailsOn && planDetailCategories.walls
   const showOpeningChains = planDetailsOn && planDetailCategories.openings
+  const lengthUnit = useRoomStore((state) => state.lengthUnit)
   const openingChains = useMemo(() => showOpeningChains
     ? planOpeningDimensions({ room: props.room, structurePacks: props.structurePacks }, (wall) => planVisibleWallIds.has(wall.id))
-    : [], [showOpeningChains, props.room, props.structurePacks, planSignature])
+    : [], [showOpeningChains, props.room, props.structurePacks, planSignature, lengthUnit])
   const planDimensions = useMemo(() => showPlanDimensions
     ? planRoomDimensions({ room: props.room, structurePacks: props.structurePacks }, (wall) => planVisibleWallIds.has(wall.id))
-    : [], [showPlanDimensions, props.room, props.structurePacks, planSignature])
+    : [], [showPlanDimensions, props.room, props.structurePacks, planSignature, lengthUnit])
   // Con detalles, la letra «PARED X» se desplaza por detrás de su cota.
   const baseWallLabels = showBase && !activeRoom && !props.exportMode
     ? labeledWalls.filter((wall) => !hiddenElementIds.includes(baseWallId(wall)))
@@ -190,16 +194,26 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
         {!props.exportMode && groupSelected && <MultiFurnitureGizmo items={multiItems} locked={[...selectedIds, ...multiItems.map((item) => item.id)].some((id) => lockedElementIds.includes(id))} view={props.view} wall={props.wallView} />}
       </RoomShell>
       {!props.exportMode && !showPlanDimensions && activeRoomWallLabelIds.map((id) => wallFrames.find((frame) => frame.id === id)).filter((frame) => frame !== undefined).map((frame) => <WallIdentityLabel key={`pack-label-${frame.id}`} frame={frame} view={props.view} />)}
-      {!props.exportMode && showBase && folders.filter((folder) => folder.id === ROOT_ROOM_FOLDER).map((folder) => <RoomNameLabel key={folder.id} folderId={folder.id} name={folder.name} position={[0, props.room.height + 0.35, 0]} extent={props.room} />)}
+      {!props.exportMode && showBase && folders.filter((folder) => folder.id === ROOT_ROOM_FOLDER).map((folder) => {
+        // Con otra habitación encima, el nombre va en su propio suelo (ver roomLabelAnchor).
+        const rootBox = { x: 0, y: 0, z: 0, width: props.room.width, depth: props.room.depth, height: props.room.height }
+        const boxes = worldRoomBoxes(props.room, props.structurePacks)
+        return <RoomNameLabel key={folder.id} folderId={folder.id} name={folder.name} position={[0, roomLabelHeight(rootBox, boxes), 0]} extent={props.room} anchor={roomLabelAnchor(rootBox, boxes)} />
+      })}
       {!props.exportMode && renderedPacks.filter((pack) => pack.id.startsWith('floor-pack-') && !hiddenElementIds.includes(pack.id)).map((pack) => {
         const box = packRoomBox(pack, props.room)
         const folder = folders.find((item) => item.id === assignments[pack.id])
         if (!box || !folder) return null
-        return <RoomNameLabel key={folder.id} folderId={folder.id} name={folder.name} position={[pack.x + box.x, pack.y + box.y + box.height + 0.35, pack.z + box.z]} extent={box} />
+        const worldBox = { x: pack.x + box.x, y: pack.y + box.y, z: pack.z + box.z, width: box.width, depth: box.depth, height: box.height }
+        const boxes = worldRoomBoxes(props.room, props.structurePacks)
+        return <RoomNameLabel key={folder.id} folderId={folder.id} name={folder.name} position={[worldBox.x, roomLabelHeight(worldBox, boxes), worldBox.z]} extent={box} anchor={roomLabelAnchor(worldBox, boxes)} />
       })}
       {/* Plano: el fondo vacío también permite desplazar la vista. */}
       {props.view === 'top' && !props.exportMode && <PlanPanSurface y={level - 1} />}
       {props.view === 'top' && !props.exportMode && <PlanWheelPan />}
+      {/* Arrastrar desde el catálogo hasta la vista. */}
+      {!props.exportMode && <CatalogDropController />}
+      {!props.exportMode && <PaintTool />}
       {/* Plano: las demás plantas se dibujan a izquierda y derecha, como en una lámina de arquitectura. */}
       {planSheet && <PlanFloorSheet groups={planSheet.groups} placements={planSheet.placements} focusedKey={planSheet.focusedKey} room={props.room} structurePacks={props.structurePacks} furniture={props.furniture} orientation={props.orientation} />}
       {props.view === 'top' && !props.exportMode && <PlanMeasures y={level + levelHeight + 0.06} />}

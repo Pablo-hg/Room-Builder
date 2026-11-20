@@ -55,6 +55,8 @@ const steps: GuideStep[] = [
     description: 'Cuando selecciones un objeto, aquí aparecerán sus medidas, posición y propiedades para ajustarlos.',
     target: '.selection-section--inspector',
     fallback: '#settings-panel',
+    // Como el paso 1: el inspector ocupa casi todo el panel derecho, así que la tarjeta va a su izquierda.
+    cardPlacement: 'left',
   },
   {
     title: 'Explora las distintas vistas',

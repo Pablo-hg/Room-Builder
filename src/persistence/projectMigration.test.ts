@@ -35,6 +35,28 @@ function fixtureSaved(name: string): SavedDesign {
   }
 }
 
+test('la ida y vuelta por el prototipo conserva acabados de habitación, mueble y superficies', () => {
+  const saved = fixtureSaved('valid-boundary')
+  const wood = { id: 'wood' as const, color: '#aabbcc', scale: 2, rotation: 45 }
+  saved.data.version = 15
+  saved.data.room.floorMaterial = wood
+  saved.data.room.wallMaterials = { north: { id: 'wallpaper', color: '#ffeecc', scale: 1, rotation: 0 } }
+  saved.data.room.door.material = { ...wood, id: 'oak' }
+  saved.data.furniture = [structuredClone(fixtureData('valid-complete').furniture[0])]
+  saved.data.furniture[0].material = wood
+  const surface = saved.data.structurePacks?.flatMap((pack) => pack.surfaces).find((item) => item.kind === 'wall')
+  assert.ok(surface)
+  surface.material = wood
+  const original = structuredClone(saved)
+  const restored = projectToPersistedDesignV1(migrateDesignToProject(saved))
+  assert.deepEqual(restored.room.floorMaterial, wood)
+  assert.deepEqual(restored.room.wallMaterials, saved.data.room.wallMaterials)
+  assert.deepEqual(restored.room.door.material, saved.data.room.door.material)
+  assert.deepEqual(restored.furniture[0].material, wood)
+  assert.deepEqual(restored.structurePacks, saved.data.structurePacks)
+  assert.deepEqual(saved, original)
+})
+
 test('migra los diseños v1 válidos a un proyecto de una habitación sin pérdida semántica', () => {
   for (const name of ['valid-complete', 'valid-legacy-optional-fields', 'valid-boundary']) {
     const saved = fixtureSaved(name)

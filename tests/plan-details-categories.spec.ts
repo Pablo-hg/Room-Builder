@@ -33,7 +33,7 @@ test('Plano normal no muestra filtros ni cotas; «Mostrar detalles» los muestra
   await expect(chips.getByLabel('Paredes')).toBeChecked()
   await expect(chips.getByLabel('Huecos')).toBeChecked()
   await expect(chips.getByLabel('Muebles')).not.toBeChecked()
-  await expect(chips.getByLabel('Notas')).toBeChecked()
+  await expect(chips.getByLabel('Cotas a mano')).toBeChecked()
   // Cotas de paredes (#26) y cadena de huecos: la ventana de 1,50 m y la puerta de 1,00 m de la habitación por defecto.
   await expect(summary(page)).toContainText('Pared A: 5,50 m')
   await expect(summary(page)).toContainText('Huecos — Pared')

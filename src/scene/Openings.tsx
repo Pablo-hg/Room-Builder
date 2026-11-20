@@ -1,3 +1,4 @@
+import { useMaterialTexture } from './materialTexture'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
@@ -133,6 +134,7 @@ function useOpeningInteraction(room: RoomConfig, opening: WallOpening, wall: Wal
   const hoverEvents = {
     onPointerOver: (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation()
+      if (event.nativeEvent.buttons !== 0) return
       if (!locked) document.body.classList.add('can-grab')
     },
     onPointerOut: (event: ThreeEvent<PointerEvent>) => {
@@ -346,6 +348,7 @@ function OpeningSelectionRing({ opening, wall, centerY = 0, planView = false }: 
       onPointerCancel={(event) => { gesture.cancel(); stopRotation(event) }}
       onPointerOver={(event) => {
         event.stopPropagation()
+        if (event.nativeEvent.buttons !== 0) return
         setHovered(true)
         document.body.classList.add('can-grab')
       }}
@@ -394,7 +397,8 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
   const capabilities = openingCapabilities(opening.kind)
   const canMoveHorizontal = capabilities.translation.includes('wall-horizontal')
   const canMoveVertical = capabilities.translation.includes('wall-vertical')
-  const baseColor = opening.color ?? '#c88f58'
+  const texture = useMaterialTexture(opening.material)
+  const model = { width: opening.width, height: opening.height, color: opening.color ?? '#c88f58', finishColor: opening.material?.color, texture }
   if (opening.kind === 'door') {
     return (
       <group position={[opening.offset, 0, 0.02]} {...detailEvents}>
@@ -408,7 +412,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
           </group>
         )}
         <group position={[0, opening.height / 2, 0]} rotation={[0, 0, opening.rotation]}>
-          {doorModel({ width: opening.width, height: opening.height, color: baseColor })}
+          {doorModel(model)}
         </group>
       </group>
     )
@@ -429,7 +433,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
           </>
         )}
         <group rotation={[0, 0, opening.rotation]}>
-          {wallShelfModel({ width: opening.width, height: opening.height, color: baseColor })}
+          {wallShelfModel(model)}
         </group>
       </group>
     )
@@ -449,7 +453,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
           </>
         )}
         <group rotation={[0, 0, opening.rotation]}>
-          {mirrorModel({ width: opening.width, height: opening.height, color: baseColor, circular: opening.shape === 'mirrorCircular' })}
+          {mirrorModel({ ...model, circular: opening.shape === 'mirrorCircular' })}
         </group>
       </group>
     )
@@ -469,7 +473,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
           </>
         )}
         <group rotation={[0, 0, opening.rotation]} scale={[opening.width / WALL_SCONCE_BASE.width, opening.height / WALL_SCONCE_BASE.height, 1]}>
-          {wallSconceModel({ color: baseColor })}
+          {wallSconceModel(model)}
         </group>
       </group>
     )
@@ -489,7 +493,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
           </>
         )}
         <group rotation={[0, 0, opening.rotation]}>
-          {pictureModel({ width: opening.width, height: opening.height, color: baseColor })}
+          {pictureModel(model)}
         </group>
       </group>
     )
@@ -509,7 +513,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
           </>
         )}
         <group rotation={[0, 0, opening.rotation]}>
-          {circularWindowModel({ width: opening.width, height: opening.height, color: baseColor })}
+          {circularWindowModel(model)}
         </group>
       </group>
     )
@@ -528,7 +532,7 @@ export function OpeningDetail({ room, opening, wall, selected, locked, frame, in
         </>
       )}
       <group rotation={[0, 0, opening.rotation]}>
-        {windowModel({ width: opening.width, height: opening.height, color: baseColor })}
+        {windowModel(model)}
       </group>
     </group>
   )

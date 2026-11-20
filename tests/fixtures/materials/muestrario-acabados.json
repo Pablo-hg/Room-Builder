@@ -1,0 +1,433 @@
+{
+  "format": "room-builder-design",
+  "schemaVersion": 5,
+  "exportedAt": "2026-11-18T12:00:00.000Z",
+  "design": {
+    "id": "prueba-materiales-39",
+    "name": "Muestrario de acabados",
+    "savedAt": "2026-11-18T12:00:00.000Z",
+    "data": {
+      "version": 15,
+      "room": {
+        "width": 5.5,
+        "depth": 4.5,
+        "height": 2.7,
+        "wallColor": "#f5eadb",
+        "door": {
+          "wall": "south",
+          "offset": 0,
+          "width": 1,
+          "height": 2.1,
+          "rotation": 0,
+          "color": "#ac704b",
+          "wallPosition": {
+            "x": -7.347880794884118e-18,
+            "y": 0,
+            "z": 2.31,
+            "yaw": 3.141592653589793,
+            "supportId": "room-wall:south",
+            "depth": 0.12
+          },
+          "material": {
+            "id": "oak",
+            "color": "#b4835b",
+            "scale": 0.85,
+            "rotation": 90
+          }
+        },
+        "windows": [
+          {
+            "id": "window-1",
+            "shape": "rectangular",
+            "wall": "north",
+            "offset": 0,
+            "width": 1.5,
+            "height": 1,
+            "sill": 1,
+            "rotation": 0,
+            "color": "#c88f58",
+            "wallPosition": {
+              "x": 0,
+              "y": 1,
+              "z": -2.31,
+              "yaw": 0,
+              "supportId": "room-wall:north",
+              "depth": 0.12
+            },
+            "material": {
+              "id": "pine",
+              "color": "#d7a97e",
+              "scale": 1.5,
+              "rotation": 90
+            }
+          }
+        ],
+        "floorMaterial": {
+          "id": "herringbone",
+          "color": "#c39163",
+          "scale": 1.3,
+          "rotation": 45
+        },
+        "wallMaterials": {
+          "north": {
+            "id": "wallpaper",
+            "color": "#adc1a7",
+            "scale": 0.8,
+            "rotation": 15
+          },
+          "east": {
+            "id": "stone",
+            "color": "#a6a18d",
+            "scale": 1.25,
+            "rotation": 0
+          },
+          "south": {
+            "id": "popcorn",
+            "color": "#e8c3a6",
+            "scale": 1.25,
+            "rotation": 0
+          },
+          "west": {
+            "id": "tile",
+            "color": "#c4b2cf",
+            "scale": 0.8,
+            "rotation": 45
+          }
+        }
+      },
+      "furniture": [
+        {
+          "kind": "sofa",
+          "name": "Sofá de tejido",
+          "width": 2,
+          "depth": 0.75,
+          "height": 0.85,
+          "color": "#b86f5e",
+          "attachmentPolicy": "by-type",
+          "id": "muestra-sofa",
+          "x": -1.1,
+          "y": 0,
+          "z": -1.5,
+          "rotation": 0,
+          "material": {
+            "id": "fabric",
+            "color": "#aa6b68",
+            "scale": 1.8,
+            "rotation": 15
+          }
+        },
+        {
+          "kind": "coffeeTable",
+          "name": "Mesa de madera",
+          "width": 1,
+          "depth": 0.75,
+          "height": 0.4,
+          "color": "#bd9164",
+          "attachmentPolicy": "by-type",
+          "id": "muestra-coffeeTable",
+          "x": -1.1,
+          "y": 0,
+          "z": -0.25,
+          "rotation": 0,
+          "material": {
+            "id": "wood",
+            "color": "#bc8967",
+            "scale": 1.2,
+            "rotation": 90
+          }
+        },
+        {
+          "kind": "armchair",
+          "name": "Sillón de pana",
+          "width": 1,
+          "depth": 1,
+          "height": 0.85,
+          "color": "#d07a63",
+          "attachmentPolicy": "by-type",
+          "id": "muestra-armchair",
+          "x": 1.15,
+          "y": 0,
+          "z": -0.95,
+          "rotation": 0,
+          "material": {
+            "id": "corduroy",
+            "color": "#577974",
+            "scale": 2.3,
+            "rotation": 10
+          }
+        },
+        {
+          "kind": "cabinet",
+          "name": "Armario pintado",
+          "width": 1.5,
+          "depth": 0.5,
+          "height": 0.9,
+          "color": "#748d84",
+          "attachmentPolicy": "by-type",
+          "id": "muestra-cabinet",
+          "x": -1.85,
+          "y": 0,
+          "z": 1.2,
+          "rotation": 0,
+          "material": {
+            "id": "paint",
+            "color": "#80987e",
+            "scale": 1,
+            "rotation": 0
+          }
+        },
+        {
+          "kind": "vase",
+          "name": "Jarrón de terrazo",
+          "width": 0.5,
+          "depth": 0.5,
+          "height": 0.5,
+          "color": "#b97862",
+          "attachmentPolicy": "by-type",
+          "id": "muestra-vase",
+          "x": 6.4,
+          "y": 0,
+          "z": -0.9,
+          "rotation": 0,
+          "material": {
+            "id": "terrazzo",
+            "color": "#b29c8c",
+            "scale": 1.35,
+            "rotation": 60
+          }
+        },
+        {
+          "kind": "desk",
+          "name": "Escritorio de madera",
+          "width": 1.25,
+          "depth": 0.75,
+          "height": 0.75,
+          "color": "#a77b58",
+          "attachmentPolicy": "by-type",
+          "id": "muestra-desk",
+          "x": 4.6,
+          "y": 0,
+          "z": -1.45,
+          "rotation": 0,
+          "material": {
+            "id": "wood",
+            "color": "#ac7757",
+            "scale": 1.6,
+            "rotation": 25
+          }
+        },
+        {
+          "kind": "chair",
+          "name": "Silla con color original",
+          "width": 0.5,
+          "depth": 0.5,
+          "height": 0.85,
+          "color": "#bd8b5f",
+          "attachmentPolicy": "by-type",
+          "id": "muestra-chair",
+          "x": 4.6,
+          "y": 0,
+          "z": -0.45,
+          "rotation": 0
+        },
+        {
+          "kind": "vase",
+          "name": "Jarrón de cerámica gris",
+          "width": 0.35,
+          "depth": 0.35,
+          "height": 0.35,
+          "color": "#b97862",
+          "attachmentPolicy": "by-type",
+          "id": "muestra-ceramica",
+          "x": 6.5,
+          "y": 0,
+          "z": 1.15,
+          "rotation": 0,
+          "material": {
+            "id": "glazed-ceramic",
+            "color": "#9a9a9a",
+            "scale": 1.1,
+            "rotation": 0
+          }
+        }
+      ],
+      "structurePacks": [
+        {
+          "id": "floor-pack-materiales",
+          "name": "Estudio",
+          "x": 5.62,
+          "y": 0,
+          "z": 0,
+          "surfaces": [
+            {
+              "id": "floor",
+              "kind": "floor",
+              "name": "Suelo",
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "width": 5.5,
+              "height": 0.13,
+              "depth": 4.5,
+              "rotation": 0,
+              "color": "#dcc3a3",
+              "material": {
+                "id": "hydraulic-tile",
+                "color": "#b5c9cb",
+                "scale": 0.42,
+                "rotation": 0
+              }
+            },
+            {
+              "id": "ceiling",
+              "kind": "ceiling",
+              "name": "Techo",
+              "x": 0,
+              "y": -0.065,
+              "z": 0,
+              "width": 5.5,
+              "height": 0.13,
+              "depth": 4.5,
+              "rotation": 0,
+              "color": "#f5eadb"
+            },
+            {
+              "id": "wall-north",
+              "kind": "wall",
+              "wall": "north",
+              "name": "Pared A",
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "width": 5.5,
+              "height": 2.7,
+              "depth": 0.12,
+              "rotation": 0,
+              "color": "#f5eadb",
+              "material": {
+                "id": "wood",
+                "color": "#bf9c79",
+                "scale": 0.9,
+                "rotation": 90
+              }
+            },
+            {
+              "id": "wall-east",
+              "kind": "wall",
+              "wall": "east",
+              "name": "Pared B",
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "width": 4.5,
+              "height": 2.7,
+              "depth": 0.12,
+              "rotation": 0,
+              "color": "#f5eadb",
+              "material": {
+                "id": "botanical",
+                "color": "#acc0a7",
+                "scale": 0.95,
+                "rotation": 0
+              }
+            },
+            {
+              "id": "wall-south",
+              "kind": "wall",
+              "wall": "south",
+              "name": "Pared C",
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "width": 5.5,
+              "height": 2.7,
+              "depth": 0.12,
+              "rotation": 0,
+              "color": "#f5eadb",
+              "material": {
+                "id": "stucco",
+                "color": "#e6cbb1",
+                "scale": 0.8,
+                "rotation": 0
+              }
+            },
+            {
+              "id": "wall-west",
+              "kind": "wall",
+              "wall": "west",
+              "name": "Pared D",
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "width": 4.5,
+              "height": 2.7,
+              "depth": 0.12,
+              "rotation": 0,
+              "color": "#f5eadb",
+              "material": {
+                "id": "brick",
+                "color": "#bf806c",
+                "scale": 0.8,
+                "rotation": 0
+              }
+            }
+          ]
+        }
+      ],
+      "gridSnap": true,
+      "gridVisibility": {
+        "floor": false,
+        "north": false,
+        "east": false,
+        "south": false,
+        "west": false
+      },
+      "hiddenElementIds": [
+        "structure-surface:floor-pack-materiales:ceiling",
+        "structure-grid:floor-pack-materiales:floor",
+        "structure-grid:floor-pack-materiales:ceiling",
+        "structure-grid:floor-pack-materiales:wall-north",
+        "structure-grid:floor-pack-materiales:wall-east",
+        "structure-grid:floor-pack-materiales:wall-south",
+        "structure-grid:floor-pack-materiales:wall-west"
+      ],
+      "lockedElementIds": [],
+      "elementFolders": [
+        {
+          "id": "room-root",
+          "name": "Salón"
+        },
+        {
+          "id": "folder-materiales",
+          "name": "Estudio"
+        }
+      ],
+      "elementFolderAssignments": {
+        "room-floor": "room-root",
+        "room-wall:north": "room-root",
+        "room-wall:east": "room-root",
+        "room-wall:south": "room-root",
+        "room-wall:west": "room-root",
+        "door": "room-root",
+        "window-1": "room-root",
+        "floor-pack-materiales": "folder-materiales",
+        "structure-surface:floor-pack-materiales:floor": "folder-materiales",
+        "structure-surface:floor-pack-materiales:ceiling": "folder-materiales",
+        "structure-surface:floor-pack-materiales:wall-north": "folder-materiales",
+        "structure-surface:floor-pack-materiales:wall-east": "folder-materiales",
+        "structure-surface:floor-pack-materiales:wall-south": "folder-materiales",
+        "structure-surface:floor-pack-materiales:wall-west": "folder-materiales",
+        "muestra-sofa": "room-root",
+        "muestra-coffeeTable": "room-root",
+        "muestra-armchair": "room-root",
+        "muestra-cabinet": "room-root",
+        "muestra-vase": "folder-materiales",
+        "muestra-desk": "folder-materiales",
+        "muestra-chair": "folder-materiales",
+        "muestra-ceramica": "folder-materiales"
+      },
+      "sceneElementOrder": [],
+      "measurements": []
+    }
+  }
+}

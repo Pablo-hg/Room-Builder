@@ -13,6 +13,7 @@ import { SelectionBounds } from './SelectionBounds'
 import { independentSurfaceHasSpatialWarning } from '../domain/structureCollisions'
 import { physicalWalls, wallDerivedOpenings } from '../domain/wallConnections'
 import { WallBody } from './Walls'
+import { applyWorldUv } from './worldUv'
 import { useHistoryGesture } from '../state/useHistoryGesture'
 import { releasePointer, usePointerCancellation } from './usePointerCancellation'
 import { usePlanPan } from './usePlanPan'
@@ -20,6 +21,7 @@ import { cameraAwareShiftDrag } from './cameraAwareShiftDrag'
 import { moveFromOrigin } from '../domain/measurements'
 import { physicalSurfacePosition } from '../domain/roomEditing'
 import type { WallFace } from '../domain/wallSolidGeometry'
+import { useMaterialTexture } from './materialTexture'
 
 export function StructureSurfaceObject({
   room,
@@ -51,6 +53,7 @@ export function StructureSurfaceObject({
   packId: string
   skinFaces?: readonly WallFace[]
 }) {
+  const texture = useMaterialTexture(surface.kind === 'wall' ? undefined : surface.material)
   const wall = surface.wall ?? 'north'
   const position = physicalSurfacePosition(room, surface, packId)
   const baseRotation = wall === 'north' ? 0 : wall === 'east' ? -Math.PI / 2 : wall === 'south' ? Math.PI : Math.PI / 2
@@ -173,7 +176,7 @@ export function StructureSurfaceObject({
     <group onPointerMove={directMove} onPointerUp={endDirectDrag} onPointerCancel={cancelDirectDrag}>
       {surface.kind === 'wall' ? <group position={position} rotation={[0, baseRotation + surface.rotation, 0]}>
         <group position={[0, -surface.height / 2, 0]}>
-          <WallBody wallId={surfaceId} skinFaces={skinFaces} frame={physicalWalls({ room, structurePacks: packs }).find((wall) => wall.id === surfaceId)} length={surface.width} height={surface.height} openings={openings} color={surface.color} depth={surface.depth} onPointerDown={selectSurface} />
+          <WallBody wallId={surfaceId} skinFaces={skinFaces} frame={physicalWalls({ room, structurePacks: packs }).find((wall) => wall.id === surfaceId)} finish={surface.material} length={surface.width} height={surface.height} openings={openings} color={surface.color} depth={surface.depth} onPointerDown={selectSurface} />
         </group>
       </group> : <mesh
         position={position}
@@ -182,9 +185,10 @@ export function StructureSurfaceObject({
         onPointerDown={selectSurface}
         {...(isRoomFloor ? { onPointerMove: planPan.movePan, onPointerUp: planPan.endPan, onPointerCancel: planPan.endPan, onLostPointerCapture: planPan.lostPan } : {})}
       >
-        <boxGeometry args={[surface.width, surface.height, surface.depth]} />
-        <meshStandardMaterial
-          color={surface.color}
+        <boxGeometry args={[surface.width, surface.height, surface.depth]} onUpdate={(geometry) => { applyWorldUv(geometry) }} />
+        <meshStandardMaterial key={texture ? 'textured' : undefined}
+          color={surface.material?.color ?? surface.color}
+          map={texture}
           emissive={selected ? '#dba771' : '#000000'}
           emissiveIntensity={selected ? 0.14 : 0}
           roughness={0.9}

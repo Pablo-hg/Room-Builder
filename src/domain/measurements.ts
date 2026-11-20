@@ -5,11 +5,13 @@ export const MOVEMENT_STEP = 0.05
 export const MEASUREMENT_STEP_NOTICE = 'Usa centímetros enteros, por ejemplo 0,13 m (13 cm).'
 export const MEASUREMENT_INVALID_NOTICE = 'Escribe un número en metros o centímetros, por ejemplo 4,37 m o 437 cm.'
 
-export function parseMeasurement(text: string): number {
+/** Un número sin unidad se interpreta en `bareUnit` (metros por defecto; centímetros si la interfaz está en cm). */
+export function parseMeasurement(text: string, bareUnit: 'm' | 'cm' = 'm'): number {
   const match = text.trim().match(/^([+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+))\s*(cm|m)?$/i)
   if (!match) return NaN
   const number = Number(match[1].replace(',', '.'))
-  return match[2]?.toLowerCase() === 'cm' ? number / 100 : number
+  const unit = match[2]?.toLowerCase() ?? bareUnit
+  return unit === 'cm' ? number / 100 : number
 }
 
 export function isMeasurementStep(value: number): boolean {

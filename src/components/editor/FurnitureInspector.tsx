@@ -1,3 +1,4 @@
+import { formatPanelLength } from '../../domain/lengthUnit'
 import { useInspectorGesture } from './useInspectorGesture'
 import { ROOM_LIMITS } from '../../domain/constants'
 import { FurnitureIcon } from '../iconCatalog'
@@ -7,12 +8,14 @@ import { furnitureWallAxes } from '../../domain/furnitureWalls'
 import { ResizeControls } from './ResizeControls'
 import { useRoomStore } from '../../state/useRoomStore'
 import { AxisPositionControl, ColorControl, PositionControl, RotationControl } from './Controls'
+import { MaterialControl } from './MaterialControl'
 
 type RoomState = ReturnType<typeof useRoomStore.getState>
 
 export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: RoomState['furniture'][number] }) {
   const gesture = useInspectorGesture(selectedFurniture.id)
   const moveFurniture = useRoomStore((state) => state.moveFurniture)
+  useRoomStore((state) => state.lengthUnit) // las medidas se redibujan al cambiar de unidad
   const moveFurnitureVertically = useRoomStore((state) => state.moveFurnitureVertically)
   const setFurnitureRotation = useRoomStore((state) => state.setFurnitureRotation)
   const setFurnitureColor = useRoomStore((state) => state.setFurnitureColor)
@@ -31,11 +34,11 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
   return (
     <section className="panel-section selection-section selection-section--inspector" {...gesture.events}>
       <span className="eyebrow">Inspector del elemento</span>
-      <div className="selected-heading"><FurnitureIcon kind={selectedFurniture.kind} color={selectedFurniture.color} /><div><h2>{selectedFurniture.name}</h2><p>{selectedFurniture.x.toFixed(2)}, {selectedFurniture.z.toFixed(2)} m</p></div></div>
+      <div className="selected-heading"><FurnitureIcon kind={selectedFurniture.kind} color={selectedFurniture.material?.color ?? selectedFurniture.color} /><div><h2>{selectedFurniture.name}</h2><p>{selectedFurniture.x.toFixed(2)}, {selectedFurniture.z.toFixed(2)} m</p></div></div>
       <div className="property-grid" aria-label="Características del mueble">
-        <span><small>Anchura</small><strong>{selectedFurniture.width.toFixed(2)} m</strong></span>
-        <span><small>Fondo</small><strong>{selectedFurniture.depth.toFixed(2)} m</strong></span>
-        <span><small>Altura</small><strong>{selectedFurniture.height.toFixed(2)} m</strong></span>
+        <span><small>Anchura</small><strong>{formatPanelLength(selectedFurniture.width)}</strong></span>
+        <span><small>Fondo</small><strong>{formatPanelLength(selectedFurniture.depth)}</strong></span>
+        <span><small>Altura</small><strong>{formatPanelLength(selectedFurniture.height)}</strong></span>
       </div>
       <ResizeControls capability={FURNITURE_CATALOG[selectedFurniture.kind]?.capabilities.resize} value={selectedFurniture} disabled={locked} onChange={(dimension, value) => resizeFurniture(selectedFurniture.id, dimension, value)} />
       <div className="wall-attachment-controls">
@@ -63,11 +66,13 @@ export function FurnitureInspector({ selectedFurniture }: { selectedFurniture: R
         onChange={(rotation) => setFurnitureRotation(selectedFurniture.id, rotation)}
         disabled={locked || !!attachment}
       />}
-      <ColorControl
+      {/* Un solo control de color: con acabado manda «Color del acabado»; sin él, el color de siempre. */}
+      {!selectedFurniture.material && <ColorControl
         label="Color del objeto"
         value={selectedFurniture.color}
         onChange={(color) => setFurnitureColor(selectedFurniture.id, color)}
-      />
+      />}
+      <MaterialControl elementId={selectedFurniture.id} finish={selectedFurniture.material} color={selectedFurniture.color} disabled={locked} />
       <div className="object-actions">
         {canRotate && <button type="button" onClick={rotateFurniture} disabled={locked || !!attachment}><span>↻</span> Girar 90°</button>}
         <button type="button" className="danger" disabled={locked} title={locked ? "Desbloquea el elemento para eliminarlo" : undefined} onClick={removeFurniture}><span>×</span> Eliminar</button>

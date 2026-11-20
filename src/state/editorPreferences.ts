@@ -3,8 +3,10 @@
  * no versionan el formato y no entran en el historial. Cualquier fallo de almacenamiento
  * (modo privado, datos bloqueados, entorno de pruebas) devuelve los valores por defecto.
  */
-export interface EditorPreferences { magnetism: boolean; guides: boolean }
-export const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = { magnetism: true, guides: true }
+import type { LengthUnit } from '../domain/lengthUnit'
+
+export interface EditorPreferences { magnetism: boolean; guides: boolean; lengthUnit: LengthUnit }
+export const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = { magnetism: true, guides: true, lengthUnit: 'm' }
 export const EDITOR_PREFERENCES_KEY = 'room-builder:v0.2:editor-preferences'
 
 export function loadEditorPreferences(): EditorPreferences {
@@ -15,6 +17,7 @@ export function loadEditorPreferences(): EditorPreferences {
     return {
       magnetism: typeof parsed?.magnetism === 'boolean' ? parsed.magnetism : DEFAULT_EDITOR_PREFERENCES.magnetism,
       guides: typeof parsed?.guides === 'boolean' ? parsed.guides : DEFAULT_EDITOR_PREFERENCES.guides,
+      lengthUnit: parsed?.lengthUnit === 'cm' ? 'cm' : 'm',
     }
   } catch { return { ...DEFAULT_EDITOR_PREFERENCES } }
 }

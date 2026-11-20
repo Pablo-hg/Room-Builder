@@ -10,6 +10,8 @@ import { recordSceneInteraction, selectSceneObject } from './sceneInteraction'
 import { usePlanPan } from './usePlanPan'
 import { BASE_FLOOR_ID, folderSelectionId, ROOT_ROOM_FOLDER } from '../domain/elementFolders'
 import { SelectionBounds } from './SelectionBounds'
+import { applyWorldUv } from './worldUv'
+import { useMaterialTexture } from './materialTexture'
 
 export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, showSelection = true, children }: {
   room: RoomConfig
@@ -20,6 +22,7 @@ export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, 
   children: ReactNode
 }) {
   const selectElement = useRoomStore((state) => state.selectElement)
+  const floorTexture = useMaterialTexture(room.floorMaterial)
   const floorHidden = useRoomStore((state) => state.hiddenElementIds.includes(BASE_FLOOR_ID))
   const floorSelected = useRoomStore((state) => state.selectedIds.includes(BASE_FLOOR_ID))
   const rootSelected = useRoomStore((state) => state.selectedIds.includes(folderSelectionId(ROOT_ROOM_FOLDER)))
@@ -35,8 +38,8 @@ export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, 
         selectSceneObject(BASE_FLOOR_ID, event.nativeEvent)
         startPan(event)
       }} {...panHandlers}>
-        <boxGeometry args={[room.width, ROOT_FLOOR_THICKNESS, room.depth]} />
-        <meshStandardMaterial color={room.floorColor ?? DEFAULT_FLOOR_COLOR} roughness={0.94} />
+        <boxGeometry args={[room.width, ROOT_FLOOR_THICKNESS, room.depth]} onUpdate={(geometry) => { applyWorldUv(geometry) }} />
+        <meshStandardMaterial key={floorTexture ? 'textured' : undefined} color={room.floorMaterial?.color ?? room.floorColor ?? DEFAULT_FLOOR_COLOR} map={floorTexture} roughness={0.94} />
       </mesh>}
       {showBase && !floorHidden && showSelection && floorSelected && <SelectionBounds width={room.width} height={ROOT_FLOOR_THICKNESS} depth={room.depth} />}
       {showBase && showSelection && rootSelected && <group position={[0, room.height / 2, 0]}><SelectionBounds width={room.width} height={room.height} depth={room.depth} /></group>}

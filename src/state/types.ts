@@ -60,6 +60,8 @@ export interface RoomState {
   gridSnap: boolean
   /** Preferencias de edición locales: no se guardan en el diseño ni entran en el historial (#37). */
   magnetismEnabled: boolean
+  /** Unidad con la que se muestran las medidas (preferencia del navegador). */
+  lengthUnit: import('../domain/lengthUnit').LengthUnit
   guidesEnabled: boolean
   /** Guías del arrastre en curso; solo existen mientras dura el gesto. */
   activeGuides: DragGuide[]
@@ -68,6 +70,10 @@ export interface RoomState {
   measurements: PlanMeasure[]
   /** Herramienta Medir: estado de sesión, ni se guarda ni entra en el historial. */
   measureToolActive: boolean
+  /** Herramientas Pintar / Cuentagotas (#39): estado de sesión, ni se guarda ni entra en el historial. */
+  paintTool: import('../domain/paintTool').PaintToolState | null
+  /** Elemento bajo el pincel (vista previa), o null. */
+  paintHoverId: string | null
   measureAxis: 'free' | 'horizontal' | 'vertical'
   measureSnap: boolean
   measureDraft: { start: MeasureEnd; end: MeasureEnd | null } | null
@@ -108,6 +114,18 @@ export interface RoomState {
   setFocusedRoomDimension: (key: 'width' | 'depth' | 'height', value: number) => void
   setWallColor: (color: string) => void
   setWallSideColor: (wall: WallSide, color: string) => void
+  setMaterialFinish: (elementId: string, finish: import('../domain/materials').MaterialFinish | null) => void
+  startPaintTool: () => void
+  stopPaintTool: () => void
+  setPaintMode: (mode: import('../domain/paintTool').PaintMode) => void
+  setPaintFinish: (finish: import('../domain/materials').MaterialFinish) => void
+  setPaintHover: (id: string | null) => void
+  /** Aplica el pincel al elemento; devuelve si se pintó (false si estaba bloqueado o no es pintable). */
+  applyPaint: (id: string) => boolean
+  /** Pinta varios elementos de una vez (un paso de deshacer); devuelve cuántos se pintaron. */
+  applyPaintToMany: (ids: string[]) => number
+  /** Copia el acabado del elemento al pincel; devuelve si había algo que copiar. */
+  samplePaint: (id: string) => boolean
   setFloorColor: (color: string) => void
   addStructurePack: (direction?: 'up' | 'down' | 'north' | 'south' | 'east' | 'west') => void
   addStructureObject: (kind: 'floor' | 'wall') => void
@@ -127,12 +145,18 @@ export interface RoomState {
   beginHistoryGesture: (targetId?: string | null) => HistoryGestureToken
   commitHistoryGesture: (token: HistoryGestureToken) => void
   cancelHistoryGesture: (token: HistoryGestureToken) => void
+  /** Abre un gesto que continúa el último paso del historial (creado justo antes a partir de `before`). */
+  continueHistoryGesture: (before: PersistedDesign, targetId?: string | null) => HistoryGestureToken
+  /** Deshace lo hecho durante el gesto sin dejar paso en el historial. */
+  revertHistoryGesture: (token: HistoryGestureToken) => void
   isHistoryGestureActive: (token: HistoryGestureToken) => boolean
   setDoor: (partial: { wall?: WallSide; offset?: number; color?: string; swing?: DoorSwing }) => void
   addWindow: (shape?: WindowShape) => void
   updateWindow: (id: string, partial: Partial<Pick<WindowConfig, 'wall' | 'offset' | 'width' | 'sill' | 'rotation' | 'color'>>) => void
   moveWallObject: (id: string, axis: 'x' | 'y' | 'z', value: number) => void
   detachWallObject: (id: string) => void
+  /** Deja el objeto de pared libre en esa posición (base) y orientación, en su misma habitación. */
+  setWallObjectFreePosition: (id: string, position: { x: number; y: number; z: number; yaw: number }) => void
   removeWindow: (id: string) => void
   addFurniture: (kind: FurnitureKind) => void
   selectElement: (id: string | null) => void
@@ -143,6 +167,7 @@ export interface RoomState {
   endFurnitureMove: () => void
   moveFurniture: (id: string, x: number, z: number, source?: 'pointer', axis?: 'x' | 'z') => void
   setMagnetism: (enabled: boolean) => void
+  setLengthUnit: (unit: import('../domain/lengthUnit').LengthUnit) => void
   setGuides: (enabled: boolean) => void
   setGridSnap: (enabled: boolean) => void
   clearDragGuides: () => void

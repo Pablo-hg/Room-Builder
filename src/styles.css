@@ -232,6 +232,8 @@ body.plan-panning .scene-panel canvas { cursor: grabbing; }
 .view-badge, .room-size, .grid-scale, .visible-walls-badge { padding: 8px 11px; border: 1px solid rgba(83,80,72,.1); border-radius: 15px; background: rgba(255,253,249,.78); color: #687069; font-size: 12px; font-weight: 700; backdrop-filter: blur(8px); }
 .view-badge i { display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: #6d9274; box-shadow: 0 0 0 3px rgba(109,146,116,.13); }
 .grid-scale { color: #7a7f79; font-weight: 600; }
+/* El envoltorio no altera el flujo: cada cajita se coloca como hermana de las demás insignias. */
+.movement-status { display: contents; }
 .room-size { color: #3f5547; }
 .room-size b { margin-right: 5px; color: var(--forest); font-size: 13px; }
 .grid-scale b { margin-right: 5px; color: var(--forest); font-size: 13px; }
@@ -324,6 +326,8 @@ body.plan-panning .scene-panel canvas { cursor: grabbing; }
 .catalog-toggle-all[aria-expanded='false'] i { transform: rotate(45deg); }
 .catalog-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
 .catalog-card { display: flex; align-items: center; flex-direction: column; gap: 4px; min-width: 0; min-height: 96px; padding: 11px 4px 8px; border: 1px solid #e2ded6; border-radius: 10px; background: #faf8f4; font-size: 13px; font-weight: 750; cursor: pointer; transition: transform .16s, box-shadow .16s, border-color .16s; }
+/* Arrastre desde el catálogo a la vista: cursor de agarre en toda la página y sin selección de texto. */
+body.catalog-dragging, body.catalog-dragging * { cursor: grabbing !important; user-select: none; }
 .catalog-card:hover { transform: translateY(-2px); border-color: #afb9ae; box-shadow: 0 7px 16px rgba(52,61,54,.08); }
 .catalog-card.active { border-color: #829285; background: #f1f5ef; box-shadow: inset 0 0 0 1px rgba(66,85,71,.1); }
 .catalog-card small { color: #959892; font-size: 11px; font-weight: 550; }
@@ -751,11 +755,12 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .camera-controls--plan .measure-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .camera-controls--plan .measure-toggle.is-active { background: #b4541c; color: #fff; border-radius: 8px; }
 .camera-controls--plan .measure-toggle:focus-visible { outline: 2px solid #b4541c; outline-offset: 2px; }
-.measure-panel { position: absolute; z-index: 3; right: 16px; top: 78px; width: min(300px, calc(100% - 32px)); display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(255,253,249,.97); box-shadow: 0 6px 22px rgba(60,50,30,.16); color: #405748; font-size: 13px; }
+/* Por debajo del selector de habitación (arriba a la derecha, ~84 px de alto) y por encima de la brújula (z 3–6). */
+.measure-panel { position: absolute; z-index: 7; right: 16px; top: 98px; width: min(300px, calc(100% - 32px)); display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(255,253,249,.97); box-shadow: 0 6px 22px rgba(60,50,30,.16); color: #405748; font-size: 13px; }
 .measure-panel__head { display: flex; align-items: center; justify-content: space-between; }
 .measure-panel__close { min-width: 32px; min-height: 32px; border: 0; background: transparent; color: inherit; font-size: 20px; cursor: pointer; }
 .measure-panel__axes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-.measure-panel button, .measure-section button, .measure-form button { min-height: 32px; padding: 0 9px; border: 1px solid #cdd6cc; border-radius: 7px; background: #fff; color: #405748; font: inherit; font-weight: 700; cursor: pointer; }
+.measure-panel button, .measure-section button, .measure-inspector button { min-height: 32px; padding: 0 9px; border: 1px solid #cdd6cc; border-radius: 7px; background: #fff; color: #405748; font: inherit; font-weight: 700; cursor: pointer; }
 .measure-panel button.is-active, .measure-panel button[aria-pressed="true"].is-active { background: #b4541c; border-color: #b4541c; color: #fff; }
 .measure-panel button:disabled { opacity: .5; cursor: not-allowed; }
 .measure-panel__snap { display: flex; align-items: center; gap: 7px; min-height: 32px; cursor: pointer; }
@@ -777,18 +782,13 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .measure-row__warning { margin: 4px 0 0; color: #b3261e; font-size: 12.5px; font-weight: 700; }
 .measure-row__warning button { margin-left: 8px; }
 .measure-row__actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.measure-form { display: grid; gap: 7px; margin-top: 6px; }
-.measure-form fieldset { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; padding: 6px 8px; border: 1px solid #e3dfd7; border-radius: 7px; }
-.measure-form legend { padding: 0 4px; font-size: 12px; font-weight: 700; color: #6f766f; }
 .measure-form__field { display: grid; gap: 2px; font-size: 12px; font-weight: 700; color: #6f766f; }
 .measure-form__field--wide { grid-column: 1 / -1; }
-.measure-form input { min-height: 32px; padding: 0 7px; border: 1px solid #cdd6cc; border-radius: 6px; font: inherit; }
-.measure-form__error { margin: 0; color: #b3261e; font-size: 12.5px; }
-.measure-add summary { cursor: pointer; font-weight: 700; color: #405748; min-height: 32px; display: flex; align-items: center; }
+.measure-form__field input { min-height: 32px; padding: 0 7px; border: 1px solid #cdd6cc; border-radius: 6px; font: inherit; }
 @media (max-width: 760px) {
   .measure-panel { position: static; width: auto; }
   .camera-controls--plan .measure-toggle { min-height: 44px; }
-  .measure-panel button, .measure-section button, .measure-form button { min-height: 44px; }
+  .measure-panel button, .measure-section button, .measure-inspector button { min-height: 44px; }
 }
 /* El botón Medir hereda `.camera-controls button` (34 px) y `.camera-controls span` (82 px mínimo): se recuperan sus medidas. */
 .camera-controls--plan .measure-toggle { width: auto; height: 36px; flex: none; border-radius: 8px; font-size: 13px; }
@@ -799,21 +799,16 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .camera-controls--plan .plan-camera-hint { white-space: nowrap; }
 .camera-controls--plan .plan-camera-hint span { min-width: 0; }
 /* El panel izquierdo es estrecho: los formularios de cotas deben encajar sin desbordar. */
-.measure-section, .measure-list, .measure-row, .measure-row__main, .measure-add, .measure-form { min-width: 0; max-width: 100%; box-sizing: border-box; }
-.measure-form fieldset { min-width: 0; box-sizing: border-box; }
+.measure-section, .measure-list, .measure-row, .measure-row__main, .measure-inspector { min-width: 0; max-width: 100%; box-sizing: border-box; }
 .measure-form__field { min-width: 0; }
-.measure-form input { width: 100%; min-width: 0; box-sizing: border-box; }
-.measure-form button[type="submit"] { width: 100%; box-sizing: border-box; }
+.measure-form__field input { width: 100%; min-width: 0; box-sizing: border-box; }
 .measure-row__actions button { flex: 1 1 auto; min-width: 0; }
 
-.measure-form__anchor { grid-column: 1 / -1; color: #2a5d9f; font-size: 11.5px; line-height: 1.35; font-weight: 600; }
 
 .measure-row.is-editing { border-color: #1d6fd1; box-shadow: 0 0 0 2px rgba(29,111,209,.15); }
 .measure-edit { display: grid; gap: 8px; padding-top: 4px; }
 .measure-edit__hint { margin: 0; color: #1d4f94; font-size: 12.5px; font-weight: 600; line-height: 1.4; }
 .measure-edit__point { display: grid; gap: 4px; font-size: 12.5px; font-weight: 700; color: #405748; }
-.measure-edit__nudges { display: flex; gap: 6px; }
-.measure-edit__nudges button { flex: 1 1 0; min-width: 0; font-size: 16px; }
 
 /* Filtros de «Mostrar detalles» (#38): cuatro casillas compactas dentro de la barra del Plano. */
 .camera-controls--plan .plan-categories { display: flex; align-items: center; gap: 2px; padding: 0 6px; border-right: 1px solid rgba(76,91,80,.12); }
@@ -854,3 +849,42 @@ input[type='range']:disabled { opacity: .45; cursor: not-allowed; }
 .door-swing__group button.is-active { background: #52705d; border-color: #52705d; color: #fff; }
 .door-swing__group button:disabled { opacity: .55; cursor: not-allowed; }
 @media (max-width: 760px) { .door-swing__group button { min-height: 44px; } }
+
+.material-control { display: grid; min-inline-size: 0; gap: 10px; margin: 16px 0; padding: 12px; border: 1px solid var(--line); border-radius: 9px; color: #59645c; }
+.material-control legend { padding: 0 4px; font-size: 13px; font-weight: 750; }
+.material-control label { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; font-size: 13px; }
+.material-control select { width: 144px; max-width: 100%; min-height: 36px; padding: 4px; border: 1px solid var(--line); border-radius: 6px; background: white; color: inherit; }
+.material-control .material-control__family { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.material-control__family select { width: 100%; min-width: 0; }
+.material-control input[type='range'] { grid-column: 1 / -1; }
+@media (pointer: coarse) {
+  .material-control select, .material-control input[type='color'] { min-height: 44px; }
+}
+
+/* Herramienta Pintar (#39): reutiliza el panel de Medir y añade los modos y los campos del pincel. */
+.paint-panel__modes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+.paint-panel__modes button.is-active { background: #3f7d5a; border-color: #3f7d5a; color: #fff; }
+.paint-panel__field { display: grid; gap: 4px; font-size: 13px; }
+.paint-panel select { min-height: 32px; border: 1px solid #cdd6cc; border-radius: 7px; background: #fff; }
+body.paint-tool canvas { cursor: crosshair; }
+
+.measure-inspector { display: grid; gap: 8px; }
+.measure-row__editing { margin: 0; color: #1d4f94; font-size: 12.5px; font-weight: 600; }
+/* Punto de una cota en edición: «X ← valor →» y «Z ← valor →». */
+.measure-coordinate { display: grid; grid-template-columns: 1.2em minmax(0, 1fr) minmax(0, 1.7fr) minmax(0, 1fr); gap: 6px; align-items: center; }
+.measure-coordinate__axis { font-size: 12px; font-weight: 800; color: #6f766f; text-align: center; }
+.measure-coordinate > button { width: 100%; min-width: 0; font-size: 16px; }
+.measure-coordinate input { width: 100%; min-width: 0; box-sizing: border-box; min-height: 32px; padding: 0 6px; border: 1px solid #cdd6cc; border-radius: 6px; font: inherit; font-weight: 700; color: #2a5d9f; text-align: center; }
+.measure-coordinate input[aria-invalid="true"] { border-color: #b3261e; background: #fdf1f0; }
+
+/* Miniaturas de acabados (#39): mismo patrón que la escena, teñido. */
+.material-swatch { display: inline-block; flex: none; width: 40px; height: 40px; border: 1px solid rgba(60, 50, 30, .25); border-radius: 8px; background-size: cover; background-position: center; }
+.material-control__preview { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; }
+
+.paint-panel { max-height: calc(100% - 112px); overflow-y: auto; }
+.paint-panel__material { margin: 0; }
+.material-preview { display: grid; gap: 4px; margin: 0; }
+.material-preview canvas { display: block; width: 100%; height: 140px; border: 1px solid rgba(60, 50, 30, .25); border-radius: 8px; background: #fff; }
+.material-preview figcaption { color: #6f766f; font-size: 12px; }
+
+.material-control__static { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; }

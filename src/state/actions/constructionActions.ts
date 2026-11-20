@@ -119,6 +119,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
           ...state.room,
           wallColor,
           wallColors: Object.fromEntries(WALL_SIDES.map((wall) => [wall, wallColor])),
+          ...(state.room.wallMaterials && /^#[0-9a-f]{6}$/i.test(wallColor) ? { wallMaterials: Object.fromEntries(Object.entries(state.room.wallMaterials).map(([side, finish]) => [side, finish && { ...finish, color: wallColor }])) } : {}),
         },
         notice: '',
       }
@@ -131,7 +132,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
         details: { wall, color },
       })
       return {
-        room: { ...state.room, wallColors: { ...state.room.wallColors, [wall]: color } },
+        room: { ...state.room, wallColors: { ...state.room.wallColors, [wall]: color }, ...(state.room.wallMaterials?.[wall] && /^#[0-9a-f]{6}$/i.test(color) ? { wallMaterials: { ...state.room.wallMaterials, [wall]: { ...state.room.wallMaterials[wall]!, color } } } : {}) },
         notice: '',
       }
     }),
@@ -142,7 +143,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
         coalesceKey: 'room-floor-color',
         details: { color: floorColor },
       })
-      return { room: { ...state.room, floorColor }, notice: '' }
+      return { room: { ...state.room, floorColor, ...(state.room.floorMaterial && /^#[0-9a-f]{6}$/i.test(floorColor) ? { floorMaterial: { ...state.room.floorMaterial, color: floorColor } } : {}) }, notice: '' }
     }),
     addStructurePack: (direction) => set((state) => {
       const placement = planRoomCreation(state, direction)
@@ -299,7 +300,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
     setStructureSurfaceColor: (packId, surfaceId, color) => set((state) => {
       const pack = state.structurePacks.find((candidate) => candidate.id === packId)
       const surface = pack?.surfaces.find((item) => item.id === surfaceId)
-      if (!pack || !surface || surface.color === color) return {}
+      if (!pack || !surface || (surface.color === color && (!surface.material || surface.material.color === color))) return {}
       recordInteraction('state.structure-surface.color', {
         view: state.view,
         selectedId: state.selectedId,
@@ -309,7 +310,7 @@ export function createConstructionActions(context: Pick<RoomActionContext, 'set'
       return {
         structurePacks: state.structurePacks.map((pack) => pack.id !== packId ? pack : {
           ...pack,
-          surfaces: pack.surfaces.map((item) => item.id === surfaceId ? { ...item, color } : item),
+          surfaces: pack.surfaces.map((item) => item.id === surfaceId ? { ...item, color, ...(item.material && /^#[0-9a-f]{6}$/i.test(color) ? { material: { ...item.material, color } } : {}) } : item),
         }),
         notice: '',
       }

@@ -1,3 +1,4 @@
+import { setDisplayLengthUnit } from '../domain/lengthUnit'
 import { create } from 'zustand'
 import { instrumentActions } from '../diagnostics/instrumentActions'
 import { rejectDiagnosticAction } from '../diagnostics/actionScope'
@@ -11,6 +12,8 @@ import { finishHistoryTransaction, recordHistoryChange } from './historyTransact
 import type { RoomActionContext, RoomRuntime, RoomState, RoomUpdate } from './types'
 import { createCameraActions } from './actions/cameraActions'
 import { createConstructionActions } from './actions/constructionActions'
+import { createMaterialActions } from './actions/materialActions'
+import { createPaintActions } from './actions/paintActions'
 import { createFurnitureActions } from './actions/furnitureActions'
 import { createMeasureActions } from './actions/measureActions'
 import { createGuideActions } from './actions/guideActions'
@@ -66,6 +69,7 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
   let roomFocusHistory: Array<string | null> = [null]
   const furnitureWallMagnets: FurnitureWallMagnets = new Map()
   const initialPreferences = loadEditorPreferences()
+  setDisplayLengthUnit(initialPreferences.lengthUnit)
   const runtime: RoomRuntime = {
     undoHistory: [],
     redoHistory: [],
@@ -317,11 +321,14 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     povYaw: 0,
     gridSnap: true,
     magnetismEnabled: initialPreferences.magnetism,
+    lengthUnit: initialPreferences.lengthUnit,
     guidesEnabled: initialPreferences.guides,
     activeGuides: [],
     gridVisibility: { ...DEFAULT_GRID_VISIBILITY },
     measurements: [],
     measureToolActive: false,
+    paintTool: null,
+    paintHoverId: null,
     measureAxis: 'free',
     measureSnap: true,
     measureDraft: null,
@@ -338,6 +345,8 @@ export const createRoomStore = (repository: DesignRepository = createLocalDesign
     hasUnsavedChanges: false,
     ...createCameraActions(context),
     ...createConstructionActions(context),
+    ...createMaterialActions(context),
+    ...createPaintActions(context),
     ...createStructureDoorActions(context),
     ...createWallObjectActions(context),
     ...createFurnitureActions(context),

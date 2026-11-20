@@ -12,6 +12,7 @@ import { BASE_ROOM_SURFACE_IDS, folderSelectionId } from '../domain/elementFolde
 import { migrateWallLayout } from './wallLayoutMigration'
 import { normalizeMeasures } from '../domain/planMeasures'
 import { validateDesignDoorSwings } from '../domain/doorSwing'
+import { validateDesignMaterials } from '../domain/materials'
 
 /**
  * Aplana un v5 local de la etapa de variantes a su variante activa.
@@ -44,6 +45,7 @@ export function normalizeDesign(value: unknown): PersistedDesign {
   const room = normalizeDesignRoom(source)
   if (![room.width, room.depth, room.height].every((value) => Number.isFinite(value) && value > 0)) throw new Error('Las dimensiones de la habitación no son válidas.')
   const structurePacks = normalizeStructurePacks(source.structurePacks, room)
+  validateDesignMaterials({ version: source.version, room, furniture: source.furniture, structurePacks })
   if (source.version < 10 && [room.door, ...(room.extraDoors ?? []), ...room.windows,
     ...structurePacks.flatMap((pack) => [...(pack.doors ?? []), ...(pack.windows ?? [])])].some((opening) => opening.wallPosition !== undefined)) {
     throw new Error('Los anclajes a paredes conectadas requieren un diseño v10.')
@@ -127,7 +129,8 @@ export function migrateWallPictures(room: RoomConfig, furniture: FurnitureItem[]
   furniture.forEach((item) => {
     validateAxisLocks(item?.axisLocks)
     const legacyMirror = String(item.kind) === 'mirror'
-    if (!isWallPictureKind(item.kind) && !legacyMirror) {
+    // Un acabado de mobiliario no puede trasladarse a una abertura sin perderse.
+    if (item.material !== undefined || (!isWallPictureKind(item.kind) && !legacyMirror)) {
       remainingFurniture.push(item)
       return
     }

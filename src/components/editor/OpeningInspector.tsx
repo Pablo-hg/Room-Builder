@@ -1,3 +1,5 @@
+import { formatPanelLength } from '../../domain/lengthUnit'
+import { MaterialControl } from './MaterialControl'
 import { useInspectorGesture } from './useInspectorGesture'
 import { ROOM_LIMITS, WALL_LABELS } from '../../domain/constants'
 import { FurnitureIcon } from '../iconCatalog'
@@ -45,6 +47,7 @@ type SelectedOpening = (RoomState['room']['door'] & { id: string; kind: 'door'; 
 export function OpeningInspector({ selectedOpening }: { selectedOpening: SelectedOpening }) {
   const gesture = useInspectorGesture(selectedOpening.id)
   const room = useRoomStore((state) => state.room)
+  useRoomStore((state) => state.lengthUnit) // las medidas se redibujan al cambiar de unidad
   const structurePacks = useRoomStore((state) => state.structurePacks)
   const moveWallObject = useRoomStore((state) => state.moveWallObject)
   const detachWallObject = useRoomStore((state) => state.detachWallObject)
@@ -65,7 +68,8 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
   const updateWindow = useRoomStore((state) => state.updateWindow)
   const removeWindow = useRoomStore((state) => state.removeWindow)
   const resizeWallObject = useRoomStore((state) => state.resizeWallObject)
-  const locked = useRoomStore((state) => state.lockedElementIds.includes(selectedOpening.id))
+  const locked = useRoomStore((state) => state.lockedElementIds.includes(selectedOpening.id)
+    || !!sourcePack && state.lockedElementIds.includes(sourcePack.id))
   const pictureShape = selectedOpening.kind === 'window' && isWallPictureShape(selectedOpening.shape)
     ? selectedOpening.shape
     : null
@@ -73,6 +77,7 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
   const wallShelf = selectedOpening.kind === 'window' && selectedOpening.shape === 'wallShelf'
   const wallMirror = selectedOpening.kind === 'window' && isWallMirrorShape(selectedOpening.shape)
   const wallSconce = selectedOpening.kind === 'window' && selectedOpening.shape === 'wallSconce'
+  const originalColor = selectedOpening.color ?? (selectedOpening.kind === 'door' ? '#ac704b' : '#c88f58')
   const catalogKind = selectedOpening.kind === 'door' ? 'door' : openingKindForShape(selectedOpening.shape)
   const openingSwatchKind = selectedOpening.kind === 'door'
     ? 'door'
@@ -109,17 +114,19 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
       <span className="eyebrow">Inspector del elemento</span>
       <div className="selected-heading">{pictureShape ? <FurnitureIcon kind={pictureShape} color={selectedOpening.color ?? '#d49a72'} /> : openingSwatchKind && <OpeningSwatch kind={openingSwatchKind} color={selectedOpening.color} />}<div><h2>{openingName}</h2><p>{wallShelf || wallPicture || wallMirror || wallSconce ? 'Elemento montado en pared' : 'Apertura seleccionada'}</p></div></div>
       <div className="property-grid" aria-label={`Características de ${openingName.toLowerCase()}`}>
-        <span><small>Anchura</small><strong>{selectedOpening.width.toFixed(2)} m</strong></span>
-        <span><small>Altura</small><strong>{selectedOpening.height.toFixed(2)} m</strong></span>
+        <span><small>Anchura</small><strong>{formatPanelLength(selectedOpening.width)}</strong></span>
+        <span><small>Altura</small><strong>{formatPanelLength(selectedOpening.height)}</strong></span>
         <span><small>{free ? 'Anclaje' : 'Pared'}</small><strong>{free ? 'Libre' : WALL_LABELS[selectedOpening.wall]}</strong></span>
-        <span><small>{free || wallShelf || wallPicture || wallMirror || wallSconce ? 'Altura base' : selectedOpening.kind === 'window' ? 'Antepecho' : 'Desde suelo'}</small><strong>{(free ? position.y : selectedOpening.sill).toFixed(2)} m</strong></span>
+        <span><small>{free || wallShelf || wallPicture || wallMirror || wallSconce ? 'Altura base' : selectedOpening.kind === 'window' ? 'Antepecho' : 'Desde suelo'}</small><strong>{formatPanelLength(free ? position.y : selectedOpening.sill)}</strong></span>
       </div>
       {selectedOpening.kind === 'window' && <ResizeControls capability={capabilities.resize} value={selectedOpening} disabled={locked} onChange={(dimension, value) => { if (dimension !== 'depth') resizeWallObject(selectedOpening.id, dimension, value) }} />}
-      <ColorControl
+      {!selectedOpening.material && <ColorControl
         label="Color del objeto"
-        value={selectedOpening.color ?? (selectedOpening.kind === 'door' ? '#ac704b' : '#c88f58')}
+        value={originalColor}
+        disabled={locked}
         onChange={(color) => update({ color })}
-      />
+      />}
+      <MaterialControl elementId={selectedOpening.id} color={originalColor} finish={selectedOpening.material} disabled={locked} />
       {capabilities.rotation.enabled && (
         <RotationControl
           rotation={selectedOpening.rotation}
@@ -129,8 +136,16 @@ export function OpeningInspector({ selectedOpening }: { selectedOpening: Selecte
       )}
       {selectedOpening.kind === 'door' && <DoorSwingControl swing={doorSwingOf(selectedOpening)} disabled={locked} onChange={setSwing} />}
       {capabilities.canChangeWall && <WallPicker label="Pared" value={selectedOpening.wall} onChange={(wall) => update({ wall })} disabled={locked} />}
-      {selectedOpening.kind === 'window' && selectedOpening.freePosition && <button type="button" className="text-button" disabled={locked} onClick={() => update({ wall: selectedOpening.wall })}>Volver a colocar en la pared {WALL_LABELS[selectedOpening.wall]}</button>}
-      {selectedOpening.kind === 'window' && !selectedOpening.freePosition && <button type="button" className="text-button" disabled={locked} onClick={() => detachWallObject(selectedOpening.id)}>Despegar de la pared</button>}
+      {/* Objetos de pared: fijados por defecto; al arrastrarlos libres se fijan solos al tocar una pared. Solo la casilla los despega. */}
+      {selectedOpening.kind === 'window' && <div className="wall-attachment-controls">
+        <label><input type="checkbox" checked={!selectedOpening.freePosition} disabled={locked} onChange={(event) => {
+          if (event.target.checked) update({ wall: selectedOpening.wall })
+          else detachWallObject(selectedOpening.id)
+        }} /> Fijar a pared</label>
+        <p className="rotation-hint">{selectedOpening.freePosition
+          ? `Libre: muévelo en XYZ. Marca la casilla para colocarlo en la pared ${WALL_LABELS[selectedOpening.wall]}, o acércalo a una pared y se fijará solo.`
+          : 'Fijado a la pared: se desliza por ella. Desmarca la casilla para despegarlo.'}</p>
+      </div>}
       {(['x', 'y', 'z'] as const).map((axis) => {
         const component = axis === 'x' ? Math.cos(position.yaw) : axis === 'z' ? -Math.sin(position.yaw) : 0
         const limits = runBounds && axis !== 'y' ? [position[axis] + component * runBounds.min, position[axis] + component * runBounds.max] : [-20, 20]

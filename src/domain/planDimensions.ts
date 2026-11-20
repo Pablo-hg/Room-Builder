@@ -1,3 +1,4 @@
+import { formatLengthValue, getDisplayLengthUnit } from './lengthUnit'
 import { WALL_LABELS } from './constants'
 import { snapMeasurement } from './measurements'
 import { roomWallCornerExtension, surfacePosition } from './roomEditing'
@@ -52,16 +53,14 @@ export interface PlanDimension {
   openingId?: string
 }
 
-const NUMBER_FORMAT = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false })
-
 /** «4,00» — precisión de 0,01 m en español de España. */
 export function formatPlanDimensionValue(length: number): string {
-  return NUMBER_FORMAT.format(snapMeasurement(length))
+  return formatLengthValue(snapMeasurement(length))
 }
 
 /** «4,00 m» */
 export function formatPlanDimension(length: number): string {
-  return `${formatPlanDimensionValue(length)} m`
+  return `${formatPlanDimensionValue(length)} ${getDisplayLengthUnit()}`
 }
 
 /**

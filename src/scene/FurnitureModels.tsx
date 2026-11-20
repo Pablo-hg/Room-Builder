@@ -8,6 +8,7 @@ import { pictureModel } from './WallObjectModels'
 type ModelContext = {
   item: FurnitureItem
   material: ReactElement
+  texture?: THREE.Texture | null
   darkColor: string
   deeperColor: string
   lightColor: string
@@ -114,27 +115,27 @@ function renderVase({ material, darkColor, lightColor }: ModelContext) {
 
 // Las pantallas son superficies abiertas: se dibujan por las dos caras para que se vea
 // su parte trasera e interior. Las lámparas no emiten luz (decisión del propietario).
-function shadeMaterial(item: FurnitureItem) {
-  return <meshStandardMaterial color={item.color} roughness={0.78} side={THREE.DoubleSide} />
+function shadeMaterial(item: FurnitureItem, texture?: THREE.Texture | null) {
+  return <meshStandardMaterial key={texture ? 'textured' : undefined} color={item.material?.color ?? item.color} map={texture} roughness={0.78} side={THREE.DoubleSide} />
 }
 
-function renderTableLamp({ item, darkColor, deeperColor, lightColor }: ModelContext) {
+function renderTableLamp({ item, texture, darkColor, deeperColor, lightColor }: ModelContext) {
   return (
     <group>
       <mesh position={[0, 0.035, 0]} castShadow><cylinderGeometry args={[0.19, 0.22, 0.07, 24]} /><meshStandardMaterial color={darkColor} metalness={0.2} roughness={0.55} /></mesh>
       <mesh position={[0, 0.22, 0]} castShadow><cylinderGeometry args={[0.025, 0.035, 0.32, 16]} /><meshStandardMaterial color={deeperColor} metalness={0.25} roughness={0.5} /></mesh>
-      <mesh position={[0, 0.44, 0]} castShadow><cylinderGeometry args={[0.11, 0.24, 0.3, 28, 1, true]} />{shadeMaterial(item)}</mesh>
+      <mesh position={[0, 0.44, 0]} castShadow><cylinderGeometry args={[0.11, 0.24, 0.3, 28, 1, true]} />{shadeMaterial(item, texture)}</mesh>
       <mesh position={[0, 0.29, 0]} rotation={[Math.PI / 2, 0, 0]}><circleGeometry args={[0.11, 24]} /><meshStandardMaterial color={lightColor} side={THREE.DoubleSide} /></mesh>
     </group>
   )
 }
 
-function renderCeilingLamp({ item, darkColor, deeperColor, lightColor }: ModelContext) {
+function renderCeilingLamp({ item, texture, darkColor, deeperColor, lightColor }: ModelContext) {
   return (
     <group>
       <mesh position={[0, item.height - 0.025, 0]} castShadow><cylinderGeometry args={[0.18, 0.18, 0.05, 24]} /><meshStandardMaterial color={darkColor} metalness={0.2} roughness={0.55} /></mesh>
       <mesh position={[0, item.height * 0.58, 0]} castShadow><cylinderGeometry args={[0.025, 0.025, item.height * 0.78, 12]} /><meshStandardMaterial color={deeperColor} metalness={0.25} roughness={0.5} /></mesh>
-      <mesh position={[0, item.height * 0.2, 0]} castShadow><cylinderGeometry args={[0.13, 0.27, item.height * 0.38, 28, 1, true]} />{shadeMaterial(item)}</mesh>
+      <mesh position={[0, item.height * 0.2, 0]} castShadow><cylinderGeometry args={[0.13, 0.27, item.height * 0.38, 28, 1, true]} />{shadeMaterial(item, texture)}</mesh>
       <mesh position={[0, item.height * 0.01, 0]} rotation={[Math.PI / 2, 0, 0]}><circleGeometry args={[0.13, 24]} /><meshStandardMaterial color={lightColor} side={THREE.DoubleSide} /></mesh>
     </group>
   )
@@ -152,10 +153,10 @@ function renderTvStand({ item, material, darkColor, deeperColor, lightColor }: M
   )
 }
 
-function renderTelevision({ item, darkColor, deeperColor }: ModelContext) {
+function renderTelevision({ item, texture, darkColor, deeperColor }: ModelContext) {
   return (
     <group>
-      <mesh position={[0, item.height * 0.58, 0]} castShadow><boxGeometry args={[item.width, item.height * 0.78, 0.07]} /><meshStandardMaterial color={deeperColor} roughness={0.48} /></mesh>
+      <mesh position={[0, item.height * 0.58, 0]} castShadow><boxGeometry args={[item.width, item.height * 0.78, 0.07]} /><meshStandardMaterial key={texture ? 'textured' : undefined} color={item.material?.color ?? deeperColor} map={texture} roughness={0.48} /></mesh>
       <mesh position={[0, item.height * 0.58, 0.041]}><boxGeometry args={[item.width * 0.91, item.height * 0.68, 0.012]} /><meshStandardMaterial color={darkColor} roughness={0.32} metalness={0.12} /></mesh>
       <mesh position={[0, item.height * 0.12, 0]}><boxGeometry args={[0.07, item.height * 0.24, 0.07]} /><meshStandardMaterial color={deeperColor} /></mesh>
       <mesh position={[0, item.height * 0.025, 0.015]}><boxGeometry args={[item.width * 0.34, 0.035, item.depth * 0.68]} /><meshStandardMaterial color={darkColor} /></mesh>
@@ -195,10 +196,10 @@ function renderCircularRug({ item, material, paleColor }: ModelContext) {
   )
 }
 
-function renderPlant({ item, darkColor, deeperColor, lightColor }: ModelContext) {
+function renderPlant({ item, texture, darkColor, deeperColor, lightColor }: ModelContext) {
   return (
     <group>
-      <mesh position={[0, 0.16, 0]} castShadow><cylinderGeometry args={[item.width * 0.36, item.width * 0.28, 0.32, 24]} /><meshStandardMaterial color={darkColor} roughness={0.82} /></mesh>
+      <mesh position={[0, 0.16, 0]} castShadow><cylinderGeometry args={[item.width * 0.36, item.width * 0.28, 0.32, 24]} /><meshStandardMaterial key={texture ? 'textured' : undefined} color={item.material?.color ?? darkColor} map={texture} roughness={0.82} /></mesh>
       <mesh position={[0, 0.325, 0]}><cylinderGeometry args={[item.width * 0.36, item.width * 0.36, 0.035, 24]} /><meshStandardMaterial color={deeperColor} /></mesh>
       <mesh position={[0, 0.34, 0]}><cylinderGeometry args={[item.width * 0.3, item.width * 0.3, 0.02, 24]} /><meshStandardMaterial color="#59493c" roughness={1} /></mesh>
       <mesh position={[0, 0.71, 0]} castShadow><cylinderGeometry args={[0.018, 0.025, 0.72, 10]} /><meshStandardMaterial color={deeperColor} /></mesh>
@@ -295,11 +296,11 @@ function renderBookshelf({ item, material, deeperColor, lightColor, paleColor }:
   )
 }
 
-function renderWastebasket({ item, darkColor, deeperColor }: ModelContext) {
+function renderWastebasket({ item, texture, darkColor, deeperColor }: ModelContext) {
   const topRadius = item.width * 0.43
   return (
     <group>
-      <mesh position={[0, item.height / 2, 0]} castShadow><cylinderGeometry args={[topRadius, item.width * 0.35, item.height, 28, 1, true]} /><meshStandardMaterial color={item.color} roughness={0.78} side={THREE.DoubleSide} /></mesh>
+      <mesh position={[0, item.height / 2, 0]} castShadow><cylinderGeometry args={[topRadius, item.width * 0.35, item.height, 28, 1, true]} /><meshStandardMaterial key={texture ? 'textured' : undefined} color={item.material?.color ?? item.color} map={texture} roughness={0.78} side={THREE.DoubleSide} /></mesh>
       <mesh position={[0, 0.025, 0]}><cylinderGeometry args={[item.width * 0.35, item.width * 0.35, 0.05, 28]} /><meshStandardMaterial color={darkColor} /></mesh>
       <mesh position={[0, item.height - 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[topRadius - 0.025, 32]} /><meshStandardMaterial color={deeperColor} side={THREE.DoubleSide} /></mesh>
       <mesh position={[0, item.height + 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[topRadius - 0.028, topRadius, 32]} /><meshStandardMaterial color={darkColor} side={THREE.DoubleSide} /></mesh>
@@ -309,16 +310,16 @@ function renderWastebasket({ item, darkColor, deeperColor }: ModelContext) {
 
 // Los cuadros se dibujan en la escena como objetos de pared (Openings.tsx). Si alguno llega
 // como mueble (diseños antiguos antes de migrar), se usa el mismo modelo: una sola fuente.
-function renderPicture({ item }: ModelContext) {
-  return <group position={[0, 1.4, 0]}>{pictureModel({ width: item.width, height: item.height, color: item.color })}</group>
+function renderPicture({ item, texture }: ModelContext) {
+  return <group position={[0, 1.4, 0]}>{pictureModel({ width: item.width, height: item.height, color: item.color, finishColor: item.material?.color, texture })}</group>
 }
 
-function renderLamp({ item, darkColor, deeperColor }: ModelContext) {
+function renderLamp({ item, texture, darkColor, deeperColor }: ModelContext) {
   return (
     <group>
       <mesh position={[0, 0.055, 0]} castShadow><cylinderGeometry args={[0.22, 0.25, 0.11, 28]} /><meshStandardMaterial color={darkColor} metalness={0.25} roughness={0.55} /></mesh>
       <mesh position={[0, item.height * 0.48, 0]} castShadow><cylinderGeometry args={[0.025, 0.025, item.height * 0.88, 16]} /><meshStandardMaterial color={deeperColor} metalness={0.35} roughness={0.45} /></mesh>
-      <mesh position={[0, item.height * 0.88, 0]} castShadow><coneGeometry args={[0.28, 0.42, 28, 1, true]} />{shadeMaterial(item)}</mesh>
+      <mesh position={[0, item.height * 0.88, 0]} castShadow><coneGeometry args={[0.28, 0.42, 28, 1, true]} />{shadeMaterial(item, texture)}</mesh>
     </group>
   )
 }
@@ -363,19 +364,20 @@ export const FURNITURE_MODELS: Record<FurnitureKind, ModelRenderer> = {
   ceilingLamp: renderCeilingLamp,
 }
 
-export function FurnitureModel({ item }: { item: FurnitureItem }) {
-  const material = <meshStandardMaterial color={item.color} roughness={0.78} />
-  const darkColor = colorTone(item.color, -0.2)
-  const deeperColor = colorTone(item.color, -0.34)
-  const lightColor = colorTone(item.color, 0.28)
-  const paleColor = colorTone(item.color, 0.42)
+export function FurnitureModel({ item, texture }: { item: FurnitureItem; texture?: THREE.Texture | null }) {
+  const color = item.material?.color ?? item.color
+  const material = <meshStandardMaterial key={texture ? 'textured' : undefined} color={color} map={texture ?? undefined} roughness={0.78} />
+  const darkColor = colorTone(color, -0.2)
+  const deeperColor = colorTone(color, -0.34)
+  const lightColor = colorTone(color, 0.28)
+  const paleColor = colorTone(color, 0.42)
   const renderModel = typeof item.kind === 'string' && Object.prototype.hasOwnProperty.call(FURNITURE_MODELS, item.kind)
     ? FURNITURE_MODELS[item.kind]
     : renderCabinet
   const preset = Object.hasOwn(FURNITURE_PRESETS, item.kind) ? FURNITURE_PRESETS[item.kind] : undefined
-  if (!preset) return renderModel({ item, material, darkColor, deeperColor, lightColor, paleColor })
+  if (!preset) return renderModel({ item, material, texture, darkColor, deeperColor, lightColor, paleColor })
   const base = { ...item, width: preset.width, height: preset.height, depth: preset.depth }
-  const model = renderModel({ item: base, material, darkColor, deeperColor, lightColor, paleColor })
+  const model = renderModel({ item: base, material, texture, darkColor, deeperColor, lightColor, paleColor })
   if (item.width === preset.width && item.height === preset.height && item.depth === preset.depth) return model
   return <group scale={[item.width / preset.width, item.height / preset.height, item.depth / preset.depth]}>{model}</group>
 }
