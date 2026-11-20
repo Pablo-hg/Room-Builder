@@ -43,8 +43,19 @@ import { automatedBrowser } from '../scene/renderQuality'
 import { planRoomDimensions } from '../domain/planDimensions'
 import { planOpeningDimensions } from '../domain/planDimensionDetails'
 import { PlanFurnitureDistances } from '../scene/PlanMeasures'
+import { PhotoCaptureController, type PhotoCapture } from '../scene/PhotoCapture'
+import type { FreeVisibilityOverrides } from './editor/FreeVisibility'
+import { BASE_FLOOR_ID } from '../domain/elementFolders'
 
-function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null>; collisionIds: ReadonlySet<string> }) {
+type PhotoSceneOptions = {
+  background: string
+  annotations: boolean
+  captureRef: RefObject<PhotoCapture | null>
+}
+
+function RoomWorld({ modelRootRef, photo, freeVisibility, freeLabelsVisible, ...props }: SceneProps & { modelRootRef: RefObject<THREE.Group | null>; collisionIds: ReadonlySet<string>; photo?: PhotoSceneOptions; freeVisibility: FreeVisibilityOverrides; freeLabelsVisible: boolean }) {
+  const cleanView = props.exportMode || !!photo
+  const showLabels = !props.exportMode && (!photo || photo.annotations)
   const selectedId = useRoomStore((state) => state.selectedId)
   const selectedIds = useRoomStore((state) => state.selectedIds)
   const hiddenElementIds = useRoomStore((state) => state.hiddenElementIds)
@@ -67,15 +78,17 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
     height: focusedView || props.view === 'front' ? activeBox?.height ?? props.room.height : Math.max(props.room.height, ...props.structurePacks.filter((pack) => pack.id.startsWith('floor-pack-')).map((pack) => pack.y + (packRoomBox(pack, props.room)?.height ?? props.room.height))),
   }
   const { hidden, labeledWalls, gridWalls } = wallVisibility(props)
+  const showFreeLabels = props.view !== 'free' || freeLabelsVisible
+  const visibleInFree = (id: string, fallback: boolean) => props.view === 'free' && !cleanView ? freeVisibility[id] ?? fallback : fallback
   const renderedPacks = props.structurePacks.filter((pack) => !focusedView || (pack.id.startsWith('floor-pack-') ? Math.abs(pack.y - level) < 0.01 : pack.surfaces.some((surface) => { const y = pack.y + surface.y + (surface.kind === 'wall' ? props.room.height / 2 : surface.kind === 'ceiling' ? props.room.height : 0); return y >= level - 0.01 && y < level + props.room.height })))
-  const renderedPackIds = new Set(renderedPacks.filter((pack) => !hiddenElementIds.includes(pack.id)).map((pack) => pack.id))
+  const packVisible = (pack: typeof renderedPacks[number]) => !hiddenElementIds.includes(pack.id) || (props.view === 'free' && !cleanView && pack.surfaces.some((surface) => freeVisibility[`structure-surface:${pack.id}:${surface.id}`] === true))
+  const renderedPackIds = new Set(renderedPacks.filter(packVisible).map((pack) => pack.id))
   const wallFrames = physicalWalls({ room: props.room, structurePacks: props.structurePacks })
   const visibleWallIds = new Set(wallFrames.filter((wall) => {
-    if (hiddenElementIds.includes(wall.id)) return false
-    if (!wall.packId) return showBase && !hidden.includes(wall.side)
+    if (!wall.packId) return showBase && visibleInFree(wall.id, !hiddenElementIds.includes(wall.id) && !hidden.includes(wall.side))
     if (!renderedPackIds.has(wall.packId)) return false
     const independent = wall.packId.startsWith('floor-object-') || wall.packId.startsWith('wall-object-')
-    return independent || !hidden.includes(wall.side)
+    return visibleInFree(wall.id, !hiddenElementIds.includes(wall.packId) && !hiddenElementIds.includes(wall.id) && (independent || !hidden.includes(wall.side)))
   }).map((wall) => wall.id))
   const visibleSignature = JSON.stringify([...visibleWallIds].sort())
   const wallSkins = useMemo(() => wallUnionFaces({ room: props.room, structurePacks: props.structurePacks }, visibleWallIds), [props.room, props.structurePacks, visibleSignature])
@@ -92,21 +105,21 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
   // Hoja de plantas: solo en Plano y con más de una planta. La planta
   // enfocada se edita en su sitio real; las demás son copias desplazadas.
   const planSheet = useMemo(() => {
-    if (props.view !== 'top' || props.exportMode || !focusedView) return null
+    if (props.view !== 'top' || cleanView || !focusedView) return null
     const groups = planFloorGroups(props.room, props.structurePacks)
     if (groups.length < 2) return null
     const focusedKey = activeRoom ? roundFloorLevel(activeRoom.y) : 0
     return { groups, focusedKey, placements: planSheetPlacements(groups, focusedKey, props.orientation) }
-  }, [props.view, props.exportMode, focusedView, props.room, props.structurePacks, activeRoom, props.orientation])
+  }, [props.view, cleanView, focusedView, props.room, props.structurePacks, activeRoom, props.orientation])
   // «Plano detallado»: capa visual sobre el mismo plano, nunca en exportación
   // ni fuera de Plano. Acota las paredes visibles en el Plano de todas las
   // habitaciones (raíz y adicionales); las paredes independientes no.
   const planDetailsVisible = useRoomStore((state) => state.planDetailsVisible)
   const planDetailCategories = useRoomStore((state) => state.planDetailCategories)
-  const planDetailsOn = planDetailsVisible && props.view === 'top' && !props.exportMode
+  const planDetailsOn = (photo ? photo.annotations : planDetailsVisible) && props.view === 'top' && !props.exportMode
   // Cada categoría se filtra por separado; con «Paredes» apagado, vuelven las etiquetas normales de pared.
-  const showPlanDimensions = planDetailsOn && planDetailCategories.walls
-  const showOpeningChains = planDetailsOn && planDetailCategories.openings
+  const showPlanDimensions = planDetailsOn && (!!photo || planDetailCategories.walls)
+  const showOpeningChains = planDetailsOn && (!!photo || planDetailCategories.openings)
   const lengthUnit = useRoomStore((state) => state.lengthUnit)
   const openingChains = useMemo(() => showOpeningChains
     ? planOpeningDimensions({ room: props.room, structurePacks: props.structurePacks }, (wall) => planVisibleWallIds.has(wall.id))
@@ -115,10 +128,10 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
     ? planRoomDimensions({ room: props.room, structurePacks: props.structurePacks }, (wall) => planVisibleWallIds.has(wall.id))
     : [], [showPlanDimensions, props.room, props.structurePacks, planSignature, lengthUnit])
   // Con detalles, la letra «PARED X» se desplaza por detrás de su cota.
-  const baseWallLabels = showBase && !activeRoom && !props.exportMode
+  const baseWallLabels = showBase && !activeRoom && showLabels && props.view !== 'free'
     ? labeledWalls.filter((wall) => !hiddenElementIds.includes(baseWallId(wall)))
     : []
-  const activeRoomWallLabelIds = activeRoom && !props.exportMode
+  const activeRoomWallLabelIds = activeRoom && showLabels && props.view !== 'free'
     ? activeRoom.surfaces.filter((surface) => surface.kind === 'wall' && surface.wall && labeledWalls.includes(surface.wall))
       .map((surface) => `structure-surface:${activeRoom.id}:${surface.id}`).filter((id) => !hiddenElementIds.includes(id))
     : []
@@ -126,30 +139,30 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
 
   return (
     <>
-      <CameraRig room={cameraRoom} view={props.view} orientation={props.orientation} isoAngle={props.isoAngle} isIsoOrbitDragging={props.isIsoOrbitDragging} freeAzimuth={props.freeAzimuth} freeElevation={props.freeElevation} isFreeOrbitDragging={props.isFreeOrbitDragging} cameraZoom={props.cameraZoom} wallView={props.wallView} frontCameraHeight={props.frontCameraHeight} povYaw={props.povYaw} />
-      <color attach="background" args={['#e8dfd3']} />
+      <CameraRig room={cameraRoom} view={props.view} orientation={props.orientation} isoAngle={props.isoAngle} isIsoOrbitDragging={props.isIsoOrbitDragging} freeAzimuth={props.freeAzimuth} freeElevation={props.freeElevation} isFreeOrbitDragging={props.isFreeOrbitDragging} cameraZoom={props.cameraZoom} wallView={props.wallView} frontCameraHeight={props.frontCameraHeight} povYaw={props.povYaw} instant={!!photo} planPadding={photo?.annotations ? 3.8 : undefined} />
+      <color attach="background" args={[photo?.background ?? '#e8dfd3']} />
       <ambientLight intensity={1.35} />
       <StudioLight room={props.room} />
       <hemisphereLight args={['#ddecf0', '#bd9170', 0.75]} />
 
-      <RoomShell room={props.room} modelRootRef={modelRootRef} showBase={showBase} showSelection={!props.exportMode} showFloorGrid={!props.exportMode && props.gridVisibility.floor}>
+      <RoomShell room={props.room} modelRootRef={modelRootRef} showBase={showBase} showSelection={!cleanView} floorVisible={props.view === 'free' && !cleanView ? freeVisibility[BASE_FLOOR_ID] : undefined} showFloorGrid={!cleanView && props.gridVisibility.floor}>
         {showBase && WALL_SIDES.map((wall) => (
           <SoftWall
             key={wall}
             room={props.room}
             wall={wall}
             skinFaces={wallSkins.get(baseWallId(wall)) ?? []}
-            hidden={hidden.includes(wall) || hiddenElementIds.includes(baseWallId(wall))}
+            hidden={!visibleInFree(baseWallId(wall), !hidden.includes(wall) && !hiddenElementIds.includes(baseWallId(wall)))}
             showOpeningDetails={props.exportMode || props.view !== 'top'}
-            showGrid={gridWalls.includes(wall) && props.gridVisibility[wall]}
-            exportMode={props.exportMode}
+            showGrid={!cleanView && (props.view === 'free' || gridWalls.includes(wall)) && props.gridVisibility[wall]}
+            exportMode={cleanView}
             groupSelected={groupSelected}
             collisionIds={props.collisionIds}
           />
         ))}
         {!showPlanDimensions && baseWallLabels.map((wall) => wallFrames.find((frame) => frame.id === baseWallId(wall))).filter((frame) => frame !== undefined).map((frame) => <WallIdentityLabel key={`base-label-${frame.id}`} frame={frame} view={props.view} />)}
         {renderedPacks.map((pack) => (
-          <group key={pack.id} position={[pack.x, pack.y, pack.z]} visible={!hiddenElementIds.includes(pack.id)}>
+          <group key={pack.id} position={[pack.x, pack.y, pack.z]} visible={packVisible(pack)}>
             {pack.surfaces.map((surface) => {
               const surfaceId = `structure-surface:${pack.id}:${surface.id}`
               const independentSurface = pack.id.startsWith('floor-object-') || pack.id.startsWith('wall-object-')
@@ -161,13 +174,13 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
                   packName={pack.name}
                   surface={surface}
                   skinFaces={wallSkins.get(surfaceId) ?? []}
-                  hidden={hiddenElementIds.includes(surfaceId) || (!independentSurface && surface.kind === 'wall' && surface.wall !== undefined && hidden.includes(surface.wall))}
-                  selected={!props.exportMode && selectedId === surfaceId}
-                  outlined={!props.exportMode && !groupSelected && selectedIds.includes(surfaceId)}
+                  hidden={!visibleInFree(surfaceId, !hiddenElementIds.includes(pack.id) && !hiddenElementIds.includes(surfaceId) && !(!independentSurface && surface.kind === 'wall' && surface.wall !== undefined && hidden.includes(surface.wall)))}
+                  selected={!cleanView && selectedId === surfaceId}
+                  outlined={!cleanView && !groupSelected && selectedIds.includes(surfaceId)}
                   locked={lockedElementIds.includes(surfaceId)}
-                  showGrid={!props.exportMode && (independentSurface || pack.id.startsWith('floor-pack-'))}
-                  showCollision={!props.exportMode}
-                  colliding={!props.exportMode && props.collisionIds.has(surfaceId)}
+                  showGrid={!cleanView && (independentSurface || pack.id.startsWith('floor-pack-'))}
+                  showCollision={!cleanView}
+                  colliding={!cleanView && props.collisionIds.has(surfaceId)}
                   collisionIds={props.collisionIds}
                   onSelect={() => selectElement(surfaceId)}
                 />
@@ -177,30 +190,31 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
           </group>
         ))}
         {props.view === 'top' && !props.exportMode && <PlanWallLines strips={planStrips} />}
-        <WorldWallObjects room={props.room} structurePacks={props.structurePacks} collisionIds={props.collisionIds} exportMode={props.exportMode} level={level} levelHeight={levelHeight} focusedView={focusedView} frontVisibleWalls={props.view === 'front' && !props.exportMode ? visibleWallIds : undefined} />
+        <WorldWallObjects room={props.room} structurePacks={props.structurePacks} collisionIds={props.collisionIds} exportMode={props.exportMode} cleanView={cleanView} level={level} levelHeight={levelHeight} focusedView={focusedView} frontVisibleWalls={props.view === 'front' && !props.exportMode ? visibleWallIds : undefined} freeVisibleWalls={props.view === 'free' && !cleanView ? visibleWallIds : undefined} />
         {props.furniture.filter((item) => !hiddenElementIds.includes(item.id) && (!focusedView || (item.y >= level - 0.01 && item.y < level + levelHeight))).map((item) => (
           <FurnitureObject
             key={item.id}
             item={item}
-            selected={!props.exportMode && item.id === selectedId}
-            outlined={!props.exportMode && !groupSelected && selectedIds.includes(item.id)}
-            canDrag={props.view !== 'pov' && !lockedElementIds.includes(item.id)}
+            selected={!cleanView && item.id === selectedId}
+            outlined={!cleanView && !groupSelected && selectedIds.includes(item.id)}
+            canDrag={!photo && props.view !== 'pov' && !lockedElementIds.includes(item.id)}
             planView={props.view === 'top'}
-            showCollision={!props.exportMode}
-            colliding={!props.exportMode && props.collisionIds.has(item.id)}
+            showCollision={!cleanView}
+            colliding={!cleanView && props.collisionIds.has(item.id)}
             frontWall={props.view === 'front' ? props.wallView ?? 'north' : null}
           />
         ))}
-        {!props.exportMode && groupSelected && <MultiFurnitureGizmo items={multiItems} locked={[...selectedIds, ...multiItems.map((item) => item.id)].some((id) => lockedElementIds.includes(id))} view={props.view} wall={props.wallView} />}
+        {!cleanView && groupSelected && <MultiFurnitureGizmo items={multiItems} locked={[...selectedIds, ...multiItems.map((item) => item.id)].some((id) => lockedElementIds.includes(id))} view={props.view} wall={props.wallView} />}
       </RoomShell>
-      {!props.exportMode && !showPlanDimensions && activeRoomWallLabelIds.map((id) => wallFrames.find((frame) => frame.id === id)).filter((frame) => frame !== undefined).map((frame) => <WallIdentityLabel key={`pack-label-${frame.id}`} frame={frame} view={props.view} />)}
-      {!props.exportMode && showBase && folders.filter((folder) => folder.id === ROOT_ROOM_FOLDER).map((folder) => {
+      {!cleanView && !showPlanDimensions && activeRoomWallLabelIds.map((id) => wallFrames.find((frame) => frame.id === id)).filter((frame) => frame !== undefined).map((frame) => <WallIdentityLabel key={`pack-label-${frame.id}`} frame={frame} view={props.view} />)}
+      {!cleanView && props.view === 'free' && showFreeLabels && wallFrames.filter((frame) => visibleWallIds.has(frame.id) && (!frame.packId || frame.packId.startsWith('floor-pack-'))).map((frame) => <WallIdentityLabel key={`free-label-${frame.id}`} frame={frame} view={props.view} />)}
+      {!cleanView && showFreeLabels && showBase && folders.filter((folder) => folder.id === ROOT_ROOM_FOLDER).map((folder) => {
         // Con otra habitación encima, el nombre va en su propio suelo (ver roomLabelAnchor).
         const rootBox = { x: 0, y: 0, z: 0, width: props.room.width, depth: props.room.depth, height: props.room.height }
         const boxes = worldRoomBoxes(props.room, props.structurePacks)
         return <RoomNameLabel key={folder.id} folderId={folder.id} name={folder.name} position={[0, roomLabelHeight(rootBox, boxes), 0]} extent={props.room} anchor={roomLabelAnchor(rootBox, boxes)} />
       })}
-      {!props.exportMode && renderedPacks.filter((pack) => pack.id.startsWith('floor-pack-') && !hiddenElementIds.includes(pack.id)).map((pack) => {
+      {!cleanView && showFreeLabels && renderedPacks.filter((pack) => pack.id.startsWith('floor-pack-') && packVisible(pack)).map((pack) => {
         const box = packRoomBox(pack, props.room)
         const folder = folders.find((item) => item.id === assignments[pack.id])
         if (!box || !folder) return null
@@ -209,19 +223,18 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
         return <RoomNameLabel key={folder.id} folderId={folder.id} name={folder.name} position={[worldBox.x, roomLabelHeight(worldBox, boxes), worldBox.z]} extent={box} anchor={roomLabelAnchor(worldBox, boxes)} />
       })}
       {/* Plano: el fondo vacío también permite desplazar la vista. */}
-      {props.view === 'top' && !props.exportMode && <PlanPanSurface y={level - 1} />}
-      {props.view === 'top' && !props.exportMode && <PlanWheelPan />}
-      {/* Arrastrar desde el catálogo hasta la vista. */}
-      {!props.exportMode && <CatalogDropController />}
-      {!props.exportMode && <PaintTool />}
+      {props.view === 'top' && !cleanView && <PlanPanSurface y={level - 1} />}
+      {props.view === 'top' && !cleanView && <PlanWheelPan />}
+      {!cleanView && <CatalogDropController />}
+      {!cleanView && <PaintTool />}
       {/* Plano: las demás plantas se dibujan a izquierda y derecha, como en una lámina de arquitectura. */}
       {planSheet && <PlanFloorSheet groups={planSheet.groups} placements={planSheet.placements} focusedKey={planSheet.focusedKey} room={props.room} structurePacks={props.structurePacks} furniture={props.furniture} orientation={props.orientation} />}
-      {props.view === 'top' && !props.exportMode && <PlanMeasures y={level + levelHeight + 0.06} />}
-      {props.view === 'top' && !props.exportMode && <MeasureEditor y={level + levelHeight + 0.06} planeY={level + levelHeight + 3} />}
-      {props.view === 'top' && !props.exportMode && <MeasureTool y={level + levelHeight + 0.06} planeY={level + levelHeight + 3} />}
+      {props.view === 'top' && (!cleanView || photo?.annotations) && <PlanMeasures y={level + levelHeight + 0.06} photo={!!photo} />}
+      {props.view === 'top' && !cleanView && <MeasureEditor y={level + levelHeight + 0.06} planeY={level + levelHeight + 3} />}
+      {props.view === 'top' && !cleanView && <MeasureTool y={level + levelHeight + 0.06} planeY={level + levelHeight + 3} />}
       {showOpeningChains && <PlanDimensions dimensions={openingChains} y={level + levelHeight + 0.05} wallLabels={noWallLabels} />}
-      {planDetailsOn && planDetailCategories.furniture && <PlanFurnitureDistances y={level + levelHeight + 0.07} />}
-      {!props.exportMode && <DragGuidesOverlay y={level + 0.04} />}
+      {!photo && planDetailsOn && planDetailCategories.furniture && <PlanFurnitureDistances y={level + levelHeight + 0.07} />}
+      {!cleanView && <DragGuidesOverlay y={level + 0.04} />}
       {showPlanDimensions && <PlanDimensions dimensions={planDimensions} y={level + levelHeight + 0.05} wallLabels={planDimensionWallLabels} />}
     </>
   )
@@ -229,7 +242,7 @@ function RoomWorld({ modelRootRef, ...props }: SceneProps & { modelRootRef: RefO
 
 const noWallLabels: ReadonlySet<string> = new Set()
 
-export default function RoomScene(props: SceneProps & { collisionIds: ReadonlySet<string>; onRightAreaHeld: (held: boolean) => void }) {
+export default function RoomScene(props: SceneProps & { collisionIds: ReadonlySet<string>; onRightAreaHeld: (held: boolean) => void; photo?: PhotoSceneOptions; freeVisibility: FreeVisibilityOverrides; freeLabelsVisible: boolean }) {
   const perspective = props.view === 'pov' || props.view === 'free'
   const selectElement = useRoomStore((state) => state.selectElement)
   const modelRootRef = useRef<THREE.Group>(null)
@@ -244,8 +257,9 @@ export default function RoomScene(props: SceneProps & { collisionIds: ReadonlySe
       shadows={!automatedBrowser}
       events={(store) => ({ ...events(store), filter: prioritizeTransformControls })}
       dpr={[1, 1.7]}
+      style={props.photo ? { pointerEvents: 'none' } : undefined}
       gl={{ antialias: !automatedBrowser, toneMapping: THREE.ACESFilmicToneMapping }}
-      onPointerMissed={(event) => {
+      onPointerMissed={props.photo ? undefined : (event) => {
         recordSceneInteraction('pointer-missed', {
           target: event.target instanceof Element ? event.target.tagName.toLowerCase() : 'canvas',
           x: Math.round(event.clientX),
@@ -255,10 +269,11 @@ export default function RoomScene(props: SceneProps & { collisionIds: ReadonlySe
       }}
     >
       <RoomWorld {...props} modelRootRef={modelRootRef} />
-      <MarqueeSelection enabled={!props.exportMode} onRightHeld={props.onRightAreaHeld} />
-      <OverlapFocus enabled={!props.exportMode} />
-      <OrbitPointerController view={props.view === 'isometric' || props.view === 'free' ? props.view : null} />
-      <FreeCameraKeyboard active={props.view === 'free' && !props.exportMode} />
+      <MarqueeSelection enabled={!props.exportMode && !props.photo} onRightHeld={props.onRightAreaHeld} />
+      <OverlapFocus enabled={!props.exportMode && !props.photo} />
+      <OrbitPointerController view={!props.photo && (props.view === 'isometric' || props.view === 'free') ? props.view : null} />
+      <FreeCameraKeyboard active={props.view === 'free' && !props.exportMode && !props.photo} />
+      {props.photo && <PhotoCaptureController captureRef={props.photo.captureRef} view={props.view} />}
       <SceneExportController
         modelRootRef={modelRootRef}
         exportRequest={props.exportRequest}

@@ -16,7 +16,7 @@ import { ObjectsPanel } from './components/editor/ObjectsPanel'
 import { ViewControls } from './components/editor/ViewControls'
 import { RoomViewSelector } from './components/editor/RoomViewSelector'
 import { MeasureToolPanel } from './components/editor/MeasureControls'
-import { PaintToolPanel, PaintToolToggle } from './components/editor/PaintToolControls'
+import { PaintToolPanel } from './components/editor/PaintToolControls'
 import { ZoomControl } from './components/editor/ZoomControl'
 import { packRoomBox } from './domain/roomEditing'
 import { visibleWallsForView } from './components/editor/viewHelpers'
@@ -26,6 +26,9 @@ import { useEditorShortcuts } from './components/editor/useEditorShortcuts'
 import { MovementStatus } from './components/editor/MovementStatus'
 import { trackDragModifiers } from './state/dragModifiers'
 import { FirstUseGuide, FirstUseInvitation, rememberFirstUseGuide, shouldOfferFirstUseGuide } from './components/editor/FirstUseGuide'
+import { PhotoControls, PHOTO_VIEWS, photoResolution, type PhotoSettings } from './components/editor/PhotoControls'
+import { FreeVisibility, type FreeVisibilityOverrides } from './components/editor/FreeVisibility'
+import type { PhotoCapture } from './scene/PhotoCapture'
 import './styles.css'
 
 const ORBIT_DRAG_SENSITIVITY = 0.009
@@ -57,7 +60,7 @@ function isOrbitCanvasTarget(target: EventTarget | null): target is HTMLCanvasEl
   return target instanceof HTMLCanvasElement && target.closest('.room-scene-canvas--orbit') !== null
 }
 
-function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, onToggleObjects, settingsWidth, objectsWidth, setSettingsWidth, setObjectsWidth, exportMode, exportRequest, onExportComplete }: {
+function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, onToggleObjects, settingsWidth, objectsWidth, setSettingsWidth, setObjectsWidth, exportMode, exportRequest, onExportComplete, photoMode, onClosePhoto }: {
   settingsCollapsed: boolean
   objectsCollapsed: boolean
   onToggleSettings: () => void
@@ -69,7 +72,16 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
   exportMode: boolean
   exportRequest: number
   onExportComplete: (error?: Error) => void
+  photoMode: boolean
+  onClosePhoto: () => void
 }) {
+  const [photoSettings, setPhotoSettings] = useState<PhotoSettings>({ ratio: '4:3', longSide: 1920, background: '#e8dfd3', annotations: false })
+  const [freeVisibility, setFreeVisibility] = useState<FreeVisibilityOverrides>({})
+  const [freeLabelsVisible, setFreeLabelsVisible] = useState(true)
+  const activeDesignId = useRoomStore((state) => state.selectedSavedDesignId)
+  useEffect(() => setFreeVisibility({}), [activeDesignId])
+  const captureRef = useRef<PhotoCapture>(null)
+  const resolution = photoResolution(photoSettings)
   const [sceneAttempt, setSceneAttempt] = useState(0)
   const [rightAreaHeld, setRightAreaHeld] = useState(false)
   const state = useRoomStore(useShallow(selectEditorScene))
@@ -176,9 +188,9 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
 
   return (
         <section
-          className={`scene-panel${state.view === 'isometric' || state.view === 'free' ? ' scene-panel--orbit-ready' : ''}${state.view === 'isometric' ? ' scene-panel--orbit-ready-isometric' : ''}${state.isIsoOrbitDragging || state.isFreeOrbitDragging ? ' scene-panel--orbit-dragging' : ''}`}
-          aria-label={`Vista ${viewLabel}`}
-          onPointerDownCapture={startSceneOrbitDrag}
+          className={`scene-panel${photoMode ? ' scene-panel--photo' : ''}${state.view === 'isometric' || state.view === 'free' ? ' scene-panel--orbit-ready' : ''}${state.view === 'isometric' ? ' scene-panel--orbit-ready-isometric' : ''}${state.isIsoOrbitDragging || state.isFreeOrbitDragging ? ' scene-panel--orbit-dragging' : ''}`}
+          aria-label={photoMode ? 'Modo fotografía' : `Vista ${viewLabel}`}
+          onPointerDownCapture={photoMode ? undefined : startSceneOrbitDrag}
           onPointerMoveCapture={moveSceneOrbitDrag}
           onPointerUpCapture={stopSceneOrbitDrag}
           onPointerCancelCapture={stopSceneOrbitDrag}
@@ -193,12 +205,13 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
             if (event.target instanceof HTMLCanvasElement) event.preventDefault()
           }}
           onWheel={(event) => {
-            if (event.ctrlKey) return
+            if (photoMode || event.ctrlKey) return
             event.preventDefault()
             const delta = event.deltaY * (event.deltaMode === 1 ? 16 : 1)
             state.adjustCameraZoom(delta)
           }}
         >
+          {!photoMode && <>
           {resizeHandle('objects', objectsWidth, setObjectsWidth, objectsCollapsed)}
           {resizeHandle('settings', settingsWidth, setSettingsWidth, settingsCollapsed)}
           <button
@@ -223,25 +236,28 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
           >
             <span aria-hidden="true">{objectsCollapsed ? '›' : '‹'}</span>
           </button>
+          </>}
           <div className="scene-layout">
-          <div className="scene-header">
+          {photoMode && <PhotoControls settings={photoSettings} onSettings={setPhotoSettings} captureRef={captureRef} exportName={exportDesignName} onClose={onClosePhoto} />}
+          {!photoMode && <div className="scene-header">
           <div className="scene-topline">
             <div className="scene-topline__labels">
               <span className="view-badge"><i /> Vista {viewLabel}</span>
               {hasUnsavedChanges && <span className="statusbar__save statusbar__save--pending" role="status" aria-live="polite"><i className="status-dot" aria-hidden="true" />Cambios sin guardar</span>}
               <span className="visible-walls-badge"><b aria-hidden="true">◫</b> {visibleWallsText}</span>
               <button type="button" className={`area-select-toggle${areaSelect || rightAreaHeld ? ' is-active' : ''}`} aria-pressed={areaSelect || rightAreaHeld} onClick={() => setAreaSelect(!areaSelect)} title="Arrastra para seleccionar varios objetos; también puedes mantener el botón derecho o usar Mayús + arrastrar sobre el fondo">▢ Selección por área</button>
-              {!exportMode && <PaintToolToggle />}
               {state.view === 'top' && <span className="room-size" data-testid="room-size" aria-label={`Superficie de la habitación: ${roomSize.width.toFixed(1)} por ${roomSize.depth.toFixed(1)} metros, ${roomArea} metros cuadrados`}><b aria-hidden="true">⌂</b> {lengthUnit === 'cm' ? `${Math.round(roomSize.width * 100)} x ${Math.round(roomSize.depth * 100)} cm` : `${roomSize.width.toFixed(1)} x ${roomSize.depth.toFixed(1)}`} = {roomArea} m²</span>}
               <MovementStatus />
               {!exportMode && <SceneCollisionPanel collisions={collisions} outside={outside} unsupported={unsupported} />}
             </div>
           </div>
           <RoomViewSelector />
+          {state.view === 'free' && <FreeVisibility overrides={freeVisibility} onChange={setFreeVisibility} labelsVisible={freeLabelsVisible} onLabelsChange={setFreeLabelsVisible} />}
           <MeasureToolPanel />
           {!exportMode && <PaintToolPanel />}
-          </div>
-          <div className="scene-stage">
+          </div>}
+          <div className={`scene-stage${photoMode ? ' scene-stage--photo' : ''}`}
+            style={photoMode ? { '--photo-aspect': resolution.width / resolution.height } as CSSProperties : undefined}>
           <SceneErrorBoundary onRetry={() => setSceneAttempt((attempt) => attempt + 1)} exporting={exportMode} onExportUnavailable={() => onExportComplete(new Error('No se puede exportar el modelo 3D mientras la escena no está disponible.'))}><RoomScene
             room={state.room}
             view={state.view}
@@ -265,11 +281,14 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
             exportRequest={exportRequest}
             onExportComplete={onExportComplete}
             exportDesignName={exportDesignName}
+            freeVisibility={freeVisibility}
+            freeLabelsVisible={freeLabelsVisible}
+            photo={photoMode ? { background: photoSettings.background, annotations: photoSettings.annotations, captureRef } : undefined}
           /></SceneErrorBoundary>
-          {!hasPlacedSceneContent && state.view !== 'pov' && (
+          {!photoMode && !hasPlacedSceneContent && state.view !== 'pov' && (
             <div className="empty-scene"><span>✦</span><strong>La habitación está lista</strong><small>Añade tu primera pieza desde el catálogo</small></div>
           )}
-          <div className="compass" role="group" aria-label={compassLabel(state.view, state.isoOrientation, state.freeAzimuth, state.freeElevation)}>
+          {!photoMode && <div className="compass" role="group" aria-label={compassLabel(state.view, state.isoOrientation, state.freeAzimuth, state.freeElevation)}>
             <SceneErrorBoundary key={sceneAttempt} compact>{state.view === 'free' ? (
               <FreeCameraCompass3D
                 azimuth={state.freeAzimuth}
@@ -309,9 +328,9 @@ function EditorScene({ settingsCollapsed, objectsCollapsed, onToggleSettings, on
                 Ver en isométrica las paredes {walls}
               </button>
             ))}
+          </div>}
           </div>
-          </div>
-          <div className="scene-controls"><ZoomControl /><ViewControls /></div>
+          {!photoMode && <div className="scene-controls"><ZoomControl /><ViewControls /></div>}
           </div>
         </section>
   )
@@ -338,6 +357,13 @@ function App() {
   const [exportMode, setExportMode] = useState(false)
   const [exportRequest, setExportRequest] = useState(0)
   const [exportNotice, setExportNotice] = useState('')
+  const [photoMode, setPhotoMode] = useState(false)
+  const photoButtonRef = useRef<HTMLButtonElement>(null)
+  const wasInPhoto = useRef(false)
+  useEffect(() => {
+    if (!photoMode && wasInPhoto.current) photoButtonRef.current?.focus()
+    wasInPhoto.current = photoMode
+  }, [photoMode])
   const [guideOpen, setGuideOpen] = useState(false)
   const [guideInvitation, setGuideInvitation] = useState(shouldOfferFirstUseGuide)
   const startGuide = useCallback(() => {
@@ -348,7 +374,7 @@ function App() {
     setGuideOpen(true)
   }, [])
   const closeGuide = useCallback(() => { rememberFirstUseGuide(); setGuideInvitation(false); setGuideOpen(false) }, [])
-  useEditorShortcuts()
+  useEditorShortcuts(!photoMode)
   useEffect(() => trackDragModifiers(), [])
   useEffect(() => { initializeSavedDesigns() }, [initializeSavedDesigns])
   // Se recuerda el último diseño abierto para volver a él al recargar (al arrancar está vacío y no se guarda).
@@ -363,15 +389,19 @@ function App() {
     setExportNotice(error ? `No se pudo descargar el modelo: ${error.message}` : 'Modelo 3D descargado en formato GLB.')
   }, [])
   return (
-    <div className="app">
+    <div className={`app${photoMode ? ' app--photo' : ''}`}>
       <InteractionLogger />
-      <EditorHeader exportMode={exportMode} onExport={() => {
+      <EditorHeader exportMode={exportMode} photoButtonRef={photoButtonRef} onOpenPhoto={() => {
+        const state = useRoomStore.getState()
+        if (!PHOTO_VIEWS.some(({ id }) => id === state.view)) state.setView('isometric')
+        setPhotoMode(true)
+      }} onExport={() => {
         setExportMode(true)
         setExportRequest((request) => request + 1)
       }} />
       <main
         id="main"
-        className={`workspace${settingsCollapsed ? ' workspace--settings-collapsed' : ''}${objectsCollapsed ? ' workspace--objects-collapsed' : ''}`}
+        className={`workspace${settingsCollapsed ? ' workspace--settings-collapsed' : ''}${objectsCollapsed ? ' workspace--objects-collapsed' : ''}${photoMode ? ' workspace--photo' : ''}`}
         style={{ '--objects-expanded-width': `${objectsWidth}px`, '--settings-expanded-width': `${settingsWidth}px` } as CSSProperties}
       >
         <ObjectsPanel />
@@ -387,11 +417,13 @@ function App() {
           exportMode={exportMode}
           exportRequest={exportRequest}
           onExportComplete={handleExportComplete}
+          photoMode={photoMode}
+          onClosePhoto={() => setPhotoMode(false)}
         />
         <SettingsPanel onStartGuide={startGuide} />
       </main>
       <EditorNotice exportNotice={exportNotice} />
-      {guideInvitation && <FirstUseInvitation onStart={startGuide} onDismiss={closeGuide} />}
+      {!photoMode && guideInvitation && <FirstUseInvitation onStart={startGuide} onDismiss={closeGuide} />}
       <FirstUseGuide open={guideOpen} onClose={closeGuide} />
     </div>
   )

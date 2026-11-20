@@ -8,6 +8,7 @@ import { validateAxisLocks } from '../domain/axisLocks'
 import { validateFurnitureWallAttachment } from '../domain/furnitureWalls'
 import { parseMeasures } from '../domain/planMeasures'
 import { validateDesignDoorSwings } from '../domain/doorSwing'
+import { makeId } from '../domain/elementIds'
 
 export const DESIGN_FILE_MAX_BYTES = 2 * 1024 * 1024
 const FORMAT = 'room-builder-design'
@@ -218,11 +219,16 @@ function validateData(value: unknown): { data: PersistedDesign; sourceVersion: n
   return { data, sourceVersion: source.version as number, removedVariants }
 }
 
-export function parseDesignFile(contents: string): DesignFilePreview {
+export function parseDesignFile(contents: string, filename?: string): DesignFilePreview {
   if (new TextEncoder().encode(contents).length > DESIGN_FILE_MAX_BYTES) invalid('El archivo supera el límite de 2 MB.')
   let parsed: unknown
   try { parsed = JSON.parse(contents) } catch { return invalid('El archivo no contiene JSON válido.') }
   validateSafeTree(parsed)
+  if (object(parsed) && !Object.hasOwn(parsed, 'format') && Object.hasOwn(parsed, 'version') && Object.hasOwn(parsed, 'room') && Object.hasOwn(parsed, 'furniture')) {
+    const { data, sourceVersion, removedVariants } = validateData(parsed)
+    const name = filename?.replace(/\.json$/i, '').trim().slice(0, 48) || 'Diseño importado'
+    return { design: { id: makeId('design'), name, savedAt: new Date().toISOString(), data }, sourceVersion, removedVariants }
+  }
   if (!object(parsed) || parsed.format !== FORMAT || parsed.schemaVersion !== SCHEMA_VERSION || !text(parsed.exportedAt) || !object(parsed.design)) invalid('El archivo no tiene un formato compatible de Room Builder.')
   const design = (parsed as RecordValue).design as RecordValue
   if (!text(design.id) || !text(design.name) || !text(design.savedAt)) invalid('Los datos del diseño no son válidos.')

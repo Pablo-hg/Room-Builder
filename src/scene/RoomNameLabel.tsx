@@ -8,7 +8,7 @@ import { selectSceneObject } from './sceneInteraction'
 type ScreenRect = { x: number; y: number; width: number; height: number }
 
 /** Indicadores y paneles que flotan sobre el lienzo: una etiqueta de habitación no debe taparlos. */
-const CHROME_SELECTOR = '.scene-topline__labels > *, .room-view-selector, .measure-panel, .scene-controls'
+const CHROME_SELECTOR = '.scene-topline__labels > *, .room-view-selector, .free-visibility, .measure-panel, .scene-controls'
 let chromeCache: { at: number; parent: HTMLElement; rects: ScreenRect[] } | null = null
 
 /**

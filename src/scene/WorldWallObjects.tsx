@@ -16,7 +16,7 @@ import { releasePointer, usePointerCancellation } from './usePointerCancellation
 import { selectSceneObject } from './sceneInteraction'
 import { openingHasSupport, openingWallRun, physicalWalls, worldOpenings } from '../domain/wallConnections'
 
-function WorldWallObject({ room, packs, window, pack, collision, exportMode, kind = 'window' }: { room: RoomConfig; packs: StructurePack[]; window: WindowConfig; pack?: StructurePack; collision: boolean; exportMode: boolean; kind?: 'window' | 'door' }) {
+function WorldWallObject({ room, packs, window, pack, collision, exportMode, cleanView, kind = 'window' }: { room: RoomConfig; packs: StructurePack[]; window: WindowConfig; pack?: StructurePack; collision: boolean; exportMode: boolean; cleanView: boolean; kind?: 'window' | 'door' }) {
   const selected = useRoomStore((state) => state.selectedIds.includes(window.id))
   const multiple = useRoomStore((state) => state.selectedIds.length > 1)
   const locked = useRoomStore((state) => state.lockedElementIds.includes(window.id) || !!pack && state.lockedElementIds.includes(pack.id))
@@ -54,7 +54,7 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode, kin
   }
   const capture = usePointerCancellation((event) => { gesture.cancel(); end(event) })
   const start = (event: ThreeEvent<PointerEvent>) => {
-    if (exportMode) return
+    if (cleanView) return
     event.stopPropagation()
     if (event.nativeEvent.ctrlKey || event.nativeEvent.metaKey || event.nativeEvent.shiftKey && !selected) { selectSceneObject(window.id, event.nativeEvent); return }
     if (!selected) { useRoomStore.getState().selectElement(window.id); return }
@@ -120,28 +120,29 @@ function WorldWallObject({ room, packs, window, pack, collision, exportMode, kin
       {view === 'top' && !exportMode
         ? <PlanWallSymbol kind={kind} width={window.width} height={window.height} shape={window.shape} color={window.material?.color ?? window.color ?? '#c88f58'} swing={kind === 'door' ? (window as { swing?: DoorSwing }).swing : undefined} />
         : <OpeningDetail room={room} opening={{ ...window, kind, offset: 0, bottom: 0, color: window.color ?? '#c88f58' }} wall={window.wall} selected={false} locked interactive={false} />}
-      {!exportMode && <mesh position={[0, window.height / 2, 0]}><boxGeometry args={[window.width, window.height, 0.16]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>}
-      {!exportMode && (selected || collision || outside) && <group position={selectionFrame.localCenter} rotation={[0, 0, window.rotation]}><SelectionBounds width={window.width} height={window.height} depth={selectionFrame.depth} collision={collision || outside} focused={selected} /></group>}
+      {!cleanView && <mesh position={[0, window.height / 2, 0]}><boxGeometry args={[window.width, window.height, 0.16]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>}
+      {!cleanView && (selected || collision || outside) && <group position={selectionFrame.localCenter} rotation={[0, 0, window.rotation]}><SelectionBounds width={window.width} height={window.height} depth={selectionFrame.depth} collision={collision || outside} focused={selected} /></group>}
     </group>
-    {!exportMode && selected && !multiple && !locked && view !== 'pov' && <WallObjectGizmo id={window.id} position={position} anchor={selectionFrame.handleBase} height={window.height} locks={movementLocks} />}
+    {!cleanView && selected && !multiple && !locked && view !== 'pov' && <WallObjectGizmo id={window.id} position={position} anchor={selectionFrame.handleBase} height={window.height} locks={movementLocks} />}
   </>
 }
 
-export function WorldWallObjects({ room, structurePacks, collisionIds, exportMode, level, levelHeight, focusedView, frontVisibleWalls, strictLevel = false }: { room: RoomConfig; structurePacks: StructurePack[]; collisionIds: ReadonlySet<string>; exportMode: boolean; level: number; levelHeight: number; focusedView: boolean; frontVisibleWalls?: ReadonlySet<string>; /** Copias de otras plantas en Plano: no incluir la selección de otra planta. */ strictLevel?: boolean }) {
+export function WorldWallObjects({ room, structurePacks, collisionIds, exportMode, cleanView = exportMode, level, levelHeight, focusedView, frontVisibleWalls, freeVisibleWalls, strictLevel = false }: { room: RoomConfig; structurePacks: StructurePack[]; collisionIds: ReadonlySet<string>; exportMode: boolean; cleanView?: boolean; level: number; levelHeight: number; focusedView: boolean; frontVisibleWalls?: ReadonlySet<string>; freeVisibleWalls?: ReadonlySet<string>; /** Copias de otras plantas en Plano: no incluir la selección de otra planta. */ strictLevel?: boolean }) {
   const hidden = useRoomStore((state) => state.hiddenElementIds)
   const selected = useRoomStore((state) => state.selectedIds)
   const world = { room, structurePacks }
   return <>{worldOpenings(world).filter((opening) => {
     if (hidden.includes(opening.id)) return false
     const supports = openingWallRun(world, opening)
+    if (freeVisibleWalls && supports.length && supports.every((wall) => !freeVisibleWalls.has(wall.id))) return false
     if (frontVisibleWalls && !opening.object.freePosition && supports.length && supports.every((wall) => !frontVisibleWalls.has(wall.id))) return false
-    if (supports.length && supports.every((wall) => hidden.includes(wall.id) || !!wall.packId && hidden.includes(wall.packId))) return false
+    if (!freeVisibleWalls && supports.length && supports.every((wall) => hidden.includes(wall.id) || !!wall.packId && hidden.includes(wall.packId))) return false
     if (!supports.length && opening.packId && hidden.includes(opening.packId)) return false
     const position = opening.position
-    return !focusedView || (!strictLevel && selected.includes(opening.id)) || position.y + opening.height > level - 0.01 && position.y < level + levelHeight
+    return !focusedView || (!cleanView && !strictLevel && selected.includes(opening.id)) || position.y + opening.height > level - 0.01 && position.y < level + levelHeight
   }).map((opening) => {
     const pack = structurePacks.find((pack) => pack.id === opening.packId)
     const window: WindowConfig = { ...opening.object, id: opening.id, shape: opening.shape ?? 'rectangular', sill: 'sill' in opening.object ? Number(opening.object.sill) : 0 }
-    return <WorldWallObject key={opening.id} room={room} packs={structurePacks} window={window} pack={pack} kind={opening.kind} collision={collisionIds.has(opening.id) || !openingHasSupport(world, opening)} exportMode={exportMode} />
+    return <WorldWallObject key={opening.id} room={room} packs={structurePacks} window={window} pack={pack} kind={opening.kind} collision={collisionIds.has(opening.id) || !openingHasSupport(world, opening)} exportMode={exportMode} cleanView={cleanView} />
   })}</>
 }

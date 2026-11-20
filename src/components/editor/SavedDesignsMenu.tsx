@@ -158,7 +158,7 @@ export function SavedDesignsMenu({ state, exportMode, onExport }: { state: Edito
     diagnostics.emit({ action: 'design.read-json', operationId, phase: 'started' })
     if (file.size > DESIGN_FILE_MAX_BYTES) { diagnostics.emit({ action: 'design.read-json', operationId, level: 'warn', result: 'rejected', data: { reason: 'file-size-limit' } }); showError('El archivo supera el límite de 2 MB.'); return }
     setReadingFile(true)
-    try { const next = parseDesignFile(await file.text()); setSavedDesignsOpen(false); setPreview(next); diagnostics.emit({ action: 'design.read-json', operationId, result: 'completed', data: { validated: true, sourceVersion: next.sourceVersion } }) }
+    try { const next = parseDesignFile(await file.text(), file.name); setSavedDesignsOpen(false); setPreview(next); diagnostics.emit({ action: 'design.read-json', operationId, result: 'completed', data: { validated: true, sourceVersion: next.sourceVersion } }) }
     catch (error) { diagnostics.emit({ action: 'design.read-json', operationId, category: 'errors', level: 'warn', result: 'rejected', data: { reason: 'read-or-validation-failed' } }); showError(error instanceof Error ? error.message : 'No se pudo leer el archivo.') }
     finally { setReadingFile(false) }
   }

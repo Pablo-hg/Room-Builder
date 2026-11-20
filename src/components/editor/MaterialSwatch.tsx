@@ -12,9 +12,9 @@ const cache = new Map<string, string>()
  * Miniatura de un acabado: el MISMO patrón que se dibuja en la escena (`drawMaterialPattern`), teñido con el color y recortado
  * al centro de la repetición para que se distinga su estructura. Devuelve `null` si no hay canvas (el color liso hace de respaldo).
  */
-export function swatchImage(id: MaterialId, color: string): string | null {
+export function swatchImage(id: MaterialId, color: string, scale?: number, rotation?: number): string | null {
   if (!materialDefinition(id)?.textured) return null
-  const key = `${id}|${color}`
+  const key = `${id}|${color}|${scale ?? ''}|${rotation ?? ''}`
   const hit = cache.get(key)
   if (hit) return hit
   if (typeof document === 'undefined') return null
@@ -29,7 +29,15 @@ export function swatchImage(id: MaterialId, color: string): string | null {
     drawMaterialPattern(sourceContext, id)
     context.fillStyle = '#ffffff'
     context.fillRect(0, 0, SWATCH_PX, SWATCH_PX)
-    context.drawImage(source, 16, 16, 96, 96, 0, 0, SWATCH_PX, SWATCH_PX)
+    if (scale !== undefined && rotation !== undefined) {
+      const pattern = context.createPattern(source, 'repeat')
+      if (!pattern) return null
+      pattern.setTransform(new DOMMatrix().translateSelf(SWATCH_PX / 2, SWATCH_PX / 2).rotateSelf(-rotation).scaleSelf(SWATCH_PX * scale / 128))
+      context.fillStyle = pattern
+      context.fillRect(0, 0, SWATCH_PX, SWATCH_PX)
+    } else {
+      context.drawImage(source, 16, 16, 96, 96, 0, 0, SWATCH_PX, SWATCH_PX)
+    }
     // Igual que en la escena: el patrón en grises multiplica al color del acabado.
     context.globalCompositeOperation = 'multiply'
     context.fillStyle = color
@@ -44,8 +52,8 @@ export function swatchImage(id: MaterialId, color: string): string | null {
 }
 
 /** Cuadrado con la miniatura (decorativo si no lleva `label`). */
-export function MaterialSwatch({ id, color, label }: { id: MaterialId; color: string; label?: string }) {
-  const url = useMemo(() => swatchImage(id, color), [id, color])
+export function MaterialSwatch({ id, color, label, scale, rotation }: { id: MaterialId; color: string; label?: string; scale?: number; rotation?: number }) {
+  const url = useMemo(() => swatchImage(id, color, scale, rotation), [id, color, scale, rotation])
   return <span
     className="material-swatch"
     {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}

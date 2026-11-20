@@ -13,7 +13,7 @@ export function PaintToolToggle() {
   const setMeasureActive = useRoomStore((state) => state.setMeasureToolActive)
   return <button
     type="button"
-    className={`area-select-toggle${active ? ' is-active' : ''}`}
+    className={`editor-tool${active ? ' is-active' : ''}`}
     aria-pressed={active}
     title="Pintar: aplica un acabado haciendo clic sobre paredes, suelos y muebles (Esc para terminar)"
     onClick={() => {

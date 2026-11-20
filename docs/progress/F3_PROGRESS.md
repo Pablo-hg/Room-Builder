@@ -139,3 +139,33 @@ Misma medición de la casa muestrario (SwiftShader, 3 repeticiones): **heap con 
 - Humo (`npm run test:e2e:smoke`, 5 procesos): 25/32 a la primera; los 7 restantes **pasan al repetirlos uno a uno** (agotamiento de 30 s por saturación del equipo, no regresión): `area-selection`, `camera-views` (×2), `furniture-gestures`, `history-transactions`, `persistence-integrity`, `selection` (Alt+clic).
 - Corrección visual: el panel de Pintar (y el de Medir) queda por encima de la brújula (`z-index` 7).
 - No ejecutado: suite E2E completa (`npm run test:e2e`).
+
+
+
+## #40 — fotografía y cámaras guardadas (inicio)
+
+### Ajustes solicitados en la revisión
+
+- En vista Libre se reubica el selector de visibilidad en la esquina superior derecha y se adapta al estilo del editor. Cada superficie muestra una muestra de su color o material, con escala y orientación del patrón. Un control de sesión permite mostrar u ocultar nombres de habitación y letras de pared; las paredes visibles de todas las habitaciones reciben su letra.
+- Se evita que la rueda del menú active el zoom y se permite navegar con WASD mientras uno de sus checks conserva el foco. Se ha añadido una prueba E2E dirigida; pendiente de ejecución.
+- Se ha preparado una prueba E2E para la agrupación y el control de etiquetas. Pendiente de ejecución y validación visual en navegador.
+
+- Pintar y Fotografía se sitúan junto al selector de vistas. En Libre se añade una lista temporal de suelos y paredes por habitación, con restauración del comportamiento automático.
+- Para facilitar la lectura de la cuadrícula, el patrón de una pared se oculta visualmente mientras su cuadrícula está visible y vuelve al desactivarla. El material guardado no cambia.
+- La guía pide a la IA externa un comparador HTML de imagen original y realista con deslizador. Su generación depende de las capacidades de la herramienta externa.
+- Se amplía el prompt para pedir explícitamente ambos entregables y un comparador funcional con selección local de imágenes, ratón, táctil y teclado. Incluye instrucciones de recuperación si la herramienta no puede acceder a la imagen generada o entregar un HTML. Pendiente de comprobación con una IA externa.
+- Pendiente de comprobación visual humana y de ejecutar pruebas de regresión según la política de la rama.
+
+**Actualización:** se comprobó en el navegador del propietario que el bloqueo procedía de un diseño v15 de materiales en una rama que solo admitía hasta v14. La rama de fotografía se ha actualizado localmente con `dev`; se conserva el bloqueo ante versiones posteriores. La hipótesis de pérdida de revisión indicada abajo no quedó confirmada como causa de ese caso.
+
+### Incidencia de guardado e importación
+
+- El aviso de conflicto también puede aparecer si el repositorio pierde su revisión interna aunque el contenido cargado y el almacenado coincidan. Se permite recuperar la escritura únicamente cuando ambas bibliotecas completas coinciden. Si difieren, faltan o no se pueden leer, se mantiene el bloqueo.
+- Se añadió una prueba de recuperación y de conservación de la protección ante cambios reales o datos ilegibles. Pendiente de ejecución en CI y de confirmar si esta era la causa en el navegador del propietario.
+
+- El propietario ha definido el objetivo adicional: entregar referencias y una guía con prompt personalizable para una herramienta de IA externa elegida por el usuario. No se integrará la IA ni se importará el resultado; la fidelidad depende de la herramienta externa. La issue conserva los requisitos previos de fotografía y cámaras guardadas.
+- La cámara actual se deriva de parámetros de sesión y del contexto de habitación. Recuperar un encuadre exige contemplar ambos y el tamaño de la vista. El archivo JSON usa un esquema de intercambio v5 y el contenido del diseño llega a v14.
+- Primera entrega local: modo Fotografía con vista previa en Isométrica, Plano y POV. Permite ajustar zoom, orientación, proporción, resolución y fondo. Plano añade desplazamiento y cotas y anotaciones opcionales. La captura reutiliza la escena visible y valida los límites del dispositivo antes de reservar el búfer.
+- Se puede descargar un PNG o un ZIP con una captura, el JSON del diseño abierto (incluidos cambios sin guardar) y una guía con prompt personalizable. La descarga se prepara en el navegador. Se avisa cuando WebGL no está disponible, el búfer falla o la captura contiene un único color.
+- Pendiente: cámaras guardadas y recuperación exacta tras recarga/JSON, tratamiento de referencias inválidas y regresión completa. Cada ZIP contiene el encuadre actual. La compatibilidad con plantas canónicas depende de #53.
+- Verificación de esta entrega: comprobación estática TypeScript y comprobación puntual en Chromium de PNG en Isométrica (1920 × 1440), ZIP en Plano (1080 × 1920) y PNG en POV (1280 × 720 y 1920 × 1080). Se comprobó el aviso al simular una pérdida de WebGL, la entrada y salida con teclado y con emulación táctil de 390 px, y la vista previa en escritorio y móvil emulado. Se han preparado pruebas unitarias de los límites y un E2E del paquete. Las suites de CI y el build quedan pendientes según la política de la rama.

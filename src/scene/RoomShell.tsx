@@ -13,17 +13,19 @@ import { SelectionBounds } from './SelectionBounds'
 import { applyWorldUv } from './worldUv'
 import { useMaterialTexture } from './materialTexture'
 
-export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, showSelection = true, children }: {
+export function RoomShell({ room, modelRootRef, showFloorGrid, showBase = true, showSelection = true, floorVisible, children }: {
   room: RoomConfig
   modelRootRef: RefObject<THREE.Group | null>
   showFloorGrid: boolean
   showBase?: boolean
   showSelection?: boolean
+  floorVisible?: boolean
   children: ReactNode
 }) {
   const selectElement = useRoomStore((state) => state.selectElement)
   const floorTexture = useMaterialTexture(room.floorMaterial)
-  const floorHidden = useRoomStore((state) => state.hiddenElementIds.includes(BASE_FLOOR_ID))
+  const storedFloorHidden = useRoomStore((state) => state.hiddenElementIds.includes(BASE_FLOOR_ID))
+  const floorHidden = floorVisible === undefined ? storedFloorHidden : !floorVisible
   const floorSelected = useRoomStore((state) => state.selectedIds.includes(BASE_FLOOR_ID))
   const rootSelected = useRoomStore((state) => state.selectedIds.includes(folderSelectionId(ROOT_ROOM_FOLDER)))
   const { startPan, movePan, endPan, lostPan } = usePlanPan()

@@ -176,7 +176,7 @@ export function StructureSurfaceObject({
     <group onPointerMove={directMove} onPointerUp={endDirectDrag} onPointerCancel={cancelDirectDrag}>
       {surface.kind === 'wall' ? <group position={position} rotation={[0, baseRotation + surface.rotation, 0]}>
         <group position={[0, -surface.height / 2, 0]}>
-          <WallBody wallId={surfaceId} skinFaces={skinFaces} frame={physicalWalls({ room, structurePacks: packs }).find((wall) => wall.id === surfaceId)} finish={surface.material} length={surface.width} height={surface.height} openings={openings} color={surface.color} depth={surface.depth} onPointerDown={selectSurface} />
+          <WallBody wallId={surfaceId} skinFaces={skinFaces} frame={physicalWalls({ room, structurePacks: packs }).find((wall) => wall.id === surfaceId)} finish={surface.material} showGrid={showGrid && !gridHidden} length={surface.width} height={surface.height} openings={openings} color={surface.color} depth={surface.depth} onPointerDown={selectSurface} />
         </group>
       </group> : <mesh
         position={position}

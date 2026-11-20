@@ -4,6 +4,16 @@ import { test } from 'node:test'
 import { persistedDesign, persistedDesignSignature, type SavedDesign } from '../domain/designV1'
 import { createRoomStore } from '../state/useRoomStore'
 import { cleanExportReferences, DESIGN_FILE_MAX_BYTES, parseDesignFile, serializeDesignFile } from './designFile'
+
+test('importa directamente muestras antiguas de diseños persistidos', () => {
+  for (const version of [2, 3, 4, 5]) {
+    const source = readFileSync(new URL(`../../tests/fixtures/persisted-designs/valid-v${version}.json`, import.meta.url), 'utf8')
+    const result = parseDesignFile(source, `valid-v${version}.json`)
+    assert.equal(result.sourceVersion, version)
+    assert.equal(result.design.name, `valid-v${version}`)
+    assert.ok(result.design.data.room.width > 0)
+  }
+})
 import { normalizeDesign } from './designMigrations'
 
 const makeDesign = (): SavedDesign => ({ id: 'design-1', name: 'Mi habitación', savedAt: '2026-11-04T10:00:00.000Z', data: persistedDesign(createRoomStore().getState()) })

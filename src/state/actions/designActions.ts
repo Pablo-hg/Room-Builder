@@ -64,8 +64,8 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
         if (toOpen) get().loadDesign(toOpen.id)
       } catch (error) {
         failDiagnosticAction('storage.read-failed')
-        const detail = error instanceof Error && error.message.includes('no coincide') ? ` ${error.message}` : ''
-        set({ notice: `No se pudieron leer los diseños guardados.${detail}` })
+        const detail = error instanceof Error && (error.message.includes('no coincide') || error.message.startsWith('La biblioteca contiene diseños de una versión más reciente')) ? ` ${error.message}` : ''
+        set({ notice: `No se pudo leer la biblioteca local. No se sobrescribirá; comprueba el almacenamiento del navegador y conserva una copia de tus diseños antes de recargar.${detail}` })
       }
     },
     selectSavedDesign: (selectedSavedDesignId) => set({ selectedSavedDesignId }),
@@ -81,7 +81,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
       try { if (nextDesign) nextData = normalizeDesign(nextDesign.data) }
       catch { set({ notice: 'No se puede eliminar el diseño activo: el siguiente diseño guardado no es válido.' }); return }
       try {
-        repository.write(savedDesigns)
+        repository.write(savedDesigns, state.savedDesigns)
         recordInteraction('state.design.deleted', {
           view: state.view,
           selectedId: state.selectedId,
@@ -135,7 +135,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
       }
       const savedDesigns = [...state.savedDesigns, design]
       try {
-        repository.write(savedDesigns)
+        repository.write(savedDesigns, state.savedDesigns)
         recordInteraction('state.design.created', {
           view: state.view,
           selectedId: state.selectedId,
@@ -173,7 +173,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
       if (!cleanName) return set({ notice: 'El nombre del diseño no puede estar vacío.' })
       const savedDesigns = state.savedDesigns.map((design) => design.id === id ? { ...design, name: cleanName } : design)
       try {
-        repository.write(savedDesigns)
+        repository.write(savedDesigns, state.savedDesigns)
         recordInteraction('state.design.renamed', {
           view: state.view,
           selectedId: state.selectedId,
@@ -205,7 +205,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
         ? state.savedDesigns.map((design) => design.id === activeDesign.id ? savedDesign : design)
         : [...state.savedDesigns, savedDesign]
       try {
-        repository.write(savedDesigns)
+        repository.write(savedDesigns, state.savedDesigns)
         recordInteraction(activeDesign ? 'state.design.updated' : 'state.design.saved', {
           view: state.view,
           selectedId: state.selectedId,
@@ -232,7 +232,7 @@ export function createDesignActions(context: Pick<RoomActionContext, 'set' | 'ge
       const savedDesigns = [...state.savedDesigns, imported]
       try {
         const data = open ? normalizeDesign(imported.data) : undefined
-        repository.write(savedDesigns)
+        repository.write(savedDesigns, state.savedDesigns)
         set({
           ...(data ? { ...sceneFromDesign(data), selectedSavedDesignId: id, hasUnsavedChanges: false } : {}),
           savedDesigns,

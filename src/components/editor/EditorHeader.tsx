@@ -3,10 +3,14 @@ import { useShallow } from 'zustand/react/shallow'
 import { selectEditorHeader } from '../../state/selectors'
 import { VIEW_OPTIONS } from './viewOptions'
 import { SavedDesignsMenu } from './SavedDesignsMenu'
+import { PaintToolToggle } from './PaintToolControls'
+import type { RefObject } from 'react'
 
-export function EditorHeader({ exportMode, onExport }: {
+export function EditorHeader({ exportMode, onExport, onOpenPhoto, photoButtonRef }: {
   exportMode: boolean
   onExport: () => void
+  onOpenPhoto: () => void
+  photoButtonRef: RefObject<HTMLButtonElement | null>
 }) {
   const state = useRoomStore(useShallow(selectEditorHeader))
   const isSaved = Boolean(state.selectedSavedDesignId) && !state.hasUnsavedChanges
@@ -27,6 +31,10 @@ export function EditorHeader({ exportMode, onExport }: {
             </button>
           ))}
         </nav>
+        <div className="editor-tools" aria-label="Herramientas de imagen">
+          <PaintToolToggle />
+          <button type="button" className="editor-tool" ref={photoButtonRef} disabled={exportMode} onClick={onOpenPhoto}><span aria-hidden="true">📷</span> Fotografía</button>
+        </div>
         <div className="save-actions">
           <button
             type="button"

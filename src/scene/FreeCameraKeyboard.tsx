@@ -12,7 +12,8 @@ export function FreeCameraKeyboard({ active }: { active: boolean }) {
     if (!active) return
     const down = (event: KeyboardEvent) => {
       const target = event.target
-      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || (target instanceof HTMLElement && target.isContentEditable) || event.ctrlKey || event.metaKey || event.altKey) return
+      const visibilityCheckbox = target instanceof HTMLInputElement && target.type === 'checkbox' && !!target.closest('.free-visibility')
+      if ((target instanceof HTMLInputElement && !visibilityCheckbox) || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || (target instanceof HTMLElement && target.isContentEditable) || event.ctrlKey || event.metaKey || event.altKey) return
       const key = event.key.toLowerCase()
       if (key === 'shift') { keys.current.add(key); return }
       if (!['w', 'a', 's', 'd'].includes(key)) return

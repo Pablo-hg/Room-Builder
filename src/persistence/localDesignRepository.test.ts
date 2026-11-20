@@ -15,10 +15,24 @@ function design(id: string): SavedDesign {
   return { id, name: `Diseño ${id}`, savedAt: '2026-10-28T10:00:00.000Z', data: JSON.parse(readFileSync(new URL('../../tests/fixtures/persistence-v1/valid-complete.json', import.meta.url), 'utf8')) }
 }
 
+test('acepta diseños de materiales v15 y protege versiones posteriores', () => {
+  const source = JSON.parse(readFileSync(new URL('../../tests/fixtures/materials/muestrario-acabados.json', import.meta.url), 'utf8'))
+  const storage = new MemoryStorage()
+  storage.values.set(SAVED_DESIGNS_KEY, JSON.stringify([source.design]))
+  const repository = createLocalDesignRepository(() => storage)
+  assert.deepEqual(repository.read(), [source.design])
+  const future = JSON.stringify([{ ...source.design, data: { ...source.design.data, version: 16 } }])
+  storage.values.set(SAVED_DESIGNS_KEY, future)
+  assert.throws(() => repository.read(), /versión más reciente/)
+  assert.throws(() => repository.write([], [source.design]), DesignStorageConflictError)
+  assert.equal(storage.getItem(SAVED_DESIGNS_KEY), future)
+})
+
 test('el repositorio conserva los cinco diseños completos, sus metadatos y la clave actual', () => {
   const storage = new MemoryStorage()
   const repository = createLocalDesignRepository(() => storage)
   const designs = Array.from({ length: 5 }, (_, index) => design(`old:${index}`))
+  repository.read()
   repository.write(designs)
   assert.equal(SAVED_DESIGNS_KEY, 'room-builder:v0.1:designs')
   assert.equal(STORAGE_KEY, 'room-builder:v0.1:design')
@@ -72,6 +86,7 @@ test('legacy inválido o inaccesible no escribe una lista nueva', () => {
     storage.values.set(STORAGE_KEY, raw)
     assert.throws(() => repository.read())
     assert.equal(storage.values.has(SAVED_DESIGNS_KEY), false)
+    assert.throws(() => repository.write([design('nuevo')], []), DesignStorageConflictError)
   }
   assert.equal(storage.writes, 0)
   let accesses = 0
@@ -81,15 +96,33 @@ test('legacy inválido o inaccesible no escribe una lista nueva', () => {
   assert.throws(() => blocked.write([]), /storage blocked/)
 })
 
+test('una lectura fallida invalida la revisión previa incluso si la biblioteca coincide', () => {
+  const storage = new MemoryStorage()
+  const repository = createLocalDesignRepository(() => storage)
+  const loaded = [design('guardado')]
+  storage.values.set(SAVED_DESIGNS_KEY, JSON.stringify(loaded))
+  repository.read()
+  storage.values.set(SAVED_DESIGNS_KEY, '{')
+  assert.throws(() => repository.read())
+  storage.values.set(SAVED_DESIGNS_KEY, JSON.stringify(loaded))
+  assert.throws(() => repository.write([], loaded), DesignStorageConflictError)
+  assert.deepEqual(JSON.parse(storage.getItem(SAVED_DESIGNS_KEY)!), loaded)
+})
+
 test('un fallo de escritura durante migración o guardado conserva los valores anteriores', () => {
   const values = new Map([[STORAGE_KEY, JSON.stringify(design('legacy').data)]])
+  let writable = false
   const repository = createLocalDesignRepository(() => ({
     getItem: (key) => values.get(key) ?? null,
-    setItem: () => { throw new Error('quota exceeded') },
+    setItem: (key, value) => { if (!writable) throw new Error('quota exceeded'); values.set(key, value) },
   }))
   const before = new Map(values)
   assert.throws(() => repository.read(), /quota exceeded/)
   assert.deepEqual(values, before)
+  writable = true
+  assert.throws(() => repository.write([design('nuevo')], []), DesignStorageConflictError)
+  assert.deepEqual(values, before)
+  writable = false
   values.set(SAVED_DESIGNS_KEY, JSON.stringify([design('saved')]))
   const saved = values.get(SAVED_DESIGNS_KEY)
   assert.deepEqual(repository.read(), [design('saved')])
@@ -112,6 +145,24 @@ test('detecta escrituras de otra pestaña y nunca sobrescribe la biblioteca', ()
   assert.deepEqual(second.read(), [design('primero')])
   second.write([design('primero'), design('segundo')])
   assert.deepEqual(first.read(), [design('primero'), design('segundo')])
+})
+
+test('recupera la revisión perdida solo si la biblioteca coincide con la cargada', () => {
+  const storage = new MemoryStorage()
+  const loaded = [design('guardado')]
+  storage.setItem(SAVED_DESIGNS_KEY, JSON.stringify(loaded))
+  const repository = createLocalDesignRepository(() => storage)
+  const updated = [...loaded, design('nuevo')]
+  repository.write(updated, loaded)
+  assert.deepEqual(repository.read(), updated)
+
+  const changed = [design('otra-pestaña')]
+  storage.setItem(SAVED_DESIGNS_KEY, JSON.stringify(changed))
+  assert.throws(() => repository.write(updated, loaded), DesignStorageConflictError)
+  assert.deepEqual(JSON.parse(storage.getItem(SAVED_DESIGNS_KEY)!), changed)
+  storage.setItem(SAVED_DESIGNS_KEY, '{')
+  assert.throws(() => repository.write(updated, []), DesignStorageConflictError)
+  assert.equal(storage.getItem(SAVED_DESIGNS_KEY), '{')
 })
 
 test('no sustituye una biblioteca no validada o corrupta, ni supera cinco diseños', () => {

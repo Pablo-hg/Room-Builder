@@ -12,7 +12,7 @@ Desde una habitación rectangular, el usuario puede construir una **vivienda por
 Hay **24 tareas reales de ejecución + la épica #23**. Las siete issues contenedoras creadas anteriormente **#55–#61 se han cerrado como archivo organizativo**, porque duplicaban la clasificación por fases. **No se han cerrado tareas de desarrollo.**
 
 - Cada tarea conserva una **única etiqueta**, `prioridad:P0` o `prioridad:P1`. La fase se expresa con el **Milestone nativo** de GitHub, y el orden de cada hito se ve en los títulos `[F# · NN/TT]` y en la tabla de este documento; no existen etiquetas duplicadas de `mvp`, `tipo`, `fase`, `hito` u `orden` en las tareas abiertas.
-- **Hitos nativos (*Milestones*) activos y verificados:** el propietario creó F0–F6 y se asignaron las **24 tareas** a sus hitos reales (números 1–7). La épica #23 queda sin hito. No volver a crear issues «carpeta» para sustituirlos.
+- **Hitos nativos (*Milestones*):** el propietario creó F0–F6 y asignó las 24 tareas originales a sus hitos reales (números 1–7). Posteriormente se añadieron otras tareas, entre ellas #94 y #97 en F3. La épica #23 queda sin hito. No volver a crear issues «carpeta» para sustituirlos.
 - Distribución real verificada en la [pantalla de hitos](https://github.com/Pablo-hg/Room-Builder/milestones), sin duplicar las issues:
 
 | Milestone de GitHub | Issues asignadas |
@@ -20,12 +20,12 @@ Hay **24 tareas reales de ejecución + la épica #23**. Las siete issues contene
 | F0 — Estabilización | 24, 34 |
 | F1 — Editor base (v0.2) | 25, 26, 27, 28, 29, 30, 31, 32, 33 |
 | F2 — Precisión y plantillas | 37, 38, 41 |
-| F3 — Materiales y fotografía | 39, 40 |
+| F3 — Materiales y fotografía | 39, 40, 94, 97 |
 | F4 — Vivienda completa | 51, 35, 52, 53, 36, 45 |
 | F5 — Modelos de muebles | 47 |
 | F6 — Validación final | 54 |
 
-**Los siete Milestones ya están creados y las 24 tareas asignadas.** Se pueden filtrar desde la interfaz de GitHub por Milestone; no añadir una cabecera de hito dentro de la descripción de cada issue. La épica #23 mantiene el resumen global y este documento, las dependencias.
+**Los siete Milestones ya están creados.** Se pueden filtrar desde la interfaz de GitHub por Milestone; no añadir una cabecera de hito dentro de la descripción de cada issue. La épica #23 mantiene el resumen global y este documento, las dependencias. La tabla recoge la planificación original y las incorporaciones de F3; otros cambios posteriores se consultan en los hitos de GitHub.
 
 ## Orden de ejecución dentro de cada Milestone
 
@@ -47,8 +47,10 @@ Hay **24 tareas reales de ejecución + la épica #23**. Las siete issues contene
 | 12 | 01/03 | [#37](https://github.com/Pablo-hg/Room-Builder/issues/37) | F2 | P1 | #24, #26, #28 | Guías y magnetismo |  |
 | 13 | 02/03 | [#38](https://github.com/Pablo-hg/Room-Builder/issues/38) | F2 | P1 | #24, #26 | Regla y cotas persistentes | Independiente de #37 |
 | 14 | 03/03 | [#41](https://github.com/Pablo-hg/Room-Builder/issues/41) | F2 | P1 | #25, #27, #30 | Plantillas personales | Independiente de #37/#38 |
-| 15 | 01/02 | [#39](https://github.com/Pablo-hg/Room-Builder/issues/39) | F3 | P1 | #25, #30 | Materiales y cuentagotas |  |
-| 16 | 02/02 | [#40](https://github.com/Pablo-hg/Room-Builder/issues/40) | F3 | P1 | #25, #29 | Fotografía y cámaras | Independiente de #39 |
+| 15 | 01/04 | [#39](https://github.com/Pablo-hg/Room-Builder/issues/39) | F3 | P1 | #25, #30 | Materiales y cuentagotas |  |
+| 16 | 02/04 | [#40](https://github.com/Pablo-hg/Room-Builder/issues/40) | F3 | P1 | #25, #29 | Fotografía, cámaras y referencias para IA externa | Independiente de #39 |
+| 16a | 03/04 | [#94](https://github.com/Pablo-hg/Room-Builder/issues/94) | F3 | PENDIENTE | #38, #31, #29 | Refinar mediciones, cotas y alzado | Propuesta pendiente de decisión |
+| 16b | 04/04 | [#97](https://github.com/Pablo-hg/Room-Builder/issues/97) | F3 | P1 | Revisar #29, #28, #31 | Presentación del gizmo y los ejes | Detalles visuales pendientes de concretar |
 | 17 | 01/06 | [#51](https://github.com/Pablo-hg/Room-Builder/issues/51) | F4 | P0 | #24–#26 | Contrato de vivienda y migraciones | Base de F4 |
 | 18 | 02/06 | [#35](https://github.com/Pablo-hg/Room-Builder/issues/35) | F4 | P0 | #51, #26 | Vértices y contornos |  |
 | 19 | 03/06 | [#52](https://github.com/Pablo-hg/Room-Builder/issues/52) | F4 | P0 | #51, #35 | Habitaciones y paredes compartidas |  |
@@ -86,7 +88,7 @@ Hay **24 tareas reales de ejecución + la épica #23**. Las siete issues contene
 1. [#37](https://github.com/Pablo-hg/Room-Builder/issues/37): **C+B**, líneas y magnetismo configurables, **Plano e Isométrica**, Alt suspende magnetismo y solapes permitidos.
 2. [#38](https://github.com/Pablo-hg/Room-Builder/issues/38): **C**, medición con ayudas, distancia libre/horizontal/vertical y cotas guardables. Diferente de cotas de perímetro #26.
 3. [#39](https://github.com/Pablo-hg/Room-Builder/issues/39): **C**, materiales estilizados personalizables + pintar + cuentagotas.
-4. [#40](https://github.com/Pablo-hg/Room-Builder/issues/40): **C**, fotografía PNG avanzada + **cámaras guardadas**.
+4. [#40](https://github.com/Pablo-hg/Room-Builder/issues/40): **C**, fotografía PNG avanzada y cámaras guardadas; el propietario añade una guía y referencias descargables para generar imágenes realistas con una herramienta externa elegida por el usuario.
 5. [#41](https://github.com/Pablo-hg/Room-Builder/issues/41): **C**, plantillas vacías/amuebladas + guardar plantillas propias.
 6. [#45](https://github.com/Pablo-hg/Room-Builder/issues/45): **B**, imagen calibrada + asistencia a trazado, con revisión humana, **sin IA automática**.
 7. [#47](https://github.com/Pablo-hg/Room-Builder/issues/47): **B**, editor modular de piezas/grupos/materiales, **no** Blender/CAD de mallas.
